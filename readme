@@ -1,0 +1,13 @@
+
+revison 1.01 date 2010.05.03 --MC
+added a choice of cross section prior for Bayesian technique,  "flat" and "correlated",  default is "correlated"
+
+2010.05.17
+Christian Veelken spotted a bug during compilation, the code needs "#include <algorithm>" to be able to be compiled in different enviroments
+
+revison 1.02 date 2010.06    --MC
+Mainly develoment happened in the ATLAS+CMS toy combination exercise
+implemented an interface for configuring AK's input format,  in UtilsROOT,  "ConfigureModel"
+
+
+

@@ -4,11 +4,23 @@ CFLAGS = -fPIC -I ./include -c -o
 CFLAGS1 = -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -c -o
 
 MultipleChannels = test/MultipleChannels.exe
+AKinputTemplate = test/AKinputTemplate.exe
 CLs = test/CLs.exe
 Bayesian = test/Bayesian.exe
 ShapeAnalysis = test/ShapeAnalysis.exe
 
-all: ${CLs} ${MultipleChannels} ${ShapeAnalysis} ${Bayesian}
+#for MSSMA
+drawMSSMA: test/drawMSSMA.exe
+
+AK: test/AKinputTemplate.exe
+
+all: ${CLs} ${MultipleChannels} ${ShapeAnalysis} ${Bayesian} 
+
+test/AKinputTemplate.exe: test/AKinputTemplate.cc ${COMPONENTS}
+	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -o $@ $< ${COMPONENTS}
+
+test/drawMSSMA.exe: test/drawMSSMA.cc ${COMPONENTS}
+	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -o $@ $< ${COMPONENTS}
 
 test/ShapeAnalysis.exe: test/ShapeAnalysis.cc ${COMPONENTS}
 	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -o $@ $< ${COMPONENTS}
@@ -25,7 +37,7 @@ test/MultipleChannels.exe: test/MultipleChannels.cc ${COMPONENTS}
 bin/BinnedInterface.o: src/BinnedInterface.cc bin/CountingModel.o
 	g++ ${CFLAGS1} $@ $<
 
-bin/UtilsROOT.o: src/UtilsROOT.cc
+bin/UtilsROOT.o: src/UtilsROOT.cc bin/CountingModel.o
 	g++ ${CFLAGS1} $@ $<
 
 bin/LimitBands.o: src/LimitBands.cc bin/CRandom.o bin/Utilities.o bin/PdfRandom.o bin/CountingModel.o bin/CLsLimit.o bin/BayesianBase.o
