@@ -3,9 +3,13 @@
 #include "TMath.h"
 #include "Math/DistFunc.h"
 #include "TTree.h"
+#include "CountingModel.h"
+#include "TString.h"
 #include <vector>
+#include <string>
 
 using namespace std;
+using namespace lands;
 /*
 inline Double_t Significance(Double_t pvalue){
 	// return sqrt(2.)*TMath::ErfInverse(1 - 2.*pvalue);
@@ -19,6 +23,14 @@ void FillTree(TString sfile, vector<double> array);
 void FillTree(TString sfile, vector<int> array);
 void FillTree(TString sfile, double * array, int nsize=100000);
 void FillTree(TString sfile, int* array, int nsize=100000);
+
+void StringStrip( std::string & str ) ;
+void StringSplit( std::vector < std::string > & splitValues, 
+		const std::string & str,
+		const std::string & delim ); 
+TString ReadFile(const char*fileName);
+bool ConfigureModel(CountingModel *cms, TString ifileContentStripped);
+bool ConfigureModel(CountingModel *cms, const char* fileName);
 
 #endif   /* ----- #ifndef UTILSROOT_INC  ----- */
 

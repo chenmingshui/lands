@@ -4,6 +4,10 @@
 #include "CountingModel.h"
 using namespace std;
 namespace lands{
+	typedef enum { //prior on the cross section 
+		flat = 10, // uncorrelated
+		corr = 20 // correlated  // default
+	} PRIOR;
 	class BayesianBase{
 		public:
 			BayesianBase();
@@ -27,10 +31,14 @@ namespace lands{
 			double GetAlpha(){return fAlpha;};
 			double GetLimit(){return _limit;};
 			double Likelihood(double r);
-			void PosteriorPdf(int bins=100, double rmin=0, double rmax=0);
+			double PosteriorPdf(int bins=100, double rmin=0, double rmax=0); 
+			// will return computational error on the r due to iteration cutout, the fPrecision,  in case of no systematics
+			double ErrorOnR_DueToPrecision();
+			double ErrorOnR_DueToFiniteToys(int ntrials, double& mean);
 			vector<double> GetVR(){return _vr;};
 			vector<double> GetVP(){return _vp;};
-			
+			void SetCrossSectionPrior(PRIOR prior){_prior=prior;};			
+			PRIOR GetCrossSectionPrior(){return _prior;};			
 		private:
 			double fPrecision;
 			double fAlpha;
@@ -44,7 +52,7 @@ namespace lands{
 			vector<double *> _vs, _vb; // new double[_nexps_to_averageout_sys][_nchannels];
 			double *_d; // new double[_nchannels];
 
-			// Gauss-Laguerre Quadrature
+			// Gauss-Laguerre Quadrature   // from "genlimit" package, CDF note 7587
 			int _ngl;
 			double *_xgl, *_lwgl;
 			double _logscale;
@@ -53,6 +61,7 @@ namespace lands{
 			double _limit;
 			vector<double> _vr, _vp;
 			double _dtot;
+			PRIOR _prior;
 	};
 };
 

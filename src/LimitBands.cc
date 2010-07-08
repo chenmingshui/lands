@@ -172,6 +172,7 @@ namespace lands{
 						<<" (c-b)/(c+b)="<<(vrcls.back()-vrbys.back())/(vrcls.back()+vrbys.back())<<"  repeated "<<nentries_for_thisR<<endl;
 				}
 			}
+			fflush(stdout);
 		}
 
 		if(Entries_v) delete [] Entries_v;

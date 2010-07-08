@@ -149,7 +149,7 @@ namespace lands{
 		if( sbANDb_bOnly_sbOnly !=2 )Sort(_nexps, Q_b, iq_b, 0); // rank from small to large
 		if( sbANDb_bOnly_sbOnly !=1 )Sort(_nexps, Q_sb, iq_sb, 0);
 		if (sbANDb_bOnly_sbOnly==0) 
-			if( ( Q_b_data < Q_b[iq_b[0]] || Q_b_data > Q_sb[iq_sb[_nexps-1]] ) ){ 
+			if( ( Q_b_data < Q_b[iq_b[0]] || Q_b_data > Q_sb[iq_sb[_nexps-1]] ) && _debug ){ 
 				cout<<"\t probability of this -2lnQ_data is very very small, it's out of "<<_nexps<<" exps, you need more toys"<<endl;
 				cout<<"\t -2lnQ_data =   "<<-2*Q_b_data+2*_nsig<<endl;
 				cout<<"\t -2lnQ_b    = [ "<<-2*Q_b[iq_b[_nexps-1]]+2*_nsig<<" , "<<-2*Q_b[iq_b[0]]+2*_nsig<<" ]"<<endl;
@@ -174,7 +174,7 @@ namespace lands{
 	void CLsBase::ProcessM2lnQ(){
 		Sort(_nexps, Q_b, iq_b, 0); // rank from small to large
 		Sort(_nexps, Q_sb, iq_sb, 0);
-		if( Q_b_data < Q_b[iq_b[0]] || Q_b_data > Q_sb[iq_sb[_nexps-1]] ){ 
+		if( ( Q_b_data < Q_b[iq_b[0]] || Q_b_data > Q_sb[iq_sb[_nexps-1]] )  && _debug){ 
 			cout<<"\t probability of this -2lnQ_data is very very small, it's out of "<<_nexps<<" exps, you need more toys"<<endl;
 			cout<<"\t -2lnQ_data =   "<<-2*Q_b_data+2*_nsig<<endl;
 			cout<<"\t -2lnQ_b    = [ "<<-2*Q_b[iq_b[_nexps-1]]+2*_nsig<<" , "<<-2*Q_b[iq_b[0]]+2*_nsig<<" ]"<<endl;
@@ -222,8 +222,8 @@ namespace lands{
 			if(ret*_nexps <= 20) cout<<"CLsBase::CLsb  CLsb*nexps="<<ret*_nexps<<", statistic may not enough"<<endl;
 		}
 		if(ret == 0){
-			cout<<"CLsBase::CLsb CLsb=0, it means number of pseudo experiments is not enough"<<endl;
-			cout<<"              Currently, we put CLsb=1./"<<_nexps<<endl;
+			if(_debug)	cout<<"CLsBase::CLsb CLsb=0, it means number of pseudo experiments is not enough"<<endl;
+			if(_debug)	cout<<"              Currently, we put CLsb=1./"<<_nexps<<endl;
 			ret = 1./(double)_nexps;
 		}
 		return ret;
@@ -231,7 +231,7 @@ namespace lands{
 	double CLsBase::CLs(){
 		double clb=CLb();
 		double clsb=CLsb();
-		if(clb==0){cout<<"CLsBase::CLs  Warning clb_b==0 !!!!"<<endl; return 1;}
+		if(clb==0){if(_debug)	cout<<"CLsBase::CLs  Warning clb_b==0 !!!!"<<endl; return 1;}
 		if(_debug>=10) cout<<"CLsBase::CLs  CLs=CLsb/CLb="<<clsb/clb<<endl;
 		return clsb/clb;
 	}
@@ -250,13 +250,13 @@ namespace lands{
 		}		
 		if(hasQ_gt_lnq==false) {
 			ret= 1-1./(double)_nexps;
-			/*
+			if(_debug) {
 			   cout<<"********WARNING********"<<endl;
 			   cout<<" Toys for b-only hypothesis  may be not enough to evaluate the true significance, "<<endl;
 			   cout<<" Q_b[0]="<<Q_b[iq_b[0]]<<" Q_b["<<_nexps<<"]="<<Q_b[iq_b[_nexps-1]]
 			   <<", and tested Q="<<lnq<<endl;	
 			   cout<<" we set PValue to be 1./_nexps = "<<1-ret<<endl;
-			 */
+			}
 		}
 		return 1-ret;
 	}
@@ -271,7 +271,11 @@ namespace lands{
 				break;
 			}
 		}
+		cout<<" This is for evaluating expected mean significance: "<<endl;
 		cout<<" Fraction of logQ from S+B hypothesis larger than maximum logQ_b  = "<<fractionGTmaxlnQb<<endl;
+		cout<<" I would like this number to be less than 5% "<<endl;
+		// if a given lnQ_data larger than maximum logQ_b, it means that toys of b-only is not enough to evaluate significance, 
+		// probably we need increase the toy number one or two magnitudes. 
 
 	}
 	double CLsBase::CLb(double lnq){
@@ -350,7 +354,29 @@ namespace lands{
 	}
 	void CLsBase::SetLogQ_data(double lnQ_data){Q_b_data=lnQ_data;}
 
-	double CLsBase::Get_m2lnQ_data(){return -2*(Q_b_data-_nsig);}
+	double CLsBase::Get_m2lnQ_data(){
+		vector<double> vs, vb, vd; 
+		vs.clear(); vb.clear(); vd.clear();
+		_nsig=0; Q_b_data = 0;
+		for(int i=0; i<_nchannels; i++){
+			double totbkg = 0;
+			for(int isamp = 1; isamp<(_model->Get_vv_exp_sigbkgs())[i].size(); isamp++){
+				totbkg+=(_model->Get_vv_exp_sigbkgs())[i][isamp];
+			}
+			vs.push_back((_model->Get_vv_exp_sigbkgs())[i][0]);
+			vb.push_back(totbkg);
+			vd.push_back((_model->Get_v_data())[i]);
+			_nsig += vs[i];
+		}
+		for(int i=0; i<_nchannels; i++){	
+			// skip a channle in which nsig==0 || ntotbkg==0
+			if(vs[i] > 0 && vb[i] > 0) {
+				Q_b_data    +=(vd[i]*log((vs[i]+vb[i])/vb[i]));
+			}
+		}
+		return -2*(Q_b_data-_nsig);
+	}
+
 	void CLsBase::SetDebug(int debug){_debug=debug;}
 	CRandom* CLsBase::GetRdm(){return _rdm;}
 
@@ -424,13 +450,58 @@ namespace lands{
 		return significance_mean;
 	}
 	double CLsBase::SignificanceForData(int ntoys_for_b){
+
+		// http://en.wikipedia.org/wiki/Normal_distribution
+		//sigma erf(n/sqrt(2))   i.e. 1 minus ...    or 1 in ...
+		//1 	0.682689492137 	0.317310507863 	3.15148718753
+		//2 	0.954499736104 	0.045500263896 	21.9778945081
+		//3 	0.997300203937 	0.002699796063 	370.398347380
+		//4 	0.999936657516 	0.000063342484 	15,787.192684
+		//5 	0.999999426697 	0.000000573303 	1,744,278.331
+		//6 	0.999999998027 	0.000000001973 	506,842,375.7
+
+
+		//	vector<double> vlogQ_sb, vlogQ_sb_prob;
+		//	vlogQ_sb.clear(); vlogQ_sb_prob.clear(); 
+		//	SortAndCumulative(Q_sb, _nexps, vlogQ_sb, vlogQ_sb_prob, 0);// sort it by  increased order 
 		if(ntoys_for_b > 0)  {
 			BuildM2lnQ(ntoys_for_b, 1);
 		}
+
+		//CheckFractionAtHighEnd(vlogQ_sb, vlogQ_sb_prob);
+
+
 		double pvalue=PValue(Q_b_data);
 		double significance = Significance(pvalue);
+
+		if(_debug) cout<<" p value of data = "<< pvalue << ",  significance = "<< significance <<endl;
 		return significance;
 	}
+	/*
+	double CLsBase::SignificanceAnalytically(){
+
+	// need a routine to do uncertain number of loops
+		double prob_data = 0;
+		double minus_prob_data = 0;
+		double lnqtmp = 0, p=0;
+		for(int i=0; i<100; i++){
+			for(int j=0; j<100; j++)
+				for(int k=0; k<100; k++){
+					// reset data numbers 
+					cms->AddObservedData(0, i);
+					cms->AddObservedData(1, j);
+					cms->AddObservedData(2, k);
+					frequentist.BuildM2lnQ(cms,1);
+					lnqtmp = frequentist.Get_m2lnQ_data() ;
+					p = Poisson(i, totalbkg[0]) * Poisson(j, totalbkg[1]) * Poisson(k, totalbkg[2]) ; 
+					htemp  -> Fill (lnqtmp, p);
+					if( lnq_data > lnqtmp )
+						prob_data += p ;
+				}
+		}
+
+	}
+	*/
 
 	double CLsBase::lnQsb_sigma(int sigma){
 		double ret;	

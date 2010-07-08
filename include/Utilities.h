@@ -25,9 +25,9 @@
 using std::vector;
 using std::pair;
 namespace lands{
-typedef bool Bool_t;
+//typedef bool bool;
 
-template <typename Element, typename Index> void Sort(Index n, const Element* a, Index* index, Bool_t down=true);
+template <typename Element, typename Index> void Sort(Index n, const Element* a, Index* index, bool down=true);
 
 template<typename T> 
 struct CompareDesc { 
@@ -53,7 +53,7 @@ struct CompareAsc {
 
    T fData; 
 };
-template <typename Element, typename Index> void Sort(Index n, const Element* a, Index* index, Bool_t down)
+template <typename Element, typename Index> void Sort(Index n, const Element* a, Index* index, bool down)
 {
    // Sort the n elements of the  array a of generic templated type Element.
    // In output the array index of type Index contains the indices of the sorted array.

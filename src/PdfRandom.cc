@@ -9,6 +9,7 @@
 #include "PdfRandom.h"
 #include <math.h>
 #include <iostream>
+#include <algorithm>
 PdfRandom::PdfRandom(){
    //fXmin      = 0;
    //fXmax      = 0;

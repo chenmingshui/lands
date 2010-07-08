@@ -26,6 +26,7 @@ namespace lands{
 		_xgl=0; _lwgl=0;
 		_ngl=0;
 		_norm=0; _stot=0; _btot=0;
+		_prior=corr;
 	}
 	BayesianBase::BayesianBase(double alpha, double precision){
 		_cms=0;
@@ -38,6 +39,7 @@ namespace lands{
 		_xgl=0; _lwgl=0;
 		_ngl=0;
 		_norm=0; _stot=0; _btot=0;
+		_prior=corr;
 	}
 	BayesianBase::BayesianBase(CountingModel* cms, double alpha, double precision){
 		_cms=cms;
@@ -51,6 +53,7 @@ namespace lands{
 		_xgl=0; _lwgl=0;
 		_ngl=0;
 		_norm=0; _stot=0; _btot=0;
+		_prior=corr;
 	}
 	void BayesianBase::SetModel(CountingModel *cms){
 		//if(cms==_cms){cout<<" You are setting the same model ... "<<endl; return; }
@@ -323,8 +326,8 @@ namespace lands{
 			sum += v = exp(_lwgl[k]+t);
 			if(v<DBL_EPSILON*sum) break;
 		}
-		// PRIOR flat
-	//	sum *= rstot;
+		if(_prior==flat)// PRIOR flat
+			sum *= rstot;
 		return sum;
 	}
 	double BayesianBase::Likelihood(double r){
@@ -338,19 +341,20 @@ namespace lands{
 			for(c=0; c<_nchannels; c++)
 				if(_d[c]>0) 
 					t += _d[c] * log( _vb[i][c] + r*_vs[i][c] );
-			//if(prior==flat)
-			//ret += exp(t);
-			ret += _stot[i] * exp(t);
+			if(_prior==flat)
+				ret += exp(t);
+			else
+			       	ret += _stot[i] * exp(t);
 		}
 		return ret/(_norm*_nexps_to_averageout_sys);
 
 	}
-	void BayesianBase::PosteriorPdf(int bins, double rmin, double rmax){
+	double BayesianBase::PosteriorPdf(int bins, double rmin, double rmax){
 		_vr.clear(); _vp.clear();
 		if(rmax<=0) rmax=2*_limit;	
 		if(rmax<=rmin){
-			cout<<"Warning rmax < rmin "<<endl;
-			return;
+			cout<<"Warning rmax <= rmin "<<endl;
+			return 0;
 		}
 		if(rmin<0) rmin=0;
 		if(bins<=0) bins=1;
@@ -359,6 +363,35 @@ namespace lands{
 			_vr.push_back(rmin);	
 			_vp.push_back(Likelihood(rmin));		
 		}
+
+		double delta_r = 0;
+		// will return computational error on the r due to iteration cutout, the fPrecision,  in case of no systematics
+		// from the posterior pdf curve, you can get  
+		// delta_alpha = Likelihood(rlimit) * delta_r
+		delta_r = 1./Likelihood(_limit) * fAlpha*fPrecision;
+		return delta_r;
+	}
+	double BayesianBase::ErrorOnR_DueToPrecision(){
+		// will return computational error on the r due to iteration cutout, the fPrecision,  in case of no systematics
+		// from the posterior pdf curve, you can get  
+		// delta_alpha = Likelihood(rlimit) * delta_r
+		return  1./Likelihood(_limit) * fAlpha*fPrecision;
+	}
+	double BayesianBase::ErrorOnR_DueToFiniteToys(int ntrials, double& mean){
+		double* rtmp = new double[ntrials];
+		double tot = 0;
+		for(int i=0; i<ntrials; i++){
+			rtmp[i]=Limit();
+			tot+=rtmp[i];
+		}
+		double meantmp = tot/(double)ntrials;
+		double v = 0;
+		for(int i=0; i<ntrials; i++){
+			v+=( (rtmp[i]-meantmp)*(rtmp[i]-meantmp) );
+		}
+		delete [] rtmp;
+		mean = meantmp;
+		return sqrt(v/(double)ntrials);
 	}
 };
 

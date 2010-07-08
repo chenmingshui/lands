@@ -38,9 +38,14 @@ namespace lands{
 			CountingModel();
 			~CountingModel();
 			void AddChannel(std::string channel_name, double num_expected_signal, double num_expected_bkg_1, double num_expected_bkg_2=-1, 
-						double num_expected_bkg_3=-1, double num_expected_bkg_4=-1, double num_expected_bkg_5=-1 );
+						double num_expected_bkg_3=-1, double num_expected_bkg_4=-1, double num_expected_bkg_5=-1, double num_expected_bkg_6 = -1 );
 			void AddChannel(double num_expected_signal, double num_expected_bkg_1, double num_expected_bkg_2=-1, 
-						double num_expected_bkg_3=-1, double num_expected_bkg_4=-1, double num_expected_bkg_5=-1 );
+						double num_expected_bkg_3=-1, double num_expected_bkg_4=-1, double num_expected_bkg_5=-1, double num_expected_bkg_6 = -1 );
+
+			void AddChannel(double num_expected_signal, vector<double> num_expected_bkgs);
+			void AddChannel(std::string channel_name, double num_expected_signal, vector<double> num_expected_bkgs);
+			void AddChannel(vector<double> num_expected_yields);
+			void AddChannel(std::string channel_name, vector<double> num_expected_yields);
 
 			// LogNormal and TruncatedGaussian 
 			void AddUncertainty(int index_channel, int index_sample, double uncertainty_in_relative_fraction, int pdf_type, int index_correlation );
@@ -56,6 +61,8 @@ namespace lands{
 
 			VChannelVSample Get_vv_exp_sigbkgs(){return vv_exp_sigbkgs_scaled;};
 			VDChannel Get_v_data(){return v_data;};
+
+			VDChannel Get_v_exp_sigbkgs(int channel){return vv_exp_sigbkgs_scaled[channel];};
 
 			double GetExpectedNumber(int index_channel, int index_sample);
 

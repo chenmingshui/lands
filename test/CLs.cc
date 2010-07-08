@@ -1,8 +1,9 @@
 #include <iostream>
+#include <python2.4/Python.h>
 #include "CLsLimit.h"
 #include "CRandom.h"
-//#include "PlotUtilities.h"
-//#include "FloridaStyle.C"
+#include "PlotUtilities.h"
+#include "FloridaStyle.C"
 #include <TError.h>
 #include "TSystem.h"
 #include "CountingModel.h"
@@ -16,6 +17,8 @@ int debug=0; int nexps=100000; double s=0;  double b=0; double s_err = 0; double
 int seed =1234; int pdftypeEs = 1; int pdftypeEb = 1; int EsEb_correlated = 0; int calcExpectedMeanLimit=0; int calcSignificance=0;	 
 int main(int argc, const char* argv[]){
 	processParameters(argc, argv);
+
+	FloridaStyle();
 
 	CRandom *rdm = new CRandom(seed);  //initilize a random generator
 
@@ -48,6 +51,7 @@ int main(int argc, const char* argv[]){
 	CLsLimit clsr95;
 	clsr95.SetDebug(debug);
 	double rtmp;
+	clsr95.SetAlpha(0.05);
 	rtmp = clsr95.LimitOnSignalScaleFactor(cms, &frequentist,nexps);
 	cout<<"------------------------------------------------------------"<<endl;
 	cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<rtmp<<endl;
@@ -67,6 +71,29 @@ int main(int argc, const char* argv[]){
 		cout<<"Expected R@95%CL (from -2sigma -1sigma  mean  +1sigma  +2sigma) : "<<endl;
 		printf("--------- %10.5f %10.5f %10.5f %10.5f %10.5f\n", rm2s, rm1s, rmean, rp1s, rp2s);
 		cout<<"------------------------------------------------------------"<<endl;
+	
+		vector<double> difflimits=lb.GetDifferentialLimitsCLs();
+		TCanvas *c=new TCanvas("cme","cme");
+		c->SetLogy(1);
+		TH1F *h=new TH1F("h",";r=#frac{#sigma_{95%CL}}{#sigma_{SM}}; entries", 200, 0, 15);	
+		for(int i=0; i<difflimits.size(); i++) h->Fill(difflimits[i]);
+		h->Draw();
+		Save(c, "differential_limits");
+
+		vector<double> all_calculated_R95s;
+		vector<double> cummulativeProbabilities; // all_calculated_R95s has been sorted, each of them has a cummulative probability
+		SortAndCumulative(difflimits, all_calculated_R95s, cummulativeProbabilities);
+
+		TPaveText *pt = SetTPaveText(0.2, 0.7, 0.3, 0.9);
+		pt = SetTPaveText(0.67, 0.4, 0.8, 0.7);
+		pt->AddText("CLs statistical bands");
+		string ssave="plot_cump_vs_r95";
+		string stitle="; CLs Limit, r = #sigma_{95%}/#sigma_{SM}; cumulative probability;";
+		PlotXvsCummulativeProb plotRvsP(all_calculated_R95s, cummulativeProbabilities,
+				rm1s, rp1s, rm2s, rp2s,ssave, stitle, pt);
+		plotRvsP.draw();
+		
+
 	}
 
 	if(calcSignificance){

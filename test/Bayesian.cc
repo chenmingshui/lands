@@ -1,7 +1,7 @@
 #include <iostream>
-#include "CLsLimit.h"
+//#include "CLsLimit.h"
 #include "CRandom.h"
-//#include "PlotUtilities.h"
+#include "PlotUtilities.h"
 //#include "FloridaStyle.C"
 #include <TError.h>
 #include "TSystem.h"
@@ -34,15 +34,25 @@ int main(int argc, const char* argv[]){
 	}
 
 
-
+	
 	BayesianBase bys(cms, 0.05, 1.e-3);
 	bys.SetNumToys(nexps);
 	bys.SetDebug(debug);
+	//bys.SetCrossSectionPrior(corr);
+	bys.SetCrossSectionPrior(flat);
 	double rtmp;
 	rtmp = bys.Limit();
 	cout<<"------------------------------------------------------------"<<endl;
 	cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<rtmp<<endl;
 	cout<<"------------------------------------------------------------"<<endl;
+
+	// draw 
+
+	bys.PosteriorPdf();
+	TPaveText *pt = SetTPaveText(0.2, 0.7, 0.3, 0.9);
+	//start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_BayesianLimit ppdf: "<< (cur_time - start_time)/1000. << " millisec\n";
+	DrawEvolution2D pdfr(bys.GetVR(), bys.GetVP(), ";r;Likelihood", "likelihood_pdf", pt);	
+	pdfr.draw();
 
 	cms->SetSignalScaleFactor(1.);
 	if(calcExpectedMeanLimit){
@@ -104,7 +114,7 @@ void processParameters(int argc, const char* argv[]){
 		cout<<"./Bayesian.exe signal err_sig_relative background err_bkg_relative data"<<endl;
 		cout<<endl;
 		cout<<" or "<<endl;
-		cout<<"./Bayesian.exe signal err_sig_relative background err_bkg_relative data calcExpectedMeanLimit=0 calcSignificance=0 pdftypeEs=1 pdftypeEb=1 EsEb_correlated=0 ntoys=100000 seed=1234 debug=0"<<endl;
+		cout<<"./Bayesian.exe signal err_sig_relative background err_bkg_relative data calcExpectedMeanLimit=0 pdftypeEs=1 pdftypeEb=1 EsEb_correlated=0 ntoys=100000 seed=1234 debug=0"<<endl;
 		cout<<endl<<" detail of the parameters: "<<endl;
 		cout<<" signal: 		number of expected signal events " <<endl;
 		cout<<" err_sig_relative: 	uncertainty on the signal, in relative fraction " <<endl;

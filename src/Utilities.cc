@@ -1081,5 +1081,4 @@ double normal_quantile(double z, double sigma) {
    return  sigma * Cephes::ndtri(z);
 }
 
-
 };

@@ -474,11 +474,13 @@ void PlotXvsCummulativeProb::draw(){
 	double GreenBandHigh = 1 - (1- 0.683)/2.; //1 sigma
 	double YellowBandLow = (1- 0.955)/2.; //2 sigma
 	double YellowBandHigh = 1 - (1- 0.955)/2.; //2 sigma
+	double median = 0.5;
 
 	TLine *lineGrnLow = new TLine(0,GreenBandLow, xmax, GreenBandLow);
 	TLine *lineGrnHigh = new TLine(0,GreenBandHigh, xmax, GreenBandHigh);
 	TLine *lineYlwLow = new TLine(0,YellowBandLow, xmax, YellowBandLow);
 	TLine *lineYlwHigh = new TLine(0,YellowBandHigh, xmax, YellowBandHigh);
+	TLine *lineMedian= new TLine(0,0.5, xmax, 0.5);
 	lineGrnLow->SetLineColor(kGreen+1);
 	lineGrnLow->SetLineWidth(2);
 	lineGrnLow->Draw("same");
@@ -491,6 +493,9 @@ void PlotXvsCummulativeProb::draw(){
 	lineYlwHigh->SetLineColor(kYellow+1);
 	lineYlwHigh->SetLineWidth(2);
 	lineYlwHigh->Draw("same");
+	lineMedian->SetLineColor(kBlack);
+	lineMedian->SetLineWidth(2);
+	lineMedian->Draw("same");
 
 	double *rn=new double[nsize];
 	double *pn=new double[nsize];

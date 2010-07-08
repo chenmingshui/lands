@@ -52,7 +52,7 @@ namespace lands{
 		v_pdftype.clear();
 	}
 	void CountingModel::AddChannel(std::string channel_name, double num_expected_signal, double num_expected_bkg_1, double num_expected_bkg_2, 
-			double num_expected_bkg_3, double num_expected_bkg_4, double num_expected_bkg_5 ){
+			double num_expected_bkg_3, double num_expected_bkg_4, double num_expected_bkg_5, double num_expected_bkg_6 ){
 // FIXME need to work with bin content = 0; we add the channel anyway, then put it to be decided when calc  Q
 		if( num_expected_signal <=0 ){
 //			cout<<"You are adding a channel in which nsignal <= 0,   we will skip this channel"<<endl;
@@ -61,16 +61,17 @@ namespace lands{
 		// should bkg_1 < 0, then nothing to do , you should put your bkgs as realistic
 		if(num_expected_bkg_1 < 0 ) {cout<<"First Background < 0, exit "<<endl; exit(0);}
 		if( 
-				( num_expected_bkg_2 <0 && (num_expected_bkg_3 >=0 || num_expected_bkg_4>=0 || num_expected_bkg_5>=0) ) ||
-				( num_expected_bkg_3<0 && (num_expected_bkg_4>=0 ||num_expected_bkg_5>=0) ) ||
-				( num_expected_bkg_4 < 0 && num_expected_bkg_5>=0 )
+				( num_expected_bkg_2 <0 && (num_expected_bkg_3 >=0 || num_expected_bkg_4>=0 || num_expected_bkg_5>=0 || num_expected_bkg_6>=0) ) ||
+				( num_expected_bkg_3<0 && (num_expected_bkg_4>=0 ||num_expected_bkg_5>=0 || num_expected_bkg_6>=0) ) ||
+				( num_expected_bkg_4 < 0 && ( num_expected_bkg_5>=0 || num_expected_bkg_6>=0 )  ) ||
+				( num_expected_bkg_5 < 0 && num_expected_bkg_6>=0  )
 		  ){
 			cout<<"Something wrong with bkg inputs, exit "<<endl;
 			 exit(0);
 		}
 
 		if( num_expected_bkg_1 <=0 &&
-				(num_expected_bkg_2<=0 && num_expected_bkg_3 <=0 && num_expected_bkg_4<=0 && num_expected_bkg_5<=0) ) {
+				(num_expected_bkg_2<=0 && num_expected_bkg_3 <=0 && num_expected_bkg_4<=0 && num_expected_bkg_5<=0 && num_expected_bkg_6<=0) ) {
 		//	cout<<"Your are adding a channel with totbkg <= 0,  we will skip this channel"<<endl;
 		//	exit(0);
 		}
@@ -83,6 +84,7 @@ namespace lands{
 
 		}
 		else v_channelname.push_back(channel_name);
+
 
 		double tmp_totbkg = 0;
 		
@@ -133,6 +135,13 @@ namespace lands{
 			vvidcorrl.push_back(vidcorrl);
 			tmp_totbkg+=num_expected_bkg_5;
 		}
+		if(num_expected_bkg_6 >= 0 ){
+			vsigbkgs.push_back(num_expected_bkg_6);
+			vvvuncpar.push_back(vvunc);
+			vvpdftype.push_back(vpdftype);
+			vvidcorrl.push_back(vidcorrl);
+			tmp_totbkg+=num_expected_bkg_6;
+		}
 
 		vv_exp_sigbkgs.push_back(vsigbkgs);
 		vv_exp_sigbkgs_scaled.push_back(vsigbkgs);
@@ -143,12 +152,64 @@ namespace lands{
 
 	}
 	void CountingModel::AddChannel(double num_expected_signal, double num_expected_bkg_1, double num_expected_bkg_2, 
-			double num_expected_bkg_3, double num_expected_bkg_4, double num_expected_bkg_5 ){
+			double num_expected_bkg_3, double num_expected_bkg_4, double num_expected_bkg_5, double num_expected_bkg_6 ){
 		AddChannel("",  num_expected_signal,  num_expected_bkg_1,  num_expected_bkg_2, 
-				num_expected_bkg_3,  num_expected_bkg_4,  num_expected_bkg_5 );
+				num_expected_bkg_3,  num_expected_bkg_4,  num_expected_bkg_5, num_expected_bkg_6 );
 
 	}
+	void CountingModel::AddChannel(double num_expected_signal, vector<double> num_expected_bkgs){
+		AddChannel("",  num_expected_signal,  num_expected_bkgs);
+	}
+	void CountingModel::AddChannel(vector<double> num_expected_yields){
+		AddChannel("",  num_expected_yields);
+	}
+	void CountingModel::AddChannel(string channel_name, vector<double> num_expected_yields){
+		double num_expected_signal = num_expected_yields[0];
+		vector<double> num_expected_bkgs(&num_expected_yields[1], &num_expected_yields[num_expected_yields.size()]);
+		AddChannel(channel_name, num_expected_signal,  num_expected_bkgs);
+		//cout<<"tot.size="<<num_expected_yields.size()<<" bkg.size="<<num_expected_bkgs.size()<<endl;
+	}
 
+	void CountingModel::AddChannel(string channel_name, double num_expected_signal, vector<double> num_expected_bkgs){
+		if(channel_name==""){
+			char tmp[256];
+			sprintf(tmp, "channel_%d", v_channelname.size());
+			channel_name==tmp;
+			v_channelname.push_back(channel_name);
+
+		}
+		else v_channelname.push_back(channel_name);
+
+		double tmp_totbkg = 0;
+		
+		vector<double> vsigbkgs; vsigbkgs.clear();
+		vsigbkgs.push_back(num_expected_signal);
+		vector< vector< vector<double> > > vvvuncpar; vvvuncpar.clear();
+		vector< vector<int> > vvpdftype; vvpdftype.clear();
+		vector< vector<int> > vvidcorrl; vvidcorrl.clear();
+
+		vector< vector<double> > vvunc; vvunc.clear();
+		vvvuncpar.push_back(vvunc);
+		vector<int> vpdftype; vpdftype.clear();
+		vvpdftype.push_back(vpdftype);
+		vector<int> vidcorrl; vidcorrl.clear();
+		vvidcorrl.push_back(vidcorrl);
+		for(int i=0; i<num_expected_bkgs.size(); i++){
+			vsigbkgs.push_back(num_expected_bkgs[i]);
+			vvvuncpar.push_back(vvunc);
+			vvpdftype.push_back(vpdftype);
+			vvidcorrl.push_back(vidcorrl);
+			tmp_totbkg+=num_expected_bkgs[i];
+		}
+
+		vv_exp_sigbkgs.push_back(vsigbkgs);
+		vv_exp_sigbkgs_scaled.push_back(vsigbkgs);
+		v_data.push_back(tmp_totbkg);	
+		vvvv_uncpar.push_back(vvvuncpar);
+		vvv_pdftype.push_back(vvpdftype);
+		vvv_idcorrl.push_back(vvidcorrl);
+
+	}	
 	// LogNormal and TruncatedGaussian 
 	void CountingModel::AddUncertainty(int index_channel, int index_sample, double uncertainty_in_relative_fraction, int pdf_type, int index_correlation ){
 		if( uncertainty_in_relative_fraction < 0 ) {
@@ -439,6 +500,7 @@ namespace lands{
 					cout<<" \t e"<<ierr<<" "<< vvv_pdftype[ch][ns][ierr]<< " " << vvv_idcorrl[ch][ns][ierr] <<" "<<vvvv_uncpar[ch][ns][ierr][0]<<endl;	
 				}
 			}
+			cout<<"\t\t  observed data events = " << v_data[ch]<<endl;
 		}
 
 
@@ -450,6 +512,9 @@ namespace lands{
 		// check any two uncertainties have same index_correlation  are with same pdf_type
 		if( v_data.size()!= vv_exp_sigbkgs.size() || v_data.size()!= vvvv_uncpar.size() ){
 			cout<<"channels of data != expected signal or backgrounds, or != vvvv_uncpar.size "<<endl;
+			cout<<"data.size="<<int(v_data.size())<<endl;
+			cout<<"vv_exp_sigbkgs.size="<<(int)vv_exp_sigbkgs.size()<<endl;
+			cout<<"vvvv_uncpar.size="<<(int)vvvv_uncpar.size()<<endl;
 			exit(0);
 		}	
 		if(!_rdm) {
@@ -478,6 +543,7 @@ namespace lands{
 	};
 	void CountingModel::UseAsimovData(){
 		for(int i=0; i<v_data.size(); i++){
+			v_data[i]=0;
 			for(int b=1; b<vv_exp_sigbkgs.at(i).size(); b++){
 				v_data[i]+= vv_exp_sigbkgs.at(i).at(b);
 			}
@@ -490,8 +556,9 @@ namespace lands{
 		VChannelVSampleVUncertainty tmp_vvv_pdftype=cms1->Get_vvv_pdftype();	
 		VChannelVSampleVUncertainty tmp_vvv_idcorrl=cms1->Get_vvv_idcorrl();	
 		for(int ch=0; ch<cms1->NumOfChannels(); ch++){
-			cms.AddChannel(cms1->GetExpectedNumber(ch,0),cms1->GetExpectedNumber(ch,1), cms1->GetExpectedNumber(ch,2), cms1->GetExpectedNumber(ch,3),
-					cms1->GetExpectedNumber(ch,4), cms1->GetExpectedNumber(ch, 5));	
+			//cms.AddChannel(cms1->GetExpectedNumber(ch,0),cms1->GetExpectedNumber(ch,1), cms1->GetExpectedNumber(ch,2), cms1->GetExpectedNumber(ch,3),
+			//		cms1->GetExpectedNumber(ch,4), cms1->GetExpectedNumber(ch, 5), cms1->GetExpectedNumber(ch, 6));	
+			cms.AddChannel(cms1->Get_v_exp_sigbkgs(ch));
 			for(int isamp=0; isamp<tmp_vvv_pdftype.at(ch).size(); isamp++){
 				for(int iunc=0; iunc<tmp_vvv_pdftype.at(ch).at(isamp).size(); iunc++){
 					if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeLogNormal || tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeTruncatedGaussian){
@@ -520,8 +587,9 @@ namespace lands{
 		tmp_vvv_pdftype=cms2->Get_vvv_pdftype();	
 		tmp_vvv_idcorrl=cms2->Get_vvv_idcorrl();	
 		for(int ch=0; ch<cms2->NumOfChannels(); ch++){
-			cms.AddChannel(cms2->GetExpectedNumber(ch,0),cms2->GetExpectedNumber(ch,1), cms2->GetExpectedNumber(ch,2), cms2->GetExpectedNumber(ch,3),
-					cms2->GetExpectedNumber(ch,4), cms2->GetExpectedNumber(ch, 5));	
+			//cms.AddChannel(cms2->GetExpectedNumber(ch,0),cms2->GetExpectedNumber(ch,1), cms2->GetExpectedNumber(ch,2), cms2->GetExpectedNumber(ch,3),
+			//		cms2->GetExpectedNumber(ch,4), cms2->GetExpectedNumber(ch, 5), cms2->GetExpectedNumber(ch, 6));	
+			cms.AddChannel(cms2->Get_v_exp_sigbkgs(ch));
 			for(int isamp=0; isamp<tmp_vvv_pdftype.at(ch).size(); isamp++){
 				for(int iunc=0; iunc<tmp_vvv_pdftype.at(ch).at(isamp).size(); iunc++){
 					if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeLogNormal || tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeTruncatedGaussian){
