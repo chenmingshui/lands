@@ -1,0 +1,249 @@
+#include "LimitBands.h"
+#include <time.h> // upto micro second
+#include <iostream>
+namespace lands{
+	LimitBands::LimitBands(){
+		_frequentist=0;	_clslimit=0; _byslimit=0; _cms=0;
+		_doCLs=0; _doBys=0; _debug=0; 
+	}
+	LimitBands::LimitBands(CLsLimit *cl, CLsBase *cb, CountingModel* cms){
+		_frequentist=cb;	_clslimit=cl;  _byslimit=0; _cms=cms;
+		_doCLs=0; _doBys=0; _debug=0; 
+	}
+	LimitBands::LimitBands(BayesianBase *bb, CountingModel* cms){
+		_frequentist=0;	_clslimit=0; _byslimit=bb; _cms=cms;
+		_doCLs=0; _doBys=0; _debug=0; 
+	}
+	LimitBands::LimitBands(CLsLimit *cl, CLsBase *cb, BayesianBase *bb, CountingModel* cms){
+		_frequentist=cb;	_clslimit=cl;  _byslimit=bb; _cms=cms; bb->SetModel(cms);
+		_doCLs=0; _doBys=0; _debug=0; 
+	}
+	LimitBands::~LimitBands(){}
+	void LimitBands::CLsLimitBands(double alpha, int noutcome, int ntoysM2lnQ){
+		fAlpha=alpha; fConfidenceLevel=1-fAlpha; _noutcomes=noutcome;
+		_doCLs=true; _ntoysM2lnQ=ntoysM2lnQ; 
+		if(_clslimit){ _clslimit->SetAlpha(fAlpha); }
+		Bands();
+	}
+	void LimitBands::BysLimitBands(double alpha, int noutcome, int ntoysBys){
+		fAlpha=alpha; fConfidenceLevel=1-fAlpha; _noutcomes=noutcome;
+		_doBys=true; _ntoysBys=ntoysBys; 
+		if(_byslimit){_byslimit->SetAlpha(fAlpha); _byslimit->SetNumToys(_ntoysBys); }
+		Bands();
+	}
+	void LimitBands::Bands(double alpha, int noutcome, bool doCLs, int ntoysM2lnQ, bool doBys, int ntoysBys){
+		fAlpha=alpha; fConfidenceLevel=1-fAlpha; _noutcomes=noutcome;
+		_doCLs=doCLs; _doBys=doBys; _ntoysM2lnQ=ntoysM2lnQ; _ntoysBys=ntoysBys; 
+		if(_clslimit){ _clslimit->SetAlpha(fAlpha); }
+		if(_byslimit){_byslimit->SetAlpha(fAlpha); _byslimit->SetNumToys(_ntoysBys); }
+		Bands();
+	}
+	void LimitBands::Bands(){
+		clock_t start_time=clock(), cur_time=clock(), funcStart_time=clock();
+		if(!_doCLs && !_doBys ) {cout<<" Bands, do nothing"<<endl; return;}
+		if(!_cms) {cout<<" Bands, model not set yet"<<endl; return; }
+		if(_doCLs && (!_clslimit || !_frequentist) ) {cout<<" Bands, clslimit or frequentist not set yet"<<endl; return; }		
+		if(_doBys && !_byslimit) {cout<<" Bands, byslimit not set yet"<<endl; return; }
+
+		_cms->SetSignalScaleFactor(1.);
+
+		double rmeancls=0, rmeanbys=0;
+
+		_vrcls.clear(); _vpcls.clear(); _difrcls.clear();
+		_vrbys.clear(); _vpbys.clear(); _difrbys.clear();
+
+		vector<double> vrcls; vrcls.clear();
+		vector<double> vpcls; vpcls.clear();
+		vector<double> vrbys; vrbys.clear();
+		vector<double> vpbys; vpbys.clear();
+
+		if(_debug >= 10){ // print out s,b se, be, correlation, err_pdf_type
+			cout<<"\t DoingStatisticalBandsForLimit print out details on signal, background and uncertainties ...."<<endl;
+			_cms->Print();
+		}
+
+		vector< vector<int> > vvPossibleOutcomes; vvPossibleOutcomes.clear();
+		vector<int> vEntries; vEntries.clear();  // index of vvPossibleOutcomes are the same as vEntries
+		vector<int> vbkg_tmp; 
+
+		if(_debug) cout<<" _noutcomes="<<_noutcomes<<endl;
+
+		for(int n=0; n<_noutcomes; n++){
+			vbkg_tmp.clear(); 
+			vbkg_tmp=_cms->GetToyData_H0();
+			bool flag=true;
+			for(int t=0; t<vvPossibleOutcomes.size(); t++){
+				if(vbkg_tmp==vvPossibleOutcomes.at(t)) {
+					flag=false;
+					vEntries.at(t)+=1;
+					break;
+				}
+			}
+			if(flag) { 
+				vvPossibleOutcomes.push_back(vbkg_tmp);
+				vEntries.push_back(1);	
+			}
+		}	// _noutcomes
+
+		if(_debug) { start_time=cur_time; cur_time=clock(); cout << "\t\t\t TIME_in_BAND, generating "<<_noutcomes<<" outcomes: " << (cur_time - start_time)/1000000. << " sec\n"; }
+
+		// rank the possible outcomes and sort it
+		int npsbl_outcomes = vvPossibleOutcomes.size();
+		int *Entries_v = new int[npsbl_outcomes];
+		for(int i=0; i<npsbl_outcomes; i++){
+			Entries_v[i]=vEntries.at(i);
+		}
+		int *iEntries_v = new int[npsbl_outcomes];
+		Sort(npsbl_outcomes, Entries_v, iEntries_v, 1); // sorted it by "down",  Desc
+		if(_debug) {
+			cout<<"\n\t\t ProjectingLimits possible outcomes and their entries "<<endl;
+			cout<<"\t\t n_possible_outcomes size= "<<npsbl_outcomes<<endl;
+			int step = npsbl_outcomes/10;
+			for(int i=0; i<npsbl_outcomes; i+=(step+1) ){
+				printf("\t%dth\t ", i);
+				for(int j=0; j<vvPossibleOutcomes.at(iEntries_v[i]).size(); j++){
+					if(_debug>=10)	printf("%4d ", vvPossibleOutcomes.at(iEntries_v[i]).at(j));
+				}		
+				printf("\t %5d\n", vEntries.at(iEntries_v[i]));
+			}
+		}
+
+		double nchs=_cms->NumOfChannels();
+		int tmpcount;
+		if(npsbl_outcomes<50) tmpcount = int(npsbl_outcomes/10);
+		else {
+			tmpcount = int(npsbl_outcomes/100);
+		}
+
+		cout<<"\t Computing expected Upper Limit for "<<_noutcomes<<" sets of outcomes "<<endl;
+		double r;
+		for(int n=0; n<npsbl_outcomes; n++){
+			if( tmpcount==0 || (tmpcount!=0 && (n%tmpcount == 0)) ) printf(" ... ... ... process %3.0f\%\n", n/(double)npsbl_outcomes*100);
+			double p=vEntries.at(iEntries_v[n])/(double)_noutcomes;
+			if(_debug){
+				cout<<"\t ProjectingRLimits scanning outcomes: "<<n<<"th \t";
+				for(int j=0; j<nchs; j++){
+				if(_debug>=10)printf("%4d ", vvPossibleOutcomes.at(iEntries_v[n]).at(j));
+				}		
+				cout<<"\t p="<<p<<endl;
+			}
+			_cms->SetData( vvPossibleOutcomes.at(iEntries_v[n]) ); 
+
+
+				int nentries_for_thisR=(int)(vEntries.at(iEntries_v[n]));
+				//int nentries_for_thisR=(int)(vEntries.at(iEntries_v[n]));
+			if(_doCLs) { 
+				//--------------calc r95% with (s,b,n) by throwing pseudo experiments and using the fits to get r95% at CLs=5
+				r=_clslimit->LimitOnSignalScaleFactor(_cms, _frequentist, _ntoysM2lnQ);
+				vrcls.push_back(r);
+				vpcls.push_back(p);
+				rmeancls+=r*p;
+				for(int ntmp=0; ntmp<nentries_for_thisR; ntmp++){
+					_difrcls.push_back(r);
+				}
+				if(_debug) {
+					vector<double> vvr, vvcls;
+					vvr.clear(); vvcls.clear();
+					vvr=_clslimit->GetvTestedScaleFactors();	
+					vvcls=_clslimit->GetvTestedCLs();
+					cout<<" DoingStatisticalBandsForLimit cls_r95\% for n="<<n<<", printing out the recorded r and cls:"<<endl;
+					for(int i=0; i<(int)vvr.size(); i++)
+						printf("r %5.2f cls %3.2f\n",vvr[i], vvcls[i]);
+				}
+				if(_debug)cout<<"n="<<n<<" cls_r= "<<r<<" p= "<<p<<" repeated "<<nentries_for_thisR<<endl;
+				if(_debug) { start_time=cur_time; cur_time=clock(); cout << "\t\t\t TIME_in_BAND, doCLs "<< n << " took " <<(cur_time - start_time)/1000000. << " sec\n"; }
+			}
+			if(_doBys){
+				_cms->SetSignalScaleFactor(1.);
+				r=_byslimit->Limit(_cms);
+				vrbys.push_back(r);
+				vpbys.push_back(p);
+				rmeanbys+=r*p;
+				for(int ntmp=0; ntmp<nentries_for_thisR; ntmp++){
+					_difrbys.push_back(r);
+				}
+				if(_debug)cout<<"n="<<n<<" bys_r= "<<r<<" p= "<<p<<" repeated "<<nentries_for_thisR<<endl;
+				if(_debug) { start_time=cur_time; cur_time=clock(); cout << "\t\t\t TIME_in_BAND, doBys "<< n << " took " <<(cur_time - start_time)/1000000. << " sec\n"; }
+			}
+			if(_doCLs && _doBys && _debug ) {
+				if(vrcls.back()==0 || vrbys.back()==0) cout<<"Warning:  r=0 "<<endl;
+				else {
+					cout<<"\n\t CompareCLsBys n="<<n<<" cls= "<<vrcls.back()<<" bys= "<<vrbys.back()
+						<<" (c-b)/(c+b)="<<(vrcls.back()-vrbys.back())/(vrcls.back()+vrbys.back())<<"  repeated "<<nentries_for_thisR<<endl;
+				}
+			}
+		}
+
+		if(Entries_v) delete [] Entries_v;
+		if(iEntries_v) delete [] iEntries_v;
+
+		if(_doCLs) {
+			int nr = vrcls.size(); 
+			double *r_v = new double[nr];	
+			int *ir_v = new int[nr];	
+			for(int i=0; i<nr; i++) r_v[i]=vrcls.at(i);
+			Sort(nr, r_v, ir_v, 0); // from small to large
+			for(int i=0; i<nr; i++){
+				_vrcls.push_back(vrcls.at(ir_v[i]));
+				if(i==0) _vpcls.push_back(vpcls.at(ir_v[i]));
+				else _vpcls.push_back( _vpcls.at(i-1) + vpcls.at(ir_v[i]) ); 
+			}	
+			if(r_v) delete [] r_v;
+			if(ir_v) delete [] ir_v;
+
+			if(_debug) {
+				cout<<" ProjectingLimits, printing out for cls the r and cummulative p for all possible outcomes:"<<endl;
+				for(int i=0; i<(int)_vrcls.size(); i++)
+					printf("r %5.2f p %5.4f\n",_vrcls[i], _vpcls[i]);
+			}
+
+			GetBandsByFermiCurveInterpolation(_vrcls,_vpcls, _rcls[1], _rcls[3], _rcls[0], _rcls[4]);
+			_rcls[5]=rmeancls; _rcls[2]=GetBandByFermiCurveInterpolation(_vrcls, _vpcls, 0.5);
+			if(_debug) {
+				cout<<"\t ProjectingLimits projecting cls r at "<<endl; 
+				cout<<"    -2 sigma ="<<_rcls[0]<<endl;
+				cout<<"    -1 sigma ="<<_rcls[1]<<endl;
+				cout<<"    median   ="<<_rcls[2]<<endl;
+				cout<<"     1 sigma ="<<_rcls[3]<<endl;
+				cout<<"     2 sigma ="<<_rcls[4]<<endl;
+				cout<<"     mean    ="<<_rcls[5]<<endl;
+			}
+		}
+		if(_doBys) {
+			int nr = vrbys.size(); 
+			double *r_v = new double[nr];	
+			int *ir_v = new int[nr];	
+			for(int i=0; i<nr; i++) r_v[i]=vrbys.at(i);
+			Sort(nr, r_v, ir_v, 0); // from small to large
+			for(int i=0; i<nr; i++){
+				_vrbys.push_back(vrbys.at(ir_v[i]));
+				if(i==0) _vpbys.push_back(vpbys.at(ir_v[i]));
+				else _vpbys.push_back( _vpbys.at(i-1) + vpbys.at(ir_v[i]) ); 
+			}	
+			if(r_v) delete [] r_v;
+			if(ir_v) delete [] ir_v;
+
+			GetBandsByFermiCurveInterpolation(_vrbys,_vpbys, _rbys[1], _rbys[3], _rbys[0], _rbys[4]);
+			_rbys[5]=rmeanbys; _rbys[2]=GetBandByFermiCurveInterpolation(_vrbys, _vpbys, 0.5);
+			if(_debug) {
+				cout<<"\t ProjectingLimits projecting bys r at "<<endl; 
+				cout<<"    -2 sigma ="<<_rbys[0]<<endl;
+				cout<<"    -1 sigma ="<<_rbys[1]<<endl;
+				cout<<"    median   ="<<_rbys[2]<<endl;
+				cout<<"     1 sigma ="<<_rbys[3]<<endl;
+				cout<<"     2 sigma ="<<_rbys[4]<<endl;
+				cout<<"     mean    ="<<_rbys[5]<<endl;
+			}
+		}
+
+		if( _doCLs && _doBys ) {
+			if(_rcls[5]==0 || _rbys[5]==0) cout<<"Warning:  rmean=0 "<<endl;
+			else {
+				cout<<"\n\t CompareCLsBys rmean cls= "<<_rcls[5]<<" bys= "<<_rbys[5]
+					<<" (c-b)/(c+b)="<<(_rcls[5]-_rbys[5])/(_rcls[5]+_rbys[5])<<endl;
+			}
+		}
+		if(_debug) { start_time=cur_time; cur_time=clock(); cout << "\t\t\t TIME_in_BAND, final printing took " <<(cur_time - start_time)/1000. << " milisec\n"; }
+		if(_debug) { cur_time=clock(); cout << "\t\t\t TIME_in_BAND finishing "<<_noutcomes<<" outcomes: " << (cur_time - funcStart_time)/1000000./60. << " minutes\n"; }
+	}	
+};
