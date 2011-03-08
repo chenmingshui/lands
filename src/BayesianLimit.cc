@@ -2,6 +2,7 @@
 #include "Utilities.h"
 #include "BayesianLimit.h"
 #include <iostream>
+#include <cstdio>
 #include <math.h>
 namespace lands{
 BayesianLimit::BayesianLimit(CountingModel *cms, int nexps, CRandom *rnd){

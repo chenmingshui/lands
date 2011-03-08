@@ -17,6 +17,7 @@
  */
 #include "CountingModel.h"
 #include <iostream>
+#include <cstdio>
 using namespace std;
 namespace lands{
 	CountingModel::CountingModel(){
@@ -543,11 +544,22 @@ namespace lands{
 			vv_exp_sigbkgs_scaled[ch][0]*=_common_signal_strength;
 		}
 	};
-	void CountingModel::UseAsimovData(){
-		for(int i=0; i<v_data.size(); i++){
-			v_data[i]=0;
-			for(int b=1; b<vv_exp_sigbkgs.at(i).size(); b++){
-				v_data[i]+= vv_exp_sigbkgs.at(i).at(b);
+	void CountingModel::UseAsimovData(int b){  // 0 for background only, 1 for s+b hypothesis
+		if(b==0){
+			cout<<"		Using Asimov dataset: background only hypothesis"<<endl;
+			for(int i=0; i<v_data.size(); i++){
+				v_data[i]=0;
+				for(int b=1; b<vv_exp_sigbkgs.at(i).size(); b++){
+					v_data[i]+= vv_exp_sigbkgs.at(i).at(b);
+				}
+			}
+		}else if(b==1){
+			cout<<"		Using Asimov dataset: sig+bkg hypothesis"<<endl;
+			for(int i=0; i<v_data.size(); i++){
+				v_data[i]=0;
+				for(int b=0; b<vv_exp_sigbkgs.at(i).size(); b++){
+					v_data[i]+= vv_exp_sigbkgs.at(i).at(b);
+				}
 			}
 		}
 	}
@@ -625,25 +637,41 @@ namespace lands{
 		if(index_sample>= vv_exp_sigbkgs_scaled.at(index_channel).size()) return -1;
 		return vv_exp_sigbkgs_scaled.at(index_channel).at(index_sample);
 	}
-	void CountingModel::RemoveChannelsWithExpectedSignal0orBkg0(){
+	void CountingModel::RemoveChannelsWithExpectedSignal0orBkg0(int king){
 		// should be advoked at the end of model construction, otherwise you will get into trouble ....
 		// either before or after "ConfigUncertaintyPdfs"
 		std::vector< vector<double> >::iterator iter=vv_exp_sigbkgs.begin(); 
-		int skippedchannels = 0;
+		int skippedchannels_s = 0, skippedchannels_b=0, skippedchannels_sb=0;
+		int skippedchannels =0;
 		for(; iter!=vv_exp_sigbkgs.end();){
 			int position=iter-vv_exp_sigbkgs.begin();
-			if( (*iter)[0]<=0 ) {
+			double bkg = 0, sig=0;
+			for(int p=1; p<(*iter).size(); p++){
+				bkg += (*iter)[p];
+			}
+			sig = (*iter)[0];
+			if( 
+					( (king==1 || king==2) && sig<=0 ) ||
+					( (king==0 || king==2) && bkg<=0        ) 
+			  ) {
 				iter=vv_exp_sigbkgs.erase( iter );
 				v_data.erase( v_data.begin()+position );
 				vv_exp_sigbkgs_scaled.erase( vv_exp_sigbkgs_scaled.begin()+position );
 				vvvv_uncpar.erase( vvvv_uncpar.begin()+position );
 				vvv_pdftype.erase( vvv_pdftype.begin()+position );
 				vvv_idcorrl.erase( vvv_idcorrl.begin()+position );
-				skippedchannels++;
+
+				if( (king==1||king==2) && sig<=0 )skippedchannels_s++;
+				if( (king==0||king==2) && bkg<=0 )skippedchannels_b++;
+				if( (king==2) && bkg<=0 && sig<=0 ) skippedchannels_sb++;
+				skippedchannels ++;
 			}else{
 				++iter;
 			}	
 		}	
-		cout<<"\t * "<<skippedchannels<<" bins have been removed because of no signal in those bins *"<<endl;	
+		if(king==1 || king==2)	cout<<"\t * "<<skippedchannels_s<<" bins have been removed because of no signal  in those bins *"<<endl;	
+		if(king==0 || king==2)	cout<<"\t * "<<skippedchannels_b<<" bins have been removed because of no backgrounds  in those bins *"<<endl;	
+		if(king==2)	cout<<"\t * "<<skippedchannels_sb<<" bins have been removed because of no backgrounds and no signal in those bins *"<<endl;	
+		cout<<"\t * "<<skippedchannels<<" bins in total were removed *"<<endl;
 	}
 };

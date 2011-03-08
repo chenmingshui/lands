@@ -99,7 +99,7 @@ namespace lands{
 
 		GenToys();
 		_norm = AverageIntegral(0);
-		if(_debug) cout<<" norm  = "<<_norm<<endl;
+		if(_debug) cout<<(bsys?"w/ sys, ":"w/o sys,")<<" norm  = "<<_norm<<" , with my own approach to converge"<<endl;
 
 		// first try  ---to get p<fAlpha
 		double rlo= 0;
@@ -146,7 +146,7 @@ namespace lands{
 
 		// try to get p<fAlpha 
 		_norm = AverageIntegral(0);
-		if(_debug) cout<<"\t ** norm (w/ sys) = "<<_norm<<" **"<<endl;
+		if(_debug) cout<<"\t ** norm "<<(bsys?"w/ sys = ":"w/o sys =")<<_norm<<" ** with Joel Hinrich's approach"<<endl;
 
 /*
 		rmid = 2*ret;	
@@ -300,7 +300,7 @@ namespace lands{
 			_vs.push_back(s);
 			_vb.push_back(b);
 		}
-		if(_debug){ start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_gentoys " << (cur_time - start_time) << " microsec\n";}
+		if(_debug){ start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_gentoys " << _nexps_to_averageout_sys <<" toys, "<< (cur_time - start_time) << " microsec\n";}
 	}
 	double BayesianBase::AverageIntegral(double rlow ){
 		if (rlow<0) {cout<< " integral starting from <0, exit" <<endl; exit(0);}
@@ -332,7 +332,7 @@ namespace lands{
 	}
 	double BayesianBase::Likelihood(double r){
 		if (r<0) {cout<< " r <0, exit" <<endl; exit(0);}
-		if (_norm<=0)  {cout<< " _norm <=0, exit" <<endl; exit(0);}
+		if (_norm<=0)  {cout<< " _norm <=0, exit  " << _norm <<endl; exit(0);}
 		double ret=0;
 		int i, c;
 		double t;

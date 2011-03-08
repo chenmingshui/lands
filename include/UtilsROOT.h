@@ -7,6 +7,7 @@
 #include "TString.h"
 #include <vector>
 #include <string>
+#include "TH1F.h"
 
 using namespace std;
 using namespace lands;
@@ -31,6 +32,9 @@ void StringSplit( std::vector < std::string > & splitValues,
 TString ReadFile(const char*fileName);
 bool ConfigureModel(CountingModel *cms, TString ifileContentStripped);
 bool ConfigureModel(CountingModel *cms, const char* fileName);
+bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped);
+vector<TString> SplitIntoLines(TString ifileContentStripped, bool debug=false);
 
+TH1F* GetHisto(string filename, string histoname);
 #endif   /* ----- #ifndef UTILSROOT_INC  ----- */
 

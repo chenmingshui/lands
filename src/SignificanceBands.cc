@@ -1,6 +1,7 @@
 #include "SignificanceBands.h"
 #include <time.h> // upto micro second
 #include <iostream>
+#include <cstdio>
 using std::cout;
 using std::endl;
 namespace lands{

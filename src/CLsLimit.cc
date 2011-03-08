@@ -96,6 +96,10 @@ namespace lands{
 		int npars = cms_global->Get_max_uncorrelation();
 		if( !(cms_global->IsUsingSystematicsErrors())) npars=0;
 		if( (cms_global->IsUsingSystematicsErrors() && npars>0 )  || model ==2 ){
+
+			//FIXME temporarily solution:  when reading a source with all error = 0,  then assign it to be logNormal, error =0,  in UtilsROOT.cc 
+			//good solution: redefine npars here, count only sources with definded pdf. 
+
 			TMinuit *gMinuit = new TMinuit(npars+2);  //initialize TMinuit with a maximum of 5 params
 			gMinuit->SetFCN(Chisquare);
 
@@ -123,14 +127,16 @@ namespace lands{
 				TString sname; 
 				sname.Form("p%d",i);
 				if(v_pdftype[i] == typeLogNormal )
-					gMinuit->mnparm(i, sname, 0, 0.1, -5, 5,ierflg);
+					gMinuit->mnparm(i, sname, 0, 0.1, -20, 20,ierflg); // was 5
 				else if(v_pdftype[i] == typeTruncatedGaussian ){
 					double maxunc = v_TG_maxUnc[i];	
 					if(maxunc>0.2) maxunc = -1./maxunc;
 					else maxunc = -5;
-					gMinuit->mnparm(i, sname, 0, 0.1, maxunc, 5,ierflg);
+					gMinuit->mnparm(i, sname, 0, 0.1, maxunc, 20,ierflg); // was 5
 				}else {
-					cout<<"pdftype not yet defined "<<endl;
+					cout<<"pdftype not yet defined:  "<<v_pdftype[i]<<", npars="<<npars<<", i="<<i<<endl;
+					cout<<"**********"<<endl;
+					//cms_global->Print(100);
 					exit(0);
 				}
 			}
@@ -497,9 +503,9 @@ namespace lands{
 		}		
 		if(hasQ_gt_lnq==false) {
 			ret= 1-1./(double)_nexps;
-			if(_debug) {
+			if(_debug or 1) {
 				cout<<"********WARNING********"<<endl;
-				cout<<" Toys for b-only hypothesis  may be not enough to evaluate the true significance, "<<endl;
+				cout<<" Toys for b-only hypothesis are NOT enough to evaluate the true significance, "<<endl;
 				cout<<" Q_b[0]="<<Q_b[iq_b[0]]<<" Q_b["<<_nexps<<"]="<<Q_b[iq_b[_nexps-1]]
 					<<", and tested Q="<<lnq<<endl;	
 				cout<<" we set PValue to be 1./_nexps = "<<1-ret<<endl;
@@ -737,7 +743,17 @@ namespace lands{
 		double pvalue=PValue(Q_b_data);
 		double significance = Significance(pvalue);
 
-		if(_debug) cout<<" p value of data = "<< pvalue << ",  significance = "<< significance <<endl;
+		double tmpn = ntoys_for_b*pvalue;  
+		double tmpp = ( tmpn - sqrt(tmpn) )/(double)ntoys_for_b;
+		double tmpm = ( tmpn + sqrt(tmpn) )/(double)ntoys_for_b;
+
+
+		if(tmpn<1.8)  tmpp = tmpn/10./(double)ntoys_for_b;
+
+		tmpp = Significance(tmpp);
+		tmpm = Significance(tmpm);
+
+		if(_debug) cout<<" p value of data = "<< pvalue << ",  significance = "<< significance << " +"<<tmpp-significance<<" -"<<significance-tmpm<<endl;
 		return significance;
 	}
 	/*

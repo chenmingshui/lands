@@ -83,7 +83,7 @@ namespace lands{
 			void SetRdm(CRandom *rdm){_rdm=rdm;};
 			CRandom * GetRdm(){return _rdm;};
 
-			void UseAsimovData();
+			void UseAsimovData(int b=0);
 
 			CountingModel CombineModels(CountingModel *cms1, CountingModel *cms2);
 
@@ -91,7 +91,7 @@ namespace lands{
 			VChannelVSampleVUncertainty Get_vvv_pdftype(){return vvv_pdftype;};
 			VChannelVSampleVUncertainty Get_vvv_idcorrl(){return vvv_idcorrl;};
 
-			void RemoveChannelsWithExpectedSignal0orBkg0();
+			void RemoveChannelsWithExpectedSignal0orBkg0(int king = 2); // king=0 for removing a bin with bkg=0, 1 for sig=0, 2 for bkg=0||sig=0  
 
 			int Get_max_uncorrelation() {return max_uncorrelation;};
 			VDChannel Get_v_TruncatedGaussian_maxUnc() {return v_TruncatedGaussian_maxUnc;};

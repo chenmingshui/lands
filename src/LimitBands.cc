@@ -1,5 +1,6 @@
 #include "LimitBands.h"
 #include <time.h> // upto micro second
+#include <cstdio>
 #include <iostream>
 namespace lands{
 	LimitBands::LimitBands(){

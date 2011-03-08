@@ -19,6 +19,7 @@ int debug=0; int nexps=1000000;
 int seed =1234; int calcSignificance=0;	 
 int calcProfiledLikelihoodSigificance = 1;
 int testStatistics = 1, rule = 1; // default is CLs
+int asimov = -1; // -1 for using the input dataset whatever you provide,  0 for using asimov bkg only dataset, 1 for asimov sig+bkg
 const char* fileName;
 int main(int argc, const char* argv[]){
 	processParameters(argc, argv);
@@ -34,6 +35,9 @@ int main(int argc, const char* argv[]){
 	ConfigureModel(cms, fileName); 
 	cms->SetUseSystematicErrors(true);
 
+	cms->UseAsimovData(asimov);
+	cms->RemoveChannelsWithExpectedSignal0orBkg0();
+
 	cms->Print();
 
 	// initialize the calculator
@@ -45,7 +49,7 @@ int main(int argc, const char* argv[]){
 	//vdata_global=cms->Get_v_data();
 
 	double tmp;
-	if(calcProfiledLikelihoodSigificance >= 1){
+	if(calcProfiledLikelihoodSigificance >=1){
 		vdata_global=cms->Get_v_data();
 
 		double m2lnQ = MinuitFit(3,tmp, tmp) - MinuitFit(2, tmp, tmp);
@@ -94,6 +98,7 @@ int main(int argc, const char* argv[]){
 
 	cms->SetSignalScaleFactor(1.);
 	int ntoysToDoSignificance = nexps; //10000000;
+	frequentist.SetModel(cms);
 	if(calcSignificance==1){
 		//cms->AddObservedData(0,d); //reset the observed data
 		cout<<"\n Running "<<ntoysToDoSignificance<<" toys to evaluate significance for data "<<endl;
@@ -144,6 +149,10 @@ void processParameters(int argc, const char* argv[]){
 								npar++;
 								if(argc>=npar+1){
 									rule=atoi( argv[npar] );			
+									npar++;
+									if(argc>=npar+1){
+										asimov=atoi( argv[npar] );			
+									}
 								}
 							}
 						}
@@ -167,6 +176,7 @@ void processParameters(int argc, const char* argv[]){
 		cout<<" debug: 			debug level "<<endl;
 		cout<<" testStatistics:		1 for Q_LEP, 2 for Q_TEV, 3 for Q_ATLAS "<<endl;
 		cout<<" rule:                   1 for CLs,  2 for CLsb "<<endl;
+		cout<<" asimov:                 0 for bkg only, 1 for sig+bkg, others for the input whatever you provide "<<endl;
 		exit(0);
 	}
 	// print out  parameters  you just configured:
@@ -191,5 +201,9 @@ void processParameters(int argc, const char* argv[]){
 	if(rule==2) cout<<" CLsb";
 	else cout<<" CLs";
 	cout<<endl;
+
+	if(asimov==0) cout<<" Using Asimov bkg only dataset"<<endl;
+	if(asimov==1) cout<<" Using Asimov signal + bkg  dataset"<<endl;
+
 	cout<<"**********************************************"<<endl;
 }

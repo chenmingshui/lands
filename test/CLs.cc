@@ -13,7 +13,7 @@ using std::cout;
 using std::endl;
 using namespace lands;
 void processParameters(int argc, const char* argv[]);
-int debug=0; int nexps=100000; double s=0;  double b=0; double s_err = 0; double b_err = 0; int d=0;
+int debug=0; int nexps=100000; double s=0;  double b=0; double s_err = 0; double b_err = 0; double d=0;
 int seed =1234; int pdftypeEs = 1; int pdftypeEb = 1; int EsEb_correlated = 0; int calcExpectedMeanLimit=0; int calcSignificance=0;	 
 int main(int argc, const char* argv[]){
 	processParameters(argc, argv);
@@ -44,8 +44,12 @@ int main(int argc, const char* argv[]){
 
 	frequentist.BuildM2lnQ(cms,nexps);
 	double cls = frequentist.CLs();
+	double clsb = frequentist.CLsb();
+	double clb = frequentist.CLb();
 	cout<<"------------------------------------------------------------"<<endl;
 	cout<<"Observed CLs = "<<cls<<endl;
+	cout<<"Observed CLsb = "<<clsb<<endl;
+	cout<<"Observed CLb = "<<clb<<endl;
 	cout<<"------------------------------------------------------------"<<endl;
 
 	CLsLimit clsr95;
@@ -128,7 +132,7 @@ void processParameters(int argc, const char* argv[]){
 		s_err=atof( argv[2] );
 		b=atof( argv[3] );
 		b_err=atof( argv[4] );
-		d=atoi( argv[5] );
+		d=atof( argv[5] );
 		npar++;
 		if(argc>=npar+1){
 			calcExpectedMeanLimit=atoi(argv[npar]);
