@@ -62,9 +62,9 @@ namespace lands{
 			_cms->Print();
 		}
 
-		vector< vector<int> > vvPossibleOutcomes; vvPossibleOutcomes.clear();
+		vector< VIChannel > vvPossibleOutcomes; vvPossibleOutcomes.clear();
 		vector<int> vEntries; vEntries.clear();  // index of vvPossibleOutcomes are the same as vEntries
-		vector<int> vbkg_tmp; 
+		VIChannel vbkg_tmp; 
 
 		if(_debug) cout<<" _noutcomes="<<_noutcomes<<endl;
 

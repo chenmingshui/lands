@@ -1,3 +1,5 @@
+#ifndef CountingModel_H
+#define CountingModel_H
 /*
  * =====================================================================================
  *
@@ -15,8 +17,6 @@
  *
  * =====================================================================================
  */
-#ifndef CountingModel_H
-#define CountingModel_H
 #include <vector>
 #include <string>
 #include "CRandom.h"
@@ -25,7 +25,8 @@
 
 namespace lands{
 	typedef vector<double> VDChannel;
-	typedef vector<int> VIChannel;
+	//typedef vector<int> VIChannel;
+	typedef vector<double> VIChannel;
 	typedef vector< vector<double> > VChannelVSample;
 	typedef vector< vector< vector<int> > > VChannelVSampleVUncertainty;
 	typedef vector< vector< vector< vector<double> > > > VChannelVSampleVUncertaintyVParameter;
@@ -91,6 +92,10 @@ namespace lands{
 			VChannelVSampleVUncertainty Get_vvv_idcorrl(){return vvv_idcorrl;};
 
 			void RemoveChannelsWithExpectedSignal0orBkg0();
+
+			int Get_max_uncorrelation() {return max_uncorrelation;};
+			VDChannel Get_v_TruncatedGaussian_maxUnc() {return v_TruncatedGaussian_maxUnc;};
+			vector<int> Get_v_pdftype() {return v_pdftype;};
 		private:
 			VDChannel v_data;
 			VChannelVSample vv_exp_sigbkgs;

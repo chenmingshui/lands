@@ -115,7 +115,8 @@ TString ReadFile(const char*fileName){
 		error+=fileName;
 		error+=" could not be opened.";
 		cout<<"fReadFile: "<< error.Data()<<endl;
-		return -1;
+		exit(0);
+		//return -1;
 	}
 
 	TString ifileContent("");
@@ -308,7 +309,7 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped){
 
 	// get observed dataset
 	//
-	int *observeddata=new int[nchannel];
+	double *observeddata=new double[nchannel];
 	for(int i=0; i<nchannel; i++) observeddata[i]=0;
 	hasFilled = false;
 	for(int l=0; l<lines.size(); l++){
@@ -318,7 +319,7 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped){
 			StringSplit(ss, lines[l].Data(), " ");
 			if(ss.size()-1<nchannel) {cout<<"channels of observed data < "<<nchannel<<endl; return false;} 
 			for(int i=1; i<(nchannel+1); i++){
-				int ev = (TString(ss[i])).Atoi();
+				double ev = (TString(ss[i])).Atof();
 				observeddata[i-1] = ev;
 			}
 			hasFilled =  true;

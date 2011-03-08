@@ -1,22 +1,26 @@
-/*
- *    Description:  doing frequentist approach + CLs(not fully frequentist)
- *			w/ and w/o systematic/statistic errors 
- */
-
 #ifndef  CLSLIMIT_H
 #define  CLSLIMIT_H
 #include "CRandom.h"
 #include <vector>
 #include "CountingModel.h"
+/*
+ *    Description:  doing frequentist approach + CLs(not fully frequentist)
+ *			w/ and w/o systematic/statistic errors 
+ */
+
 using std::vector;
 using std::pair;
 namespace lands{
+	extern CountingModel * cms_global;
+	extern vector<double>  vdata_global;
+	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag); 
+	double MinuitFit(int model, double &r, double &er, double mu=0);
 	class CLsBase
 	{
 		public:
 			CLsBase();
 			~CLsBase();
-			void SetModel(CountingModel *model){_model=model;};
+			void SetModel(CountingModel *model){_model=model; cms_global = model;};
 			bool BuildM2lnQ(int ntoys=100000, int sbANDb_bOnly_sbOnly=0);
 			bool BuildM2lnQ(CountingModel *model, int ntoys=100000, int sbANDb_bOnly_sbOnly=0);// 0 for sbANDb, 1 for bOnly, 2 for sbOnly
 			void SetRdm(CRandom *rdm);
@@ -47,6 +51,9 @@ namespace lands{
 			void SetLogQ_sb(vector<double> vlnQ_sb);	
 			void SetLogQ_data(double lnQ_data);	
 
+			void SetTestStatistics(int ts = 1);
+			int GetTestStatistics(){return test_statistics;};
+
 		private:
 			void ProcessM2lnQ();
 			double *Q_b; double *Q_sb;
@@ -60,11 +67,13 @@ namespace lands{
 			int _debug;
 			CountingModel *_model;
 
+			int test_statistics;  // 1 for Q_LEP,  2 for Q_TEV, 3 for Q_ATLAS
+
 	};
 	class CLsLimit
 	{
 		public:
-			CLsLimit(){_debug=0; _alpha = 0.05; _clstolerance=0.001; };
+			CLsLimit(){_debug=0; _alpha = 0.05; _clstolerance=0.001; _rule = 1; };  // by default, we use CLs instead of CLsb
 			~CLsLimit(){}; 	
 			void SetAlpha(double alpha); // Confidence Level = 1 - alpha
 
@@ -92,6 +101,7 @@ namespace lands{
 			CLsBase* GetFrequentist();
 
 			void SetCLsTolerance(double tolerance = 0.001 );
+			void SetRule(int rule = 1);
 
 
 		private:
@@ -112,6 +122,8 @@ namespace lands{
 			int _debug;
 			double _alpha;// Confidence Level = 1 - alpha
 			double _clstolerance;
+
+			int _rule;  // 1 for CLs, 2 for CLsb
 	};
 
 };

@@ -1,3 +1,5 @@
+#ifndef  UTILITIES_H
+#define  UTILITIES_H
 /*
  * =====================================================================================
  * 
@@ -16,8 +18,6 @@
  * =====================================================================================
  */
 
-#ifndef  UTILITIES_H
-#define  UTILITIES_H
 #include <algorithm>
 #include <math.h>
 #include <vector>

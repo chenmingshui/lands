@@ -26,7 +26,7 @@ namespace lands{
 		_xgl=0; _lwgl=0;
 		_ngl=0;
 		_norm=0; _stot=0; _btot=0;
-		_prior=corr;
+		_prior=flat;
 	}
 	BayesianBase::BayesianBase(double alpha, double precision){
 		_cms=0;
@@ -39,7 +39,7 @@ namespace lands{
 		_xgl=0; _lwgl=0;
 		_ngl=0;
 		_norm=0; _stot=0; _btot=0;
-		_prior=corr;
+		_prior=flat;
 	}
 	BayesianBase::BayesianBase(CountingModel* cms, double alpha, double precision){
 		_cms=cms;
@@ -53,7 +53,7 @@ namespace lands{
 		_xgl=0; _lwgl=0;
 		_ngl=0;
 		_norm=0; _stot=0; _btot=0;
-		_prior=corr;
+		_prior=flat;
 	}
 	void BayesianBase::SetModel(CountingModel *cms){
 		//if(cms==_cms){cout<<" You are setting the same model ... "<<endl; return; }

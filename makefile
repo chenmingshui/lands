@@ -1,44 +1,54 @@
-COMPONENTS = bin/BayesianLimitBase.o bin/CRandom.o bin/PdfRandom.o bin/PlotUtilities.o bin/BayesianLimit.o bin/UnbinnedBayesianLimit.o bin/CLsLimit.o bin/Utilities.o bin/UnbinnedCLsLimit.o bin/CountingModel.o bin/UtilsROOT.o bin/BinnedInterface.o  bin/BayesianBase.o bin/LimitBands.o
+COMPONENTS = bin/BayesianLimitBase.o bin/CRandom.o bin/PdfRandom.o bin/PlotUtilities.o bin/BayesianLimit.o bin/UnbinnedBayesianLimit.o bin/CLsLimit.o bin/Utilities.o bin/UnbinnedCLsLimit.o bin/CountingModel.o bin/UtilsROOT.o bin/BinnedInterface.o  bin/BayesianBase.o bin/LimitBands.o bin/SignificanceBands.o
 
-CFLAGS = -fPIC -I ./include -c -o
-CFLAGS1 = -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -c -o
+#CFLAGS = -fPIC -I ./include -c -o
+CFLAGS1 = -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs ` -lMinuit -c -o
+CFLAGS = -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs ` -lMinuit -c -o
 
 MultipleChannels = test/MultipleChannels.exe
-AKinputTemplate = test/AKinputTemplate.exe
 CLs = test/CLs.exe
 Bayesian = test/Bayesian.exe
 ShapeAnalysis = test/ShapeAnalysis.exe
+CLs_dataCard = test/CLs_dataCard.exe
+Significance_dataCard = test/Significance_dataCard.exe
+Bayesian_dataCard = test/Bayesian_dataCard.exe
 
 #for MSSMA
 drawMSSMA: test/drawMSSMA.exe
 
-AK: test/AKinputTemplate.exe
+all: ${CLs} ${MultipleChannels} ${ShapeAnalysis} ${Bayesian} ${CLs_dataCard} ${Bayesian_dataCard} ${Significance_dataCard}
 
-all: ${CLs} ${MultipleChannels} ${ShapeAnalysis} ${Bayesian} 
+test/Significance_dataCard.exe: test/Significance_dataCard.cc ${COMPONENTS}
+	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -lMinuit -o $@ $< ${COMPONENTS}
 
-test/AKinputTemplate.exe: test/AKinputTemplate.cc ${COMPONENTS}
-	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -o $@ $< ${COMPONENTS}
+test/Bayesian_dataCard.exe: test/Bayesian_dataCard.cc ${COMPONENTS}
+	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -lMinuit -o $@ $< ${COMPONENTS}
+
+test/CLs_dataCard.exe: test/CLs_dataCard.cc ${COMPONENTS}
+	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -lMinuit -o $@ $< ${COMPONENTS}
 
 test/drawMSSMA.exe: test/drawMSSMA.cc ${COMPONENTS}
-	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -o $@ $< ${COMPONENTS}
+	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -lMinuit -o $@ $< ${COMPONENTS}
 
 test/ShapeAnalysis.exe: test/ShapeAnalysis.cc ${COMPONENTS}
-	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -o $@ $< ${COMPONENTS}
+	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -lMinuit -o $@ $< ${COMPONENTS}
 
 test/Bayesian.exe: test/Bayesian.cc ${COMPONENTS}
-	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -o $@ $< ${COMPONENTS}
+	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -lMinuit -o $@ $< ${COMPONENTS}
 
 test/CLs.exe: test/CLs.cc ${COMPONENTS}
-	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -o $@ $< ${COMPONENTS}
+	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -lMinuit -o $@ $< ${COMPONENTS}
 
 test/MultipleChannels.exe: test/MultipleChannels.cc ${COMPONENTS}
-	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -o $@ $< ${COMPONENTS}
+	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -lMinuit -o $@ $< ${COMPONENTS}
 
 bin/BinnedInterface.o: src/BinnedInterface.cc bin/CountingModel.o
 	g++ ${CFLAGS1} $@ $<
 
 bin/UtilsROOT.o: src/UtilsROOT.cc bin/CountingModel.o
 	g++ ${CFLAGS1} $@ $<
+
+bin/SignificanceBands.o: src/SignificanceBands.cc bin/CRandom.o bin/Utilities.o bin/PdfRandom.o bin/CountingModel.o bin/CLsLimit.o 
+	g++ ${CFLAGS} $@ $<
 
 bin/LimitBands.o: src/LimitBands.cc bin/CRandom.o bin/Utilities.o bin/PdfRandom.o bin/CountingModel.o bin/CLsLimit.o bin/BayesianBase.o
 	g++ ${CFLAGS} $@ $<

@@ -1,5 +1,5 @@
 #include <iostream>
-//#include "CLsLimit.h"
+#include "CLsLimit.h"
 #include "CRandom.h"
 #include "PlotUtilities.h"
 //#include "FloridaStyle.C"
@@ -34,12 +34,10 @@ int main(int argc, const char* argv[]){
 	}
 
 
-	
+
 	BayesianBase bys(cms, 0.05, 1.e-3);
 	bys.SetNumToys(nexps);
 	bys.SetDebug(debug);
-	//bys.SetCrossSectionPrior(corr);
-	bys.SetCrossSectionPrior(flat);
 	double rtmp;
 	rtmp = bys.Limit();
 	cout<<"------------------------------------------------------------"<<endl;

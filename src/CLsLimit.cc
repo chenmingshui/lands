@@ -15,10 +15,185 @@
 #include "Utilities.h"
 #include "BayesianBase.h"
 
+#include "TMinuit.h"
+
 using std::cout;
 using std::endl;
 using std::min;
 namespace lands{
+	CountingModel *cms_global = 0;
+	vector<double> vdata_global;
+
+
+	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag){
+		// par[0] for the ratio of cross section, common signal strength ....
+		if(!cms_global)  {
+			cout<<"cms_global not pointed yet "<<endl;
+			exit(0);
+		}
+		f = 0; // fabs(cms_global->GetRdm()->Gaus() ) ;
+
+		VChannelVSampleVUncertainty vvv_idcorrl = (cms_global->Get_vvv_idcorrl());
+		VChannelVSampleVUncertainty vvv_pdftype = (cms_global->Get_vvv_pdftype());
+		VChannelVSampleVUncertaintyVParameter vvvv_uncpar = cms_global->Get_vvvv_uncpar();
+		VChannelVSample vv_sigbks = cms_global -> Get_vv_exp_sigbkgs(); // FIXME scaled or unscaled ?
+		//VDChannel v_data = cms_global->Get_v_data();  // FIXME make it global ?
+
+
+		Double_t chisq = 0;
+		int nchs = cms_global->NumOfChannels();
+
+		if(vdata_global.size() != nchs ) {
+			cout<<"vdata_global not set correctly"<<endl;
+			cout<<"vdata_global.size = "<<vdata_global.size()<<",  model_channels = "<<nchs<<endl;
+			exit(0);
+		}
+		Double_t tc = 0;
+		Double_t bs = 0;
+		int u=0, s=0, c=0;
+		for(c=0; c<nchs; c++){
+			tc=par[0]*vv_sigbks[c][0];
+			if(cms_global->IsUsingSystematicsErrors()){
+				for(u = 0; u<vvv_pdftype[c][0].size(); u++){
+					if(vvv_pdftype[c][0][u]==1) tc *= (pow(1+vvvv_uncpar[c][0][u][0],par[(vvv_idcorrl)[c][0][u]]));
+					else if(vvv_pdftype[c][0][u]==2) tc*=(1+vvvv_uncpar[c][0][u][0]*par[(vvv_idcorrl)[c][0][u]]);
+					else {
+						cout<<"pdf_type = "<<vvv_pdftype[c][0][u]<<" not defined yet"<<endl;
+						exit(0);
+					}
+				}
+				for(s = 1; s<vvv_pdftype[c].size(); s++){
+					bs = vv_sigbks[c][s];	
+					for(u=0; u<vvv_pdftype[c][s].size(); u++){
+						if(vvv_pdftype[c][s][u]==1) bs*=(pow(1+vvvv_uncpar[c][s][u][0],par[(vvv_idcorrl)[c][s][u]]));
+						else if(vvv_pdftype[c][s][u]==2) bs*=(1+vvvv_uncpar[c][s][u][0]*par[(vvv_idcorrl)[c][s][u]]);
+						else {
+							cout<<"pdf_type = "<<vvv_pdftype[c][s][u]<<" not defined yet"<<endl;
+							exit(0);
+						}
+					}
+					tc+=bs;
+				}
+			}
+			if(vdata_global[c]<=0){
+				chisq +=( tc - vdata_global[c]);
+			}else chisq += (tc-vdata_global[c] - vdata_global[c]*log(tc/vdata_global[c]));
+		}
+		chisq*=2;
+		if(cms_global->IsUsingSystematicsErrors()){
+			for(u=1; u<=cms_global->Get_max_uncorrelation(); u++){
+				chisq += pow(par[u],2);
+			}
+		}
+
+		f=chisq;
+	}
+
+	double MinuitFit(int model, double &r , double &er, double mu  ){
+		bool debugMinuit = 0;
+		bool UseMinos = 0;
+
+		int npars = cms_global->Get_max_uncorrelation();
+		if( !(cms_global->IsUsingSystematicsErrors())) npars=0;
+		if( (cms_global->IsUsingSystematicsErrors() && npars>0 )  || model ==2 ){
+			TMinuit *gMinuit = new TMinuit(npars+2);  //initialize TMinuit with a maximum of 5 params
+			gMinuit->SetFCN(Chisquare);
+
+			Double_t arglist[10];
+			Int_t ierflg = 0;
+
+
+			if(!debugMinuit){
+				arglist[0]=-1;
+				gMinuit -> mnexcm("SET PRINT", arglist, 1, ierflg);
+				gMinuit -> mnexcm("SET NOW", arglist, 1, ierflg);
+
+			}
+
+			arglist[0] = 2;
+			//gMinuit->mnexcm("SET STRATEGY", arglist ,1,ierflg);
+			//gMinuit -> mnexcm("SET NOG", arglist, 1, ierflg);
+
+
+			// Set starting values and step sizes for parameters
+			// gMinuit->mnparm(par_index, "par_name", start_value, step_size, lower, higher, ierflg);
+			vector<int> v_pdftype = cms_global->Get_v_pdftype();
+			vector<double> v_TG_maxUnc = cms_global->Get_v_TruncatedGaussian_maxUnc();
+			for(int i=1; i<=npars; i++){
+				TString sname; 
+				sname.Form("p%d",i);
+				if(v_pdftype[i] == typeLogNormal )
+					gMinuit->mnparm(i, sname, 0, 0.1, -5, 5,ierflg);
+				else if(v_pdftype[i] == typeTruncatedGaussian ){
+					double maxunc = v_TG_maxUnc[i];	
+					if(maxunc>0.2) maxunc = -1./maxunc;
+					else maxunc = -5;
+					gMinuit->mnparm(i, sname, 0, 0.1, maxunc, 5,ierflg);
+				}else {
+					cout<<"pdftype not yet defined "<<endl;
+					exit(0);
+				}
+			}
+
+			// through fixing the ratio to determine whether fit for S+B(r=1) or B-only (r=0)   Q_tevatron
+			// let the ratio float, then it's Q_atlas
+			if(model==1){ // S+B, fix r
+				gMinuit->mnparm(0, "ratio", 1, 0.1, 0, 100, ierflg);
+				gMinuit->FixParameter(0);
+			}
+			else if(model==0){ // B-only, fix r
+				gMinuit->mnparm(0, "ratio", 0.0, 0.1, -1, 100, ierflg);
+				gMinuit->FixParameter(0);
+			}
+			else if(model==2){ // S+B,  float r
+				gMinuit->mnparm(0, "ratio", 1, 0.1, -1, 100, ierflg);
+			}
+			else if(model==3){ // profile mu
+				gMinuit->mnparm(0, "ratio", mu, 0.1, -1, 100, ierflg);
+				gMinuit->FixParameter(0);
+			}else {
+				cout<<"Model not specified correctly:  0-3"<<endl;
+				return 0;
+			}
+
+			arglist[0] = 1;
+			gMinuit->mnexcm("SET ERR", arglist ,1,ierflg);
+			// Now ready for minimization step
+			arglist[0] = 500;
+			arglist[1] = 1.;
+			gMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
+			//	gMinuit->mnexcm("MINI", arglist ,2,ierflg);
+			//	gMinuit->mnexcm("IMPROVE", arglist ,2,ierflg);
+
+
+			if(UseMinos){
+				arglist[0] = 500;
+				gMinuit->mnexcm("MINOS", arglist ,1,ierflg);
+
+			}
+
+			// Print results
+			Double_t amin,edm,errdef;
+			Int_t nvpar,nparx,icstat;
+			gMinuit->mnstat(amin,edm,errdef,nvpar,nparx,icstat);
+			//cout<<"Minimized L = "<<gMinuit->fAmin<<endl;
+			double l = gMinuit->fAmin;
+			gMinuit->GetParameter(0, r, er);
+			delete gMinuit;
+			return l;
+		}else{
+			double par[1];
+			int tmp;
+			double l;
+			if(model==0) par[0]=0;
+			else if (model == 1) par[0]=1;
+			else if (model == 3) par[0]=mu;
+			else {cout<<"model is 2, but going to fix "<<endl; exit(0);}
+			Chisquare(tmp, 0, l, par, 0);
+			return l;
+		}
+		return 0.0;
+	}	
 
 	// Class CLsBase
 	CLsBase::CLsBase(){
@@ -29,6 +204,7 @@ namespace lands{
 		_nsig=0; _nbkg=0; _ndat=0;
 		_debug=0;
 		_rdm=0;
+		test_statistics = 1;
 	}
 
 	CLsBase::~CLsBase(){
@@ -39,10 +215,12 @@ namespace lands{
 		_rdm=0;
 	}
 	bool CLsBase::BuildM2lnQ(CountingModel *cms, int nexps, int sbANDb_bOnly_sbOnly){
+		cms_global = cms;
 		_model=cms;
 		BuildM2lnQ(nexps, sbANDb_bOnly_sbOnly);
 	}
 	bool CLsBase::BuildM2lnQ(int nexps, int sbANDb_bOnly_sbOnly){  // 0 for sbANDb, 1 for bOnly, 2 for sbOnly
+		double tmp1, tmp2, minchi2tmp;
 		if(!_model) { 
 			cout<<"No model constructed....exit"<<endl;
 			exit(0);
@@ -94,28 +272,54 @@ namespace lands{
 		double *n=new double[_nchannels];
 		double *noverb=new double[_nchannels];
 		double *lognoverb=new double[_nchannels];
-		for(int i=0; i<_nchannels; i++){	
-			// skip a channle in which nsig==0 || ntotbkg==0
-			if(vs[i] > 0 && vb[i] > 0) {
-				n[i]=vs[i]+vb[i];
-				noverb[i]=n[i]/vb[i];
-				lognoverb[i]=log(noverb[i]);
-				Q_b_exp+=(vb[i]*lognoverb[i]);
-				Q_b_data    +=(vd[i]*lognoverb[i]);
-			}else{
-				lognoverb[i]=0;
+		if(test_statistics==1){
+			for(int i=0; i<_nchannels; i++){	
+				// skip a channle in which nsig==0 || ntotbkg==0
+				if(vs[i] > 0 && vb[i] > 0) {
+					n[i]=vs[i]+vb[i];
+					noverb[i]=n[i]/vb[i];
+					lognoverb[i]=log(noverb[i]);
+					Q_b_exp+=(vb[i]*lognoverb[i]);
+					Q_b_data    +=(vd[i]*lognoverb[i]);
+				}else{
+					lognoverb[i]=0;
+				}
+
+				if(_debug>=10)cout<<" \t channel "<<i<<" s="<<vs[i]<<" b="<<vb[i]<<" d="<<vd[i]<<endl;	
+
 			}
-
-			if(_debug>=10)cout<<" \t channel "<<i<<" s="<<vs[i]<<" b="<<vb[i]<<" d="<<vd[i]<<endl;	
-
+		}else if(test_statistics==2){
+			// here Q =  2ln(L_sb/L_b),  will correct in later stage to -2lnQ
+			vdata_global = vb;
+			//	cout<<"delete me : vdata_global.size = "<<vdata_global.size()<<endl;
+			Q_b_exp = MinuitFit(0, tmp1, tmp1) - MinuitFit(1, tmp1, tmp1);
+			//	cout<<"delete me : Q = "<<Q_b_exp<<endl;
+			vdata_global = vd;
+			Q_b_data = MinuitFit(0, tmp1, tmp1) - MinuitFit(1, tmp1, tmp1);
+		}else if(test_statistics==3){
+			// here Q =  2ln(L_sb/L_b),  will correct in later stage to -2lnQ
+			vdata_global = vb;
+			minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
+			if(tmp1<0) Q_b_exp = 0;
+			else Q_b_exp = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
+			vdata_global = vd;
+			minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
+			if(tmp1<0) Q_b_data= 0;
+			else Q_b_data = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
 		}
+
 		int nsbi, nbi;
 		int tenth = _nexps/10;
 		int ntemp = _nexps*_nchannels;
 		if(_debug >=10 ) cout<<"ntemp="<<ntemp<<endl;
+		if(test_statistics!=1){
+			ntemp *= _model->Get_max_uncorrelation(); // if using Q_tev or Q_atlas, then multiply by the number of nuisance parameters
+			ntemp *= 100;
+		}
 		if( ntemp>=10000000 ) {
 			cout<<"\t gonna generate "<<ntemp*2<<" poisson numbers "<<endl;
 		}
+
 		for(int i=0; i<_nexps; i++){
 			if( ntemp>=10000000 ) {
 				if( (i+1)%tenth == 0 ){
@@ -124,21 +328,54 @@ namespace lands{
 				}
 			}
 			Q_sb[i]=0;Q_b[i]=0;	
-			vector< vector<double> > vv = _model->FluctuatedNumbers();
-			for(int ch=0; ch<_nchannels; ch++){	
-				double totbkg = 0; 
-				for(int isamp=1; isamp<vv[ch].size(); isamp++){
-					totbkg+=vv[ch][isamp];
+			if(test_statistics==1){
+				vector< vector<double> > vv = _model->FluctuatedNumbers();
+				for(int ch=0; ch<_nchannels; ch++){	
+					double totbkg = 0; 
+					for(int isamp=1; isamp<vv[ch].size(); isamp++){
+						totbkg+=vv[ch][isamp];
+					}
+					if(vv[ch][0] > 0 && totbkg > 0 ) {
+						if( sbANDb_bOnly_sbOnly != 1 ){
+							nsbi = _rdm->Poisson( vv[ch][0] + totbkg );	
+							Q_sb[i] += (nsbi*lognoverb[ch]) ;
+						}
+						if( sbANDb_bOnly_sbOnly != 2 ){
+							nbi  = _rdm->Poisson(totbkg);
+							Q_b[i]  += (nbi *lognoverb[ch]) ;
+						}
+					}
 				}
-				if(vv[ch][0] > 0 && totbkg > 0 ) {
-					if( sbANDb_bOnly_sbOnly != 1 ){
-						nsbi = _rdm->Poisson( vv[ch][0] + totbkg );	
-						Q_sb[i] += (nsbi*lognoverb[ch]) ;
-					}
-					if( sbANDb_bOnly_sbOnly != 2 ){
-						nbi  = _rdm->Poisson(totbkg);
-						Q_b[i]  += (nbi *lognoverb[ch]) ;
-					}
+			}else if(test_statistics==2){
+				// here Q =  2ln(L_sb/L_b),  will correct in later stage to -2lnQ
+				if( sbANDb_bOnly_sbOnly != 1 ){
+					vdata_global =  _model->GetToyData_H1();
+					//	cout<<"2delete me : vdata_global.size = "<<vdata_global.size()<<endl;
+					//	cout<<"2delete me : _model->GetToyData_H1.size = "<<_model->GetToyData_H1().size()<<endl;
+					Q_sb[i] = MinuitFit(0, tmp1, tmp1) - MinuitFit(1, tmp1, tmp1);
+				}
+				if( sbANDb_bOnly_sbOnly != 2 ){
+					vdata_global = (VDChannel)_model->GetToyData_H0();
+					//	cout<<"3delete me : vdata_global.size = "<<vdata_global.size()<<endl;
+					Q_b[i] = MinuitFit(0, tmp1, tmp1) - MinuitFit(1, tmp1, tmp1);
+				}
+			}else if(test_statistics==3){
+				// here Q =  2ln(L_sb/L_b),  will correct in later stage to -2lnQ
+				if( sbANDb_bOnly_sbOnly != 1 ){
+					vdata_global = (VDChannel)_model->GetToyData_H1();
+
+			minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
+			if(tmp1<0) Q_sb[i] = 0;
+			else Q_sb[i] = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
+
+				//	Q_sb[i] = MinuitFit(3, tmp1, tmp1) - MinuitFit(2, tmp1, tmp2);
+				}
+				if( sbANDb_bOnly_sbOnly != 2 ){
+					vdata_global = (VDChannel)_model->GetToyData_H0();
+			minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
+			if(tmp1<0) Q_b[i] = 0;
+			else Q_b[i] = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
+				//	Q_b[i] = MinuitFit(3, tmp1, tmp1) - MinuitFit(2, tmp1, tmp2);
 				}
 			}
 		}
@@ -197,16 +434,26 @@ namespace lands{
 	}
 	vector<double> CLsBase::Get_m2logQ_sb(){
 		vector<double> tmp;
-		for(int i=0; i<_nexps; i++){
-			tmp.push_back(-2*(Q_sb[i]-_nsig));
-		}
+		if(test_statistics==1)
+			for(int i=0; i<_nexps; i++){
+				tmp.push_back(-2*(Q_sb[i]-_nsig));
+			}
+		else
+			for(int i=0; i<_nexps; i++){
+				tmp.push_back(-Q_sb[i]);
+			}
 		return tmp;
 	} 
 	vector<double> CLsBase::Get_m2logQ_b(){
 		vector<double> tmp;
-		for(int i=0; i<_nexps; i++){
-			tmp.push_back(-2*(Q_b[i]-_nsig));
-		}
+		if(test_statistics==1)
+			for(int i=0; i<_nexps; i++){
+				tmp.push_back(-2*(Q_b[i]-_nsig));
+			}
+		else
+			for(int i=0; i<_nexps; i++){
+				tmp.push_back(-Q_b[i]);
+			}
 		return tmp;
 	} 
 	double CLsBase::CLsb(){
@@ -251,11 +498,11 @@ namespace lands{
 		if(hasQ_gt_lnq==false) {
 			ret= 1-1./(double)_nexps;
 			if(_debug) {
-			   cout<<"********WARNING********"<<endl;
-			   cout<<" Toys for b-only hypothesis  may be not enough to evaluate the true significance, "<<endl;
-			   cout<<" Q_b[0]="<<Q_b[iq_b[0]]<<" Q_b["<<_nexps<<"]="<<Q_b[iq_b[_nexps-1]]
-			   <<", and tested Q="<<lnq<<endl;	
-			   cout<<" we set PValue to be 1./_nexps = "<<1-ret<<endl;
+				cout<<"********WARNING********"<<endl;
+				cout<<" Toys for b-only hypothesis  may be not enough to evaluate the true significance, "<<endl;
+				cout<<" Q_b[0]="<<Q_b[iq_b[0]]<<" Q_b["<<_nexps<<"]="<<Q_b[iq_b[_nexps-1]]
+					<<", and tested Q="<<lnq<<endl;	
+				cout<<" we set PValue to be 1./_nexps = "<<1-ret<<endl;
 			}
 		}
 		return 1-ret;
@@ -355,6 +602,7 @@ namespace lands{
 	void CLsBase::SetLogQ_data(double lnQ_data){Q_b_data=lnQ_data;}
 
 	double CLsBase::Get_m2lnQ_data(){
+		double tmp1;
 		vector<double> vs, vb, vd; 
 		vs.clear(); vb.clear(); vd.clear();
 		_nsig=0; Q_b_data = 0;
@@ -368,13 +616,28 @@ namespace lands{
 			vd.push_back((_model->Get_v_data())[i]);
 			_nsig += vs[i];
 		}
-		for(int i=0; i<_nchannels; i++){	
-			// skip a channle in which nsig==0 || ntotbkg==0
-			if(vs[i] > 0 && vb[i] > 0) {
-				Q_b_data    +=(vd[i]*log((vs[i]+vb[i])/vb[i]));
+		if(test_statistics==1){
+			for(int i=0; i<_nchannels; i++){	
+				// skip a channle in which nsig==0 || ntotbkg==0
+				if(vs[i] > 0 && vb[i] > 0) {
+					Q_b_data    +=(vd[i]*log((vs[i]+vb[i])/vb[i]));
+				}
 			}
+			return -2*(Q_b_data-_nsig);
+		}else if(test_statistics==2){
+			vdata_global = vd;
+			Q_b_data = MinuitFit(0, tmp1, tmp1) - MinuitFit(1, tmp1, tmp1);
+			return -Q_b_data;
+		}else if(test_statistics==3){
+			vdata_global = vd;
+			double tmp2;
+			double minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
+			if(tmp1<0) Q_b_data= 0;
+			else Q_b_data = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
+			//Q_b_data = MinuitFit(3, tmp1, tmp1) - MinuitFit(2, tmp1, tmp1);
+			return -Q_b_data;
 		}
-		return -2*(Q_b_data-_nsig);
+		return 0;
 	}
 
 	void CLsBase::SetDebug(int debug){_debug=debug;}
@@ -478,281 +741,121 @@ namespace lands{
 		return significance;
 	}
 	/*
-	double CLsBase::SignificanceAnalytically(){
+	   double CLsBase::SignificanceAnalytically(){
 
-	// need a routine to do uncertain number of loops
-		double prob_data = 0;
-		double minus_prob_data = 0;
-		double lnqtmp = 0, p=0;
-		for(int i=0; i<100; i++){
-			for(int j=0; j<100; j++)
-				for(int k=0; k<100; k++){
-					// reset data numbers 
-					cms->AddObservedData(0, i);
-					cms->AddObservedData(1, j);
-					cms->AddObservedData(2, k);
-					frequentist.BuildM2lnQ(cms,1);
-					lnqtmp = frequentist.Get_m2lnQ_data() ;
-					p = Poisson(i, totalbkg[0]) * Poisson(j, totalbkg[1]) * Poisson(k, totalbkg[2]) ; 
-					htemp  -> Fill (lnqtmp, p);
-					if( lnq_data > lnqtmp )
-						prob_data += p ;
-				}
+// need a routine to do uncertain number of loops
+double prob_data = 0;
+double minus_prob_data = 0;
+double lnqtmp = 0, p=0;
+for(int i=0; i<100; i++){
+for(int j=0; j<100; j++)
+for(int k=0; k<100; k++){
+// reset data numbers 
+cms->AddObservedData(0, i);
+cms->AddObservedData(1, j);
+cms->AddObservedData(2, k);
+frequentist.BuildM2lnQ(cms,1);
+lnqtmp = frequentist.Get_m2lnQ_data() ;
+p = Poisson(i, totalbkg[0]) * Poisson(j, totalbkg[1]) * Poisson(k, totalbkg[2]) ; 
+htemp  -> Fill (lnqtmp, p);
+if( lnq_data > lnqtmp )
+prob_data += p ;
+}
+}
+
+}
+*/
+
+double CLsBase::lnQsb_sigma(int sigma){
+	double ret;	
+	vector<double> vlogQ, vlogQ_prob;
+	SortAndCumulative(Q_sb, _nexps, vlogQ, vlogQ_prob, 0);// sort it by  increased order 
+	if(sigma<=2 && sigma>=-2){
+		double r[5];	
+		if(sigma!=0){
+			GetBandsByLinearInterpolation(vlogQ,vlogQ_prob, r[1], r[3], r[0], r[4] );
+			ret=r[sigma+2];
 		}
-
+		if(sigma==0)
+			ret=GetBandByLinearInterpolation(vlogQ, vlogQ_prob, 0.5);
 	}
-	*/
-
-	double CLsBase::lnQsb_sigma(int sigma){
-		double ret;	
-		vector<double> vlogQ, vlogQ_prob;
-		SortAndCumulative(Q_sb, _nexps, vlogQ, vlogQ_prob, 0);// sort it by  increased order 
-		if(sigma<=2 && sigma>=-2){
-			double r[5];	
-			if(sigma!=0){
-				GetBandsByLinearInterpolation(vlogQ,vlogQ_prob, r[1], r[3], r[0], r[4] );
-				ret=r[sigma+2];
-			}
-			if(sigma==0)
-				ret=GetBandByLinearInterpolation(vlogQ, vlogQ_prob, 0.5);
-		}
-		else {
-			ret=GetMeanOfSortedXwithProb(vlogQ, vlogQ_prob);
-		}
-
-		if( _debug>=10 ){
-			int step = vlogQ.size()/20;
-			cout<<"CLsBase: lnQsb_sigma"<<endl;
-			cout<<"*** print out lnQ and accumulative probability, size="<<vlogQ.size()<<" step="<<step<<endl;
-			int i=0;
-			for(; i<vlogQ.size(); i+=(step+1)) {
-				printf("%10d",i);
-				cout<<"\t lnQ,p= "<<vlogQ[i]<<" "<<vlogQ_prob[i]<<endl;
-			}
-			if(i!=vlogQ.size() || (i==vlogQ.size() && step!=1)) {
-				printf("%10d",vlogQ.size());
-				cout<<"\t lnQ,p= "<<vlogQ.back()<<" "<<vlogQ_prob.back()<<endl;
-			}
-		}
-		return ret;
+	else {
+		ret=GetMeanOfSortedXwithProb(vlogQ, vlogQ_prob);
 	}
 
-
-
-	// Class CLsLimit	
-	double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
-			double minRtoScan, double maxRtoScan,
-			CLsBase *frequentist, int nexps, int nstep ){
-		_frequentist=frequentist; _nexps=nexps; 
-
-		clock_t start_time, cur_time;
-		start_time=clock(); cur_time=clock();
-
-		double epsilon = _clstolerance;
-		//	int nsigma=5;
-
-		_vR.clear(); _vCLs.clear();
-
-		if(_debug) cout<<"CLsLimit::LimitOnSignalScaleFactor  looking for C.L. 95% Limit on the ratio ----"<<endl;
-
-
-		double r0,r1;
-		double cl0, cl1;
-
-		if(minRtoScan!=maxRtoScan) {
-
-			if(minRtoScan>=maxRtoScan || minRtoScan <=0 ) {
-				cout<<"Error in LimitOnSignalScaleFactor: (minRtoScan="<<minRtoScan<<") >= (maxRtoScan="<<maxRtoScan<<", exit"<<endl;
-				cout<<"please make sure maxRtoScan > minRtoScan > 0 "<<endl;
-				exit(0);
-			}
-			if(nstep<1)  {cout<<" steps in autoscan should not less than 1, exit"<<endl; exit(0);}
-			if(_debug) cout<<"\t First auto scaning R from  "<<minRtoScan<<" to "<<maxRtoScan<<" in "<<nstep<<" steps"<<endl;
-
-			for(double rmid=minRtoScan; rmid<=maxRtoScan; rmid+=(maxRtoScan-minRtoScan)/(double)nstep){
-				cms->SetSignalScaleFactor(rmid);
-				frequentist->BuildM2lnQ(cms, nexps); 
-				cl0=frequentist->CLs(); //_nsigma(nsigma);
-				_vR.push_back(rmid);_vCLs.push_back(cl0);
-				if(_debug)cout<<"TESTED r="<<rmid<<"  CLs="<<cl0<<endl;
-			}
-			// --- -get the _r95 @ alpha=0.05 by linear interpolation
-			double x1=0, y1=0, x2=0, y2=0;
-			int nsize=_vCLs.size();
-			double *dCLs=new double[nsize];
-			for(int i=0; i<nsize; i++){
-				dCLs[i]=_vCLs[i];
-			}
-			int *ix=new int[nsize];
-			Sort(nsize, dCLs, ix, 0);
-			for(int i=0; i<nsize; i++){
-				if(dCLs[ix[i]]==_alpha) {_r95=_vR[ix[i]]; return _r95;}
-				if(dCLs[ix[i]]<_alpha) { 
-					x1=_vR[ix[i]]; 
-					y1=dCLs[ix[i]];
-				}
-				if(dCLs[ix[i]]>_alpha && x2==0){
-					x2=_vR[ix[i]]; 
-					y2=dCLs[ix[i]];
-				}
-			}
-			if(!x1 || !x2 || !y1 || !y2){
-				cout<<"Warning: Your initial estimated R range is not suitable, all CLs values I got are in one side of "<<_alpha<<endl;
-				x1 = _vR[0]; x2=_vR.back();
-				y1 = _vCLs[0]; y2=_vCLs.back();
-			}
-			if(ix) delete []ix;
-			if(dCLs) delete [] dCLs;
-			r0=x1; r1=x2; cl0=y1; cl1=y2;
-		} else {
-			cms->SetSignalScaleFactor(1.);
-			//		if(_debug>=10)
-			//			r0=R_CL(cms, 1-_alpha, 1.e-30, 1.e-6, 1000., _debug );
-			//		else 
-			//			r0=R_CL(cms, 1-_alpha, 1.e-30, 1.e-6, 1000., 0);
-			//		if(r0>100) r0=10; // FIXME will use the new Bayesian estimation
-			BayesianBase bys(cms, 0.05, 1.e-2);
-			bys.SetNumToys(100);
-			bys.SetDebug(_debug);
-			r0= bys.Limit();
-			if(_debug){
-				start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_BayesianLimitEsitmate: "<< (cur_time - start_time) << " microsec\n";
-			}
-
-			if(_debug)cout<<"CLsLimit::LimitOnSignalScaleFactor: start with estimate from Bayesian technique, r95%="<<r0<<endl;
-
-			cms->SetSignalScaleFactor(r0);
-			frequentist->BuildM2lnQ(cms, nexps); 
-			cl0=frequentist->CLs();//_nsigma(nsigma);
-			_vR.push_back(r0);_vCLs.push_back(cl0);
-			if(_debug)cout<<"Estimated_initial r="<<r0<<"  CLs="<<cl0<<endl;
-			if(fabs(cl0-_alpha)<=epsilon) {
-				_r95=r0;
-				if(_debug)cout<<"Converge at CLs="<<_alpha<<"+/-"<<epsilon<<" by "<<"1 iteration"<<endl;
-				return r0;
-			}
-
-			//	r1=r0*0.90; //----------usually, CLs-limit is more aggresive than Bayesian's, about 10% smaller.
-			if(cl0>_alpha) r1=r0*1.10;	
-			else r1=r0*(cl0/_alpha);
-			//else r1=r0*0.90;
-
-			cms->SetSignalScaleFactor(r1);
-			frequentist->BuildM2lnQ(cms, nexps); 
-			cl1=frequentist->CLs();//_nsigma(nsigma);
-			_vR.push_back(r1);_vCLs.push_back(cl1);
-			if(_debug)cout<<"Estimated_r="<<r1<<"  CLs="<<cl1<<endl;
-			if(fabs(cl1-_alpha)<=epsilon) {
-				_r95=r1;
-				if(_debug)cout<<"Converge at CLs="<<_alpha<<"+/-"<<epsilon<<" by "<<"2 iterations"<<endl;
-				return r1;
-			}
+	if( _debug>=10 ){
+		int step = vlogQ.size()/20;
+		cout<<"CLsBase: lnQsb_sigma"<<endl;
+		cout<<"*** print out lnQ and accumulative probability, size="<<vlogQ.size()<<" step="<<step<<endl;
+		int i=0;
+		for(; i<vlogQ.size(); i+=(step+1)) {
+			printf("%10d",i);
+			cout<<"\t lnQ,p= "<<vlogQ[i]<<" "<<vlogQ_prob[i]<<endl;
 		}
+		if(i!=vlogQ.size() || (i==vlogQ.size() && step!=1)) {
+			printf("%10d",vlogQ.size());
+			cout<<"\t lnQ,p= "<<vlogQ.back()<<" "<<vlogQ_prob.back()<<endl;
+		}
+	}
+	return ret;
+}
 
-		bool foundit=false;
-		double rmid=0;
-		int nmaxrepeat=0;	
-		while(!foundit && nmaxrepeat<=30 ){ 
-			// --- -  --
-			//  using linear interpolation to do converge will be quicker
-			// ---------
-			rmid=LogLinearInterpolation(r0,cl0,r1,cl1,_alpha);
-			if(rmid<0) rmid=-rmid;
-			if(_debug >= 10 )cout<<" r0="<<r0<<" cl0="<<cl0<<" r1="<<r1<<" cl1="<<cl1<<" rmid="<<rmid<<endl;
+void CLsBase::SetTestStatistics(int ts)	{
+	if(ts==1 || ts==2 || ts==3)test_statistics = ts; 
+	else cout <<"ts should be 1 for Q_LEP, 2 for Q_TEV or 3 for Q_ATLAS, your input is not correct: "
+		<<ts<<".  ts is set to be default type Q_LEP"
+			<<endl; 
+}
+
+
+// Class CLsLimit	
+double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
+		double minRtoScan, double maxRtoScan,
+		CLsBase *frequentist, int nexps, int nstep ){
+	cms_global = cms;
+	_frequentist=frequentist; _nexps=nexps; 
+
+	clock_t start_time, cur_time;
+	start_time=clock(); cur_time=clock();
+
+	double epsilon = _clstolerance;
+	//	int nsigma=5;
+
+	_vR.clear(); _vCLs.clear();
+
+	if(_debug) cout<<"CLsLimit::LimitOnSignalScaleFactor  looking for C.L. 95% Limit on the ratio ----"<<endl;
+
+
+	double r0,r1;
+	double cl0, cl1;
+
+	if(minRtoScan!=maxRtoScan) {
+
+		if(minRtoScan>=maxRtoScan || minRtoScan <=0 ) {
+			cout<<"Error in LimitOnSignalScaleFactor: (minRtoScan="<<minRtoScan<<") >= (maxRtoScan="<<maxRtoScan<<", exit"<<endl;
+			cout<<"please make sure maxRtoScan > minRtoScan > 0 "<<endl;
+			exit(0);
+		}
+		if(nstep<1)  {cout<<" steps in autoscan should not less than 1, exit"<<endl; exit(0);}
+		if(_debug) cout<<"\t First auto scaning R from  "<<minRtoScan<<" to "<<maxRtoScan<<" in "<<nstep<<" steps"<<endl;
+
+		for(double rmid=minRtoScan; rmid<=maxRtoScan; rmid+=(maxRtoScan-minRtoScan)/(double)nstep){
 			cms->SetSignalScaleFactor(rmid);
 			frequentist->BuildM2lnQ(cms, nexps); 
-			double clmid=frequentist->CLs();//_nsigma(nsigma);
-			_vR.push_back(rmid);_vCLs.push_back(clmid);
-			if(_debug)cout<<"TESTED r="<<rmid<<"  CLs="<<clmid<<endl;
-			if(fabs(clmid-_alpha)<epsilon){
-				foundit=true; //alpha=0.05 C.L. 95% 		
-				_r95=rmid;
-				if(_debug)cout<<"Converge at CLs="<<_alpha<<"+/-"<<epsilon<<" by "<<_vR.size()<<" iterations"<<endl;
-				return rmid;
-			}
-			else {
-				double x[3]={r0,rmid,r1}; double y[3]={cl0,clmid,cl1};		
-				int iy[3];
-				Sort(3,y,iy,0);
-				if(_alpha<y[iy[1]]){ //---------kick out a number among r0, r1, rmid
-					cl0=y[iy[0]]; cl1=y[iy[1]];
-					r0=x[iy[0]]; r1=x[iy[1]];
-				}
-				else if(_alpha>y[iy[1]]){
-					cl0=y[iy[1]]; cl1=y[iy[2]];
-					r0=x[iy[1]]; r1=x[iy[2]];
-				}
-				else {
-					cout<<"Warning: CANNOT converge: r0="<<r0<<" cl0="<<cl0<<" r1="<<r1<<" cl1="<<cl1<<" rmid="<<rmid<<" clmid="<<clmid<<endl;
-				}
-			}
-			nmaxrepeat++;
-			//------------------------????????????? is CLs mono-increased/decreased as r ?  has to investigate it 
-			if(!foundit){
-				if(rmid==_vR[_vR.size()-2]) {
-					foundit=true; 
-					if(_debug)cout<<"We get rmid="<<rmid<<" twice, and decide to stop here...."<<endl;
-				}
-			}
-			if(foundit && _vR.size()>1){	
-				bool hasCLsGT05=false;
-				bool hasCLsLT05=false;
-				int nmax_tmp=0; 
-
-				// --- find the rmid  with smallest distance btw its cls and 0.05
-				double tmp_min_dist = 9999;
-				//int tmp_min_index = 0;
-				for(int i=0; i<_vCLs.size(); i++ ){
-					if( fabs( _vCLs.at(i)-_alpha ) < tmp_min_dist) {
-						tmp_min_dist=fabs(_vCLs.at(i)-_alpha);
-						rmid=_vR.at(i);
-					}
-				}	
-				if(_debug)cout<<"\t temply we found r="<<rmid<<" with CLs - alpha = "<<tmp_min_dist<<endl;
-
-				while( (!hasCLsLT05 || !hasCLsGT05) && nmax_tmp<30 ) {
-					for(int icls= 0; icls<_vR.size(); icls++){
-						if(_vCLs[icls]<=_alpha) hasCLsLT05=true;
-						if(_vCLs[icls]>=_alpha) hasCLsGT05=true;
-					}	
-					if(!hasCLsLT05 && _debug) cout<<"\t we don't have CLs < "<<_alpha<<endl;
-					if(!hasCLsGT05 && _debug) cout<<"\t we don't have CLs > "<<_alpha<<endl;
-					if(!hasCLsLT05) {
-						rmid= rmid*1.05; //FIXME this number should more smart 
-						cms->SetSignalScaleFactor(rmid);
-						frequentist->BuildM2lnQ(cms, nexps); 
-						double clmid=frequentist->CLs();//_nsigma(nsigma);
-						_vR.push_back(rmid);_vCLs.push_back(clmid);
-						if(_debug)cout<<"TESTED r="<<rmid<<"  CLs="<<clmid<<endl;
-					}
-					if(!hasCLsGT05) {
-						rmid= rmid*0.95; // FIXME this number should be more smart
-						cms->SetSignalScaleFactor(rmid);
-						frequentist->BuildM2lnQ(cms, nexps); 
-						double clmid=frequentist->CLs();//_nsigma(nsigma);
-						_vR.push_back(rmid);_vCLs.push_back(clmid);
-						if(_debug)cout<<"TESTED r="<<rmid<<"  CLs="<<clmid<<endl;
-					}
-					if(!hasCLsGT05 || !hasCLsLT05 )nmax_tmp++;
-				}//while
-				if( nmax_tmp > 0 && _debug )cout<<" \t to get both values GT_and_LT_"<<_alpha<<", we tried "<<nmax_tmp<<" more times"<<endl;
-			}//foundit
+			if(_rule == 1)
+				cl0=frequentist->CLs(); //_nsigma(nsigma);
+			else 
+				cl0=frequentist->CLsb(); //_nsigma(nsigma);
+			_vR.push_back(rmid);_vCLs.push_back(cl0);
+			if(_debug)cout<<"TESTED r="<<rmid<<"  CLs="<<cl0<<endl;
 		}
-		int nsize=_vR.size();
-
-		if(!foundit){cout<<"Warning: Not converge to "<<_alpha<<"+/-"<<epsilon<<" with "<<nsize<<" iterations"<<endl;}
-		else { if(_debug)cout<<"Converge at alpha="<<_alpha<<"+/-"<<epsilon<<" by "<<nsize<<" iterations"<<endl;}	
-
-		if(nsize==1) {_r95=rmid; return rmid;}
-
 		// --- -get the _r95 @ alpha=0.05 by linear interpolation
 		double x1=0, y1=0, x2=0, y2=0;
-
+		int nsize=_vCLs.size();
 		double *dCLs=new double[nsize];
 		for(int i=0; i<nsize; i++){
 			dCLs[i]=_vCLs[i];
 		}
-
 		int *ix=new int[nsize];
 		Sort(nsize, dCLs, ix, 0);
 		for(int i=0; i<nsize; i++){
@@ -766,278 +869,469 @@ namespace lands{
 				y2=dCLs[ix[i]];
 			}
 		}
-		if(!x1 || !x2 || !y1 || !y2)
-		{
-			cout<<"Warning.. failed to find both points which are supposed to close to "<<_alpha<<".  r1="
-				<<x1<<" CLs1="<<y1<<" r2="<<x2<<" CLs2="<<y2<<endl;
-			cout<<"listing all tested r and its corresponding CLs :"<<endl;
-			for(int i=0; i<_vR.size(); i++) cout<<"  "<<i<<"  r="<<_vR[i]<<" CLs="<<_vCLs[i]<<endl;
-			cout<<"Will use the R with CLs closest to "<<_alpha<<endl;
+		if(!x1 || !x2 || !y1 || !y2){
+			cout<<"Warning: Your initial estimated R range is not suitable, all CLs values I got are in one side of "<<_alpha<<endl;
+			x1 = _vR[0]; x2=_vR.back();
+			y1 = _vCLs[0]; y2=_vCLs.back();
 		}
-		// --- find the rmid  with smallest distance btw its cls and 0.05
-		double tmp_min_dist = 9999;
-		int tmp_min_index = 0;
-		for(int i=0; i<_vCLs.size(); i++ ){
-			if( fabs( _vCLs.at(i)-_alpha ) < tmp_min_dist) {
-				tmp_min_dist=fabs(_vCLs.at(i)-_alpha);
-				rmid=_vR.at(i);
-				tmp_min_index=i;
-			}
-		}	
-		if(_debug) cout<<"\t closest_to_alpha r="<<rmid<<" cls="<<_vCLs.at(tmp_min_index)<<endl;
-
-		if(x1==x2 && _debug ) cout<<"\t Warning: r1=r2, we are using the same r to do interpolation, just because we get it twice and one for CLs>alpha, and the other for CLs<alpha"<<endl;
-
-		_r95=LogLinearInterpolation(x1,y1,x2,y2,_alpha);
-		if(_debug) cout<<"CLsLimit::LimitOnSignalScaleFactor final upperlimit on r is "<<_r95<<endl;
-		if(_r95==0) _r95=rmid;
-
-		if(_debug) {start_time=cur_time; cur_time=clock(); cout << "\t\t\tLIMIT_TIMEfor "<<nsize<<" x "<<nexps<<" pseudo exps: " << (cur_time - start_time)/1000000. << " sec\n"; }
 		if(ix) delete []ix;
 		if(dCLs) delete [] dCLs;
-		return _r95;
-	}
-
-	double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms, CLsBase *frequentist, int nexps){
-		LimitOnSignalScaleFactor(cms,  1, 1, frequentist, nexps);
-	}
-
-	void CLsLimit::DoingStatisticalBandsForCLs(CountingModel *cms, CLsBase *frequentist, int nexps){
-		clock_t start_time, cur_time, funcStart_time;
-		start_time=clock(); cur_time=clock(); funcStart_time=clock();
-		_frequentist = frequentist; _nexps=nexps;
-
-		cms->SetSignalScaleFactor(1.0);
-		double cls_mean=0;
-		double cp=0; // cumulative p
-		_vCLs_Req1.clear(); _vCLs_Req1_CP.clear(); 
-		cms->UseAsimovData();
-		_frequentist->BuildM2lnQ(cms, _nexps);
-		if(_debug){
-			start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_BuildM2logQ: "<< _nexps<<" toys, "<< (cur_time - start_time)/1000000./60. << " minutes\n"; fflush(stdout);
-		}
-		vector<double> vm2logQ_b = _frequentist->Get_m2logQ_b()	;
-		vector<double> vm2logQ_sb = _frequentist->Get_m2logQ_sb();		
-		nexps=vm2logQ_sb.size();  int nexps_b=vm2logQ_b.size();
-		if(nexps!=nexps_b) {
-			cout<<"**Error exps for s+b = "<<nexps<<", for b-only="<<nexps_b<<endl;
-			return;
-		}
-		if(nexps<=0){
-			cout<<"***Error exps = "<<nexps<<endl;
-			return;
-		}
-
-		vector<double> qbn, pbn; qbn.clear(); pbn.clear();
-		SortAndCumulative(vm2logQ_b, qbn, pbn);	//from small to large	
-		vector<double> qsbn, psbn; qsbn.clear(); psbn.clear();
-		SortAndCumulative(vm2logQ_sb, qsbn, psbn);		
-		int nb = qbn.size();
-		int nsb = qsbn.size();
-		double *dcls = new double[nb];
-		double *dpcls = new double[nb];
-
-		if(_debug){
-			start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_SortOut -2lnQ: "<< _nexps<<" toys, "<< (cur_time - start_time)/1000. << " milisec \n"; fflush(stdout);
-		}
-
-		int previousStopPoint=0;
-		for(int i=0; i<nb; i++){
-			double cls=0;//1./(double)_nexps;   // FIXME 
-			double pcls=0;
-			if(i>0){
-				pcls=pbn[i]-pbn[i-1];
-			}
-			else pcls=pbn[0];
-
-			for(int j=previousStopPoint; j<nsb; j++){
-				if(qsbn[j] >= qbn[i]){
-					cls= ( (j==0?1:(1-psbn[j-1])) / (i==0?1:(1-pbn[i-1])) );	
-					previousStopPoint=j;
-					break;
-				}
-			}
-			dcls[i]=cls;
-			dpcls[i]=pcls;
-		}
-		if(_debug){
-			start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_CLsBands: "<< _nexps<<" toys, "<< (cur_time - start_time)/1000. << " milisec \n"; fflush(stdout);
-		}
-
-		int csize=nb;
-		int *i_cls=new int[csize];
-		Sort(csize, dcls, i_cls, 0);
-		for(int i=0; i<csize; i++){
-			_vCLs_Req1.push_back(dcls[i_cls[i]]);
-			_vCLs_Req1_CP.push_back( i==0?dpcls[i_cls[0]]:(dpcls[i_cls[i]] + _vCLs_Req1_CP[i-1]) );
-			cls_mean+=dcls[i]*dpcls[i];
-		}
-
-		if(dcls) delete [] dcls;
-		if(dpcls) delete [] dpcls;
-		if(i_cls) delete []i_cls;
-
-		if(_debug) {
-			int step = _vCLs_Req1_CP.size()/20;
-			cout<<"\t In ProjectingCLs, printing out the CLs (r=1) and cummulative p"<<endl;
-			cout<<"\t size="<<_vCLs_Req1_CP.size()<<", step="<<step<<endl;
-			int i=0;
-			for(; i<(int)_vCLs_Req1.size(); i+=(step+1))
-				printf("%10d\t CLs %0.6f p %7.6f\n",i, _vCLs_Req1[i], _vCLs_Req1_CP[i]);
-			if( i!=_vCLs_Req1_CP.size() || (i==_vCLs_Req1_CP.size() && step!=1) ){
-				printf("%10d\t CLs %0.6f p %7.6f\n",_vCLs_Req1_CP.size(), _vCLs_Req1.back(), _vCLs_Req1_CP.back());
-			}
-		}
-		GetBandsByFermiCurveInterpolation(_vCLs_Req1,_vCLs_Req1_CP, _CLsProjected[1], _CLsProjected[3], _CLsProjected[0], _CLsProjected[4]);
-		_CLsProjected[5]=cls_mean; _CLsProjected[2]=GetBandByFermiCurveInterpolation(_vCLs_Req1, _vCLs_Req1_CP, 0);
-		if(_debug) cout<<" \t ProjectingCLs_m2sigma_p2sigma: -2s= "<<_CLsProjected[0]<<" -1s= "<<_CLsProjected[1]<<" mean= "<<cls_mean<<" 1s= "<<_CLsProjected[3]<<" 2s= "<<_CLsProjected[4]<<endl;
-		if(_debug){
-			start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_CLsBandsEnd: " << (cur_time - funcStart_time)/1000000./60. << " minutes\n"; fflush(stdout);
-		}
-
-	}
-	void CLsLimit::DoingStatisticalBandsForLimit(CountingModel *cms, CLsBase *frequentist, int nexps, int npossibleoutcomes){
-		_frequentist=frequentist; _nexps=nexps; _npossibleoutcomes=npossibleoutcomes;
+		r0=x1; r1=x2; cl0=y1; cl1=y2;
+	} else {
 		cms->SetSignalScaleFactor(1.);
-
-		// background only ------ ...........
-		double r_mean=0;
-		double cp=0; // cumulative p
-		_vR95_CP.clear(); _vR95.clear(); _differentialR95s.clear();
-		vector<double> vr_tmp; vr_tmp.clear();
-		vector<double> vp_tmp; vp_tmp.clear();
-
-
-		if( _debug >= 10 ){ // print out s,b se, be, correlation, err_pdf_type
-			cout<<"\t CLsLimit::DoingStatisticalBandsForLimit print out details on signal, background and uncertainties ...."<<endl;
-			cms->Print();
+		//		if(_debug>=10)
+		//			r0=R_CL(cms, 1-_alpha, 1.e-30, 1.e-6, 1000., _debug );
+		//		else 
+		//			r0=R_CL(cms, 1-_alpha, 1.e-30, 1.e-6, 1000., 0);
+		BayesianBase bys(cms, 0.05, 1.e-2);
+		bys.SetNumToys(100);
+		bys.SetDebug(_debug);
+		r0= bys.Limit();
+		if(_debug){
+			start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_BayesianLimitEsitmate: "<< (cur_time - start_time) << " microsec\n";
 		}
 
-		vector< vector<int> > vvPossibleOutcomes; vvPossibleOutcomes.clear();
-		vector<int> vEntries; vEntries.clear();  // index of vvPossibleOutcomes are the same as vEntries
-		vector<int> vbkg_tmp; 
+		if(_debug)cout<<"CLsLimit::LimitOnSignalScaleFactor: start with estimate from Bayesian technique, r95%="<<r0<<endl;
 
-		int _nOutcomes=_npossibleoutcomes;
-		if(_debug) cout<<" _nOutcomes="<<_nOutcomes<<endl;
-
-		for(int n=0; n<_nOutcomes; n++){
-			vbkg_tmp.clear(); 
-			vbkg_tmp=cms->GetToyData_H0();
-			bool flag=true;
-			for(int t=0; t<vvPossibleOutcomes.size(); t++){
-				if(vbkg_tmp==vvPossibleOutcomes.at(t)) {
-					flag=false;
-					vEntries.at(t)+=1;
-					break;
-				}
-			}
-			if(flag) { 
-				vvPossibleOutcomes.push_back(vbkg_tmp);
-				vEntries.push_back(1);	
-			}
-		}	// _nOutcomes
-
-		// rank the possible outcomes and sort it
-		int npsbl_outcomes = vvPossibleOutcomes.size();
-		int *Entries_v = new int[npsbl_outcomes];
-		for(int i=0; i<npsbl_outcomes; i++){
-			Entries_v[i]=vEntries.at(i);
-		}
-		int *iEntries_v = new int[npsbl_outcomes];
-		Sort(npsbl_outcomes, Entries_v, iEntries_v, 1); // sorted it by "down",  Desc
-		if(_debug) {
-			cout<<"\n\t\t CLsLimit::ProjectingLimits possible outcomes and their entries "<<endl;
-			cout<<"\t\t n_possible_outcomes size= "<<npsbl_outcomes<<endl;
-			for(int i=0; i<npsbl_outcomes; i++){
-				printf("\t\t ");
-				for(int j=0; j<vvPossibleOutcomes.at(iEntries_v[i]).size(); j++){
-					printf("%4d ", vvPossibleOutcomes.at(iEntries_v[i]).at(j));
-				}		
-				printf("\t %5d\n", vEntries.at(iEntries_v[i]));
-			}
+		cms->SetSignalScaleFactor(r0);
+		frequentist->BuildM2lnQ(cms, nexps); 
+		if(_rule == 1)
+			cl0=frequentist->CLs(); //_nsigma(nsigma);
+		else 
+			cl0=frequentist->CLsb(); //_nsigma(nsigma);
+		_vR.push_back(r0);_vCLs.push_back(cl0);
+		if(_debug)cout<<"Estimated_initial r="<<r0<<"  CLs="<<cl0<<endl;
+		if(fabs(cl0-_alpha)<=epsilon) {
+			_r95=r0;
+			if(_debug)cout<<"Converge at CLs="<<_alpha<<"+/-"<<epsilon<<" by "<<"1 iteration"<<endl;
+			return r0;
 		}
 
-		double nchs=cms->NumOfChannels();
-		int tmpcount;
-		if(npsbl_outcomes<50) tmpcount = int(npsbl_outcomes/10);
-		else {
-			tmpcount = int(npsbl_outcomes/100);
-		}
-		for(int n=0; n<npsbl_outcomes; n++){
-			if( tmpcount==0 || (tmpcount!=0 && (n%tmpcount == 0)) ) printf(" ... ... ... process %3.0f\%\n", n/(double)npsbl_outcomes*100);
-			double p=vEntries.at(iEntries_v[n])/(double)_nOutcomes;
-			if(_debug){
-				cout<<"CLsLimit::ProjectingRLimits scanning outcomes: ";
-				for(int j=0; j<nchs; j++){
-					printf("%4d ", vvPossibleOutcomes.at(iEntries_v[n]).at(j));
-				}		
-				cout<<"\t p="<<p<<endl;
-			}
-			cms->SetData( vvPossibleOutcomes.at(iEntries_v[n]) ); 
+		//	r1=r0*0.90; //----------usually, CLs-limit is more aggresive than Bayesian's, about 10% smaller.
+		if(cl0>_alpha) r1=r0*1.10;	
+		else r1=r0*(cl0/_alpha);
+		//else r1=r0*0.90;
 
-			double r;
-
-			//--------------calc r95% with (s,b,n) by throwing pseudo experiments and using the fits to get r95% at CLs=5
-			r=LimitOnSignalScaleFactor(cms, _frequentist, _nexps);
-
-			if(_debug) {
-				vector<double> vvr, vvcls;
-				vvr.clear(); vvcls.clear();
-				vvr=GetvTestedScaleFactors();	
-				vvcls=GetvTestedCLs();
-				cout<<" CLsLimit::DoingStatisticalBandsForLimit r95\% for n="<<n<<", printing out the recorded r and cls:"<<endl;
-				for(int i=0; i<(int)vvr.size(); i++)
-					printf("r %5.2f cls %3.2f\n",vvr[i], vvcls[i]);
-			}
-
-			vr_tmp.push_back(r);
-			r_mean+=r*p;
-			cp+=p;//Poisson(n,b);
-			vp_tmp.push_back(p);
-
-			int nentries_for_thisR=(int)(vEntries.at(iEntries_v[n]));
-			for(int ntmp=0; ntmp<nentries_for_thisR; ntmp++){
-				_differentialR95s.push_back(r);
-			}
-
-			if(_debug)cout<<"n="<<n<<" r95="<<r<<" p="<<p<<" cummulative p="<<cp<<endl;
-		}
-
-		if(Entries_v) delete [] Entries_v;
-		if(iEntries_v) delete [] iEntries_v;
-
-		int nr = vr_tmp.size(); 
-		double *r_v = new double[nr];	
-		int *ir_v = new int[nr];	
-		for(int i=0; i<nr; i++) r_v[i]=vr_tmp.at(i);
-		Sort(nr, r_v, ir_v, 0); // from small to large
-		for(int i=0; i<nr; i++){
-
-			_vR95.push_back(vr_tmp.at(ir_v[i]));
-			if(i==0) _vR95_CP.push_back(vp_tmp.at(ir_v[i]));
-			else _vR95_CP.push_back( _vR95_CP.at(i-1) + vp_tmp.at(ir_v[i]) ); 
-		}	
-		if(r_v) delete [] r_v;
-		if(ir_v) delete [] ir_v;
-
-		if(_debug) {
-			cout<<" CLsLimit::ProjectingLimits, printing out the r and cummulative p for all possible outcomes:"<<endl;
-			for(int i=0; i<(int)_vR95.size(); i++)
-				printf("r %5.2f p %5.4f\n",_vR95[i], _vR95_CP[i]);
-		}
-
-		GetBandsByFermiCurveInterpolation(_vR95,_vR95_CP, _r95Projected[1], _r95Projected[3], _r95Projected[0], _r95Projected[4]);
-		_r95Projected[5]=r_mean; _r95Projected[2]=GetBandByFermiCurveInterpolation(_vR95, _vR95_CP, 0.5);
-		if(_debug) {
-			cout<<"CLsLimit::ProjectingLimits projecting r at "<<endl; 
-			cout<<"    -2 sigma ="<<_r95Projected[0]<<endl;
-			cout<<"    -1 sigma ="<<_r95Projected[1]<<endl;
-			cout<<"    median   ="<<_r95Projected[2]<<endl;
-			cout<<"     1 sigma ="<<_r95Projected[3]<<endl;
-			cout<<"     2 sigma ="<<_r95Projected[4]<<endl;
-			cout<<"     mean    ="<<_r95Projected[5]<<endl;
+		cms->SetSignalScaleFactor(r1);
+		frequentist->BuildM2lnQ(cms, nexps); 
+		if(_rule == 1)
+			cl1=frequentist->CLs(); //_nsigma(nsigma);
+		else 
+			cl1=frequentist->CLsb(); //_nsigma(nsigma);
+		_vR.push_back(r1);_vCLs.push_back(cl1);
+		if(_debug)cout<<"Estimated_r="<<r1<<"  CLs="<<cl1<<endl;
+		if(fabs(cl1-_alpha)<=epsilon) {
+			_r95=r1;
+			if(_debug)cout<<"Converge at CLs="<<_alpha<<"+/-"<<epsilon<<" by "<<"2 iterations"<<endl;
+			return r1;
 		}
 	}
+
+	bool foundit=false;
+	double rmid=0;
+	int nmaxrepeat=0;	
+	while(!foundit && nmaxrepeat<=30 ){ 
+		// --- -  --
+		//  using linear interpolation to do converge will be quicker
+		// ---------
+		rmid=LogLinearInterpolation(r0,cl0,r1,cl1,_alpha);
+		if(rmid<0) rmid=-rmid;
+		if(_debug >= 10 )cout<<" r0="<<r0<<" cl0="<<cl0<<" r1="<<r1<<" cl1="<<cl1<<" rmid="<<rmid<<endl;
+		cms->SetSignalScaleFactor(rmid);
+		frequentist->BuildM2lnQ(cms, nexps); 
+		double clmid;
+		if(_rule == 1)
+			clmid=frequentist->CLs(); //_nsigma(nsigma);
+		else 
+			clmid=frequentist->CLsb(); //_nsigma(nsigma);
+		_vR.push_back(rmid);_vCLs.push_back(clmid);
+		if(_debug)cout<<"TESTED r="<<rmid<<"  CLs="<<clmid<<endl;
+		if(fabs(clmid-_alpha)<epsilon){
+			foundit=true; //alpha=0.05 C.L. 95% 		
+			_r95=rmid;
+			if(_debug)cout<<"Converge at CLs="<<_alpha<<"+/-"<<epsilon<<" by "<<_vR.size()<<" iterations"<<endl;
+			return rmid;
+		}
+		else {
+			double x[3]={r0,rmid,r1}; double y[3]={cl0,clmid,cl1};		
+			int iy[3];
+			Sort(3,y,iy,0);
+			if(_alpha<y[iy[1]]){ //---------kick out a number among r0, r1, rmid
+				cl0=y[iy[0]]; cl1=y[iy[1]];
+				r0=x[iy[0]]; r1=x[iy[1]];
+			}
+			else if(_alpha>y[iy[1]]){
+				cl0=y[iy[1]]; cl1=y[iy[2]];
+				r0=x[iy[1]]; r1=x[iy[2]];
+			}
+			else {
+				cout<<"Warning: CANNOT converge: r0="<<r0<<" cl0="<<cl0<<" r1="<<r1<<" cl1="<<cl1<<" rmid="<<rmid<<" clmid="<<clmid<<endl;
+			}
+		}
+		nmaxrepeat++;
+		//------------------------????????????? is CLs mono-increased/decreased as r ?  has to investigate it 
+		if(!foundit){
+			if(rmid==_vR[_vR.size()-2]) {
+				foundit=true; 
+				if(_debug)cout<<"We get rmid="<<rmid<<" twice, and decide to stop here...."<<endl;
+			}
+		}
+		if(foundit && _vR.size()>1){	
+			bool hasCLsGT05=false;
+			bool hasCLsLT05=false;
+			int nmax_tmp=0; 
+
+			// --- find the rmid  with smallest distance btw its cls and 0.05
+			double tmp_min_dist = 9999;
+			//int tmp_min_index = 0;
+			for(int i=0; i<_vCLs.size(); i++ ){
+				if( fabs( _vCLs.at(i)-_alpha ) < tmp_min_dist) {
+					tmp_min_dist=fabs(_vCLs.at(i)-_alpha);
+					rmid=_vR.at(i);
+				}
+			}	
+			if(_debug)cout<<"\t temply we found r="<<rmid<<" with CLs - alpha = "<<tmp_min_dist<<endl;
+
+			while( (!hasCLsLT05 || !hasCLsGT05) && nmax_tmp<30 ) {
+				for(int icls= 0; icls<_vR.size(); icls++){
+					if(_vCLs[icls]<=_alpha) hasCLsLT05=true;
+					if(_vCLs[icls]>=_alpha) hasCLsGT05=true;
+				}	
+				if(!hasCLsLT05 && _debug) cout<<"\t we don't have CLs < "<<_alpha<<endl;
+				if(!hasCLsGT05 && _debug) cout<<"\t we don't have CLs > "<<_alpha<<endl;
+				if(!hasCLsLT05) {
+					rmid= rmid*1.05; //FIXME this number should more smart 
+					cms->SetSignalScaleFactor(rmid);
+					frequentist->BuildM2lnQ(cms, nexps); 
+					double clmid;
+					if(_rule == 1)
+						clmid=frequentist->CLs(); //_nsigma(nsigma);
+					else 
+						clmid=frequentist->CLsb(); //_nsigma(nsigma);
+					_vR.push_back(rmid);_vCLs.push_back(clmid);
+					if(_debug)cout<<"TESTED r="<<rmid<<"  CLs="<<clmid<<endl;
+				}
+				if(!hasCLsGT05) {
+					rmid= rmid*0.95; // FIXME this number should be more smart
+					cms->SetSignalScaleFactor(rmid);
+					frequentist->BuildM2lnQ(cms, nexps); 
+					double clmid;
+					if(_rule == 1)
+						clmid=frequentist->CLs(); //_nsigma(nsigma);
+					else 
+						clmid=frequentist->CLsb(); //_nsigma(nsigma);
+					_vR.push_back(rmid);_vCLs.push_back(clmid);
+					if(_debug)cout<<"TESTED r="<<rmid<<"  CLs="<<clmid<<endl;
+				}
+				if(!hasCLsGT05 || !hasCLsLT05 )nmax_tmp++;
+			}//while
+			if( nmax_tmp > 0 && _debug )cout<<" \t to get both values GT_and_LT_"<<_alpha<<", we tried "<<nmax_tmp<<" more times"<<endl;
+		}//foundit
+	}
+	int nsize=_vR.size();
+
+	if(!foundit){cout<<"Warning: Not converge to "<<_alpha<<"+/-"<<epsilon<<" with "<<nsize<<" iterations"<<endl;}
+	else { if(_debug)cout<<"Converge at alpha="<<_alpha<<"+/-"<<epsilon<<" by "<<nsize<<" iterations"<<endl;}	
+
+	if(nsize==1) {_r95=rmid; return rmid;}
+
+	// --- -get the _r95 @ alpha=0.05 by linear interpolation
+	double x1=0, y1=0, x2=0, y2=0;
+
+	double *dCLs=new double[nsize];
+	for(int i=0; i<nsize; i++){
+		dCLs[i]=_vCLs[i];
+	}
+
+	int *ix=new int[nsize];
+	Sort(nsize, dCLs, ix, 0);
+	for(int i=0; i<nsize; i++){
+		if(dCLs[ix[i]]==_alpha) {_r95=_vR[ix[i]]; return _r95;}
+		if(dCLs[ix[i]]<_alpha) { 
+			x1=_vR[ix[i]]; 
+			y1=dCLs[ix[i]];
+		}
+		if(dCLs[ix[i]]>_alpha && x2==0){
+			x2=_vR[ix[i]]; 
+			y2=dCLs[ix[i]];
+		}
+	}
+	if(!x1 || !x2 || !y1 || !y2)
+	{
+		cout<<"Warning.. failed to find both points which are supposed to close to "<<_alpha<<".  r1="
+			<<x1<<" CLs1="<<y1<<" r2="<<x2<<" CLs2="<<y2<<endl;
+		cout<<"listing all tested r and its corresponding CLs :"<<endl;
+		for(int i=0; i<_vR.size(); i++) cout<<"  "<<i<<"  r="<<_vR[i]<<" CLs="<<_vCLs[i]<<endl;
+		cout<<"Will use the R with CLs closest to "<<_alpha<<endl;
+	}
+	// --- find the rmid  with smallest distance btw its cls and 0.05
+	double tmp_min_dist = 9999;
+	int tmp_min_index = 0;
+	for(int i=0; i<_vCLs.size(); i++ ){
+		if( fabs( _vCLs.at(i)-_alpha ) < tmp_min_dist) {
+			tmp_min_dist=fabs(_vCLs.at(i)-_alpha);
+			rmid=_vR.at(i);
+			tmp_min_index=i;
+		}
+	}	
+	if(_debug) cout<<"\t closest_to_alpha r="<<rmid<<" cls="<<_vCLs.at(tmp_min_index)<<endl;
+
+	if(x1==x2 && _debug ) cout<<"\t Warning: r1=r2, we are using the same r to do interpolation, just because we get it twice and one for CLs>alpha, and the other for CLs<alpha"<<endl;
+
+	_r95=LogLinearInterpolation(x1,y1,x2,y2,_alpha);
+	if(_debug) cout<<"CLsLimit::LimitOnSignalScaleFactor final upperlimit on r is "<<_r95<<endl;
+	if(_r95==0) _r95=rmid;
+
+	if(_debug) {start_time=cur_time; cur_time=clock(); cout << "\t\t\tLIMIT_TIMEfor "<<nsize<<" x "<<nexps<<" pseudo exps: " << (cur_time - start_time)/1000000. << " sec\n"; }
+	if(ix) delete []ix;
+	if(dCLs) delete [] dCLs;
+	return _r95;
+}
+
+double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms, CLsBase *frequentist, int nexps){
+	LimitOnSignalScaleFactor(cms,  1, 1, frequentist, nexps);
+}
+
+void CLsLimit::DoingStatisticalBandsForCLs(CountingModel *cms, CLsBase *frequentist, int nexps){
+	cms_global = cms;
+	clock_t start_time, cur_time, funcStart_time;
+	start_time=clock(); cur_time=clock(); funcStart_time=clock();
+	_frequentist = frequentist; _nexps=nexps;
+
+	cms->SetSignalScaleFactor(1.0);
+	double cls_mean=0;
+	double cp=0; // cumulative p
+	_vCLs_Req1.clear(); _vCLs_Req1_CP.clear(); 
+	cms->UseAsimovData();
+	_frequentist->BuildM2lnQ(cms, _nexps);
+	if(_debug){
+		start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_BuildM2logQ: "<< _nexps<<" toys, "<< (cur_time - start_time)/1000000./60. << " minutes\n"; fflush(stdout);
+	}
+	vector<double> vm2logQ_b = _frequentist->Get_m2logQ_b()	;
+	vector<double> vm2logQ_sb = _frequentist->Get_m2logQ_sb();		
+	nexps=vm2logQ_sb.size();  int nexps_b=vm2logQ_b.size();
+	if(nexps!=nexps_b) {
+		cout<<"**Error exps for s+b = "<<nexps<<", for b-only="<<nexps_b<<endl;
+		return;
+	}
+	if(nexps<=0){
+		cout<<"***Error exps = "<<nexps<<endl;
+		return;
+	}
+
+	vector<double> qbn, pbn; qbn.clear(); pbn.clear();
+	SortAndCumulative(vm2logQ_b, qbn, pbn);	//from small to large	
+	vector<double> qsbn, psbn; qsbn.clear(); psbn.clear();
+	SortAndCumulative(vm2logQ_sb, qsbn, psbn);		
+	int nb = qbn.size();
+	int nsb = qsbn.size();
+	double *dcls = new double[nb];
+	double *dpcls = new double[nb];
+
+	if(_debug){
+		start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_SortOut -2lnQ: "<< _nexps<<" toys, "<< (cur_time - start_time)/1000. << " milisec \n"; fflush(stdout);
+	}
+
+	int previousStopPoint=0;
+	for(int i=0; i<nb; i++){
+		double cls=0;//1./(double)_nexps;   // FIXME 
+		double pcls=0;
+		if(i>0){
+			pcls=pbn[i]-pbn[i-1];
+		}
+		else pcls=pbn[0];
+
+		for(int j=previousStopPoint; j<nsb; j++){
+			if(qsbn[j] >= qbn[i]){
+				cls= ( (j==0?1:(1-psbn[j-1])) / (i==0?1:(1-pbn[i-1])) );	
+				previousStopPoint=j;
+				break;
+			}
+		}
+		dcls[i]=cls;
+		dpcls[i]=pcls;
+	}
+	if(_debug){
+		start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_CLsBands: "<< _nexps<<" toys, "<< (cur_time - start_time)/1000. << " milisec \n"; fflush(stdout);
+	}
+
+	int csize=nb;
+	int *i_cls=new int[csize];
+	Sort(csize, dcls, i_cls, 0);
+	for(int i=0; i<csize; i++){
+		_vCLs_Req1.push_back(dcls[i_cls[i]]);
+		_vCLs_Req1_CP.push_back( i==0?dpcls[i_cls[0]]:(dpcls[i_cls[i]] + _vCLs_Req1_CP[i-1]) );
+		cls_mean+=dcls[i]*dpcls[i];
+	}
+
+	if(dcls) delete [] dcls;
+	if(dpcls) delete [] dpcls;
+	if(i_cls) delete []i_cls;
+
+	if(_debug) {
+		int step = _vCLs_Req1_CP.size()/20;
+		cout<<"\t In ProjectingCLs, printing out the CLs (r=1) and cummulative p"<<endl;
+		cout<<"\t size="<<_vCLs_Req1_CP.size()<<", step="<<step<<endl;
+		int i=0;
+		for(; i<(int)_vCLs_Req1.size(); i+=(step+1))
+			printf("%10d\t CLs %0.6f p %7.6f\n",i, _vCLs_Req1[i], _vCLs_Req1_CP[i]);
+		if( i!=_vCLs_Req1_CP.size() || (i==_vCLs_Req1_CP.size() && step!=1) ){
+			printf("%10d\t CLs %0.6f p %7.6f\n",_vCLs_Req1_CP.size(), _vCLs_Req1.back(), _vCLs_Req1_CP.back());
+		}
+	}
+	GetBandsByFermiCurveInterpolation(_vCLs_Req1,_vCLs_Req1_CP, _CLsProjected[1], _CLsProjected[3], _CLsProjected[0], _CLsProjected[4]);
+	_CLsProjected[5]=cls_mean; _CLsProjected[2]=GetBandByFermiCurveInterpolation(_vCLs_Req1, _vCLs_Req1_CP, 0);
+	if(_debug) cout<<" \t ProjectingCLs_m2sigma_p2sigma: -2s= "<<_CLsProjected[0]<<" -1s= "<<_CLsProjected[1]<<" mean= "<<cls_mean<<" 1s= "<<_CLsProjected[3]<<" 2s= "<<_CLsProjected[4]<<endl;
+	if(_debug){
+		start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_CLsBandsEnd: " << (cur_time - funcStart_time)/1000000./60. << " minutes\n"; fflush(stdout);
+	}
+
+}
+void CLsLimit::DoingStatisticalBandsForLimit(CountingModel *cms, CLsBase *frequentist, int nexps, int npossibleoutcomes){
+	_frequentist=frequentist; _nexps=nexps; _npossibleoutcomes=npossibleoutcomes;
+
+	cms_global = cms;
+
+	cms->SetSignalScaleFactor(1.);
+
+	// background only ------ ...........
+	double r_mean=0;
+	double cp=0; // cumulative p
+	_vR95_CP.clear(); _vR95.clear(); _differentialR95s.clear();
+	vector<double> vr_tmp; vr_tmp.clear();
+	vector<double> vp_tmp; vp_tmp.clear();
+
+
+	if( _debug >= 10 ){ // print out s,b se, be, correlation, err_pdf_type
+		cout<<"\t CLsLimit::DoingStatisticalBandsForLimit print out details on signal, background and uncertainties ...."<<endl;
+		cms->Print();
+	}
+
+	vector< VIChannel > vvPossibleOutcomes; vvPossibleOutcomes.clear();
+	vector<int> vEntries; vEntries.clear();  // index of vvPossibleOutcomes are the same as vEntries
+	VIChannel vbkg_tmp; 
+
+	int _nOutcomes=_npossibleoutcomes;
+	if(_debug) cout<<" _nOutcomes="<<_nOutcomes<<endl;
+
+	for(int n=0; n<_nOutcomes; n++){
+		vbkg_tmp.clear(); 
+		vbkg_tmp=cms->GetToyData_H0();
+		bool flag=true;
+		for(int t=0; t<vvPossibleOutcomes.size(); t++){
+			if(vbkg_tmp==vvPossibleOutcomes.at(t)) {
+				flag=false;
+				vEntries.at(t)+=1;
+				break;
+			}
+		}
+		if(flag) { 
+			vvPossibleOutcomes.push_back(vbkg_tmp);
+			vEntries.push_back(1);	
+		}
+	}	// _nOutcomes
+
+	// rank the possible outcomes and sort it
+	int npsbl_outcomes = vvPossibleOutcomes.size();
+	int *Entries_v = new int[npsbl_outcomes];
+	for(int i=0; i<npsbl_outcomes; i++){
+		Entries_v[i]=vEntries.at(i);
+	}
+	int *iEntries_v = new int[npsbl_outcomes];
+	Sort(npsbl_outcomes, Entries_v, iEntries_v, 1); // sorted it by "down",  Desc
+	if(_debug) {
+		cout<<"\n\t\t CLsLimit::ProjectingLimits possible outcomes and their entries "<<endl;
+		cout<<"\t\t n_possible_outcomes size= "<<npsbl_outcomes<<endl;
+		for(int i=0; i<npsbl_outcomes; i++){
+			printf("\t\t ");
+			for(int j=0; j<vvPossibleOutcomes.at(iEntries_v[i]).size(); j++){
+				printf("%4d ", vvPossibleOutcomes.at(iEntries_v[i]).at(j));
+			}		
+			printf("\t %5d\n", vEntries.at(iEntries_v[i]));
+		}
+	}
+
+	double nchs=cms->NumOfChannels();
+	int tmpcount;
+	if(npsbl_outcomes<50) tmpcount = int(npsbl_outcomes/10);
+	else {
+		tmpcount = int(npsbl_outcomes/100);
+	}
+	for(int n=0; n<npsbl_outcomes; n++){
+		if( tmpcount==0 || (tmpcount!=0 && (n%tmpcount == 0)) ) printf(" ... ... ... process %3.0f\%\n", n/(double)npsbl_outcomes*100);
+		double p=vEntries.at(iEntries_v[n])/(double)_nOutcomes;
+		if(_debug){
+			cout<<"CLsLimit::ProjectingRLimits scanning outcomes: ";
+			for(int j=0; j<nchs; j++){
+				printf("%4d ", vvPossibleOutcomes.at(iEntries_v[n]).at(j));
+			}		
+			cout<<"\t p="<<p<<endl;
+		}
+		cms->SetData( vvPossibleOutcomes.at(iEntries_v[n]) ); 
+
+		double r;
+
+		//--------------calc r95% with (s,b,n) by throwing pseudo experiments and using the fits to get r95% at CLs=5
+		r=LimitOnSignalScaleFactor(cms, _frequentist, _nexps);
+
+		if(_debug) {
+			vector<double> vvr, vvcls;
+			vvr.clear(); vvcls.clear();
+			vvr=GetvTestedScaleFactors();	
+			vvcls=GetvTestedCLs();
+			cout<<" CLsLimit::DoingStatisticalBandsForLimit r95\% for n="<<n<<", printing out the recorded r and cls:"<<endl;
+			for(int i=0; i<(int)vvr.size(); i++)
+				printf("r %5.2f cls %3.2f\n",vvr[i], vvcls[i]);
+		}
+
+		vr_tmp.push_back(r);
+		r_mean+=r*p;
+		cp+=p;//Poisson(n,b);
+		vp_tmp.push_back(p);
+
+		int nentries_for_thisR=(int)(vEntries.at(iEntries_v[n]));
+		for(int ntmp=0; ntmp<nentries_for_thisR; ntmp++){
+			_differentialR95s.push_back(r);
+		}
+
+		if(_debug)cout<<"n="<<n<<" r95="<<r<<" p="<<p<<" cummulative p="<<cp<<endl;
+	}
+
+	if(Entries_v) delete [] Entries_v;
+	if(iEntries_v) delete [] iEntries_v;
+
+	int nr = vr_tmp.size(); 
+	double *r_v = new double[nr];	
+	int *ir_v = new int[nr];	
+	for(int i=0; i<nr; i++) r_v[i]=vr_tmp.at(i);
+	Sort(nr, r_v, ir_v, 0); // from small to large
+	for(int i=0; i<nr; i++){
+
+		_vR95.push_back(vr_tmp.at(ir_v[i]));
+		if(i==0) _vR95_CP.push_back(vp_tmp.at(ir_v[i]));
+		else _vR95_CP.push_back( _vR95_CP.at(i-1) + vp_tmp.at(ir_v[i]) ); 
+	}	
+	if(r_v) delete [] r_v;
+	if(ir_v) delete [] ir_v;
+
+	if(_debug) {
+		cout<<" CLsLimit::ProjectingLimits, printing out the r and cummulative p for all possible outcomes:"<<endl;
+		for(int i=0; i<(int)_vR95.size(); i++)
+			printf("r %5.2f p %5.4f\n",_vR95[i], _vR95_CP[i]);
+	}
+
+	GetBandsByFermiCurveInterpolation(_vR95,_vR95_CP, _r95Projected[1], _r95Projected[3], _r95Projected[0], _r95Projected[4]);
+	_r95Projected[5]=r_mean; _r95Projected[2]=GetBandByFermiCurveInterpolation(_vR95, _vR95_CP, 0.5);
+	if(_debug) {
+		cout<<"CLsLimit::ProjectingLimits projecting r at "<<endl; 
+		cout<<"    -2 sigma ="<<_r95Projected[0]<<endl;
+		cout<<"    -1 sigma ="<<_r95Projected[1]<<endl;
+		cout<<"    median   ="<<_r95Projected[2]<<endl;
+		cout<<"     1 sigma ="<<_r95Projected[3]<<endl;
+		cout<<"     2 sigma ="<<_r95Projected[4]<<endl;
+		cout<<"     mean    ="<<_r95Projected[5]<<endl;
+	}
+}
 	double CLsLimit::Limit_sigma(int nsigma){ // return R at -2sigma, -1sigma, median(50%), 1sigma, 2sigma
 		if(nsigma<-2 || nsigma>2) 
 		{cout<<"CLsLimit::R_sigma  Error, nsigma should be from -2 to 2, return 0"<<endl;return 0;} 
@@ -1048,20 +1342,27 @@ namespace lands{
 		{cout<<"CLsLimit::CLs_sigma Error, nsigma should be from -2 to 2, return 0"<<endl;return 0;} 
 		else return _CLsProjected[nsigma+2];
 	}
-	void CLsLimit::SetAlpha(double alpha) {_alpha=alpha;} // Confidence Level = 1 - alpha
-	double CLsLimit::GetLimit(){return _r95;}
-	vector<double> CLsLimit::GetvTestedScaleFactors(){return _vR;} //
-	vector<double> CLsLimit::GetvTestedCLs(){return _vCLs;}//	
-	double CLsLimit::Limit_mean(){return _r95Projected[5];} //return average value mathmatically.....
-	vector<double> CLsLimit::GetDifferentialLimits(){return _differentialR95s;}
-	vector<double> CLsLimit::GetvLimits(){return _vR95;} // corresponding to all possible outcomes  ,  cummulative
-	vector<double> CLsLimit::GetvLimits_CP(){return _vR95_CP;} // corresponding to all possible outcomes
-	double CLsLimit::CLs_mean(){return _CLsProjected[5];} //return average value mathmatically.....
-	vector<double> CLsLimit::GetDifferentialCLsReq1(){return _differentialCLs_Req1;}
-	vector<double> CLsLimit::GetvCLsReq1(){return _vCLs_Req1;} // corresponding to all possible outcomes
-	vector<double> CLsLimit::GetvCLsReq1_CP(){return _vCLs_Req1_CP;} // corresponding to all possible outcomes
-	void CLsLimit::SetDebug(int debug){_debug=debug;}
-	CLsBase* CLsLimit::GetFrequentist(){return _frequentist;}
-	void CLsLimit::SetCLsTolerance(double tolerance){_clstolerance=tolerance;}
+void CLsLimit::SetAlpha(double alpha) {_alpha=alpha;} // Confidence Level = 1 - alpha
+double CLsLimit::GetLimit(){return _r95;}
+vector<double> CLsLimit::GetvTestedScaleFactors(){return _vR;} //
+vector<double> CLsLimit::GetvTestedCLs(){return _vCLs;}//	
+double CLsLimit::Limit_mean(){return _r95Projected[5];} //return average value mathmatically.....
+vector<double> CLsLimit::GetDifferentialLimits(){return _differentialR95s;}
+vector<double> CLsLimit::GetvLimits(){return _vR95;} // corresponding to all possible outcomes  ,  cummulative
+vector<double> CLsLimit::GetvLimits_CP(){return _vR95_CP;} // corresponding to all possible outcomes
+double CLsLimit::CLs_mean(){return _CLsProjected[5];} //return average value mathmatically.....
+vector<double> CLsLimit::GetDifferentialCLsReq1(){return _differentialCLs_Req1;}
+vector<double> CLsLimit::GetvCLsReq1(){return _vCLs_Req1;} // corresponding to all possible outcomes
+vector<double> CLsLimit::GetvCLsReq1_CP(){return _vCLs_Req1_CP;} // corresponding to all possible outcomes
+void CLsLimit::SetDebug(int debug){_debug=debug;}
+CLsBase* CLsLimit::GetFrequentist(){return _frequentist;}
+void CLsLimit::SetCLsTolerance(double tolerance){_clstolerance=tolerance;}
+void CLsLimit::SetRule(int rule){
+	_rule = rule; 
+	if(rule!=1 && rule!=2) { 
+		cout<<"frequentist rule should be 1 for CLs, or 2 for CLsb. Your input "<<rule<<" is not defined!"<<endl;
+		exit(0);
+	}
+}
 
 };

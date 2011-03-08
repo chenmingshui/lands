@@ -9,5 +9,7 @@ revison 1.02 date 2010.06    --MC
 Mainly develoment happened in the ATLAS+CMS toy combination exercise
 implemented an interface for configuring AK's input format,  in UtilsROOT,  "ConfigureModel"
 
-
+revison 1.10 date 2010.08.15 --MC
+Added Tevatron type and Atlas type of test statistics,  also now can deal with rules of CLs and CLsb
+PLR method for calculating significance is implemented 
 

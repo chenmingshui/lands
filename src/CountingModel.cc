@@ -398,7 +398,9 @@ namespace lands{
 				tmp+=vv[ch][isam];	
 			}
 			v.push_back(_rdm->Poisson(tmp));
+			//cout<<"debug tmp="<<tmp<<", pos="<<v[v.size()-1]<<endl;
 		}
+		//cout<<"delete me, CountingModel::GetToyData_H1 v.size= "<<v.size()<<endl;
 		return v;
 	}
 	void CountingModel::Print(int printLevel){
