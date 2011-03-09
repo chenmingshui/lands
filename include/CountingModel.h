@@ -31,7 +31,7 @@ namespace lands{
 	typedef vector< vector< vector<int> > > VChannelVSampleVUncertainty;
 	typedef vector< vector< vector< vector<double> > > > VChannelVSampleVUncertaintyVParameter;
 
-	enum enumPdfType {typeLogNormal=1, typeTruncatedGaussian=2, typeControlSampleInferredLogNormal=11 };
+	enum enumPdfType {typeLogNormal=1, typeTruncatedGaussian=2, typeGamma=3, typeControlSampleInferredLogNormal=11 };
 	
 	class CountingModel
 	{ 
@@ -60,6 +60,7 @@ namespace lands{
 			void SetData(VDChannel data){v_data=data;};
 			void SetData(vector<int> data){for(int i=0; i<data.size(); i++) v_data[i]=data[i];};
 
+			VChannelVSample Get_vv_exp_sigbkgs_nonscaled(){return vv_exp_sigbkgs;};
 			VChannelVSample Get_vv_exp_sigbkgs(){return vv_exp_sigbkgs_scaled;};
 			VDChannel Get_v_data(){return v_data;};
 
@@ -96,6 +97,11 @@ namespace lands{
 			int Get_max_uncorrelation() {return max_uncorrelation;};
 			VDChannel Get_v_TruncatedGaussian_maxUnc() {return v_TruncatedGaussian_maxUnc;};
 			vector<int> Get_v_pdftype() {return v_pdftype;};
+
+			void SetAllowNegativeSignalStrength(bool b){b_AllowNegativeSignalStrength = b;};
+			bool AllowNegativeSignalStrength(){return b_AllowNegativeSignalStrength;};
+
+			vector<double> Get_v_GammaN(){return v_GammaN;};
 		private:
 			VDChannel v_data;
 			VChannelVSample vv_exp_sigbkgs;
@@ -109,12 +115,16 @@ namespace lands{
 			CRandom *_rdm;
 			bool b_systematics;
 
-			vector<PdfRandom*> v_TruncatedGaussian;
-			vector<double> v_TruncatedGaussian_maxUnc;
+			vector<PdfRandom*> v_TruncatedGaussian; // for different truncated gaussion functions,  now already deprecated
+			vector<double> v_TruncatedGaussian_maxUnc;// record the maximum uncertainty for each uncorrelated source
 			vector<int> v_pdftype;
 			double _common_signal_strength;
 			int max_uncorrelation;
 			void ConfigUncertaintyPdfs();
+
+			bool b_AllowNegativeSignalStrength;
+
+			vector<double> v_GammaN; // record the number of sideband(or MC raw) events for each uncorrelated source
 
 	};
 };

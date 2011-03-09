@@ -15,7 +15,10 @@
 #include "Utilities.h"
 #include "BayesianBase.h"
 
+
 #include "TMinuit.h"
+
+#include "TMath.h"
 
 using std::cout;
 using std::endl;
@@ -23,7 +26,7 @@ using std::min;
 namespace lands{
 	CountingModel *cms_global = 0;
 	vector<double> vdata_global;
-
+	TMinuit *myMinuit = 0;
 
 	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag){
 		// par[0] for the ratio of cross section, common signal strength ....
@@ -36,9 +39,13 @@ namespace lands{
 		VChannelVSampleVUncertainty vvv_idcorrl = (cms_global->Get_vvv_idcorrl());
 		VChannelVSampleVUncertainty vvv_pdftype = (cms_global->Get_vvv_pdftype());
 		VChannelVSampleVUncertaintyVParameter vvvv_uncpar = cms_global->Get_vvvv_uncpar();
-		VChannelVSample vv_sigbks = cms_global -> Get_vv_exp_sigbkgs(); // FIXME scaled or unscaled ?
-		//VDChannel v_data = cms_global->Get_v_data();  // FIXME make it global ?
+		//VChannelVSample vv_sigbks = cms_global -> Get_vv_exp_sigbkgs(); // FIXME scaled or unscaled ?
 
+		// need unscaled signal yields here....   
+		// before it used scaled yields, and it was ok for PLR approximation methods, because they don't advoke SetSignalScaleFactor. 
+		VChannelVSample vv_sigbks = cms_global -> Get_vv_exp_sigbkgs_nonscaled(); 
+		vector<int> v_pdftype = cms_global->Get_v_pdftype();
+		vector<double> v_GammaN = cms_global->Get_v_GammaN();
 
 		Double_t chisq = 0;
 		int nchs = cms_global->NumOfChannels();
@@ -51,713 +58,1003 @@ namespace lands{
 		Double_t tc = 0;
 		Double_t bs = 0;
 		int u=0, s=0, c=0;
+		double tmp;
 		for(c=0; c<nchs; c++){
 			tc=par[0]*vv_sigbks[c][0];
 			if(cms_global->IsUsingSystematicsErrors()){
 				for(u = 0; u<vvv_pdftype[c][0].size(); u++){
-					if(vvv_pdftype[c][0][u]==1) tc *= (pow(1+vvvv_uncpar[c][0][u][0],par[(vvv_idcorrl)[c][0][u]]));
-					else if(vvv_pdftype[c][0][u]==2) tc*=(1+vvvv_uncpar[c][0][u][0]*par[(vvv_idcorrl)[c][0][u]]);
+					if(vvv_pdftype[c][0][u]==typeLogNormal) tc *= (pow(1+vvvv_uncpar[c][0][u][0],par[(vvv_idcorrl)[c][0][u]]));
+					else if(vvv_pdftype[c][0][u]==typeTruncatedGaussian) tc*=(1+vvvv_uncpar[c][0][u][0]*par[(vvv_idcorrl)[c][0][u]]);
+					else if(vvv_pdftype[c][0][u]==typeGamma){
+						tmp =par[0]*vv_sigbks[c][0];	
+						if(tmp==0) tc = vvvv_uncpar[c][0][u][0]*par[(vvv_idcorrl)[c][0][u]];
+						if(tmp!=0) { tc/=tmp; tc *= (vvvv_uncpar[c][0][u][0]*par[(vvv_idcorrl)[c][0][u]]); }
+						//cout<<"s= "<< tc <<" alpha= "<< vvvv_uncpar[c][0][u][0]<<" B="<<par[(vvv_idcorrl)[c][0][u]]<<endl;
+					}
 					else {
 						cout<<"pdf_type = "<<vvv_pdftype[c][0][u]<<" not defined yet"<<endl;
 						exit(0);
 					}
 				}
-				for(s = 1; s<vvv_pdftype[c].size(); s++){
-					bs = vv_sigbks[c][s];	
+			}
+
+			for(s = 1; s<vvv_pdftype[c].size(); s++){
+				bs = vv_sigbks[c][s];	
+				if(cms_global->IsUsingSystematicsErrors()){
 					for(u=0; u<vvv_pdftype[c][s].size(); u++){
-						if(vvv_pdftype[c][s][u]==1) bs*=(pow(1+vvvv_uncpar[c][s][u][0],par[(vvv_idcorrl)[c][s][u]]));
-						else if(vvv_pdftype[c][s][u]==2) bs*=(1+vvvv_uncpar[c][s][u][0]*par[(vvv_idcorrl)[c][s][u]]);
+						if(vvv_pdftype[c][s][u]==typeLogNormal) bs*=(pow(1+vvvv_uncpar[c][s][u][0],par[(vvv_idcorrl)[c][s][u]]));
+						else if(vvv_pdftype[c][s][u]==typeTruncatedGaussian) bs*=(1+vvvv_uncpar[c][s][u][0]*par[(vvv_idcorrl)[c][s][u]]);
+						else if(vvv_pdftype[c][s][u]==typeGamma) {
+							tmp = vv_sigbks[c][s];	
+							if(tmp==0) bs = vvvv_uncpar[c][s][u][0]*par[(vvv_idcorrl)[c][s][u]];
+							if(tmp!=0) { bs/=tmp; bs *= (vvvv_uncpar[c][s][u][0]*par[(vvv_idcorrl)[c][s][u]]); }
+							//	cout<<"b= "<< bs <<" alpha= "<< vvvv_uncpar[c][s][u][0]<<" B="<<par[(vvv_idcorrl)[c][s][u]]<<endl;
+						}
 						else {
 							cout<<"pdf_type = "<<vvv_pdftype[c][s][u]<<" not defined yet"<<endl;
 							exit(0);
 						}
 					}
-					tc+=bs;
 				}
+				tc+=bs;
 			}
 			if(vdata_global[c]<=0){
 				chisq +=( tc - vdata_global[c]);
+				//			chisq +=( tc ); //- vdata_global[c]); // to be identical with ATLAS TDR description, for limit only
 			}else chisq += (tc-vdata_global[c] - vdata_global[c]*log(tc/vdata_global[c]));
-		}
-		chisq*=2;
-		if(cms_global->IsUsingSystematicsErrors()){
-			for(u=1; u<=cms_global->Get_max_uncorrelation(); u++){
-				chisq += pow(par[u],2);
-			}
-		}
-
-		f=chisq;
+			//		}else chisq += (tc - vdata_global[c]*log(tc));   // to be identical with ATLAS TDR description, for limit only
 	}
-
-	double MinuitFit(int model, double &r , double &er, double mu  ){
-		bool debugMinuit = 0;
-		bool UseMinos = 0;
-
-		int npars = cms_global->Get_max_uncorrelation();
-		if( !(cms_global->IsUsingSystematicsErrors())) npars=0;
-		if( (cms_global->IsUsingSystematicsErrors() && npars>0 )  || model ==2 ){
-
-			//FIXME temporarily solution:  when reading a source with all error = 0,  then assign it to be logNormal, error =0,  in UtilsROOT.cc 
-			//good solution: redefine npars here, count only sources with definded pdf. 
-
-			TMinuit *gMinuit = new TMinuit(npars+2);  //initialize TMinuit with a maximum of 5 params
-			gMinuit->SetFCN(Chisquare);
-
-			Double_t arglist[10];
-			Int_t ierflg = 0;
-
-
-			if(!debugMinuit){
-				arglist[0]=-1;
-				gMinuit -> mnexcm("SET PRINT", arglist, 1, ierflg);
-				gMinuit -> mnexcm("SET NOW", arglist, 1, ierflg);
-
+	// to be identical with ATLAS TDR description, for limit only
+	//http://cdsweb.cern.ch/record/1159618/files/Higgs%20Boson%20%28p1197%29.pdf
+	chisq*=2;
+	if(cms_global->IsUsingSystematicsErrors()){
+		// FIXME  when    unc = 0,  then  don't add it 
+		for(u=1; u<=cms_global->Get_max_uncorrelation(); u++){
+			if(v_pdftype[u]==typeTruncatedGaussian || v_pdftype[u]==typeLogNormal)chisq += pow(par[u],2);
+			else if(v_pdftype[u]==typeGamma) {
+				// this is important, one need constraint on the pdf 
+				double k = v_GammaN[u];
+				double tmp = (k-1)*log(par[u]) - par[u];
+				chisq-=tmp;
 			}
+		}
+	}
+	// to be identical with ATLAS TDR description, for limit only
+	f=chisq;
+}
 
-			arglist[0] = 2;
-			//gMinuit->mnexcm("SET STRATEGY", arglist ,1,ierflg);
-			//gMinuit -> mnexcm("SET NOG", arglist, 1, ierflg);
+double MinuitFit(int model, double &r , double &er, double mu  ){
+	bool debugMinuit = 0;
+	bool UseMinos = 0;
+
+	int npars = cms_global->Get_max_uncorrelation();
+	if( !(cms_global->IsUsingSystematicsErrors())) npars=0;
+	if( (cms_global->IsUsingSystematicsErrors() && npars>0 )  || model ==2 ){
+
+		//FIXME temporarily solution:  when reading a source with all error = 0,  then assign it to be logNormal, error =0,  in UtilsROOT.cc 
+		//good solution: redefine npars here, count only sources with definded pdf. 
+
+		//TMinuit *myMinuit = new TMinuit(npars+2);  //initialize TMinuit with a maximum of 5 params
+		if(myMinuit) delete myMinuit;
+		myMinuit = new TMinuit(npars+2);  //initialize TMinuit with a maximum of 5 params
+		myMinuit->SetFCN(Chisquare);
+
+		Double_t arglist[10];
+		Int_t ierflg = 0;
 
 
-			// Set starting values and step sizes for parameters
-			// gMinuit->mnparm(par_index, "par_name", start_value, step_size, lower, higher, ierflg);
-			vector<int> v_pdftype = cms_global->Get_v_pdftype();
-			vector<double> v_TG_maxUnc = cms_global->Get_v_TruncatedGaussian_maxUnc();
-			for(int i=1; i<=npars; i++){
-				TString sname; 
-				sname.Form("p%d",i);
-				if(v_pdftype[i] == typeLogNormal )
-					gMinuit->mnparm(i, sname, 0, 0.1, -20, 20,ierflg); // was 5
-				else if(v_pdftype[i] == typeTruncatedGaussian ){
-					double maxunc = v_TG_maxUnc[i];	
-					if(maxunc>0.2) maxunc = -1./maxunc;
-					else maxunc = -5;
-					gMinuit->mnparm(i, sname, 0, 0.1, maxunc, 20,ierflg); // was 5
-				}else {
-					cout<<"pdftype not yet defined:  "<<v_pdftype[i]<<", npars="<<npars<<", i="<<i<<endl;
-					cout<<"**********"<<endl;
-					//cms_global->Print(100);
-					exit(0);
-				}
-			}
+		if(!debugMinuit){
+			arglist[0]=-1;
+			myMinuit -> mnexcm("SET PRINT", arglist, 1, ierflg);
+			myMinuit -> mnexcm("SET NOW", arglist, 1, ierflg);
 
-			// through fixing the ratio to determine whether fit for S+B(r=1) or B-only (r=0)   Q_tevatron
-			// let the ratio float, then it's Q_atlas
-			if(model==1){ // S+B, fix r
-				gMinuit->mnparm(0, "ratio", 1, 0.1, 0, 100, ierflg);
-				gMinuit->FixParameter(0);
-			}
-			else if(model==0){ // B-only, fix r
-				gMinuit->mnparm(0, "ratio", 0.0, 0.1, -1, 100, ierflg);
-				gMinuit->FixParameter(0);
-			}
-			else if(model==2){ // S+B,  float r
-				gMinuit->mnparm(0, "ratio", 1, 0.1, -1, 100, ierflg);
-			}
-			else if(model==3){ // profile mu
-				gMinuit->mnparm(0, "ratio", mu, 0.1, -1, 100, ierflg);
-				gMinuit->FixParameter(0);
+		}
+
+		arglist[0] = 2;
+		//myMinuit->mnexcm("SET STRATEGY", arglist ,1,ierflg);
+		//myMinuit -> mnexcm("SET NOG", arglist, 1, ierflg);
+
+
+		// Set starting values and step sizes for parameters
+		// myMinuit->mnparm(par_index, "par_name", start_value, step_size, lower, higher, ierflg);
+		vector<int> v_pdftype = cms_global->Get_v_pdftype();
+		vector<double> v_TG_maxUnc = cms_global->Get_v_TruncatedGaussian_maxUnc();
+		vector<double> v_GammaN = cms_global->Get_v_GammaN();
+		for(int i=1; i<=npars; i++){
+			TString sname; 
+			sname.Form("p%d",i);
+			if(v_pdftype[i] == typeLogNormal )
+				myMinuit->mnparm(i, sname, 0., 0.1, -20, 20,ierflg); // was 5,  causing problem with significance larger than > 7 
+			else if(v_pdftype[i] == typeTruncatedGaussian ){
+				double maxunc = v_TG_maxUnc[i];	
+				if(maxunc>0.2) maxunc = -1./maxunc;
+				else maxunc = -5;   // FIXME is hear also need to be extended to -20  ?
+				myMinuit->mnparm(i, sname, 0., 0.1, maxunc, 20,ierflg); // was 5
+			}else if(v_pdftype[i]==typeGamma){
+				myMinuit->mnparm(i, sname, v_GammaN[i], 0.5, 0, 100000, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
 			}else {
-				cout<<"Model not specified correctly:  0-3"<<endl;
-				return 0;
+				cout<<"pdftype not yet defined:  "<<v_pdftype[i]<<", npars="<<npars<<", i="<<i<<endl;
+				cout<<"**********"<<endl;
+				//cms_global->Print(100);
+				exit(0);
 			}
+		}
 
-			arglist[0] = 1;
-			gMinuit->mnexcm("SET ERR", arglist ,1,ierflg);
-			// Now ready for minimization step
-			arglist[0] = 500;
-			arglist[1] = 1.;
-			gMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
-			//	gMinuit->mnexcm("MINI", arglist ,2,ierflg);
-			//	gMinuit->mnexcm("IMPROVE", arglist ,2,ierflg);
+		// through fixing the ratio to determine whether fit for S+B(r=1) or B-only (r=0)   Q_tevatron
+		// let the ratio float, then it's Q_atlas
+		if(model==1){ // S+B, fix r
+			myMinuit->mnparm(0, "ratio", 1, 0.1, 0, 100, ierflg);
+			myMinuit->FixParameter(0);
+		}
+		else if(model==0){ // B-only, fix r
+			myMinuit->mnparm(0, "ratio", 0.0, 0.1, -1, 100, ierflg);
+			myMinuit->FixParameter(0);
+		}
+		else if(model==2){ // S+B,  float r
+			//myMinuit->mnparm(0, "ratio", 1, 0.1, -100, 100, ierflg); // andrey's suggestion, alow mu hat < 0
+			myMinuit->mnparm(0, "ratio", 1, 0.1, 0, 100, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
+		}
+		else if(model==3){ // profile mu
+			myMinuit->mnparm(0, "ratio", mu, 0.1, -100, 100, ierflg);
+			myMinuit->FixParameter(0);
+		}
+		else if(model==4){ // only floating mu,  not fit for systematics
+			myMinuit->mnparm(0, "ratio", mu, 0.1, -100, 100, ierflg);
+			for(int i=1; i<=npars; i++) myMinuit->FixParameter(i);
+		}
+		else if(model==5){ // no profiling at all, i.e. fix all parameters including strength 
+			//	myMinuit->mnparm(0, "ratio", mu, 0.1, -100, 100, ierflg);
+			//	for(int i=0; i<=npars; i++) myMinuit->FixParameter(i);
 
-
-			if(UseMinos){
-				arglist[0] = 500;
-				gMinuit->mnexcm("MINOS", arglist ,1,ierflg);
-
-			}
-
-			// Print results
-			Double_t amin,edm,errdef;
-			Int_t nvpar,nparx,icstat;
-			gMinuit->mnstat(amin,edm,errdef,nvpar,nparx,icstat);
-			//cout<<"Minimized L = "<<gMinuit->fAmin<<endl;
-			double l = gMinuit->fAmin;
-			gMinuit->GetParameter(0, r, er);
-			delete gMinuit;
-			return l;
-		}else{
-			double par[1];
 			int tmp;
 			double l;
-			if(model==0) par[0]=0;
-			else if (model == 1) par[0]=1;
-			else if (model == 3) par[0]=mu;
-			else {cout<<"model is 2, but going to fix "<<endl; exit(0);}
-			Chisquare(tmp, 0, l, par, 0);
-			return l;
-		}
-		return 0.0;
-	}	
-
-	// Class CLsBase
-	CLsBase::CLsBase(){
-		Q_b = 0;
-		Q_sb = 0;
-		iq_sb=0;
-		iq_b=0;
-		_nsig=0; _nbkg=0; _ndat=0;
-		_debug=0;
-		_rdm=0;
-		test_statistics = 1;
-	}
-
-	CLsBase::~CLsBase(){
-		if(Q_b) delete [] Q_b;
-		if(Q_sb) delete [] Q_sb;
-		if(iq_b)delete [] iq_b;
-		if(iq_sb)delete [] iq_sb;
-		_rdm=0;
-	}
-	bool CLsBase::BuildM2lnQ(CountingModel *cms, int nexps, int sbANDb_bOnly_sbOnly){
-		cms_global = cms;
-		_model=cms;
-		BuildM2lnQ(nexps, sbANDb_bOnly_sbOnly);
-	}
-	bool CLsBase::BuildM2lnQ(int nexps, int sbANDb_bOnly_sbOnly){  // 0 for sbANDb, 1 for bOnly, 2 for sbOnly
-		double tmp1, tmp2, minchi2tmp;
-		if(!_model) { 
-			cout<<"No model constructed....exit"<<endl;
-			exit(0);
-		}
-		if(! (_model->Check()) ){
-			cout<<"Model is not correctly constructed, exit"<<endl;
-			_model->Print();
-			exit(0);
-		}
-		_rdm=_model->GetRdm();
-
-		clock_t start_time=clock(), cur_time=clock();
-
-		if( _debug >= 100 )_model->Print();
-
-		//------if input is null, then do nothing	
-		_nexps = nexps;
-		_nchannels = _model->NumOfChannels();
-
-		_nsig=0; _nbkg=0; _ndat=0;
-		vector<double> vs, vb, vd; 
-		vs.clear(); vb.clear(); vd.clear();
-		for(int i=0; i<_nchannels; i++){
-			double totbkg = 0;
-			for(int isamp = 1; isamp<(_model->Get_vv_exp_sigbkgs())[i].size(); isamp++){
-				totbkg+=(_model->Get_vv_exp_sigbkgs())[i][isamp];
+			double *par;
+			par = new double[npars+1];
+			par[0]=mu;
+			for(int i=1; i<=npars; i++){
+				par[i] = 1.;
 			}
-			vs.push_back((_model->Get_vv_exp_sigbkgs())[i][0]);
-			vb.push_back(totbkg);
-			vd.push_back((_model->Get_v_data())[i]);
-			_nsig += vs[i];
-			_nbkg += vb[i];
-			_ndat += vd[i];
+
+			Chisquare(tmp, 0, l, par, 0);
+			delete []  par;
+			return l;
+
+		}else {
+			cout<<"Model not specified correctly:  0-3"<<endl;
+			return 0;
 		}
 
-		if(Q_sb) delete [] Q_sb;
-		if(Q_b) delete [] Q_b;
-		if(iq_sb) delete [] iq_sb;
-		if(iq_b) delete [] iq_b;
-		Q_sb=new double[_nexps];
-		Q_b=new double[_nexps];
-		iq_sb = new int[_nexps];	
-		iq_b = new int[_nexps];	
-
-		Q_b_exp = 0; //_nbkg*log((_nsig+_nbkg)/_nbkg);
-		Q_b_data     = 0;
+		arglist[0] = 1;
+		myMinuit->mnexcm("SET ERR", arglist ,1,ierflg);
+		// Now ready for minimization step
+		arglist[0] = 500;
+		arglist[1] = 1.;
+		myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
+		//	myMinuit->mnexcm("MINI", arglist ,2,ierflg);
+		//	myMinuit->mnexcm("IMPROVE", arglist ,2,ierflg);
 
 
-		double *n=new double[_nchannels];
-		double *noverb=new double[_nchannels];
-		double *lognoverb=new double[_nchannels];
+		if(UseMinos){
+			arglist[0] = 500;
+			myMinuit->mnexcm("MINOS", arglist ,1,ierflg);
+
+		}
+
+		// Print results
+		Double_t amin,edm,errdef;
+		Int_t nvpar,nparx,icstat;
+		myMinuit->mnstat(amin,edm,errdef,nvpar,nparx,icstat);
+		//cout<<"Minimized L = "<<myMinuit->fAmin<<endl;
+		double l = myMinuit->fAmin;
+		myMinuit->GetParameter(0, r, er);
+
+		//cout<<"Eval(r=1) : "<< myMinuit->Eval()<<endl;
+		//myMinuit->mnhelp("*");
+		if(debugMinuit){
+			for(int i=0; i<=npars; i++){
+				double tmp, tmpe;
+				myMinuit->GetParameter(i, tmp, tmpe);
+				cout<<"par "<<i<<" "<<tmp<<" +/- "<<tmpe<<endl;
+			}
+		}
+
+		//delete myMinuit;
+		return l;
+	}else{
+		double par[1];
+		int tmp;
+		double l;
+		if(model==0) par[0]=0;
+		else if (model == 1) par[0]=1;
+		else if (model == 3) par[0]=mu;
+		else {cout<<"model is 2, but going to fix "<<endl; exit(0);}
+		Chisquare(tmp, 0, l, par, 0);
+		return l;
+	}
+	return 0.0;
+}	
+
+// Class CLsBase
+CLsBase::CLsBase(){
+	Q_b = 0;
+	Q_sb = 0;
+	iq_sb=0;
+	iq_b=0;
+	_nsig=0; _nbkg=0; _ndat=0;
+	_debug=0;
+	_rdm=0;
+	test_statistics = 1;
+}
+
+CLsBase::~CLsBase(){
+	if(Q_b) delete [] Q_b;
+	if(Q_sb) delete [] Q_sb;
+	if(iq_b)delete [] iq_b;
+	if(iq_sb)delete [] iq_sb;
+	_rdm=0;
+}
+bool CLsBase::BuildM2lnQ(CountingModel *cms, int nexps, int sbANDb_bOnly_sbOnly, bool reUsePreviousToys){
+	cms_global = cms;
+	_model=cms;
+	BuildM2lnQ(nexps, sbANDb_bOnly_sbOnly, reUsePreviousToys);
+}
+bool CLsBase::BuildM2lnQ(int nexps, int sbANDb_bOnly_sbOnly, bool reUsePreviousToys){  // 0 for sbANDb, 1 for bOnly, 2 for sbOnly
+
+	// effort for adaptive sampling
+	int oldNexps = _nexps;
+	vector<double> tmpQb, tmpQsb;
+	if(reUsePreviousToys){
+		// you have to make sure in the same model with same signal scale factor ...
+		if(!Q_sb || !Q_b) reUsePreviousToys = false;  // the previous toys are either not exist or deleted
+		if(nexps<=oldNexps) reUsePreviousToys = false; // if the new total nexps required is less than previous number ... 
+		if(reUsePreviousToys){
+			tmpQsb.clear(); tmpQb.clear();
+			for(int i=0; i<oldNexps; i++){
+				tmpQb.push_back(Q_b[i]);
+				tmpQsb.push_back(Q_sb[i]);
+			}
+		}
+	}
+
+
+	double tmp1, tmp2, minchi2tmp;
+	if(!_model) { 
+		cout<<"No model constructed....exit"<<endl;
+		exit(0);
+	}
+	if(! (_model->Check()) ){
+		cout<<"Model is not correctly constructed, exit"<<endl;
+		_model->Print();
+		exit(0);
+	}
+	_rdm=_model->GetRdm();
+
+	clock_t start_time=clock(), cur_time=clock();
+
+	if( _debug >= 100 )_model->Print();
+
+	//------if input is null, then do nothing	
+	_nexps = nexps;
+	_nchannels = _model->NumOfChannels();
+
+	_nsig=0; _nbkg=0; _ndat=0;
+	vector<double> vs, vb, vd; 
+	vs.clear(); vb.clear(); vd.clear();
+	for(int i=0; i<_nchannels; i++){
+		double totbkg = 0;
+		for(int isamp = 1; isamp<(_model->Get_vv_exp_sigbkgs())[i].size(); isamp++){
+			totbkg+=(_model->Get_vv_exp_sigbkgs())[i][isamp];
+		}
+		vs.push_back((_model->Get_vv_exp_sigbkgs())[i][0]);
+		vb.push_back(totbkg);
+		vd.push_back((_model->Get_v_data())[i]);
+		_nsig += vs[i];
+		_nbkg += vb[i];
+		_ndat += vd[i];
+	}
+
+	if(Q_sb) delete [] Q_sb;
+	if(Q_b) delete [] Q_b;
+	if(iq_sb) delete [] iq_sb;
+	if(iq_b) delete [] iq_b;
+	Q_sb=new double[_nexps];
+	Q_b=new double[_nexps];
+	iq_sb = new int[_nexps];	
+	iq_b = new int[_nexps];	
+
+	Q_b_exp = 0; //_nbkg*log((_nsig+_nbkg)/_nbkg);
+	Q_b_data     = 0;
+
+
+	double *n=new double[_nchannels];
+	double *noverb=new double[_nchannels];
+	double *lognoverb=new double[_nchannels];
+	if(test_statistics==1){
+		for(int i=0; i<_nchannels; i++){	
+			// skip a channle in which nsig==0 || ntotbkg==0
+			if(( _model->AllowNegativeSignalStrength()==true || vs[i] > 0) && vb[i] > 0) {
+				n[i]=vs[i]+vb[i];
+				noverb[i]=n[i]/vb[i];
+				lognoverb[i]= ( n[i]>0 ?log(noverb[i]):0 );
+				lognoverb[i]=fabs(lognoverb[i]);
+
+				Q_b_exp+=(vb[i]*lognoverb[i]);
+				Q_b_data    +=(vd[i]*lognoverb[i]);
+			}else{
+				lognoverb[i]=0;
+			}
+
+			if(_debug>=10)cout<<" \t channel "<<i<<" s="<<vs[i]<<" b="<<vb[i]<<" d="<<vd[i]<<" lognoverb="<<lognoverb[i]<<endl;	
+
+		}
+	}else if(test_statistics==2){
+		// here Q =  2ln(L_sb/L_b),  will correct in later stage to -2lnQ
+		vdata_global = vb;
+		//	cout<<"delete me : vdata_global.size = "<<vdata_global.size()<<endl;
+		//Q_b_exp = MinuitFit(0, tmp1, tmp1) - MinuitFit(1, tmp1, tmp1);
+		Q_b_exp = MinuitFit(0, tmp1, tmp1) - MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor());
+		//	cout<<"delete me : Q = "<<Q_b_exp<<endl;
+		vdata_global = vd;
+		//Q_b_data = MinuitFit(0, tmp1, tmp1) - MinuitFit(1, tmp1, tmp1);
+		Q_b_data = MinuitFit(0, tmp1, tmp1) - MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor());
+	}else if(test_statistics==3 || test_statistics==31){
+		// here Q =  2ln(L_sb/L_b),  will correct in later stage to -2lnQ
+		/*		
+				vdata_global = vb;
+				minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
+				if(tmp1<0) Q_b_exp = 0;
+				else Q_b_exp = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
+				vdata_global = vd;
+				minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
+				if(tmp1<0) Q_b_data= 0;
+				else Q_b_data = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
+				*/
+		vdata_global = vb;
+		minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
+		double fitted_r = tmp1;
+		if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(0, tmp1, tmp2);  // MinuitFit(mode, r, err_r),  want r to be >=0
+		if(test_statistics==3){
+			if(fitted_r>=_model->GetSignalScaleFactor()) Q_b_exp = 0;
+			else Q_b_exp = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor() ) - minchi2tmp);
+		}
+		if(test_statistics==31){
+			// in Feldman Cousins paper,  it allows fitted_r > the r being tested
+			Q_b_exp = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor() ) - minchi2tmp);
+		}
+
+		vdata_global = vd;
+		minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
+		fitted_r = tmp1;
+		if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(0, tmp1, tmp2);  // MinuitFit(mode, r, err_r),  want r to be >=0
+		if(test_statistics==3){
+			if(fitted_r>=_model->GetSignalScaleFactor()) Q_b_data= 0;
+			else Q_b_data = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor() ) - minchi2tmp);
+		}
+		if(test_statistics==31){
+			// in Feldman Cousins paper,  it allows fitted_r > the r being tested
+			Q_b_data = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor() ) - minchi2tmp);
+		}
+		if(fitted_r>=_model->GetSignalScaleFactor()){
+			if(_debug)cout<<"data OverFlow:  fitted_r= "<<fitted_r<<",  the probe r ="<<_model->GetSignalScaleFactor()<<endl;
+		}
+		if(fitted_r<0){
+			if(_debug)cout<<"data UnderFlow:  fitted_r= "<<fitted_r<<",  the probe r ="<<_model->GetSignalScaleFactor()<<endl;
+		}
+	}else if(test_statistics==4){ // only fit for signal strength, not for systematics 
+		// here Q =  2ln(L_sb/L_b),  will correct in later stage to -2lnQ
+		/*		
+				vdata_global = vb;
+				minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
+				if(tmp1<0) Q_b_exp = 0;
+				else Q_b_exp = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
+				vdata_global = vd;
+				minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
+				if(tmp1<0) Q_b_data= 0;
+				else Q_b_data = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
+				*/
+		vdata_global = vb;
+		minchi2tmp = MinuitFit(4, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
+		double fitted_r = tmp1;
+		if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(5, tmp1, tmp2, 0);  // MinuitFit(mode, r, err_r),  want r to be >=0
+		if(fitted_r>=_model->GetSignalScaleFactor()) Q_b_exp = 0;
+		else Q_b_exp = -(MinuitFit(5, tmp1, tmp1, _model->GetSignalScaleFactor() ) - minchi2tmp);
+
+		vdata_global = vd;
+		minchi2tmp = MinuitFit(4, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
+		fitted_r = tmp1;
+		if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(5, tmp1, tmp2, 0);  // MinuitFit(mode, r, err_r),  want r to be >=0
+		if(fitted_r>=_model->GetSignalScaleFactor()) Q_b_data= 0;
+		else Q_b_data = -(MinuitFit(5, tmp1, tmp1, _model->GetSignalScaleFactor() ) - minchi2tmp);
+		if(fitted_r>=_model->GetSignalScaleFactor()){
+			if(_debug)cout<<"data OverFlow:  fitted_r= "<<fitted_r<<",  the probe r ="<<_model->GetSignalScaleFactor()<<endl;
+		}
+		if(fitted_r<0){
+			if(_debug)cout<<"data UnderFlow:  fitted_r= "<<fitted_r<<",  the probe r ="<<_model->GetSignalScaleFactor()<<endl;
+		}
+	}
+
+	int nsbi, nbi;
+	int tenth = _nexps/10;
+	int ntemp = _nexps*_nchannels;
+	if(_debug >=10 ) cout<<"ntemp="<<ntemp<<endl;
+	if(test_statistics!=1 && test_statistics!=4){
+		ntemp *= _model->Get_max_uncorrelation(); // if using Q_tev or Q_atlas, then multiply by the number of nuisance parameters
+		ntemp *= 100;
+	}
+	if( ntemp>=10000000 ) {
+		cout<<"\t gonna generate "<<ntemp*2<<" poisson numbers "<<endl;
+	}
+
+	for(int i=0; i<_nexps; i++){
+		if( ntemp>=10000000 ) {
+			if( (i+1)%tenth == 0 ){
+				printf("... Building -2lnQ,  %4.1f \%\n", i/(double)_nexps*100);
+				fflush(stdout);
+			}
+		}
+		Q_sb[i]=0;Q_b[i]=0;	
+		if(reUsePreviousToys && i<oldNexps){
+			Q_sb[i] = tmpQsb[i];
+			Q_b[i] = tmpQb[i];
+			continue;
+		}
+
+		if(0){
+			double q_lep=0, q_tev=0, q_atl=0, q_mu=0, muhat_lep=0, muhat_tev=0;
+			vdata_global =  _model->GetToyData_H0();
+
+			for(int ch=0; ch<_nchannels; ch++){	
+				nbi  = int(vdata_global[ch]);
+				q_lep  += (nbi *lognoverb[ch]) ;
+			}
+
+			q_tev = MinuitFit(0, tmp1, tmp1) - MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor());
+
+			minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
+			double fitted_r = tmp1;
+			if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(0, tmp1, tmp2);  // MinuitFit(mode, r, err_r),  want r to be >=0
+			if(fitted_r>=_model->GetSignalScaleFactor()) q_atl=0;
+			else q_atl = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor()) - minchi2tmp);
+			muhat_tev = fitted_r;
+
+			minchi2tmp = MinuitFit(4, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
+			fitted_r = tmp1;
+			if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(5, tmp1, tmp2, 0);  // MinuitFit(mode, r, err_r),  want r to be >=0
+			if(fitted_r>=_model->GetSignalScaleFactor()) q_mu=0;
+			else q_mu = -(MinuitFit(5, tmp1, tmp1, _model->GetSignalScaleFactor()) - minchi2tmp);
+			muhat_lep = fitted_r;
+
+
+			cout<<"TESTSTATISTICS: {"<<q_lep<<", "<<q_mu<<", "<<muhat_lep<<", "<<q_tev<<", "<<q_atl<<", "<<muhat_tev<<"},"<<endl; 
+
+			continue;
+		}
+
+
+
 		if(test_statistics==1){
-			for(int i=0; i<_nchannels; i++){	
-				// skip a channle in which nsig==0 || ntotbkg==0
-				if(vs[i] > 0 && vb[i] > 0) {
-					n[i]=vs[i]+vb[i];
-					noverb[i]=n[i]/vb[i];
-					lognoverb[i]=log(noverb[i]);
-					Q_b_exp+=(vb[i]*lognoverb[i]);
-					Q_b_data    +=(vd[i]*lognoverb[i]);
-				}else{
-					lognoverb[i]=0;
+			vector< vector<double> > vv = _model->FluctuatedNumbers();
+			for(int ch=0; ch<_nchannels; ch++){	
+				double totbkg = 0; 
+				for(int isamp=1; isamp<vv[ch].size(); isamp++){
+					totbkg+=vv[ch][isamp];
 				}
-
-				if(_debug>=10)cout<<" \t channel "<<i<<" s="<<vs[i]<<" b="<<vb[i]<<" d="<<vd[i]<<endl;	
-
+				if( (_model->AllowNegativeSignalStrength()==true || vv[ch][0] > 0) && totbkg > 0 ) {
+					if( sbANDb_bOnly_sbOnly != 1 ){
+						nsbi = _rdm->Poisson( vv[ch][0] + totbkg );	
+						Q_sb[i] += (nsbi*lognoverb[ch]) ;
+					}
+					if( sbANDb_bOnly_sbOnly != 2 ){
+						nbi  = _rdm->Poisson(totbkg);
+						Q_b[i]  += (nbi *lognoverb[ch]) ;
+					}
+				}
 			}
 		}else if(test_statistics==2){
 			// here Q =  2ln(L_sb/L_b),  will correct in later stage to -2lnQ
-			vdata_global = vb;
-			//	cout<<"delete me : vdata_global.size = "<<vdata_global.size()<<endl;
-			Q_b_exp = MinuitFit(0, tmp1, tmp1) - MinuitFit(1, tmp1, tmp1);
-			//	cout<<"delete me : Q = "<<Q_b_exp<<endl;
-			vdata_global = vd;
-			Q_b_data = MinuitFit(0, tmp1, tmp1) - MinuitFit(1, tmp1, tmp1);
-		}else if(test_statistics==3){
+			if( sbANDb_bOnly_sbOnly != 1 ){
+				vdata_global =  _model->GetToyData_H1();
+				//	cout<<"2delete me : vdata_global.size = "<<vdata_global.size()<<endl;
+				//	cout<<"2delete me : _model->GetToyData_H1.size = "<<_model->GetToyData_H1().size()<<endl;
+				//Q_sb[i] = MinuitFit(0, tmp1, tmp1) - MinuitFit(1, tmp1, tmp1);
+				Q_sb[i] = MinuitFit(0, tmp1, tmp1) - MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor());
+			}
+			if( sbANDb_bOnly_sbOnly != 2 ){
+				vdata_global = (VDChannel)_model->GetToyData_H0();
+				//	cout<<"3delete me : vdata_global.size = "<<vdata_global.size()<<endl;
+				//Q_b[i] = MinuitFit(0, tmp1, tmp1) - MinuitFit(1, tmp1, tmp1);
+				Q_b[i] = MinuitFit(0, tmp1, tmp1) - MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor());
+			}
+		}else if(test_statistics==3 || test_statistics==31){
 			// here Q =  2ln(L_sb/L_b),  will correct in later stage to -2lnQ
-			vdata_global = vb;
-			minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
-			if(tmp1<0) Q_b_exp = 0;
-			else Q_b_exp = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
-			vdata_global = vd;
-			minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
-			if(tmp1<0) Q_b_data= 0;
-			else Q_b_data = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
-		}
+			if( sbANDb_bOnly_sbOnly != 1 ){
+				vdata_global = (VDChannel)_model->GetToyData_H1();
 
-		int nsbi, nbi;
-		int tenth = _nexps/10;
-		int ntemp = _nexps*_nchannels;
-		if(_debug >=10 ) cout<<"ntemp="<<ntemp<<endl;
-		if(test_statistics!=1){
-			ntemp *= _model->Get_max_uncorrelation(); // if using Q_tev or Q_atlas, then multiply by the number of nuisance parameters
-			ntemp *= 100;
-		}
-		if( ntemp>=10000000 ) {
-			cout<<"\t gonna generate "<<ntemp*2<<" poisson numbers "<<endl;
-		}
+				minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
+				//if(tmp1<0) Q_sb[i] = 0;
+				//else Q_sb[i] = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
+				double fitted_r = tmp1;
+				if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(0, tmp1, tmp2);  // MinuitFit(mode, r, err_r),  want r to be >=0
+				if(test_statistics==3){
+					if(fitted_r>=_model->GetSignalScaleFactor()) Q_sb[i]=0;
+					else Q_sb[i] = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor()) - minchi2tmp);
+				}
+				if(test_statistics==31){
+					// in Feldman Cousins paper,  it allows fitted_r > the r being tested
+					Q_sb[i] = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor()) - minchi2tmp);
+				}
 
-		for(int i=0; i<_nexps; i++){
-			if( ntemp>=10000000 ) {
-				if( (i+1)%tenth == 0 ){
-					printf("... Building -2lnQ,  %4.1f \%\n", i/(double)_nexps*100);
-					fflush(stdout);
+				if(_debug>=100)cout<<" data="<<vdata_global[0]<<" q_sb="<<Q_sb[i]<<" fitted_r="<<fitted_r<<" minchi2tmp="<<minchi2tmp<<" tmp1="<<tmp1<<endl;
+			}
+			if( sbANDb_bOnly_sbOnly != 2 ){
+				vdata_global = (VDChannel)_model->GetToyData_H0();
+				minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
+				//if(tmp1<0) Q_b[i] = 0;
+				//else Q_b[i] = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
+				double fitted_r = tmp1;
+				if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(0, tmp1, tmp2);  // MinuitFit(mode, r, err_r),  want r to be >=0
+				if(test_statistics==3){
+					if(fitted_r>=_model->GetSignalScaleFactor()) Q_b[i]=0;
+					else Q_b[i] = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor()) - minchi2tmp);
+				}
+				if(test_statistics==31){
+					// in Feldman Cousins paper,  it allows fitted_r > the r being tested
+					Q_b[i] = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor()) - minchi2tmp);
 				}
 			}
-			Q_sb[i]=0;Q_b[i]=0;	
+		}else if(test_statistics==4){
+			// here Q =  2ln(L_sb/L_b),  will correct in later stage to -2lnQ
+			if( sbANDb_bOnly_sbOnly != 1 ){
+				vdata_global = (VDChannel)_model->GetToyData_H1();
+
+				minchi2tmp = MinuitFit(4, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
+				//if(tmp1<0) Q_sb[i] = 0;
+				//else Q_sb[i] = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
+				double fitted_r = tmp1;
+				double minchi2tmp2 = 0;
+				if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(5, tmp1, tmp2, 0);  // MinuitFit(mode, r, err_r),  want r to be >=0
+				if(fitted_r>=_model->GetSignalScaleFactor()) Q_sb[i]=0;
+				else {
+					minchi2tmp2 =MinuitFit(5, tmp1, tmp1, _model->GetSignalScaleFactor()); 
+					Q_sb[i] = -(minchi2tmp2 - minchi2tmp);
+				}
+
+				if(_debug>=100)cout<<" data="<<vdata_global[0]<<" q_sb="<<Q_sb[i]<<" fitted_r="<<fitted_r<<" minchi2tmp="<<minchi2tmp<<" tmp1="<<tmp1<<" minchi2tmp2="<<minchi2tmp2<<endl;
+			}
+			if( sbANDb_bOnly_sbOnly != 2 ){
+				vdata_global = (VDChannel)_model->GetToyData_H0();
+				minchi2tmp = MinuitFit(4, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
+				//if(tmp1<0) Q_b[i] = 0;
+				//else Q_b[i] = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
+				double fitted_r = tmp1;
+				if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(5, tmp1, tmp2, 0);  // MinuitFit(mode, r, err_r),  want r to be >=0
+				if(fitted_r>=_model->GetSignalScaleFactor()) Q_b[i]=0;
+				else Q_b[i] = -(MinuitFit(5, tmp1, tmp1, _model->GetSignalScaleFactor()) - minchi2tmp);
+			}
+		}
+	}
+
+	if(_debug) { start_time=cur_time; cur_time=clock(); cout << "\t\t\t TIME in RunMCExps run_"<<_nexps<<"_pseudo exps: " << (cur_time - start_time)/1000. << " millisec\n"; }
+
+	//ProcessM2lnQ();
+	if( sbANDb_bOnly_sbOnly !=2 )Sort(_nexps, Q_b, iq_b, 0); // rank from small to large
+	if( sbANDb_bOnly_sbOnly !=1 )Sort(_nexps, Q_sb, iq_sb, 0);
+	if (sbANDb_bOnly_sbOnly==0) 
+		if( ( Q_b_data < Q_b[iq_b[0]] || Q_b_data > Q_sb[iq_sb[_nexps-1]] ) && _debug ){ 
+			cout<<"\t probability of this -2lnQ_data is very very small, it's out of "<<_nexps<<" exps, you need more toys"<<endl;
 			if(test_statistics==1){
-				vector< vector<double> > vv = _model->FluctuatedNumbers();
-				for(int ch=0; ch<_nchannels; ch++){	
-					double totbkg = 0; 
-					for(int isamp=1; isamp<vv[ch].size(); isamp++){
-						totbkg+=vv[ch][isamp];
-					}
-					if(vv[ch][0] > 0 && totbkg > 0 ) {
-						if( sbANDb_bOnly_sbOnly != 1 ){
-							nsbi = _rdm->Poisson( vv[ch][0] + totbkg );	
-							Q_sb[i] += (nsbi*lognoverb[ch]) ;
-						}
-						if( sbANDb_bOnly_sbOnly != 2 ){
-							nbi  = _rdm->Poisson(totbkg);
-							Q_b[i]  += (nbi *lognoverb[ch]) ;
-						}
-					}
-				}
-			}else if(test_statistics==2){
-				// here Q =  2ln(L_sb/L_b),  will correct in later stage to -2lnQ
-				if( sbANDb_bOnly_sbOnly != 1 ){
-					vdata_global =  _model->GetToyData_H1();
-					//	cout<<"2delete me : vdata_global.size = "<<vdata_global.size()<<endl;
-					//	cout<<"2delete me : _model->GetToyData_H1.size = "<<_model->GetToyData_H1().size()<<endl;
-					Q_sb[i] = MinuitFit(0, tmp1, tmp1) - MinuitFit(1, tmp1, tmp1);
-				}
-				if( sbANDb_bOnly_sbOnly != 2 ){
-					vdata_global = (VDChannel)_model->GetToyData_H0();
-					//	cout<<"3delete me : vdata_global.size = "<<vdata_global.size()<<endl;
-					Q_b[i] = MinuitFit(0, tmp1, tmp1) - MinuitFit(1, tmp1, tmp1);
-				}
-			}else if(test_statistics==3){
-				// here Q =  2ln(L_sb/L_b),  will correct in later stage to -2lnQ
-				if( sbANDb_bOnly_sbOnly != 1 ){
-					vdata_global = (VDChannel)_model->GetToyData_H1();
-
-			minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
-			if(tmp1<0) Q_sb[i] = 0;
-			else Q_sb[i] = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
-
-				//	Q_sb[i] = MinuitFit(3, tmp1, tmp1) - MinuitFit(2, tmp1, tmp2);
-				}
-				if( sbANDb_bOnly_sbOnly != 2 ){
-					vdata_global = (VDChannel)_model->GetToyData_H0();
-			minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
-			if(tmp1<0) Q_b[i] = 0;
-			else Q_b[i] = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
-				//	Q_b[i] = MinuitFit(3, tmp1, tmp1) - MinuitFit(2, tmp1, tmp2);
-				}
-			}
-		}
-
-		if(_debug) { start_time=cur_time; cur_time=clock(); cout << "\t\t\t TIME in RunMCExps run_"<<_nexps<<"_pseudo exps: " << (cur_time - start_time)/1000. << " millisec\n"; }
-
-		//ProcessM2lnQ();
-		if( sbANDb_bOnly_sbOnly !=2 )Sort(_nexps, Q_b, iq_b, 0); // rank from small to large
-		if( sbANDb_bOnly_sbOnly !=1 )Sort(_nexps, Q_sb, iq_sb, 0);
-		if (sbANDb_bOnly_sbOnly==0) 
-			if( ( Q_b_data < Q_b[iq_b[0]] || Q_b_data > Q_sb[iq_sb[_nexps-1]] ) && _debug ){ 
-				cout<<"\t probability of this -2lnQ_data is very very small, it's out of "<<_nexps<<" exps, you need more toys"<<endl;
 				cout<<"\t -2lnQ_data =   "<<-2*Q_b_data+2*_nsig<<endl;
 				cout<<"\t -2lnQ_b    = [ "<<-2*Q_b[iq_b[_nexps-1]]+2*_nsig<<" , "<<-2*Q_b[iq_b[0]]+2*_nsig<<" ]"<<endl;
 				cout<<"\t -2lnQ_sb   = [ "<<-2*Q_sb[iq_sb[_nexps-1]]+2*_nsig<<" , "<<-2*Q_sb[iq_sb[0]]+2*_nsig<<" ]"<<endl;
+			}else{
+				cout<<"\t -2lnQ_data =   "<<-2*Q_b_data<<endl;
+				cout<<"\t -2lnQ_b    = [ "<<-2*Q_b[iq_b[_nexps-1]]<<" , "<<-2*Q_b[iq_b[0]]<<" ]"<<endl;
+				cout<<"\t -2lnQ_sb   = [ "<<-2*Q_sb[iq_sb[_nexps-1]]<<" , "<<-2*Q_sb[iq_sb[0]]<<" ]"<<endl;
 			}
-		if(_debug>=1 && sbANDb_bOnly_sbOnly==0 ) {
+		}
+	if(_debug>=1 && sbANDb_bOnly_sbOnly==0 ) {
+		if(test_statistics==1){
 			cout<<"\t -2lnQ_data =   "<<-2*Q_b_data+2*_nsig<<endl;
 			cout<<"\t -2lnQ_b    = [ "<<-2*Q_b[iq_b[_nexps-1]]+2*_nsig<<" , "<<-2*Q_b[iq_b[0]]+2*_nsig<<" ]"<<endl;
 			cout<<"\t -2lnQ_sb   = [ "<<-2*Q_sb[iq_sb[_nexps-1]]+2*_nsig<<" , "<<-2*Q_sb[iq_sb[0]]+2*_nsig<<" ]"<<endl;
-		}
-		if(_debug>=100 && sbANDb_bOnly_sbOnly==0 ){
-			cout<<"\t\t CHECKING order ----- "<<endl;
-			for(int i=0; i<_nexps; i++){
-				cout<<"\t "<<i<<"     "<<-2*Q_b[iq_b[i]]+2*_nsig<<"  "<<-2*Q_sb[iq_sb[i]]+2*_nsig<<endl;
-			}
-		}
-
-		delete [] n; delete [] noverb; delete [] lognoverb;
-		return true;
-	}
-
-	void CLsBase::ProcessM2lnQ(){
-		Sort(_nexps, Q_b, iq_b, 0); // rank from small to large
-		Sort(_nexps, Q_sb, iq_sb, 0);
-		if( ( Q_b_data < Q_b[iq_b[0]] || Q_b_data > Q_sb[iq_sb[_nexps-1]] )  && _debug){ 
-			cout<<"\t probability of this -2lnQ_data is very very small, it's out of "<<_nexps<<" exps, you need more toys"<<endl;
-			cout<<"\t -2lnQ_data =   "<<-2*Q_b_data+2*_nsig<<endl;
-			cout<<"\t -2lnQ_b    = [ "<<-2*Q_b[iq_b[_nexps-1]]+2*_nsig<<" , "<<-2*Q_b[iq_b[0]]+2*_nsig<<" ]"<<endl;
-			cout<<"\t -2lnQ_sb   = [ "<<-2*Q_sb[iq_sb[_nexps-1]]+2*_nsig<<" , "<<-2*Q_sb[iq_sb[0]]+2*_nsig<<" ]"<<endl;
-		}
-		if(_debug>=1) {
-			cout<<"\t -2lnQ_data =   "<<-2*Q_b_data+2*_nsig<<endl;
-			cout<<"\t -2lnQ_b    = [ "<<-2*Q_b[iq_b[_nexps-1]]+2*_nsig<<" , "<<-2*Q_b[iq_b[0]]+2*_nsig<<" ]"<<endl;
-			cout<<"\t -2lnQ_sb   = [ "<<-2*Q_sb[iq_sb[_nexps-1]]+2*_nsig<<" , "<<-2*Q_sb[iq_sb[0]]+2*_nsig<<" ]"<<endl;
-		}
-		if(_debug>=100){
-			cout<<"\t\t CHECKING order ----- "<<endl;
-			for(int i=0; i<_nexps; i++){
-				cout<<"\t "<<i<<"     "<<-2*Q_b[iq_b[i]]+2*_nsig<<"  "<<-2*Q_sb[iq_sb[i]]+2*_nsig<<endl;
-			}
+		}else{
+			cout<<"\t -2lnQ_data =   "<<-2*Q_b_data<<endl;
+			cout<<"\t -2lnQ_b    = [ "<<-2*Q_b[iq_b[_nexps-1]]<<" , "<<-2*Q_b[iq_b[0]]<<" ]"<<endl;
+			cout<<"\t -2lnQ_sb   = [ "<<-2*Q_sb[iq_sb[_nexps-1]]<<" , "<<-2*Q_sb[iq_sb[0]]<<" ]"<<endl;
 		}
 	}
-	void CLsBase::SetRdm(CRandom *rdm){
-		_rdm = rdm;
-	}
-	vector<double> CLsBase::Get_m2logQ_sb(){
-		vector<double> tmp;
-		if(test_statistics==1)
-			for(int i=0; i<_nexps; i++){
-				tmp.push_back(-2*(Q_sb[i]-_nsig));
-			}
-		else
-			for(int i=0; i<_nexps; i++){
-				tmp.push_back(-Q_sb[i]);
-			}
-		return tmp;
-	} 
-	vector<double> CLsBase::Get_m2logQ_b(){
-		vector<double> tmp;
-		if(test_statistics==1)
-			for(int i=0; i<_nexps; i++){
-				tmp.push_back(-2*(Q_b[i]-_nsig));
-			}
-		else
-			for(int i=0; i<_nexps; i++){
-				tmp.push_back(-Q_b[i]);
-			}
-		return tmp;
-	} 
-	double CLsBase::CLsb(){
-		double ret =0;// 1./(double)_nexps;
-		double tmp = Q_b_data;
+	if(_debug>=100 && sbANDb_bOnly_sbOnly==0 ){
+		cout<<"\t\t CHECKING order ---index Q_b Q_sb-- "<<endl;
 		for(int i=0; i<_nexps; i++){
-			if(Q_sb[iq_sb[i]]<=tmp)
-				ret = (i+1)/(double)_nexps;	
-		}		
-
-		if(_debug>=10){
-			cout<<"CLsBase::CLsb  CLsb()="<<ret<<" and total exps="<<_nexps<<endl;
-			if(ret*_nexps <= 20) cout<<"CLsBase::CLsb  CLsb*nexps="<<ret*_nexps<<", statistic may not enough"<<endl;
+			if(test_statistics==1)	cout<<"\t "<<i<<"     "<<-2*Q_b[iq_b[i]]+2*_nsig<<"  "<<-2*Q_sb[iq_sb[i]]+2*_nsig<<endl;
+			else 	cout<<"\t "<<i<<"     "<<-2*Q_b[iq_b[i]]<<"  "<<-2*Q_sb[iq_sb[i]]<<endl;
 		}
-		if(ret == 0){
-			if(_debug)	cout<<"CLsBase::CLsb CLsb=0, it means number of pseudo experiments is not enough"<<endl;
-			if(_debug)	cout<<"              Currently, we put CLsb=1./"<<_nexps<<endl;
+	}
+
+	delete [] n; delete [] noverb; delete [] lognoverb;
+	return true;
+}
+
+void CLsBase::ProcessM2lnQ(){
+	Sort(_nexps, Q_b, iq_b, 0); // rank from small to large
+	Sort(_nexps, Q_sb, iq_sb, 0);
+	if( ( Q_b_data < Q_b[iq_b[0]] || Q_b_data > Q_sb[iq_sb[_nexps-1]] )  && _debug){ 
+		cout<<"\t probability of this -2lnQ_data is very very small, it's out of "<<_nexps<<" exps, you need more toys"<<endl;
+		cout<<"\t -2lnQ_data =   "<<-2*Q_b_data+2*_nsig<<endl;
+		cout<<"\t -2lnQ_b    = [ "<<-2*Q_b[iq_b[_nexps-1]]+2*_nsig<<" , "<<-2*Q_b[iq_b[0]]+2*_nsig<<" ]"<<endl;
+		cout<<"\t -2lnQ_sb   = [ "<<-2*Q_sb[iq_sb[_nexps-1]]+2*_nsig<<" , "<<-2*Q_sb[iq_sb[0]]+2*_nsig<<" ]"<<endl;
+	}
+	if(_debug>=1) {
+		cout<<"\t -2lnQ_data =   "<<-2*Q_b_data+2*_nsig<<endl;
+		cout<<"\t -2lnQ_b    = [ "<<-2*Q_b[iq_b[_nexps-1]]+2*_nsig<<" , "<<-2*Q_b[iq_b[0]]+2*_nsig<<" ]"<<endl;
+		cout<<"\t -2lnQ_sb   = [ "<<-2*Q_sb[iq_sb[_nexps-1]]+2*_nsig<<" , "<<-2*Q_sb[iq_sb[0]]+2*_nsig<<" ]"<<endl;
+	}
+	if(_debug>=100){
+		cout<<"\t\t CHECKING order ----- "<<endl;
+		for(int i=0; i<_nexps; i++){
+			cout<<"\t "<<i<<"     "<<-2*Q_b[iq_b[i]]+2*_nsig<<"  "<<-2*Q_sb[iq_sb[i]]+2*_nsig<<endl;
+		}
+	}
+}
+void CLsBase::SetRdm(CRandom *rdm){
+	_rdm = rdm;
+}
+vector<double> CLsBase::Get_m2logQ_sb(){
+	vector<double> tmp;
+	if(test_statistics==1)
+		for(int i=0; i<_nexps; i++){
+			tmp.push_back(-2*(Q_sb[i]-_nsig));
+		}
+	else
+		for(int i=0; i<_nexps; i++){
+			tmp.push_back(-2*Q_sb[i]);
+		}
+	return tmp;
+} 
+vector<double> CLsBase::Get_m2logQ_b(){
+	vector<double> tmp;
+	if(test_statistics==1)
+		for(int i=0; i<_nexps; i++){
+			tmp.push_back(-2*(Q_b[i]-_nsig));
+		}
+	else
+		for(int i=0; i<_nexps; i++){
+			tmp.push_back(-2*Q_b[i]);
+		}
+	return tmp;
+} 
+double CLsBase::CLsb(double &err){
+	double ret =0;// 1./(double)_nexps;
+	double tmp = Q_b_data;
+	for(int i=0; i<_nexps; i++){
+		if(Q_sb[iq_sb[i]]<=tmp)
+			ret = (i+1)/(double)_nexps;	
+	}		
+
+	err= sqrt(ret*(1-ret)/_nexps);
+	if(ret==0||ret==1) err= 1./_nexps;
+
+	if(_debug>=10){
+		cout<<"CLsBase::CLsb  CLsb()="<<ret<<" +/- "<<err<<" and total exps="<<_nexps<<endl;
+		if(ret*_nexps <= 20) cout<<"CLsBase::CLsb  CLsb*nexps="<<ret*_nexps<<", statistic may not enough"<<endl;
+	}
+	if(ret == 0){
+		if(_debug)	cout<<"CLsBase::CLsb CLsb=0, it means number of pseudo experiments is not enough"<<endl;
+		if(_debug)	cout<<"              Currently, we put CLsb=1./"<<_nexps<<endl;
+		ret = 1./(double)_nexps;
+	}
+	return ret;
+}
+double CLsBase::CLs(double &err){
+	double errb, errsb;
+	double clb=CLb(errb);
+	double clsb=CLsb(errsb);
+	if(clb==0){if(_debug)	cout<<"CLsBase::CLs  Warning clb_b==0 !!!!"<<endl; err = 1;  return 1;}
+	err = sqrt( errb/clb*errb/clb + errsb/clsb*errsb/clsb) * clsb/clb;
+	if(_debug>=10) cout<<"CLsBase::CLs  CLs=CLsb/CLb="<<clsb/clb<<"+/-"<<err<<endl;
+	return clsb/clb;
+}
+double CLsBase::CLb(double &err){
+	return CLb(Q_b_data, err);
+}
+double CLsBase::PValue(double lnq){
+	double ret=0;
+	bool hasQ_gt_lnq = false;
+	for(int i=0; i<_nexps; i++){ 
+		if(Q_b[iq_b[i]] >= lnq)  {
+			ret = i/(double)_nexps;	
+			hasQ_gt_lnq=true;
+			break;
+		}
+	}		
+	if(hasQ_gt_lnq==false) {
+		ret= 1-1./(double)_nexps;
+		if(_debug or 1) {
+			cout<<"********WARNING********"<<endl;
+			cout<<" Toys for b-only hypothesis are NOT enough to evaluate the true significance, "<<endl;
+			cout<<" Q_b[0]="<<Q_b[iq_b[0]]<<" Q_b["<<_nexps<<"]="<<Q_b[iq_b[_nexps-1]]
+				<<", and tested Q="<<lnq<<endl;	
+			cout<<" we set PValue to be 1./_nexps = "<<1-ret<<endl;
+		}
+	}
+	return 1-ret;
+}
+void CLsBase::CheckFractionAtHighEnd(vector<double> vlogQ, vector<double> vlogQ_prob){
+	//cout<<endl<<"*********Start Calc mean value of significance ......."<<endl;
+	// vlogQ has been sorted from small to larger ...,  vlogQ_prob for accumulative probability
+	double fractionGTmaxlnQb = 0;
+	for (int i=0; i<vlogQ.size(); i++) {
+		if(vlogQ[i] > Q_b[iq_b[_nexps-1]]) {
+			if(i>0) fractionGTmaxlnQb = 1 - vlogQ_prob[i-1];	
+			else fractionGTmaxlnQb = 1;
+			break;
+		}
+	}
+	cout<<" This is for evaluating expected mean significance: "<<endl;
+	cout<<" Fraction of logQ from S+B hypothesis larger than maximum logQ_b  = "<<fractionGTmaxlnQb<<endl;
+	cout<<" I would like this number to be less than 5% "<<endl;
+	// if a given lnQ_data larger than maximum logQ_b, it means that toys of b-only is not enough to evaluate significance, 
+	// probably we need increase the toy number one or two magnitudes. 
+
+}
+double CLsBase::CLb(double lnq, double & err){
+	double ret =0;// 1./(double)_nexps;
+	double tmp = lnq;
+	for(int i=0; i<_nexps; i++){ 
+		if(Q_b[iq_b[i]]<=tmp)
+			ret = (i+1)/(double)_nexps;	
+	}		
+
+	err= sqrt(ret*(1-ret)/_nexps);
+	if(ret==0||ret==1) err= 1./_nexps;
+
+	if(_debug>=10){
+		cout<<"CLsBase::CLb  CLb()="<<ret<<"+/-"<<err<<" and total exps="<<_nexps<<endl;
+		int step = _nexps/20;
+		cout<<"*** print out Q_b and accumulative probability, size="<<_nexps<<" step="<<step<<endl;
+		int i=0;
+		for(; i<_nexps; i+=(step+1)) {
+			printf("%10d",i);
+			cout<<"\t Q_b,p= "<<Q_b[iq_b[i]]<<" "<<double((i+1)/(double)_nexps)<<endl;
+		}
+		if(i!=_nexps || (i==_nexps && step!=1)) {
+			printf("%10d",_nexps);
+			cout<<"\t lnQ,p= "<<Q_b[iq_b[_nexps-1]]<<" 1"<<endl;
+		}
+	}
+	if(ret*_nexps <= 20) cout<<"CLsBase::CLb  CLb*nexps="<<ret*_nexps<<", statistic may not enough"<<endl;
+	if( (1-ret)*_nexps <= 20) cout<<"CLsBase::CLb  (1-CLb)*nexps="<<(1-ret)*_nexps<<", statistic may not enough"<<endl;
+	if(ret == 0 || ret==1){
+		cout<<"CLsBase::CLb CLb="<<ret<<", it means number of pseudo experiments is not enough"<<endl;
+		if(ret==0) {
+			cout<<"              Currently, we put CLb=1./"<<_nexps<<endl;
 			ret = 1./(double)_nexps;
 		}
-		return ret;
+		if(ret==1) {
+			cout<<"              Currently, we put CLb= 1 - 1./"<<_nexps<<endl;
+			ret = 1 - 1./(double)_nexps;
+		}
 	}
-	double CLsBase::CLs(){
-		double clb=CLb();
-		double clsb=CLsb();
-		if(clb==0){if(_debug)	cout<<"CLsBase::CLs  Warning clb_b==0 !!!!"<<endl; return 1;}
-		if(_debug>=10) cout<<"CLsBase::CLs  CLs=CLsb/CLb="<<clsb/clb<<endl;
-		return clsb/clb;
+	return ret;
+}
+double CLsBase::CLsb_b(){
+	double ret = 1./(double)_nexps;
+	double tmp = Q_b_exp;
+	for(int i=0; i<_nexps; i++){
+		if(Q_sb[iq_sb[i]]<=tmp)
+			ret = (i+1)/(double)_nexps;	
+	}		
+	return ret;
+}
+double CLsBase::CLs_b(){
+	double clb_b=CLb_b();
+	double clsb_b=CLsb_b();
+	if(clb_b==0){cout<<"Warning clb_b==0 !!!!"<<endl;return 1;}
+	return clsb_b/clb_b;
+}
+double CLsBase::CLb_b(){
+	double ret = 1./(double)_nexps;
+	double tmp = Q_b_exp;
+	for(int i=0; i<_nexps; i++){
+		if(Q_b[iq_b[i]]<=tmp)
+			ret = (i+1)/(double)_nexps;	
+	}		
+	return ret;
+}
+void CLsBase::SetLogQ_b(vector<double> vlnQ_b){
+	_nexps=vlnQ_b.size();
+	Q_b=new double[_nexps];
+	iq_b = new int[_nexps];	
+	for(int i=0; i<_nexps; i++) Q_b[i]=vlnQ_b[i];
+	Sort(_nexps, Q_b, iq_b, 0);
+}
+void CLsBase::SetLogQ_sb(vector<double> vlnQ_sb){
+	_nexps=vlnQ_sb.size();
+	Q_sb=new double[_nexps];
+	iq_sb = new int[_nexps];	
+	for(int i=0; i<_nexps; i++) Q_sb[i]=vlnQ_sb[i];
+	Sort(_nexps, Q_sb, iq_sb, 0);
+}
+void CLsBase::SetLogQ_data(double lnQ_data){Q_b_data=lnQ_data;}
+
+double CLsBase::Get_m2lnQ_data(){
+	double tmp1;
+	vector<double> vs, vb, vd; 
+	vs.clear(); vb.clear(); vd.clear();
+	_nsig=0; Q_b_data = 0;
+	for(int i=0; i<_nchannels; i++){
+		double totbkg = 0;
+		for(int isamp = 1; isamp<(_model->Get_vv_exp_sigbkgs())[i].size(); isamp++){
+			totbkg+=(_model->Get_vv_exp_sigbkgs())[i][isamp];
+		}
+		vs.push_back((_model->Get_vv_exp_sigbkgs())[i][0]);
+		vb.push_back(totbkg);
+		vd.push_back((_model->Get_v_data())[i]);
+		_nsig += vs[i];
 	}
-	double CLsBase::CLb(){
-		return CLb(Q_b_data);
+	if(test_statistics==1){
+		for(int i=0; i<_nchannels; i++){	
+			// skip a channle in which nsig==0 || ntotbkg==0
+			if(vs[i] > 0 && vb[i] > 0) {
+				Q_b_data    +=(vd[i]*log((vs[i]+vb[i])/vb[i]));
+			}
+		}
+		return -2*(Q_b_data-_nsig);
+	}else if(test_statistics==2){
+		vdata_global = vd;
+		//Q_b_data = MinuitFit(0, tmp1, tmp1) - MinuitFit(1, tmp1, tmp1);
+		Q_b_data = MinuitFit(0, tmp1, tmp1) - MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor());
+		return -Q_b_data;
+	}else if(test_statistics==3 || test_statistics== 31){
+		vdata_global = vd;
+		double tmp2;
+		double minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
+		//cout<<" 1 minchi2tmp = "<<minchi2tmp<<endl;
+		//if(tmp1<0) Q_b_data= 0;
+		//else Q_b_data = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
+		double fitted_r = tmp1;
+		//cout<<" fitted_r "<<fitted_r<<endl;
+		//cout<<" AllowNegativeSignalStrength = "<<_model->AllowNegativeSignalStrength()<<endl;
+		if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(0, tmp1, tmp2);  // MinuitFit(mode, r, err_r),  want r to be >=0
+		if(test_statistics==3){
+			if(fitted_r>=_model->GetSignalScaleFactor()) Q_b_data=0;
+			else Q_b_data = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor()) - minchi2tmp);
+		}
+		if(test_statistics==31){
+			// in Feldman Cousins paper,  it allows fitted_r > the r being tested
+			Q_b_data = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor()) - minchi2tmp);
+		}
+
+		//cout<<" 2 minchi2tmp = "<<minchi2tmp<<endl;
+		//cout<<" Q_b_data = "<<Q_b_data<<endl;
+		return -2*Q_b_data;
+	}else if(test_statistics==4){
+		vdata_global = vd;
+		double tmp2;
+		double minchi2tmp = MinuitFit(4, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
+		//if(tmp1<0) Q_b_data= 0;
+		//else Q_b_data = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
+		double fitted_r = tmp1;
+		if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(5, tmp1, tmp2, 0);  // MinuitFit(mode, r, err_r),  want r to be >=0
+		if(fitted_r>=_model->GetSignalScaleFactor()) Q_b_data=0;
+		else Q_b_data = -(MinuitFit(5, tmp1, tmp1, _model->GetSignalScaleFactor()) - minchi2tmp);
+		return -2*Q_b_data;
 	}
-	double CLsBase::PValue(double lnq){
+	return 0;
+}
+
+void CLsBase::SetDebug(int debug){_debug=debug;}
+CRandom* CLsBase::GetRdm(){return _rdm;}
+
+void CLsBase::tmpFun0(vector<double> & vlogQ, vector<double>& vlogQ_prob){
+	SortAndCumulative(Q_sb, _nexps, vlogQ, vlogQ_prob, 0);// sort it by  increased order 
+}
+double CLsBase::SignificanceComputation(int ntoys_for_sb, int ntoys_for_b){
+	vector<double> vsignificance, vsignificance_cp;
+	return SignificanceComputation(ntoys_for_sb, ntoys_for_b, vsignificance, vsignificance_cp);	
+}
+double CLsBase::SignificanceComputation(int ntoys_for_sb, int ntoys_for_b, vector<double>& vsignificance, vector<double> & vsignificance_cp){
+	clock_t start_time, cur_time, funcStart_time;
+	start_time=clock(); cur_time=clock(); funcStart_time=clock();
+
+	if(_debug>=10)cout<<" previous _nexps = "<<_nexps<<endl;
+
+	vector<double> vlogQ_sb, vlogQ_sb_prob;
+	vlogQ_sb.clear(); vlogQ_sb_prob.clear(); vsignificance_cp.clear(); vsignificance.clear();
+
+	if(ntoys_for_sb<=0) {
+		if(_debug>=10)cout<<" using the old _nexps for sb = "<<_nexps<<endl;
+		SortAndCumulative(Q_sb, _nexps, vlogQ_sb, vlogQ_sb_prob, 0);// sort it by  increased order 
+	}else{
+		if(_debug>=10)cout<<" producing new _nexps for sb = "<<ntoys_for_sb<<endl;
+		BuildM2lnQ(ntoys_for_sb, 2);
+		if(_debug>=10)cout<<" end new _nexps for sb = "<<ntoys_for_sb<<endl;
+		SortAndCumulative(Q_sb, _nexps, vlogQ_sb, vlogQ_sb_prob, 0);// sort it by  increased order 
+		if(_debug>=10)cout<<" sort _nexps for sb = "<<ntoys_for_sb<<endl;
+		if(_debug){
+			start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_BuildM2logQsb: "<< ntoys_for_sb <<"toys, "<< (cur_time - start_time)/1000000. << " sec\n";
+			fflush(stdout);
+		}
+	}	
+
+	if(_debug>=10)cout<<" producing new _nexps for bonly = "<<ntoys_for_b<<endl;
+	BuildM2lnQ(ntoys_for_b, 1);
+	if(_debug){
+		start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_BuildM2logQb: "<< ntoys_for_b <<"toys, "<< (cur_time - start_time)/1000000./60. << " minutes\n";
+		fflush(stdout);
+	}
+	CheckFractionAtHighEnd(vlogQ_sb, vlogQ_sb_prob);
+
+	int previousStopPoint=0;
+	for(int isb=0; isb<vlogQ_sb.size(); isb++) {
+		if(_debug>=100)cout<<"previousStopPoint = "<<previousStopPoint<<endl;
+		double lnq=vlogQ_sb[isb];
 		double ret=0;
 		bool hasQ_gt_lnq = false;
-		for(int i=0; i<_nexps; i++){ 
+		for(int i=previousStopPoint; i<_nexps; i++){ 
 			if(Q_b[iq_b[i]] >= lnq)  {
 				ret = i/(double)_nexps;	
 				hasQ_gt_lnq=true;
+				previousStopPoint = i;
 				break;
 			}
 		}		
 		if(hasQ_gt_lnq==false) {
 			ret= 1-1./(double)_nexps;
-			if(_debug or 1) {
-				cout<<"********WARNING********"<<endl;
-				cout<<" Toys for b-only hypothesis are NOT enough to evaluate the true significance, "<<endl;
-				cout<<" Q_b[0]="<<Q_b[iq_b[0]]<<" Q_b["<<_nexps<<"]="<<Q_b[iq_b[_nexps-1]]
-					<<", and tested Q="<<lnq<<endl;	
-				cout<<" we set PValue to be 1./_nexps = "<<1-ret<<endl;
-			}
 		}
-		return 1-ret;
-	}
-	void CLsBase::CheckFractionAtHighEnd(vector<double> vlogQ, vector<double> vlogQ_prob){
-		//cout<<endl<<"*********Start Calc mean value of significance ......."<<endl;
-		// vlogQ has been sorted from small to larger ...,  vlogQ_prob for accumulative probability
-		double fractionGTmaxlnQb = 0;
-		for (int i=0; i<vlogQ.size(); i++) {
-			if(vlogQ[i] > Q_b[iq_b[_nexps-1]]) {
-				if(i>0) fractionGTmaxlnQb = 1 - vlogQ_prob[i-1];	
-				else fractionGTmaxlnQb = 1;
-				break;
-			}
-		}
-		cout<<" This is for evaluating expected mean significance: "<<endl;
-		cout<<" Fraction of logQ from S+B hypothesis larger than maximum logQ_b  = "<<fractionGTmaxlnQb<<endl;
-		cout<<" I would like this number to be less than 5% "<<endl;
-		// if a given lnQ_data larger than maximum logQ_b, it means that toys of b-only is not enough to evaluate significance, 
-		// probably we need increase the toy number one or two magnitudes. 
 
-	}
-	double CLsBase::CLb(double lnq){
-		double ret =0;// 1./(double)_nexps;
-		double tmp = lnq;
-		for(int i=0; i<_nexps; i++){ 
-			if(Q_b[iq_b[i]]<=tmp)
-				ret = (i+1)/(double)_nexps;	
-		}		
-		if(_debug>=10){
-			cout<<"CLsBase::CLb  CLb()="<<ret<<" and total exps="<<_nexps<<endl;
-			int step = _nexps/20;
-			cout<<"*** print out Q_b and accumulative probability, size="<<_nexps<<" step="<<step<<endl;
-			int i=0;
-			for(; i<_nexps; i+=(step+1)) {
-				printf("%10d",i);
-				cout<<"\t Q_b,p= "<<Q_b[iq_b[i]]<<" "<<double((i+1)/(double)_nexps)<<endl;
-			}
-			if(i!=_nexps || (i==_nexps && step!=1)) {
-				printf("%10d",_nexps);
-				cout<<"\t lnQ,p= "<<Q_b[iq_b[_nexps-1]]<<" 1"<<endl;
-			}
-		}
-		if(ret*_nexps <= 20) cout<<"CLsBase::CLb  CLb*nexps="<<ret*_nexps<<", statistic may not enough"<<endl;
-		if( (1-ret)*_nexps <= 20) cout<<"CLsBase::CLb  (1-CLb)*nexps="<<(1-ret)*_nexps<<", statistic may not enough"<<endl;
-		if(ret == 0 || ret==1){
-			cout<<"CLsBase::CLb CLb="<<ret<<", it means number of pseudo experiments is not enough"<<endl;
-			if(ret==0) {
-				cout<<"              Currently, we put CLb=1./"<<_nexps<<endl;
-				ret = 1./(double)_nexps;
-			}
-			if(ret==1) {
-				cout<<"              Currently, we put CLb= 1 - 1./"<<_nexps<<endl;
-				ret = 1 - 1./(double)_nexps;
-			}
-		}
-		return ret;
-	}
-	double CLsBase::CLsb_b(){
-		double ret = 1./(double)_nexps;
-		double tmp = Q_b_exp;
-		for(int i=0; i<_nexps; i++){
-			if(Q_sb[iq_sb[i]]<=tmp)
-				ret = (i+1)/(double)_nexps;	
-		}		
-		return ret;
-	}
-	double CLsBase::CLs_b(){
-		double clb_b=CLb_b();
-		double clsb_b=CLsb_b();
-		if(clb_b==0){cout<<"Warning clb_b==0 !!!!"<<endl;return 1;}
-		return clsb_b/clb_b;
-	}
-	double CLsBase::CLb_b(){
-		double ret = 1./(double)_nexps;
-		double tmp = Q_b_exp;
-		for(int i=0; i<_nexps; i++){
-			if(Q_b[iq_b[i]]<=tmp)
-				ret = (i+1)/(double)_nexps;	
-		}		
-		return ret;
-	}
-	void CLsBase::SetLogQ_b(vector<double> vlnQ_b){
-		_nexps=vlnQ_b.size();
-		Q_b=new double[_nexps];
-		iq_b = new int[_nexps];	
-		for(int i=0; i<_nexps; i++) Q_b[i]=vlnQ_b[i];
-		Sort(_nexps, Q_b, iq_b, 0);
-	}
-	void CLsBase::SetLogQ_sb(vector<double> vlnQ_sb){
-		_nexps=vlnQ_sb.size();
-		Q_sb=new double[_nexps];
-		iq_sb = new int[_nexps];	
-		for(int i=0; i<_nexps; i++) Q_sb[i]=vlnQ_sb[i];
-		Sort(_nexps, Q_sb, iq_sb, 0);
-	}
-	void CLsBase::SetLogQ_data(double lnQ_data){Q_b_data=lnQ_data;}
-
-	double CLsBase::Get_m2lnQ_data(){
-		double tmp1;
-		vector<double> vs, vb, vd; 
-		vs.clear(); vb.clear(); vd.clear();
-		_nsig=0; Q_b_data = 0;
-		for(int i=0; i<_nchannels; i++){
-			double totbkg = 0;
-			for(int isamp = 1; isamp<(_model->Get_vv_exp_sigbkgs())[i].size(); isamp++){
-				totbkg+=(_model->Get_vv_exp_sigbkgs())[i][isamp];
-			}
-			vs.push_back((_model->Get_vv_exp_sigbkgs())[i][0]);
-			vb.push_back(totbkg);
-			vd.push_back((_model->Get_v_data())[i]);
-			_nsig += vs[i];
-		}
-		if(test_statistics==1){
-			for(int i=0; i<_nchannels; i++){	
-				// skip a channle in which nsig==0 || ntotbkg==0
-				if(vs[i] > 0 && vb[i] > 0) {
-					Q_b_data    +=(vd[i]*log((vs[i]+vb[i])/vb[i]));
-				}
-			}
-			return -2*(Q_b_data-_nsig);
-		}else if(test_statistics==2){
-			vdata_global = vd;
-			Q_b_data = MinuitFit(0, tmp1, tmp1) - MinuitFit(1, tmp1, tmp1);
-			return -Q_b_data;
-		}else if(test_statistics==3){
-			vdata_global = vd;
-			double tmp2;
-			double minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
-			if(tmp1<0) Q_b_data= 0;
-			else Q_b_data = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
-			//Q_b_data = MinuitFit(3, tmp1, tmp1) - MinuitFit(2, tmp1, tmp1);
-			return -Q_b_data;
-		}
-		return 0;
+		double tmp = 1-ret;
+		if(tmp>0.5) vsignificance.push_back(0);
+		else vsignificance.push_back( Significance(tmp) );		
 	}
 
-	void CLsBase::SetDebug(int debug){_debug=debug;}
-	CRandom* CLsBase::GetRdm(){return _rdm;}
-
-	void CLsBase::tmpFun0(vector<double> & vlogQ, vector<double>& vlogQ_prob){
-		SortAndCumulative(Q_sb, _nexps, vlogQ, vlogQ_prob, 0);// sort it by  increased order 
+	if(_debug){
+		start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_sortsigs: " << (cur_time - start_time)/1000000. << " secs\n"; fflush(stdout);
 	}
-	double CLsBase::SignificanceComputation(int ntoys_for_sb, int ntoys_for_b){
-		vector<double> vsignificance, vsignificance_cp;
-		return SignificanceComputation(ntoys_for_sb, ntoys_for_b, vsignificance, vsignificance_cp);	
-	}
-	double CLsBase::SignificanceComputation(int ntoys_for_sb, int ntoys_for_b, vector<double>& vsignificance, vector<double> & vsignificance_cp){
-		clock_t start_time, cur_time, funcStart_time;
-		start_time=clock(); cur_time=clock(); funcStart_time=clock();
+	vsignificance_cp=vlogQ_sb_prob;
+	double significance_mean = GetMeanOfSortedXwithProb(vsignificance, vlogQ_sb_prob);
+	return significance_mean;
+}
+double CLsBase::SignificanceForData(int ntoys_for_b){
 
-		if(_debug>=10)cout<<" previous _nexps = "<<_nexps<<endl;
+	// http://en.wikipedia.org/wiki/Normal_distribution
+	//sigma erf(n/sqrt(2))   i.e. 1 minus ...    or 1 in ...
+	//1 	0.682689492137 	0.317310507863 	3.15148718753
+	//2 	0.954499736104 	0.045500263896 	21.9778945081
+	//3 	0.997300203937 	0.002699796063 	370.398347380
+	//4 	0.999936657516 	0.000063342484 	15,787.192684
+	//5 	0.999999426697 	0.000000573303 	1,744,278.331
+	//6 	0.999999998027 	0.000000001973 	506,842,375.7
 
-		vector<double> vlogQ_sb, vlogQ_sb_prob;
-		vlogQ_sb.clear(); vlogQ_sb_prob.clear(); vsignificance_cp.clear(); vsignificance.clear();
 
-		if(ntoys_for_sb<=0) {
-			if(_debug>=10)cout<<" using the old _nexps for sb = "<<_nexps<<endl;
-			SortAndCumulative(Q_sb, _nexps, vlogQ_sb, vlogQ_sb_prob, 0);// sort it by  increased order 
-		}else{
-			if(_debug>=10)cout<<" producing new _nexps for sb = "<<ntoys_for_sb<<endl;
-			BuildM2lnQ(ntoys_for_sb, 2);
-			if(_debug>=10)cout<<" end new _nexps for sb = "<<ntoys_for_sb<<endl;
-			SortAndCumulative(Q_sb, _nexps, vlogQ_sb, vlogQ_sb_prob, 0);// sort it by  increased order 
-			if(_debug>=10)cout<<" sort _nexps for sb = "<<ntoys_for_sb<<endl;
-			if(_debug){
-				start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_BuildM2logQsb: "<< ntoys_for_sb <<"toys, "<< (cur_time - start_time)/1000000. << " sec\n";
-				fflush(stdout);
-			}
-		}	
-
-		if(_debug>=10)cout<<" producing new _nexps for bonly = "<<ntoys_for_b<<endl;
+	//	vector<double> vlogQ_sb, vlogQ_sb_prob;
+	//	vlogQ_sb.clear(); vlogQ_sb_prob.clear(); 
+	//	SortAndCumulative(Q_sb, _nexps, vlogQ_sb, vlogQ_sb_prob, 0);// sort it by  increased order 
+	if(ntoys_for_b > 0)  {
 		BuildM2lnQ(ntoys_for_b, 1);
-		if(_debug){
-			start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_BuildM2logQb: "<< ntoys_for_b <<"toys, "<< (cur_time - start_time)/1000000./60. << " minutes\n";
-			fflush(stdout);
-		}
-		CheckFractionAtHighEnd(vlogQ_sb, vlogQ_sb_prob);
-
-		int previousStopPoint=0;
-		for(int isb=0; isb<vlogQ_sb.size(); isb++) {
-			if(_debug>=100)cout<<"previousStopPoint = "<<previousStopPoint<<endl;
-			double lnq=vlogQ_sb[isb];
-			double ret=0;
-			bool hasQ_gt_lnq = false;
-			for(int i=previousStopPoint; i<_nexps; i++){ 
-				if(Q_b[iq_b[i]] >= lnq)  {
-					ret = i/(double)_nexps;	
-					hasQ_gt_lnq=true;
-					previousStopPoint = i;
-					break;
-				}
-			}		
-			if(hasQ_gt_lnq==false) {
-				ret= 1-1./(double)_nexps;
-			}
-
-			double tmp = 1-ret;
-			if(tmp>0.5) vsignificance.push_back(0);
-			else vsignificance.push_back( Significance(tmp) );		
-		}
-
-		if(_debug){
-			start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_sortsigs: " << (cur_time - start_time)/1000000. << " secs\n"; fflush(stdout);
-		}
-		vsignificance_cp=vlogQ_sb_prob;
-		double significance_mean = GetMeanOfSortedXwithProb(vsignificance, vlogQ_sb_prob);
-		return significance_mean;
 	}
-	double CLsBase::SignificanceForData(int ntoys_for_b){
 
-		// http://en.wikipedia.org/wiki/Normal_distribution
-		//sigma erf(n/sqrt(2))   i.e. 1 minus ...    or 1 in ...
-		//1 	0.682689492137 	0.317310507863 	3.15148718753
-		//2 	0.954499736104 	0.045500263896 	21.9778945081
-		//3 	0.997300203937 	0.002699796063 	370.398347380
-		//4 	0.999936657516 	0.000063342484 	15,787.192684
-		//5 	0.999999426697 	0.000000573303 	1,744,278.331
-		//6 	0.999999998027 	0.000000001973 	506,842,375.7
+	//CheckFractionAtHighEnd(vlogQ_sb, vlogQ_sb_prob);
 
 
-		//	vector<double> vlogQ_sb, vlogQ_sb_prob;
-		//	vlogQ_sb.clear(); vlogQ_sb_prob.clear(); 
-		//	SortAndCumulative(Q_sb, _nexps, vlogQ_sb, vlogQ_sb_prob, 0);// sort it by  increased order 
-		if(ntoys_for_b > 0)  {
-			BuildM2lnQ(ntoys_for_b, 1);
-		}
+	double pvalue=PValue(Q_b_data);
+	double significance = Significance(pvalue);
 
-		//CheckFractionAtHighEnd(vlogQ_sb, vlogQ_sb_prob);
+	double tmpn = ntoys_for_b*pvalue;  
+	double tmpp = ( tmpn - sqrt(tmpn) )/(double)ntoys_for_b;
+	double tmpm = ( tmpn + sqrt(tmpn) )/(double)ntoys_for_b;
 
 
-		double pvalue=PValue(Q_b_data);
-		double significance = Significance(pvalue);
+	if(tmpn<1.8)  tmpp = tmpn/10./(double)ntoys_for_b;
 
-		double tmpn = ntoys_for_b*pvalue;  
-		double tmpp = ( tmpn - sqrt(tmpn) )/(double)ntoys_for_b;
-		double tmpm = ( tmpn + sqrt(tmpn) )/(double)ntoys_for_b;
+	tmpp = Significance(tmpp);
+	tmpm = Significance(tmpm);
 
-
-		if(tmpn<1.8)  tmpp = tmpn/10./(double)ntoys_for_b;
-
-		tmpp = Significance(tmpp);
-		tmpm = Significance(tmpm);
-
-		if(_debug) cout<<" p value of data = "<< pvalue << ",  significance = "<< significance << " +"<<tmpp-significance<<" -"<<significance-tmpm<<endl;
-		return significance;
-	}
-	/*
-	   double CLsBase::SignificanceAnalytically(){
+	if(_debug) cout<<" p value of data = "<< pvalue << ",  significance = "<< significance << " +"<<tmpp-significance<<" -"<<significance-tmpm<<endl;
+	return significance;
+}
+/*
+   double CLsBase::SignificanceAnalytically(){
 
 // need a routine to do uncertain number of loops
 double prob_data = 0;
@@ -817,10 +1114,12 @@ double CLsBase::lnQsb_sigma(int sigma){
 }
 
 void CLsBase::SetTestStatistics(int ts)	{
-	if(ts==1 || ts==2 || ts==3)test_statistics = ts; 
-	else cout <<"ts should be 1 for Q_LEP, 2 for Q_TEV or 3 for Q_ATLAS, your input is not correct: "
-		<<ts<<".  ts is set to be default type Q_LEP"
+	if(ts==1 || ts==2 || ts==3 || ts==31 || ts==4)test_statistics = ts; 
+	else {
+		cout <<"ts should be 1 for Q_LEP, 2 for Q_TEV or 3 for Q_ATLAS, 31 allowing mu_hat>mu, 4 for only profiling mu, your input is not correct: "
+			<<ts<<".  ts is set to be default type Q_LEP"
 			<<endl; 
+	}
 }
 
 
@@ -830,6 +1129,7 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 		CLsBase *frequentist, int nexps, int nstep ){
 	cms_global = cms;
 	_frequentist=frequentist; _nexps=nexps; 
+	_r95err = 0;
 
 	clock_t start_time, cur_time;
 	start_time=clock(); cur_time=clock();
@@ -845,11 +1145,17 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 	double r0,r1;
 	double cl0, cl1;
 
+	double errs0, errs1;
+
+	vector<double> vCLsErr; vCLsErr.clear();
+
 	if(minRtoScan!=maxRtoScan) {
 
-		if(minRtoScan>=maxRtoScan || minRtoScan <=0 ) {
+		if(minRtoScan>=maxRtoScan ||(cms->AllowNegativeSignalStrength()==false && minRtoScan <=0) ) {
 			cout<<"Error in LimitOnSignalScaleFactor: (minRtoScan="<<minRtoScan<<") >= (maxRtoScan="<<maxRtoScan<<", exit"<<endl;
-			cout<<"please make sure maxRtoScan > minRtoScan > 0 "<<endl;
+			cout<<"please make sure maxRtoScan > minRtoScan "<<endl;
+			if(cms->AllowNegativeSignalStrength()==false && minRtoScan<=0) 
+				cout<<"please make sure minRtoScan > 0 or SetAllowNegativeSignalStrength(true) for your model"<<endl;
 			exit(0);
 		}
 		if(nstep<1)  {cout<<" steps in autoscan should not less than 1, exit"<<endl; exit(0);}
@@ -859,11 +1165,13 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 			cms->SetSignalScaleFactor(rmid);
 			frequentist->BuildM2lnQ(cms, nexps); 
 			if(_rule == 1)
-				cl0=frequentist->CLs(); //_nsigma(nsigma);
+				cl0=frequentist->CLs(errs0); //_nsigma(nsigma);
 			else 
-				cl0=frequentist->CLsb(); //_nsigma(nsigma);
+				cl0=frequentist->CLsb(errs0); //_nsigma(nsigma);
 			_vR.push_back(rmid);_vCLs.push_back(cl0);
-			if(_debug)cout<<"TESTED r="<<rmid<<"  CLs="<<cl0<<endl;
+			vCLsErr.push_back(errs0);
+
+			if(_debug)cout<<"TESTED r="<<rmid<<"  CLs="<<cl0<<" +/- "<<errs0<<endl;
 		}
 		// --- -get the _r95 @ alpha=0.05 by linear interpolation
 		double x1=0, y1=0, x2=0, y2=0;
@@ -879,16 +1187,19 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 			if(dCLs[ix[i]]<_alpha) { 
 				x1=_vR[ix[i]]; 
 				y1=dCLs[ix[i]];
+				errs0 = vCLsErr[ix[i]];
 			}
 			if(dCLs[ix[i]]>_alpha && x2==0){
 				x2=_vR[ix[i]]; 
 				y2=dCLs[ix[i]];
+				errs1 = vCLsErr[ix[i]];
 			}
 		}
 		if(!x1 || !x2 || !y1 || !y2){
 			cout<<"Warning: Your initial estimated R range is not suitable, all CLs values I got are in one side of "<<_alpha<<endl;
 			x1 = _vR[0]; x2=_vR.back();
 			y1 = _vCLs[0]; y2=_vCLs.back();
+			errs0 = vCLsErr[0]; errs1 = vCLsErr.back();
 		}
 		if(ix) delete []ix;
 		if(dCLs) delete [] dCLs;
@@ -912,16 +1223,12 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 		cms->SetSignalScaleFactor(r0);
 		frequentist->BuildM2lnQ(cms, nexps); 
 		if(_rule == 1)
-			cl0=frequentist->CLs(); //_nsigma(nsigma);
+			cl0=frequentist->CLs(errs0); //_nsigma(nsigma);
 		else 
-			cl0=frequentist->CLsb(); //_nsigma(nsigma);
+			cl0=frequentist->CLsb(errs0); //_nsigma(nsigma);
 		_vR.push_back(r0);_vCLs.push_back(cl0);
-		if(_debug)cout<<"Estimated_initial r="<<r0<<"  CLs="<<cl0<<endl;
-		if(fabs(cl0-_alpha)<=epsilon) {
-			_r95=r0;
-			if(_debug)cout<<"Converge at CLs="<<_alpha<<"+/-"<<epsilon<<" by "<<"1 iteration"<<endl;
-			return r0;
-		}
+		vCLsErr.push_back(errs0);
+		if(_debug)cout<<"Estimated_initial r="<<r0<<"  CLs="<<cl0<< " +/- "<<errs0<<endl;
 
 		//	r1=r0*0.90; //----------usually, CLs-limit is more aggresive than Bayesian's, about 10% smaller.
 		if(cl0>_alpha) r1=r0*1.10;	
@@ -931,15 +1238,23 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 		cms->SetSignalScaleFactor(r1);
 		frequentist->BuildM2lnQ(cms, nexps); 
 		if(_rule == 1)
-			cl1=frequentist->CLs(); //_nsigma(nsigma);
+			cl1=frequentist->CLs(errs1); //_nsigma(nsigma);
 		else 
-			cl1=frequentist->CLsb(); //_nsigma(nsigma);
+			cl1=frequentist->CLsb(errs1); //_nsigma(nsigma);
 		_vR.push_back(r1);_vCLs.push_back(cl1);
-		if(_debug)cout<<"Estimated_r="<<r1<<"  CLs="<<cl1<<endl;
+		vCLsErr.push_back(errs1);
+		if(_debug)cout<<"Estimated_r="<<r1<<"  CLs="<<cl1<<" +/- " << errs1<<endl;
 		if(fabs(cl1-_alpha)<=epsilon) {
 			_r95=r1;
 			if(_debug)cout<<"Converge at CLs="<<_alpha<<"+/-"<<epsilon<<" by "<<"2 iterations"<<endl;
+			_r95err = LogLinearInterpolationErr(r0, cl0, errs0, r1, cl1, errs1, _alpha);
 			return r1;
+		}
+		if(fabs(cl0-_alpha)<=epsilon) {
+			_r95=r0;
+			if(_debug)cout<<"Converge at CLs="<<_alpha<<"+/-"<<epsilon<<" by "<<"2 iteration"<<endl;
+			_r95err = LogLinearInterpolationErr(r0, cl0, errs0, r1, cl1, errs1, _alpha);
+			return r0;
 		}
 	}
 
@@ -951,17 +1266,22 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 		//  using linear interpolation to do converge will be quicker
 		// ---------
 		rmid=LogLinearInterpolation(r0,cl0,r1,cl1,_alpha);
-		if(rmid<0) rmid=-rmid;
+
+		_r95err = LogLinearInterpolationErr(r0, cl0, errs0, r1, cl1, errs1, _alpha);
+
+		if(_rule ==1 && rmid<0) rmid=-rmid;  // for CLs limit, constrain r to be > 0,    not for CLsb
 		if(_debug >= 10 )cout<<" r0="<<r0<<" cl0="<<cl0<<" r1="<<r1<<" cl1="<<cl1<<" rmid="<<rmid<<endl;
 		cms->SetSignalScaleFactor(rmid);
+		rmid = cms->GetSignalScaleFactor(); // if not allow negative r, then the scale factor will not be modified in SetSignalScaleFactor. 
 		frequentist->BuildM2lnQ(cms, nexps); 
-		double clmid;
+		double clmid, errsmid;
 		if(_rule == 1)
-			clmid=frequentist->CLs(); //_nsigma(nsigma);
+			clmid=frequentist->CLs(errsmid); //_nsigma(nsigma);
 		else 
-			clmid=frequentist->CLsb(); //_nsigma(nsigma);
+			clmid=frequentist->CLsb(errsmid); //_nsigma(nsigma);
 		_vR.push_back(rmid);_vCLs.push_back(clmid);
-		if(_debug)cout<<"TESTED r="<<rmid<<"  CLs="<<clmid<<endl;
+		vCLsErr.push_back(errsmid);
+		if(_debug)cout<<"TESTED r="<<rmid<<"  CLs="<<clmid<<" +/- "<<errsmid<<endl;
 		if(fabs(clmid-_alpha)<epsilon){
 			foundit=true; //alpha=0.05 C.L. 95% 		
 			_r95=rmid;
@@ -1016,28 +1336,32 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 				if(!hasCLsLT05 && _debug) cout<<"\t we don't have CLs < "<<_alpha<<endl;
 				if(!hasCLsGT05 && _debug) cout<<"\t we don't have CLs > "<<_alpha<<endl;
 				if(!hasCLsLT05) {
-					rmid= rmid*1.05; //FIXME this number should more smart 
+					if(rmid>0)rmid *= 1.05; //FIXME this number should more smart 
+					if(rmid<0)rmid *= 0.95; //FIXME this number should more smart 
 					cms->SetSignalScaleFactor(rmid);
 					frequentist->BuildM2lnQ(cms, nexps); 
 					double clmid;
 					if(_rule == 1)
-						clmid=frequentist->CLs(); //_nsigma(nsigma);
+						clmid=frequentist->CLs(errsmid); //_nsigma(nsigma);
 					else 
-						clmid=frequentist->CLsb(); //_nsigma(nsigma);
+						clmid=frequentist->CLsb(errsmid); //_nsigma(nsigma);
 					_vR.push_back(rmid);_vCLs.push_back(clmid);
-					if(_debug)cout<<"TESTED r="<<rmid<<"  CLs="<<clmid<<endl;
+					vCLsErr.push_back(errsmid);
+					if(_debug)cout<<"TESTED r="<<rmid<<"  CLs="<<clmid<<" +/- "<<errsmid<<endl;
 				}
 				if(!hasCLsGT05) {
-					rmid= rmid*0.95; // FIXME this number should be more smart
+					if(rmid<0)rmid *= 1.05; //FIXME this number should more smart 
+					if(rmid>0)rmid *= 0.95; //FIXME this number should more smart 
 					cms->SetSignalScaleFactor(rmid);
 					frequentist->BuildM2lnQ(cms, nexps); 
 					double clmid;
 					if(_rule == 1)
-						clmid=frequentist->CLs(); //_nsigma(nsigma);
+						clmid=frequentist->CLs(errsmid); //_nsigma(nsigma);
 					else 
-						clmid=frequentist->CLsb(); //_nsigma(nsigma);
+						clmid=frequentist->CLsb(errsmid); //_nsigma(nsigma);
 					_vR.push_back(rmid);_vCLs.push_back(clmid);
-					if(_debug)cout<<"TESTED r="<<rmid<<"  CLs="<<clmid<<endl;
+					vCLsErr.push_back(errsmid);
+					if(_debug)cout<<"TESTED r="<<rmid<<"  CLs="<<clmid<<" +/- "<<errsmid<<endl;
 				}
 				if(!hasCLsGT05 || !hasCLsLT05 )nmax_tmp++;
 			}//while
@@ -1062,13 +1386,15 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 	int *ix=new int[nsize];
 	Sort(nsize, dCLs, ix, 0);
 	for(int i=0; i<nsize; i++){
-		if(dCLs[ix[i]]==_alpha) {_r95=_vR[ix[i]]; return _r95;}
+		//if(dCLs[ix[i]]==_alpha) {_r95=_vR[ix[i]]; return _r95;}
 		if(dCLs[ix[i]]<_alpha) { 
 			x1=_vR[ix[i]]; 
+			errs0 = vCLsErr[ix[i]];
 			y1=dCLs[ix[i]];
 		}
-		if(dCLs[ix[i]]>_alpha && x2==0){
+		if(dCLs[ix[i]]>=_alpha && x2==0){
 			x2=_vR[ix[i]]; 
+			errs1 = vCLsErr[ix[i]];
 			y2=dCLs[ix[i]];
 		}
 	}
@@ -1090,12 +1416,13 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 			tmp_min_index=i;
 		}
 	}	
-	if(_debug) cout<<"\t closest_to_alpha r="<<rmid<<" cls="<<_vCLs.at(tmp_min_index)<<endl;
+	if(_debug) cout<<"\t closest_to_alpha r="<<rmid<<" cls="<<_vCLs.at(tmp_min_index)<<" +/- "<<vCLsErr.at(tmp_min_index)<<endl;
 
 	if(x1==x2 && _debug ) cout<<"\t Warning: r1=r2, we are using the same r to do interpolation, just because we get it twice and one for CLs>alpha, and the other for CLs<alpha"<<endl;
 
 	_r95=LogLinearInterpolation(x1,y1,x2,y2,_alpha);
-	if(_debug) cout<<"CLsLimit::LimitOnSignalScaleFactor final upperlimit on r is "<<_r95<<endl;
+	_r95err=LogLinearInterpolationErr(x1,y1, errs0, x2,y2, errs1, _alpha);
+	if(_debug) cout<<"CLsLimit::LimitOnSignalScaleFactor final upperlimit on r is "<<_r95<< " +/- "<<_r95err<<endl;
 	if(_r95==0) _r95=rmid;
 
 	if(_debug) {start_time=cur_time; cur_time=clock(); cout << "\t\t\tLIMIT_TIMEfor "<<nsize<<" x "<<nexps<<" pseudo exps: " << (cur_time - start_time)/1000000. << " sec\n"; }
@@ -1375,10 +1702,201 @@ CLsBase* CLsLimit::GetFrequentist(){return _frequentist;}
 void CLsLimit::SetCLsTolerance(double tolerance){_clstolerance=tolerance;}
 void CLsLimit::SetRule(int rule){
 	_rule = rule; 
-	if(rule!=1 && rule!=2) { 
-		cout<<"frequentist rule should be 1 for CLs, or 2 for CLsb. Your input "<<rule<<" is not defined!"<<endl;
+	if(rule!=1 && rule!=2 && rule!=3) { 
+		cout<<"frequentist rule should be 1 for CLs, or 2 for CLsb, or 3 for FC.  Your input "<<rule<<" is not defined!"<<endl;
 		exit(0);
 	}
+}
+
+// Class CLsLimit	
+double CLsLimit::FeldmanCousins(CountingModel *cms,
+		double minRtoScan, double maxRtoScan,
+		CLsBase *frequentist, int nexps, int nstep ){
+
+	// test statistics muct be       L(n, mu)/L(n, mu_hat)  or   L(n, mu, theta_hat)/L(n, mu_hat, theta_hat)
+
+	cms_global = cms;
+	_frequentist=frequentist; _nexps=nexps; 
+
+	double fAdditionalNToysFactor = 2.;
+	bool bAdaptiveSampling = true;
+
+	clock_t start_time, cur_time;
+	start_time=clock(); cur_time=clock();
+
+
+	if(_debug) cout<<"CLsLimit::FeldmanCousins  looking for C.L. 95% Limit on the ratio ----"<<endl;
+
+
+	if(minRtoScan>=maxRtoScan ||(cms->AllowNegativeSignalStrength()==false && minRtoScan <=0) ) {
+		cout<<"Error in FeldmanCousins: (minRtoScan="<<minRtoScan<<") >= (maxRtoScan="<<maxRtoScan<<", exit"<<endl;
+		cout<<"please make sure maxRtoScan > minRtoScan "<<endl;
+		if(cms->AllowNegativeSignalStrength()==false && minRtoScan<=0) 
+			cout<<"please make sure minRtoScan > 0 or SetAllowNegativeSignalStrength(true) for your model"<<endl;
+		exit(0);
+	}
+	if(nstep<1)  {cout<<" steps in autoscan should not less than 1, exit"<<endl; exit(0);}
+	if(_debug) cout<<"\t First auto scaning R from  "<<minRtoScan<<" to "<<maxRtoScan<<" in "<<nstep<<" steps"<<endl;
+
+	_FCconstruction.clear();
+	vector<double> qs; 
+	for(double rmid=minRtoScan; rmid<=maxRtoScan; rmid+=(maxRtoScan-minRtoScan)/(double)nstep){
+		cms->SetSignalScaleFactor(rmid);
+		double thisTestStatistic = 0;
+		double sigma;
+		double upperEdgeOfAcceptance, upperEdgeMinusSigma, upperEdgePlusSigma;
+		double lowerEdgeOfAcceptance, lowerEdgeMinusSigma, lowerEdgePlusSigma;
+		if(bAdaptiveSampling){
+			// This adaptive sampling algorithm is imported from RooStats http://root.cern.ch/root/html/src/RooStats__NeymanConstruction.cxx.html
+			// the adaptive sampling algorithm wants at least one toy event to be outside
+			// of the requested pvalue including the sampling variaton.  That leads to an equation
+			// N-1 = (1-alpha)N + Z sqrt(N - (1-alpha)N) // for upper limit and
+			// 1   = alpha N - Z sqrt(alpha N)  // for lower limit 
+			// 
+			// solving for N gives:
+			// N = 1/alpha * [3/2 + sqrt(5)] for Z = 1 (which is used currently)
+			// thus, a good guess for the first iteration of events is N=3.73/alpha~4/alpha
+			// should replace alpha here by smaller tail probability: eg. alpha*Min(leftsideFrac, 1.-leftsideFrac)
+			// totalMC will be incremented by 2 before first call, so initiated it at half the value
+			int totalMC = int(2./_alpha);
+			// user control
+			double tmc = double(totalMC)*fAdditionalNToysFactor;
+			totalMC = (int) tmc; 
+			int additionalMC=0;
+			bool bUsePreviousToys = false;
+
+			do{
+				// this will be executed first, then while conditioned checked
+				// as an exit condition for the loop.
+
+				// the next line is where most of the time will be spent 
+				// generating the sampling dist of the test statistic.
+				additionalMC = 2*totalMC; //grow by a factor of 2
+
+				frequentist->BuildM2lnQ(cms, additionalMC+ (bUsePreviousToys?totalMC:0), 2, bUsePreviousToys); // 2 for s+b hypothesis only ...
+				thisTestStatistic=frequentist->Get_m2lnQ_data();
+
+				totalMC = frequentist->GetNexps();
+
+				if(!bUsePreviousToys) bUsePreviousToys=true;
+
+				qs = frequentist->Get_m2logQ_sb();
+
+				sigma = 1;
+				upperEdgeOfAcceptance = InverseCDF(qs, _alpha, 1. - _alpha, sigma, upperEdgePlusSigma);
+				sigma = -1;
+				InverseCDF(qs, _alpha, 1. - _alpha , sigma, upperEdgeMinusSigma);
+
+				sigma = 1;
+				lowerEdgeOfAcceptance = InverseCDF(qs, _alpha, 0, sigma, lowerEdgePlusSigma);
+				sigma = -1;
+				InverseCDF(qs, _alpha, 0, sigma, lowerEdgeMinusSigma);
+
+				if(_debug) cout << " NeymanConstruction: "
+					<< "total MC = " << totalMC <<endl; 
+				if(_debug>=10)	cout<< "   this test stat = " << thisTestStatistic << endl
+						<< " upper edge -1sigma = " << upperEdgeMinusSigma
+						<< ", upperEdge = "<<upperEdgeOfAcceptance
+						<< ", upper edge +1sigma = " << upperEdgePlusSigma << endl
+						<< " lower edge -1sigma = " << lowerEdgeMinusSigma
+						<< ", lowerEdge = "<<lowerEdgeOfAcceptance
+						<< ", lower edge +1sigma = " << lowerEdgePlusSigma << endl;
+			}while(
+					( 
+					 (thisTestStatistic <= upperEdgeOfAcceptance &&
+					  thisTestStatistic > upperEdgeMinusSigma)
+					 || (thisTestStatistic >= upperEdgeOfAcceptance &&
+						 thisTestStatistic < upperEdgePlusSigma)
+					 || (thisTestStatistic <= lowerEdgeOfAcceptance &&
+						 thisTestStatistic > lowerEdgeMinusSigma)
+					 || (thisTestStatistic >= lowerEdgeOfAcceptance &&
+						 thisTestStatistic < lowerEdgePlusSigma) 
+					) && (totalMC < 100./_alpha)
+			      );
+
+		}else{
+			frequentist->BuildM2lnQ(cms, nexps, 2); // 2 for s+b hypothesis only ...
+			qs = frequentist->Get_m2logQ_sb();
+			// using default comparison (operator <):
+			//sort(qs.begin(), qs.end());
+
+				sigma = 1;
+				upperEdgeOfAcceptance = InverseCDF(qs, _alpha, 1. - _alpha, sigma, upperEdgePlusSigma);
+				sigma = -1;
+				InverseCDF(qs, _alpha, 1. - _alpha , sigma, upperEdgeMinusSigma);
+
+				sigma = 1;
+				lowerEdgeOfAcceptance = InverseCDF(qs, _alpha, 0, sigma, lowerEdgePlusSigma);
+				sigma = -1;
+				InverseCDF(qs, _alpha, 0, sigma, lowerEdgeMinusSigma);
+
+		}
+
+		double q_up;
+		/* 
+		 q_up = qs.back();
+		// 1.   quantile with step function 
+		//q_up = qs[int(0.95*nexps)];
+
+		// 2. according to FC paper,  over coverage unavoidable due to discreteness 
+		vector<double> qn, pn;
+		SortAndCumulative(qs, qn, pn);
+		for(int i=0; i<pn.size(); i++){
+			if(pn[i]>=0.95) 
+				//if(pn[i]>0.95) 
+			{
+				q_up = qn[(i==pn.size()-1)?i:i+1];
+				//q_up = qn[i];
+				break;
+			}
+		}
+
+		
+		   cout<<endl<<" p: " ;
+		   for(int i=0; i<pn.size(); i++){
+		   cout<<pn[i]<<" " ;
+		   }
+		   cout<<endl;
+
+		   cout<<"p: ";
+		   for(int i=0; i<20; i++){
+		   cout<<TMath::Poisson(i, rmid+ vdata_global[0])<<" ";
+		   }
+		   cout<<endl;
+		   */	
+
+		q_up = upperEdgeOfAcceptance;
+		if(_debug){
+			cout<<"TESTED r="<<rmid<<"  -2lnQ_up= "<<q_up<<" -2lnQ_data="<< frequentist->Get_m2lnQ_data();
+			if(q_up==frequentist->Get_m2lnQ_data())cout<<" =  "<<endl;
+			if(q_up>frequentist->Get_m2lnQ_data())cout<<"  >  "<<endl;
+			if(q_up<frequentist->Get_m2lnQ_data())cout<<" <  "<<endl;
+	//		cout<<" ------  rightmost "<<qn.back()<<endl;
+	//		for(int i=0; i<qn.size(); i++){
+	//			cout<<" "<<qn[i];
+	//		}
+	//		cout<<endl;
+		}
+
+		qs.push_back(rmid);
+		qs.push_back(q_up);
+		qs.push_back(frequentist->Get_m2lnQ_data());
+		_FCconstruction.push_back(qs);
+
+	}
+	// extract the 95% CL  upper limit
+	for(int i=0; i<_FCconstruction.size(); i++){
+		int j = _FCconstruction.size() - i -1;	
+		int n = _FCconstruction[j].size();
+		//if(_FCconstruction[j][n-2] > _FCconstruction[j][n-1]) 
+		if(_FCconstruction[j][n-2] >= _FCconstruction[j][n-1]) 
+		{
+			_r95 = _FCconstruction[j][n-3];
+			break;
+		}
+	}
+
+	return _r95;
 }
 
 };

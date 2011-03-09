@@ -343,7 +343,8 @@ int main(int argc, const char* argv[]){
 	frequentist.SetDebug(debug);
 	frequentist.SetRdm(rdm);
 	frequentist.BuildM2lnQ(nexps_to_build_m2lnQ);
-	double cls_observed = frequentist.CLs();
+	double errs;
+	double cls_observed = frequentist.CLs(errs);
 	cout<<"\n\t\t **** Observed CLs (w/ sys) = "<<cls_observed<<endl;
 	start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_BuildM2lnQ " << (cur_time - start_time)/1000. << " millisec\n";
 

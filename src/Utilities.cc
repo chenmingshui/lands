@@ -245,6 +245,58 @@ namespace lands{
 		return result;
 
 	}
+	int GetBandsByFeldmanCousins(vector<double>  rn, vector<double> pn,  double& _1SigmaLow, double& _1SigmaHigh, double& _2SigmaLow, double& _2SigmaHigh){
+		_1SigmaLow=-1; _1SigmaHigh=-1; _2SigmaHigh=-1; _2SigmaLow=-1;
+		// =====rn is already sorted and pn is cummulative probability
+		// ---check if rn is sorted as increased
+		// ---for the -2lnQ sortation, it should be decreased 
+
+
+		int nActual = (int) rn.size();
+
+		double onesigma = 0.683;
+		double twosigma = 0.955;
+		double distance=999999.;
+		for(int n=0; n<nActual; n++){
+			if( n==0 &&  pn[n]>=onesigma) {
+				_1SigmaLow  = rn[n];  _1SigmaHigh = rn[n];  break;
+			}
+
+			for(int n2=n+1; n2<nActual; n2++){
+				if(pn[n2]-(n>0?pn[n-1]:0) >= onesigma) {
+					if(rn[n2] - rn[n] < distance )  {
+						distance = rn[n2] - rn[n];
+						_1SigmaLow = rn[n]; _1SigmaHigh = rn[n2];
+					}
+					break;
+				}
+			}
+
+			if( pn[n]> 1-onesigma )  break;
+		}
+
+		distance=999999.;
+		for(int n=0; n<nActual; n++){
+			if( n==0 &&  pn[n]>=twosigma) {
+				_2SigmaLow  = rn[n];  _2SigmaHigh = rn[n];  break;
+			}
+
+			for(int n2=n+1; n2<nActual; n2++){
+				if(pn[n2]-(n>0?pn[n-1]:0) >= twosigma) {
+					if(rn[n2] - rn[n] < distance )  {
+						distance = rn[n2] - rn[n];
+						_2SigmaLow = rn[n]; _2SigmaHigh = rn[n2];
+					}
+					break;
+				}
+			}
+
+			if( pn[n]> 1-twosigma )  break;
+		}
+
+
+		return 1;
+	}
 	int GetBandsByFermiCurveInterpolation(vector<double>  rn, vector<double> pn,  double& _1SigmaLow, double& _1SigmaHigh, double& _2SigmaLow, double& _2SigmaHigh){
 		_1SigmaLow=-1; _1SigmaHigh=-1; _2SigmaHigh=-1; _2SigmaLow=-1;
 		// =====rn is already sorted and pn is cummulative probability
@@ -524,6 +576,14 @@ CASE2:
 			x= log(y2/y)*(x1-x2)/log(y2/y1) + x2;
 		}	
 		return x;
+	}
+	double LogLinearInterpolationErr(double x1, double y1, double ey1, double x2, double y2, double ey2, double y){
+		double x =    LogLinearInterpolation(x1, y1, x2, y2, y);
+		double xmax = LogLinearInterpolation(x1, y1+ey1, x2, y2+ey2, y);
+		double xmin = LogLinearInterpolation(x1, y1>ey1?(y1-ey1): y1, x2, y2>ey2?(y2-ey2):y2, y);
+		double ex =  fabs(xmax - x);
+		if(fabs(xmax-x) < fabs(xmin-x)) ex = fabs(xmin - x);
+		return ex;
 	}
 	double LinearInterpolation(double x1, double y1, double x2, double y2, double y){
 		double x=0;
@@ -1081,4 +1141,74 @@ double normal_quantile(double z, double sigma) {
    return  sigma * Cephes::ndtri(z);
 }
 
+//see http://root.cern.ch/root/html/src/RooStats__SamplingDistribution.cxx.html
+double InverseCDF(
+		vector<double> v,
+		double alpha,
+		double pvalue, 
+		double sigmaVariation, 
+		double& inverseWithVariation)
+{
+	// returns the inverse of the cumulative distribution function, with variations depending on number of samples
+
+	// will need to deal with weights, but for now:
+	std::sort(v.begin(), v.end());
+
+
+	// Acceptance regions are meant to be inclusive of (1-\alpha) of the probability
+	// so the returned values of the CDF should make this easy.
+	// in particular:
+	//   if finding the critical value for a lower bound
+	//     when p_i < p < p_j, one should return the value associated with i
+	//     if i=0, then one should return -infinity
+	//   if finding the critical value for an upper bound
+	//     when p_i < p < p_j, one should return the value associated with j
+	//     if i = size-1, then one should return +infinity
+	//   use pvalue < 0.5 to indicate a lower bound is requested
+
+	// casting will round down, eg. give i
+	int nominal = (unsigned int) (pvalue*v.size());
+
+	if(nominal <= 0) {
+		inverseWithVariation = -1e20;
+		return -1e20;
+	}
+	else if(nominal >= (int)v.size()-1 ) {
+		inverseWithVariation = 1e20;
+		return 1e20;
+	}
+	else if(pvalue < 0.5){
+		int delta = (int)(sigmaVariation*sqrt(1.0*nominal)); // note sqrt(small fraction)
+		int variation = nominal+delta;
+
+		if(variation>=(int)v.size()-1)
+			inverseWithVariation = 1e20;
+		else if(variation<=0)
+			inverseWithVariation = -1e20;
+		else 
+			inverseWithVariation =  v[ variation ];
+
+		return v[nominal];
+	}
+	else if(pvalue >= 0.5){
+		int delta = (int)(sigmaVariation*sqrt(1.0*v.size()- nominal)); // note sqrt(small fraction)
+		int variation = nominal+delta;
+
+		if(variation>=(int)v.size()-1)
+			inverseWithVariation = 1e20;
+
+		else if(variation<=0)
+			inverseWithVariation = -1e20;
+		else 
+			inverseWithVariation =  v[ variation+1 ];
+
+		return v[nominal+1];
+	}
+	else{
+		std::cout << "problem in InverseCDF" << std::endl;
+	}
+	inverseWithVariation = 1e20;
+	return 1e20;
+
+}
 };

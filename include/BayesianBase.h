@@ -5,8 +5,9 @@
 using namespace std;
 namespace lands{
 	typedef enum { //prior on the cross section 
-		flat = 10, // uncorrelated
-		corr = 20 // correlated  // default
+		flat = 10, // uncorrelated  // default
+		corr = 20, // correlated  
+		prior_1overSqrtS = 30 // 1/sqrt(s)
 	} PRIOR;
 	class BayesianBase{
 		public:

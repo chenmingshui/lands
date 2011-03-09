@@ -43,13 +43,14 @@ int main(int argc, const char* argv[]){
 	frequentist.SetRdm(rdm);
 
 	frequentist.BuildM2lnQ(cms,nexps);
-	double cls = frequentist.CLs();
-	double clsb = frequentist.CLsb();
-	double clb = frequentist.CLb();
+	double errs, errb, errsb;
+	double cls = frequentist.CLs(errs);
+	double clsb = frequentist.CLsb(errsb);
+	double clb = frequentist.CLb(errb);
 	cout<<"------------------------------------------------------------"<<endl;
-	cout<<"Observed CLs = "<<cls<<endl;
-	cout<<"Observed CLsb = "<<clsb<<endl;
-	cout<<"Observed CLb = "<<clb<<endl;
+	cout<<"Observed CLs = "<<cls<<" +/- "<<errs<<endl;
+	cout<<"Observed CLsb = "<<clsb<<" +/- "<<errsb<<endl;
+	cout<<"Observed CLb = "<<clb<<" +/- "<<errb<<endl;
 	cout<<"------------------------------------------------------------"<<endl;
 
 	CLsLimit clsr95;
@@ -58,7 +59,7 @@ int main(int argc, const char* argv[]){
 	clsr95.SetAlpha(0.05);
 	rtmp = clsr95.LimitOnSignalScaleFactor(cms, &frequentist,nexps);
 	cout<<"------------------------------------------------------------"<<endl;
-	cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<rtmp<<endl;
+	cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<rtmp<<" +/- "<<clsr95.LimitErr()<<endl;
 	cout<<"------------------------------------------------------------"<<endl;
 
 	cms->SetSignalScaleFactor(1.);

@@ -445,6 +445,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped)
 			cout<<cardExpanded<<endl;
 			//exit(1);
 			ConfigureModel(cms, cardExpanded);
+			break;
 
 		}// line begin with "shape"
 	}
@@ -675,19 +676,52 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped){
 		//}
 
 		int pdf = 0; 
-		if(ss[1]=="lnN") pdf=1;
-		else if(ss[1]=="trG") pdf=2;
+		// see CountingModel.h
+		if(ss[1]=="lnN") pdf=typeLogNormal;   // typeLogNormal
+		else if(ss[1]=="trG") pdf=typeTruncatedGaussian; // typeTruncatedGaussian
+		else if(ss[1]=="gmA") pdf=typeGamma; // typeControlSampleInferredLogNormal
 		else pdf =  (TString(ss[1])).Atoi();
 
 		tmps+= TString::Format("%3s ", ss[1].c_str());
+		if(pdf==typeGamma) tmps+= TString::Format("%8s ", ss[2].c_str());
+		else		   tmps+= "         ";
 
 		bool filledThisSource = false;
 		for(int p=0; p<ntotprocesses; p++){
-			double err = (TString(ss[p+2])).Atof()-1.0;
-			tmps+= TString::Format("%7.2f ",err+1.0);
-			if(err == 0.) continue;
+			double err, rho;
+			if(pdf==typeLogNormal){
+			       	err= (TString(ss[p+2])).Atof()-1.0;
+				tmps+= TString::Format("%7.2f ",err+1.0);
+				if(err < -1) {
+					cout<<"Kappa in lognormal  can't be negative, please check your input card at "<<s+1<<"th source, "<<p+2<<"th entry"<<endl;
+					exit(0);
+				}
+				if(err == 0.) continue;
+			}
+			else if(pdf==typeTruncatedGaussian){
+			       	err= (TString(ss[p+2])).Atof();
+				tmps+= TString::Format("%7.2f ",err);
+				if(err == 0.) continue;
+			}
+			else if(pdf==typeGamma){
+				rho= (TString(ss[p+3])).Atof(); // the factor between control region and signal region
+				tmps+= TString::Format("%7.2f ",rho);
+				if(rho < 0) {
+					cout<<"Alpha in gamma can't be negative, please check your input card at "<<s+1<<"th source, "<<p+3<<"th entry"<<endl;
+					exit(0);
+				}
+				if(rho == 0.) continue;
+			}
 			//cout<<"delete me: c="<<binnumber[p]-1<<" s="<< subprocess[p]<<endl;
-			cms->AddUncertainty(binnumber[p]-1, subprocess[p], err, pdf, indexcorrelation );
+			if(pdf==typeLogNormal||pdf==typeTruncatedGaussian)cms->AddUncertainty(binnumber[p]-1, subprocess[p], err, pdf, indexcorrelation );
+			if(pdf==typeGamma){
+				double N = (TString(ss[2]).Atof()); 
+				if(N<0)  {
+					cout<<"Yield in control Region in gamma can't be negative, please check your input card at "<<s+1<<"th source, "<<2<<"th entry"<<endl;
+					exit(0);
+				}
+				cms->AddUncertainty(binnumber[p]-1, subprocess[p], rho, 0, N, pdf, indexcorrelation );
+			}
 
 			// because when err < 0, AddUncertainty do nothing,  but filledThisSource has been changed to be true
 			filledThisSource = true;

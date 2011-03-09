@@ -3,6 +3,7 @@
 #include "CRandom.h"
 #include <vector>
 #include "CountingModel.h"
+#include "TMinuit.h"
 /*
  *    Description:  doing frequentist approach + CLs(not fully frequentist)
  *			w/ and w/o systematic/statistic errors 
@@ -12,6 +13,7 @@ using std::vector;
 using std::pair;
 namespace lands{
 	extern CountingModel * cms_global;
+	extern TMinuit * myMinuit;
 	extern vector<double>  vdata_global;
 	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag); 
 	double MinuitFit(int model, double &r, double &er, double mu=0);
@@ -21,16 +23,16 @@ namespace lands{
 			CLsBase();
 			~CLsBase();
 			void SetModel(CountingModel *model){_model=model; cms_global = model;};
-			bool BuildM2lnQ(int ntoys=100000, int sbANDb_bOnly_sbOnly=0);
-			bool BuildM2lnQ(CountingModel *model, int ntoys=100000, int sbANDb_bOnly_sbOnly=0);// 0 for sbANDb, 1 for bOnly, 2 for sbOnly
+			bool BuildM2lnQ(int ntoys=100000, int sbANDb_bOnly_sbOnly=0, bool reUsePreviousToys=false);
+			bool BuildM2lnQ(CountingModel *model, int ntoys=100000, int sbANDb_bOnly_sbOnly=0, bool reUsePreviousToys=false);// 0 for sbANDb, 1 for bOnly, 2 for sbOnly
 			void SetRdm(CRandom *rdm);
 			vector<double> Get_m2logQ_b();
 			vector<double> Get_m2logQ_sb();
 			double Get_m2lnQ_data();
 
 			// data, observed 
-			double CLsb();double CLs();double CLb();
-			double CLb(double lnq );
+			double CLsb(double &err);double CLs(double & err);double CLb(double &err);
+			double CLb(double lnq, double &err );
 			double PValue(double lnq );
 			//expected  bkg only 
 			double CLsb_b();double CLs_b();	double CLb_b();
@@ -54,6 +56,8 @@ namespace lands{
 			void SetTestStatistics(int ts = 1);
 			int GetTestStatistics(){return test_statistics;};
 
+			int GetNexps(){return _nexps;};
+
 		private:
 			void ProcessM2lnQ();
 			double *Q_b; double *Q_sb;
@@ -73,7 +77,7 @@ namespace lands{
 	class CLsLimit
 	{
 		public:
-			CLsLimit(){_debug=0; _alpha = 0.05; _clstolerance=0.001; _rule = 1; };  // by default, we use CLs instead of CLsb
+			CLsLimit(){_debug=0; _alpha = 0.05; _clstolerance=0.001; _rule = 1; bAdaptiveSampling=false; fAdditionalNToysFactor=1.;};  // by default, we use CLs instead of CLsb
 			~CLsLimit(){}; 	
 			void SetAlpha(double alpha); // Confidence Level = 1 - alpha
 
@@ -103,11 +107,19 @@ namespace lands{
 			void SetCLsTolerance(double tolerance = 0.001 );
 			void SetRule(int rule = 1);
 
+			double LimitErr(){return _r95err;};
+
+
+			double FeldmanCousins(CountingModel *cms, double minRtoScan, double maxRtoScan, CLsBase *frequentist, int nexps=100000, int nsteps = 10);
+			vector< vector<double> > GetFCconstruction(){return _FCconstruction;};
+			void SetAdaptiveSampling(bool b){bAdaptiveSampling=b;};
+			void SetAdditionalNToysFactor(double d){fAdditionalNToysFactor=d;};
 
 		private:
 			vector<double> _vR;
 			vector<double> _vCLs; // for a fixed s,b,d, trying to converge at CLs=0.05 to get r=r95%, filling all CLs produced during that process
 			double _r95;
+			double _r95err;
 
 			int _nexps;  // for everytime to cal CLs
 			int _npossibleoutcomes;// do projecting
@@ -124,6 +136,13 @@ namespace lands{
 			double _clstolerance;
 
 			int _rule;  // 1 for CLs, 2 for CLsb
+
+			// in each vector<float>, first increasing order of -2lnQ,   last element is the r being tested, followed by  q_up and q_data
+			vector< vector<double> > _FCconstruction;
+
+			// implemented for FeldmanCousin limit  setting
+			bool bAdaptiveSampling; // doing sampling with adaptive number of toys
+			double fAdditionalNToysFactor; // allow user to require more toys when doing adaptive sampling. 
 	};
 
 };

@@ -35,6 +35,8 @@ namespace lands{
 		v_pdftype.clear();
 		_common_signal_strength=1;
 		max_uncorrelation=0;
+		b_AllowNegativeSignalStrength = 1;
+		v_GammaN.clear();
 	}
 	CountingModel::~CountingModel(){
 		v_data.clear();
@@ -51,6 +53,7 @@ namespace lands{
 
 		v_TruncatedGaussian_maxUnc.clear();
 		v_pdftype.clear();
+		v_GammaN.clear();
 	}
 	void CountingModel::AddChannel(std::string channel_name, double num_expected_signal, double num_expected_bkg_1, double num_expected_bkg_2, 
 			double num_expected_bkg_3, double num_expected_bkg_4, double num_expected_bkg_5, double num_expected_bkg_6 ){
@@ -219,8 +222,8 @@ namespace lands{
 			return;
 			//exit(0);
 		} 
-		if(pdf_type!=typeLogNormal && pdf_type!= typeTruncatedGaussian ) {
-			cout<<"Error: Currently only implemented LogNormal and TruncatedGaussian. Your input "<<pdf_type<<" haven't been implemented, exit"<<endl;
+		if(pdf_type!=typeLogNormal && pdf_type!= typeTruncatedGaussian && pdf_type!=typeGamma ) {
+			cout<<"Error: Currently only implemented LogNormal, Gamma and TruncatedGaussian. Your input "<<pdf_type<<" haven't been implemented, exit"<<endl;
 			exit(0);
 		}
 		if(index_correlation <= 0) { 
@@ -246,7 +249,7 @@ namespace lands{
 			cout<<"Error: Adding index_correlation <=0, exit "<<endl;
 			exit(0);
 		}
-		if(pdf_type!=typeControlSampleInferredLogNormal) {
+		if(pdf_type!=typeControlSampleInferredLogNormal && pdf_type!=typeGamma) {
 			cout<<"Error: your pdf_type is wrong "<<endl;
 			exit(0);
 		}
@@ -280,16 +283,41 @@ namespace lands{
 			v_TruncatedGaussian.push_back(0);	
 			v_TruncatedGaussian_maxUnc.push_back(-1);
 			v_pdftype.push_back(-1);	
+			v_GammaN.push_back(-1);
 			double tmpmax=-1;
 			for(int ch=0; ch<vvv_idcorrl.size(); ch++){
 				for(int isam=0; isam<vvv_idcorrl.at(ch).size(); isam++){
 					for(int iunc=0; iunc<vvv_idcorrl.at(ch).at(isam).size(); iunc++){
 						int indexcorrl = vvv_idcorrl.at(ch).at(isam).at(iunc);
 						if(indexcorrl==i && vvv_pdftype.at(ch).at(isam).at(iunc)== typeTruncatedGaussian ){
-							if(tmpmax<vvvv_uncpar.at(ch).at(isam).at(iunc).at(0)) tmpmax=vvvv_uncpar.at(ch).at(isam).at(iunc).at(0);	
+							if(tmpmax< fabs(vvvv_uncpar.at(ch).at(isam).at(iunc).at(0)) ) tmpmax=fabs(vvvv_uncpar.at(ch).at(isam).at(iunc).at(0));	
 						} 
 						if(indexcorrl==i && v_pdftype.back()<0 ){
 							v_pdftype.back()=vvv_pdftype.at(ch).at(isam).at(iunc);
+
+				/*  from Andrey:
+					The typical convention between the number of observed events in the
+					control region B and pdf(b) is what we wrote in the note. E.g. see
+
+					-) Bob Cosins's note http://arxiv.org/abs/physics/0702156v4
+
+					-) Stat commitee recomendation at
+					  http://www.physics.ucla.edu/~cousins/stats/cousins_lognormal_prior.pdf
+
+					  On the wikipidia page, they derive the pdf starting from a scale-invariant
+					  prior, which I think is a uniform prior for log(B), which is 1/B for B.
+
+					  If one starts from the uniform prior for B, the answer would be what we
+					  use in the note and in the references above. Such convention makes much
+					  more sense. E.g., the most probable value for b is B*r.
+					  Also, Z_{\Gamma} with the gamma distribution from our note is the same
+					  as the pure frequentist construct Z_{Bi}.
+
+					  So the bottom line is, let's stick to what we wrote in the note.
+					  If we need to change it later, it will be easy to do.
+				*/
+							//if(v_pdftype.back()==typeGamma)v_GammaN.back()=vvvv_uncpar.at(ch).at(isam).at(iunc).at(2);	
+							if(v_pdftype.back()==typeGamma)v_GammaN.back()=vvvv_uncpar.at(ch).at(isam).at(iunc).at(2)+1;	
 						}
 						if(indexcorrl==i && v_pdftype.back()>0 ){
 							if( v_pdftype.back()!=vvv_pdftype.at(ch).at(isam).at(iunc) ){
@@ -337,6 +365,9 @@ namespace lands{
 				vrdm.back()=tmp;
 
 
+			} else if (v_pdftype[i]==typeGamma){
+				double tmp = _rdm->Gamma(v_GammaN[i]);
+				vrdm.back()=tmp;
 			} else if (v_pdftype[i]==typeControlSampleInferredLogNormal){
 				//dummy
 				cout<<"Error: We haven't implemented the pdf of typeControlSampleInferredLogNormal"<<endl;
@@ -348,6 +379,7 @@ namespace lands{
 			}	
 		}		
 
+		double tmp ; 
 		VChannelVSample vv = vv_exp_sigbkgs_scaled;
 		int indexcorrl, pdftype, isam, iunc;
 		for(int ch=0; ch<vvv_idcorrl.size(); ch++){
@@ -360,6 +392,10 @@ namespace lands{
 					}
 					else if(pdftype==typeTruncatedGaussian){
 						vv[ch][isam]*=( 1+vvvv_uncpar[ch][isam][iunc][0] / v_TruncatedGaussian_maxUnc[indexcorrl] * vrdm[indexcorrl] );			
+					}else if(pdftype==typeGamma){
+						tmp = vv_exp_sigbkgs_scaled[ch][isam];
+						if(tmp==0) vv[ch][isam] = vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0]; // Gamma
+						if(tmp!=0) {vv[ch][isam] /=tmp; vv[ch][isam]*=(vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0] );}
 					}else if(pdftype==typeControlSampleInferredLogNormal){
 						// FIXME
 					}else {
@@ -534,14 +570,30 @@ namespace lands{
 		return true;
 	}
 	void CountingModel::SetSignalScaleFactor(double r){
-		if(r<=0){
-			cout<<"Error: signal strength r <=0, return"<<endl;
+		if(!b_AllowNegativeSignalStrength && r<=0 ){
+			cout<<"Error: signal strength r <=0"<<endl;
+			cout<<"If you want to allow signal strength to be non-positive, please \n *** model->SetAllowNegativeSignalStrength(true)"<<endl;
 			return;
 		}
 		_common_signal_strength=r;
 		vv_exp_sigbkgs_scaled = vv_exp_sigbkgs;
 		for(int ch=0; ch<vv_exp_sigbkgs_scaled.size(); ch++){
 			vv_exp_sigbkgs_scaled[ch][0]*=_common_signal_strength;
+		}
+
+		//if allow signal strength to be non-positive, then please make sure sig+bkgs >=0 in each channel 
+		if(b_AllowNegativeSignalStrength){
+			for(int ch=0; ch<vv_exp_sigbkgs_scaled.size(); ch++){
+				double tot = 0;
+				for(int p=0; p<vv_exp_sigbkgs_scaled[ch].size(); p++)	tot+=vv_exp_sigbkgs_scaled[ch][p];
+				/*if(tot<0) {
+					cout<<"Error: negative tot yield in channel "<<ch+1<<endl;
+					cout<<"Please SetAllowNegativeSignalStrength(false)"<<endl;
+					cout<<"Or we can think about setting a lower bound for the strength.."<<endl;
+					return;
+				}
+				*/
+			}
 		}
 	};
 	void CountingModel::UseAsimovData(int b){  // 0 for background only, 1 for s+b hypothesis
@@ -582,7 +634,8 @@ namespace lands{
 								tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)
 								);
 					}
-					else if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeControlSampleInferredLogNormal){
+					else if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeControlSampleInferredLogNormal
+							|| tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeGamma){
 						cms.AddUncertainty(ch, isamp, 
 								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(0), 
 								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(1), 
@@ -613,7 +666,8 @@ namespace lands{
 								tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)
 								);
 					}
-					else if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeControlSampleInferredLogNormal){
+					else if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeControlSampleInferredLogNormal
+							|| tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeGamma){
 						cms.AddUncertainty(ch, isamp, 
 								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(0), 
 								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(1), 

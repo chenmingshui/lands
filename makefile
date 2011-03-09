@@ -11,11 +11,15 @@ ShapeAnalysis = test/ShapeAnalysis.exe
 CLs_dataCard = test/CLs_dataCard.exe
 Significance_dataCard = test/Significance_dataCard.exe
 Bayesian_dataCard = test/Bayesian_dataCard.exe
+ProfileLikelihoodApproxLimit = test/ProfileLikelihoodApproxLimit.exe
 
 #for MSSMA
 drawMSSMA: test/drawMSSMA.exe
 
-all: ${CLs} ${MultipleChannels} ${ShapeAnalysis} ${Bayesian} ${CLs_dataCard} ${Bayesian_dataCard} ${Significance_dataCard}
+all: ${CLs} ${MultipleChannels} ${ShapeAnalysis} ${Bayesian} ${CLs_dataCard} ${Bayesian_dataCard} ${Significance_dataCard} ${ProfileLikelihoodApproxLimit}
+
+test/ProfileLikelihoodApproxLimit.exe: test/ProfileLikelihoodApproxLimit.cc ${COMPONENTS}
+	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -lMinuit -o $@ $< ${COMPONENTS}
 
 test/Significance_dataCard.exe: test/Significance_dataCard.cc ${COMPONENTS}
 	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -lMinuit -o $@ $< ${COMPONENTS}

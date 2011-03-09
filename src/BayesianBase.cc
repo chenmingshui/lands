@@ -269,7 +269,9 @@ namespace lands{
 
 		if(_debug){ start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_lgamma " << (cur_time - start_time) << " microsec\n";}
 		if(_ngl<=0) { 
-			_ngl = 1 + (int)dtot/2;
+			if(_prior == flat || _prior==corr)_ngl = 1 + (int)dtot/2;
+			//if(_prior == prior_1overSqrtS)_ngl = 1 + (int)((dtot-0.5)/2);
+			if(_prior == prior_1overSqrtS)_ngl = 1 + (int)(dtot/2) + 1000; // +100  is for more accurate, otherwise for lower fluctuation, the results are not good 
 			if(_xgl) delete [] _xgl;
 			if(_lwgl) delete [] _lwgl;
 			_xgl = new double[_ngl];
@@ -317,17 +319,21 @@ namespace lands{
 		if(_stot[iexps]<=0){ cout<<"total signal <= 0 ,exit "<<endl; exit(0); }
 		rstot=1./_stot[iexps];
 
+
 		for(k=0;k<_ngl;++k) {
 			const double xr = _xgl[k]*rstot + rlow;
 			double t = -rlow * _stot[iexps]  - _btot[iexps] + _logscale , v;
 			for(i=0;i<_nchannels;++i)
 				if(_d[i]>0)
 					t += _d[i] * log( xr*_vs[iexps][i] + _vb[iexps][i] );
+			if(_prior == prior_1overSqrtS)t -= 0.5*log(_xgl[k] + rlow * _stot[iexps] );
 			sum += v = exp(_lwgl[k]+t);
 			if(v<DBL_EPSILON*sum) break;
 		}
-		if(_prior==flat)// PRIOR flat
+		if(_prior==flat )// PRIOR flat
 			sum *= rstot;
+		if(_prior==prior_1overSqrtS)// PRIOR flat
+			sum *= sqrt(rstot);
 		return sum;
 	}
 	double BayesianBase::Likelihood(double r){
@@ -343,8 +349,13 @@ namespace lands{
 					t += _d[c] * log( _vb[i][c] + r*_vs[i][c] );
 			if(_prior==flat)
 				ret += exp(t);
-			else
-			       	ret += _stot[i] * exp(t);
+			if(_prior==corr){
+				ret += _stot[i] * exp(t);
+				//ret +=  exp(t)/_stot[i];
+			}
+			if(_prior==prior_1overSqrtS){
+				if(r>0) ret += exp(t)/sqrt(r);
+			}
 		}
 		return ret/(_norm*_nexps_to_averageout_sys);
 

@@ -53,6 +53,7 @@ class CRandom{
 	double Uniform(double xmin, double xmax);
 	Int_t Poisson(double mean);
 	double Gaus(double mean=0, double sigma=1);
+	double Gamma(double mean=0);
 	
 	private:
 	Int_t fCount624;

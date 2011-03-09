@@ -48,13 +48,21 @@ int main(int argc, const char* argv[]){
 	cms_global= cms;
 	//vdata_global=cms->Get_v_data();
 
-	double tmp;
+	double tmp, tmperr;
 	if(calcProfiledLikelihoodSigificance >=1){
 		vdata_global=cms->Get_v_data();
 
-		double m2lnQ = MinuitFit(3,tmp, tmp) - MinuitFit(2, tmp, tmp);
+		double x2 =  MinuitFit(2, tmp, tmperr);
+		cout<<"fitted r = "<<tmp<<endl;
+		double m2lnQ = MinuitFit(3,tmp, tmp) - x2;
 		double sig_data = sqrt(fabs(m2lnQ));
 		cout<<"Observed significance using PLR method = "<<sig_data<<endl;
+
+		if(debug>=10) { // show a plot for   -log(Lambda(mu)) vs. mu ...
+			for(double r=0; r<2; r+=0.1){
+				m2lnQ = MinuitFit(3,tmp, tmp, r) -x2; 
+			}
+		}
 	}
 
 
@@ -71,6 +79,9 @@ int main(int argc, const char* argv[]){
 		cout<<"Expected significance (from -2sigma -1sigma  mean  +1sigma  +2sigma) : "<<endl;
 		printf("--------- %10.5f %10.5f %10.5f %10.5f %10.5f\n", rm2s, rm1s, rmean, rp1s, rp2s);
 		cout<<"------------------------------------------------------------"<<endl;
+
+		TString ts(fileName); ts+="_PLRsignificances";
+		FillTree(ts, lb.GetDifferentialSignificances());
 
 		vector<double> difflimits=lb.GetDifferentialSignificances();
 		TCanvas *c=new TCanvas("csig","cSig");
@@ -103,6 +114,15 @@ int main(int argc, const char* argv[]){
 		//cms->AddObservedData(0,d); //reset the observed data
 		cout<<"\n Running "<<ntoysToDoSignificance<<" toys to evaluate significance for data "<<endl;
 		double signi = frequentist.SignificanceForData(ntoysToDoSignificance);
+		if(debug){
+			cout<<"Q_b_data = "<<frequentist.Get_m2lnQ_data()<<endl;	
+			vector<double> vclb = frequentist.Get_m2logQ_b();
+			TString  s = fileName; 
+			s+="_hybridSig_ts"; s+=testStatistics;
+			s+="_seed"; s+=seed;
+			FillTree(s, vclb);
+			
+		}
 		cout<<"------------------------------------------------------------"<<endl;
 		cout<<" Observed Significance for the data = "<<signi<<endl;
 		cout<<"------------------------------------------------------------"<<endl;
@@ -163,10 +183,10 @@ void processParameters(int argc, const char* argv[]){
 	}
 	if(argc<2) {
 		cout<<"please use following format:"<<endl;
-		cout<<"./CLs.exe inputFileName"<<endl;
+		cout<<"./Significance_dataCard.exe inputFileName"<<endl;
 		cout<<endl;
 		cout<<" or "<<endl;
-		cout<<"./CLs.exe inputFileName calcPLRsignificance=1 calcFRQsignificance=0 ntoys=1000000 seed=1234 debug=0 testStatistics=1 rule=1"<<endl;
+		cout<<"./Significance_dataCard.exe inputFileName calcPLRsignificance=1 calcFRQsignificance=0 ntoys=1000000 seed=1234 debug=0 testStatistics=1 rule=1"<<endl;
 		cout<<endl<<" detail of the parameters: "<<endl;
 		cout<<" inputFileName:          The input data card designed by Andrey Korytov "<<endl;
 		cout<<" calcPLRsignificance:    1 calc the significance with PLR method for the observation, 2 calc expected mean value regardless of the data  " <<endl;

@@ -80,10 +80,12 @@ void erase(vector<double>& v, int pos);
 void erase(vector<int>& v, int pos);
 double LinearInterpolation(double x1, double y1, double x2, double y2, double y);
 double LogLinearInterpolation(double x1, double y1, double x2, double y2, double y);
+double LogLinearInterpolationErr(double x1, double y1, double ey1, double x2, double y2, double ey2, double y);
 double FCInterpolation(double x1, double y1, double x2, double y2, double y);	
 double IntegralSum(double (*fcn)(double *, double *, int), double a, double b, double *par, int npar);
 int GetBandsByFermiCurveInterpolation(vector<double>  rn, vector<double> pn, double& _1SigmaLow, double& _1SigmaHigh, double& _2SigmaLow, double& _2SigmaHigh);
 int GetBandsByLinearInterpolation(vector<double>  rn, vector<double> pn, double& _1SigmaLow, double& _1SigmaHigh, double& _2SigmaLow, double& _2SigmaHigh);
+int GetBandsByFeldmanCousins(vector<double>  rn, vector<double> pn, double& _1SigmaLow, double& _1SigmaHigh, double& _2SigmaLow, double& _2SigmaHigh);
 int GetBands(vector<double> & rn, vector<double>& pn, double& _1SigmaLow, double& _1SigmaHigh, double& _2SigmaLow, double& _2SigmaHigh);
 int GetBands(vector<double> & vx, double& _1SigmaLow, double& _1SigmaHigh, double& _2SigmaLow, double& _2SigmaHigh);
 int GetBands(double *dx, int nexps, double& _1SigmaLow, double& _1SigmaHigh, double& _2SigmaLow, double& _2SigmaHigh);
@@ -152,6 +154,12 @@ inline double Significance(double pvalue){
 	//return TMath::Abs(::ROOT::Math::normal_quantile(pvalue,1) ); 
 	return fabs(normal_quantile(pvalue,1) ); 
 }
+double InverseCDF(
+		vector<double> v,
+		double alpha,
+		double pvalue, 
+		double sigmaVariation, 
+		double& inverseWithVariation);
 };
 #endif   /* ----- #ifndef UTILITIES_H  ----- */
 

@@ -143,6 +143,7 @@ class DrawEvolution2D{
 		DrawEvolution2D(vector<double> vx, vector<double> vy, string stitle, string ssave, TPaveText *pt, bool debug=0);
 		~DrawEvolution2D();
 
+		void setDrawPosteriorPdf(double limit){_drawPosteriorPdf = true; _limit = limit;};
 		void draw();
 		void save();
 		TCanvas *getCanvas(){return cCanvas;};
@@ -164,6 +165,9 @@ class DrawEvolution2D{
 		TPaveText *_pt;
 
 		vector<double> _vx, _vy;
+		
+		bool _drawPosteriorPdf;
+		double _limit;
 
 		TLine *lineOne;
 		TGraph *graph;

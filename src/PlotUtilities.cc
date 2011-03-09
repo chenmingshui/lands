@@ -365,10 +365,12 @@ void DrawSigBkgPdfs::drawLegend(string s_tot, string s_s, string s_b){
 
 DrawEvolution2D::DrawEvolution2D(vector<double> vx, vector<double> vy, string stitle, string ssave, TPaveText *pt, bool debug){
 	_vx=vx; _vy=vy; _stitle=stitle; _ssave=ssave; _pt=pt; _debug=debug;	
-	_logY=0; cCanvas=0; legend=0; lineOne=0; graph=0;
+	_logY=0; cCanvas=0; legend=0; 
+	_drawPosteriorPdf = false; _limit = 0;
+	lineOne=0; graph=0;
 }
 DrawEvolution2D::~DrawEvolution2D(){
-	delete legend; delete lineOne; delete graph;
+	if(legend)delete legend; if(lineOne)delete lineOne; if(graph)delete graph;
 	cCanvas=0; _pt=0;
 }
 void DrawEvolution2D::draw(){
@@ -397,13 +399,25 @@ void DrawEvolution2D::draw(){
 	graph->SetTitle(_stitle.c_str());
 	graph->Draw("ALP");
 
-	double xmin=graph->GetXaxis()->GetXmin();
-	double xmax=graph->GetXaxis()->GetXmax();
-	lineOne = new TLine(xmin, 0.05, xmax, 0.05);
-	lineOne->SetLineWidth(2);
-	lineOne->SetLineStyle(1);
-	lineOne->SetLineColor(kBlack);
-	lineOne->Draw("same");
+	if(_drawPosteriorPdf){
+		double ymin=graph->GetYaxis()->GetXmin();
+		double ymax=graph->GetYaxis()->GetXmax();
+		lineOne = new TLine(_limit, ymin, _limit, ymax);
+		lineOne->SetLineWidth(2);
+		lineOne->SetLineStyle(1);
+		lineOne->SetLineColor(kBlack);
+		lineOne->Draw("same");
+	}else{ // draw CLs vs R ...
+		double xmin=graph->GetXaxis()->GetXmin();
+		double xmax=graph->GetXaxis()->GetXmax();
+		lineOne = new TLine(xmin, 0.05, xmax, 0.05);
+		lineOne->SetLineWidth(2);
+		lineOne->SetLineStyle(1);
+		lineOne->SetLineColor(kBlack);
+		lineOne->Draw("same");
+	}
+
+
 
 	_pt->Draw();
 
@@ -577,7 +591,7 @@ void DrawCMS(string cms, double x1, double y1, double x2, double y2, double txts
 	   ptCMSPreli->AddText(cms.c_str());
 	   ptCMSPreli->SetTextSize(txtsize);
 	   ptCMSPreli->Draw();
-	 */
+	   */
 }
 void Save(TCanvas *cCanvas, string _ssave){
 	string seps = _ssave+".eps";
@@ -614,8 +628,15 @@ void DrawPdfM2logQ::draw2Hist(){
 		hPdfM2logQ->Fill(_vsb[i]);
 		hPdfM2logQ->Fill(_vb[i]);
 	}
-	hSB = new TH1F("hPdfM2logQ_sb","",100, hPdfM2logQ->GetXaxis()->GetXmin(), hPdfM2logQ->GetXaxis()->GetXmax());
-	hB  = new TH1F("hPdfM2logQ_b", "",100, hPdfM2logQ->GetXaxis()->GetXmin(), hPdfM2logQ->GetXaxis()->GetXmax());
+
+	double mintmp =  hPdfM2logQ->GetXaxis()->GetXmin();
+        double maxtmp =  hPdfM2logQ->GetXaxis()->GetXmax();
+	double dis = maxtmp - mintmp;
+	mintmp -= 0.1*(fabs(dis));
+	maxtmp += 0.1*(fabs(dis));
+	//cout<<"_vsb.size = "<<_vsb.size()<<" _vb.size = "<<_vb.size()<<endl;
+	hSB = new TH1F("hPdfM2logQ_sb","",100,mintmp, maxtmp); 
+	hB  = new TH1F("hPdfM2logQ_b", "",100,mintmp, maxtmp);  
 	delete hPdfM2logQ;
 	hSB->SetStats(0);
 	hB->SetStats(0);
@@ -628,6 +649,8 @@ void DrawPdfM2logQ::draw2Hist(){
 	hSB->SetLineStyle(3);
 	hB->SetLineColor(kRed);
 	hB->SetTitle(_stitle.c_str());
+	hSB->SetLineWidth(2);
+	hB->SetLineWidth(2);
 	hB->Draw();
 	hSB->Draw("same");
 

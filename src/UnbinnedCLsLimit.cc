@@ -86,9 +86,10 @@ double UnbinnedCLsLimit::CLs(int nexps){
 	_cls->SetLogQ_b(vlnQ_b);
 	_cls->SetLogQ_sb(vlnQ_sb);
 	_cls->SetLogQ_data(lnQ_data);
-	retval=_cls->CLs();		
+	double err;
+	retval=_cls->CLs(err);		
 
-	if(debug) cout<<"UnbinnedCLsLimit::CLs done, CLs="<<retval<<endl;	
+	if(debug) cout<<"UnbinnedCLsLimit::CLs done, CLs="<<retval<<" +/- "<<err<<endl;	
 
 	return retval;
 }

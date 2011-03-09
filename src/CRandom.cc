@@ -272,3 +272,56 @@ double CRandom::Gaus(double mean, double sigma){
 
    return mean + sigma * result;
 }
+
+double CRandom::Gamma(double a) {
+/*  Joel Heinrich 25 March 2005
+   Returns random deviate from gamma distribution.
+   see D. Knuth "The Art of Computer Programming", vol 2, sec 3.4.1
+
+   The p.d.f. of the gamma distribution is
+
+              x^(a-1) e^(-x)
+   f(x)dx  =  -------------- dx
+                Gamma(a)
+
+   where a, the order parameter, is the first argument of gamma_gen.
+
+   The mean value and variance of the gamma distribution are both a.
+
+   The user must supply a uniform random generator: gamma_gen's
+   second argument is a pointer to a function that takes no arguments
+   and returns a double, where the double is a uniform random deviate.
+
+ */
+
+  if (a >= 1.0e4) {
+    //const double s=1/sqrt(9*a), x=1+s*(gauss_gen(ru)-s);
+    const double s=1/sqrt(9*a), x=1+s*(Gaus()-s);
+    return a*x*x*x; /* Wilson-Hilferty transformation */
+  } else if (a > 4) {
+    double x, y;
+    const double aa=a-1 , scale = sqrt(2*a-1);
+    do {
+      x = scale * ( y = 1/tan(M_PI*Rndm()) );
+    } while ( x <= -aa || Rndm() > (1+y*y)*exp(aa*log1p(x/aa)-x) ) ;
+    return x+aa;
+  } else {
+    double dev=0;
+    int ia = (int)a;
+    const double fa = a-ia;
+    if(ia>0) {
+      double p = Rndm();
+      while(--ia) p *= Rndm();
+      dev = -log(p);
+    }
+    if(fa>0) {
+      const double ra = 1/fa, rb = 1/(1-fa);
+      /* Johnk's method for beta deviates employed here */
+      for(;;) {
+	const double u = pow(Rndm(),ra), w = u + pow(Rndm(),rb);
+	if(w<=1) return dev - log(Rndm())*u/w;
+      }
+    }
+    return dev;
+  }
+}

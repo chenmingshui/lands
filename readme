@@ -19,3 +19,37 @@ Trey Sellers pointed out that the code needs "#include <cstdio>" to be able to c
 revison 1.11 date ........
 
 
+2010.11.16
+Andre Sznajder  reports that CLs doesn't work under aUbuntu & ROOT v5.18 ,  but Bayesian_dataCard.exe works,  amazing !!
+
+
+2010.01.
+add 1/sqrt(r) prior for baysian, and make the gauss lagaurrete quadrature working for this prior...   the integration method should work for any arbitrary prior ...
+
+correct a bug in the fitting function, now we allow r to be negative which makes CLsb work for downward flutuation case ... 
+
+and for ATLAS type test statitics, when fitting,  constrain the mu hat to be <= mu 
+
+2010.02. 
+add gamma distribution for sideband measurement .   
+when doing fit, need to constrain for the gamma distribution,  slightly different as gaussian/lognormal  
+
+Feldman-Cousins for limit setting 
+http://prd.aps.org/pdf/PRD/v57/i7/p3873_1
+page 14
+
+
+2010.03.03
+In the input datacard,  when systematics is "trG", the errors should be (+/-) relative  fraction (was relative fraction +1 in previous versions, like lnN). 
+UtilsROOT.cc was updated accordingly. 
+Kappa in lognormal cann't be negative,  do a check . 
+Neither Alpha or event count in control region in gamma cann't be negative,  do a check . 
+Take maximum value of the correlated/anticorrelated trG uncertainties (compare their absolute values).   
+
+Need to check that any given process has no more than one systematic error described by a gamma
+distribution. This is a statistical part of uncertainties. All other errors would refer to systematic errors associated with the alpha-factor.
+
+
+
+
+
