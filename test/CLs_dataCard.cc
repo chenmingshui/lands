@@ -131,6 +131,7 @@ int main(int argc, const char* argv[]){
 		int nsteps = 10;
 		vector< vector<double> > vv_all;
 		vector< vector<double> > vv;
+		// the following iterating algothm comes from http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/CMSSW/HiggsAnalysis/CombinedLimit/src/FeldmanCousins.cc
 		do { 
 			if (debug) std::cout << "scan in range [" << rmin << ", " << rmax << "]" << std::endl;
 			if(fcMid!=0){
