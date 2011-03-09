@@ -294,7 +294,7 @@ void PlotWithBelts::plot(){
 	  ptCMSPreli->SetTextSize(0.05);
 	  ptCMSPreli->Draw();*/
 
-	save();
+	// save();
 
 }
 DrawSigBkgPdfs::DrawSigBkgPdfs(double (*pdfs)(double *, double *), double *pars, int npars,
