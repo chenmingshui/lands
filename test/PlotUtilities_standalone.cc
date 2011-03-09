@@ -301,7 +301,7 @@ void PlotWithBelts::plot(){
 	  ptCMSPreli->SetTextSize(0.05);
 	  ptCMSPreli->Draw();*/
 
-	save();
+//	save();
 
 }
 DrawSigBkgPdfs::DrawSigBkgPdfs(double (*pdfs)(double *, double *), double *pars, int npars,
@@ -353,7 +353,7 @@ void DrawSigBkgPdfs::draw(){
 	legend->AddEntry(hs,"sig", "l");
 	legend->AddEntry(hb,"bkg", "l");
 
-	save();
+//	save();
 }
 void DrawSigBkgPdfs::save(){
 	string seps = _ssave+".eps";
@@ -414,7 +414,7 @@ void DrawEvolution2D::draw(){
 
 	_pt->Draw();
 
-	save();
+//	save();
 
 	delete [] rtmp; 
 	delete [] cls_btmp;
@@ -533,7 +533,7 @@ void PlotXvsCummulativeProb::draw(){
 
 	_pt->Draw();
 	DrawCMS();
-	save();
+//	save();
 
 	delete [] rn;
 	delete [] pn;
