@@ -1,109 +1,52 @@
-COMPONENTS = bin/BayesianLimitBase.o bin/CRandom.o bin/PdfRandom.o bin/PlotUtilities.o bin/BayesianLimit.o bin/UnbinnedBayesianLimit.o bin/CLsLimit.o bin/Utilities.o bin/UnbinnedCLsLimit.o bin/CountingModel.o bin/UtilsROOT.o bin/BinnedInterface.o  bin/BayesianBase.o bin/LimitBands.o bin/SignificanceBands.o
+LIB = lands.so
+EXEC = test/Significance_dataCard.exe \
+	test/MultipleChannels.exe \
+	test/CLs.exe \
+	test/Bayesian.exe \
+	test/ShapeAnalysis.exe \
+	test/CLs_dataCard.exe \
+	test/Bayesian_dataCard.exe \
+	test/ProfileLikelihoodApproxLimit.exe
 
-#CFLAGS = -fPIC -I ./include -c -o
-CFLAGS1 = -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs ` -lMinuit -c -o
-CFLAGS = -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs ` -lMinuit -c -o
+SOURCES = $(wildcard src/*.cc)
+COMPONENTS = $(patsubst src%.cc,bin%.o,$(SOURCES))
 
-MultipleChannels = test/MultipleChannels.exe
-CLs = test/CLs.exe
-Bayesian = test/Bayesian.exe
-ShapeAnalysis = test/ShapeAnalysis.exe
-CLs_dataCard = test/CLs_dataCard.exe
-Significance_dataCard = test/Significance_dataCard.exe
-Bayesian_dataCard = test/Bayesian_dataCard.exe
-ProfileLikelihoodApproxLimit = test/ProfileLikelihoodApproxLimit.exe
+CC = g++
+CFLAGS = -fPIC $(shell root-config --cflags) -I ./include -I ${ROOTSYS}/include
+
+LINKER = g++
+LINKERFLAGS = $(shell root-config --libs --ldflags) -lMinuit
+
+ifeq ($(shell root-config --platform),macosx)
+	MACOSXFLAGS = -dynamiclib -undefined dynamic_lookup -Wl,-x -O -Xlinker -bind_at_load -flat_namespace
+endif
+
+ # stop removing intermediate files
+.SECONDARY:
+
+bin/%.o: src/%.cc
+	$(CC) $(CFLAGS)  $< -c -o $@
+%.so: ${COMPONENTS}
+	$(LINKER) $(LINKERFLAGS) $(MACOSXFLAGS) -shared  $(COMPONENTS) -o $@
+
+all: $(LIB) $(EXEC)
+
+%.exe: %.cc $(COMPONENTS)
+	$(LINKER) $(CFLAGS) $(LINKERFLAGS) -o $@ $< ${COMPONENTS}
 
 #for MSSMA
 drawMSSMA: test/drawMSSMA.exe
 
-all: ${CLs} ${MultipleChannels} ${ShapeAnalysis} ${Bayesian} ${CLs_dataCard} ${Bayesian_dataCard} ${Significance_dataCard} ${ProfileLikelihoodApproxLimit}
-
-test/ProfileLikelihoodApproxLimit.exe: test/ProfileLikelihoodApproxLimit.cc ${COMPONENTS}
-	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -lMinuit -o $@ $< ${COMPONENTS}
-
-test/Significance_dataCard.exe: test/Significance_dataCard.cc ${COMPONENTS}
-	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -lMinuit -o $@ $< ${COMPONENTS}
-
-test/Bayesian_dataCard.exe: test/Bayesian_dataCard.cc ${COMPONENTS}
-	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -lMinuit -o $@ $< ${COMPONENTS}
-
-test/CLs_dataCard.exe: test/CLs_dataCard.cc ${COMPONENTS}
-	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -lMinuit -o $@ $< ${COMPONENTS}
-
-test/drawMSSMA.exe: test/drawMSSMA.cc ${COMPONENTS}
-	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -lMinuit -o $@ $< ${COMPONENTS}
-
-test/ShapeAnalysis.exe: test/ShapeAnalysis.cc ${COMPONENTS}
-	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -lMinuit -o $@ $< ${COMPONENTS}
-
-test/Bayesian.exe: test/Bayesian.cc ${COMPONENTS}
-	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -lMinuit -o $@ $< ${COMPONENTS}
-
-test/CLs.exe: test/CLs.cc ${COMPONENTS}
-	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -lMinuit -o $@ $< ${COMPONENTS}
-
-test/MultipleChannels.exe: test/MultipleChannels.cc ${COMPONENTS}
-	g++ -fPIC -I ./include -I /${ROOTSYS}/include `root-config --cflags --libs` -lMinuit -o $@ $< ${COMPONENTS}
-
-bin/BinnedInterface.o: src/BinnedInterface.cc bin/CountingModel.o
-	g++ ${CFLAGS1} $@ $<
-
-bin/UtilsROOT.o: src/UtilsROOT.cc bin/CountingModel.o
-	g++ ${CFLAGS1} $@ $<
-
-bin/SignificanceBands.o: src/SignificanceBands.cc bin/CRandom.o bin/Utilities.o bin/PdfRandom.o bin/CountingModel.o bin/CLsLimit.o 
-	g++ ${CFLAGS} $@ $<
-
-bin/LimitBands.o: src/LimitBands.cc bin/CRandom.o bin/Utilities.o bin/PdfRandom.o bin/CountingModel.o bin/CLsLimit.o bin/BayesianBase.o
-	g++ ${CFLAGS} $@ $<
-
-bin/PlotUtilities.o: src/PlotUtilities.cc bin/Utilities.o bin/BayesianLimitBase.o
-	g++ ${CFLAGS1} $@ $<
-
-bin/UnbinnedCLsLimit.o: src/UnbinnedCLsLimit.cc bin/CLsLimit.o bin/Utilities.o bin/CRandom.o bin/PdfRandom.o
-	g++ ${CFLAGS1} $@ $<
-
-bin/BayesianLimit.o: src/BayesianLimit.cc bin/BayesianLimitBase.o bin/CRandom.o bin/Utilities.o bin/CountingModel.o
-	g++ ${CFLAGS} $@ $<
-
-bin/UnbinnedBayesianLimit.o: src/UnbinnedBayesianLimit.cc bin/BayesianLimitBase.o bin/Utilities.o
-	g++ ${CFLAGS} $@ $<
-
-bin/CLsLimit.o: src/CLsLimit.cc bin/CRandom.o bin/Utilities.o bin/PdfRandom.o bin/CountingModel.o
-	g++ ${CFLAGS} $@ $<
-
-bin/BayesianBase.o: src/BayesianBase.cc bin/Utilities.o bin/CountingModel.o
-	g++ ${CFLAGS} $@ $<
-
-bin/BayesianLimitBase.o: src/BayesianLimitBase.cc bin/Utilities.o bin/CountingModel.o
-	g++ ${CFLAGS} $@ $<
-
-bin/CountingModel.o: src/CountingModel.cc bin/CRandom.o bin/Utilities.o bin/PdfRandom.o
-	g++ ${CFLAGS} $@ $<
-	
-bin/PdfRandom.o: src/PdfRandom.cc bin/CRandom.o
-	g++ ${CFLAGS} $@ $<
-	
-bin/CRandom.o: src/CRandom.cc
-	g++ ${CFLAGS} $@ $<
-
-bin/Utilities.o: src/Utilities.cc
-	g++ ${CFLAGS} $@ $<
-
 clean:
-	rm bin/*.o  -rf
-	rm test/*.exe -rf
+	@rm -v -f \
+	bin/*.o \
+	test/*.exe \
+	*.so
 
-cleanall:
-	rm bin/*.o -rf
-	rm test/*.exe -rf
-	rm test/log* -rf
-	rm test/*.gif -rf
-	rm test/*.eps -rf 
-	rm test/*.root -rf
-	rm test/*~ -rf 
-	rm test/plots -rf
-	rm test/roots -rf
-	rm test/pilot -rf
-	rm */*~ *~ -rf
-	
+cleanall: clean
+	@rm -v -f \
+	test/log* \
+	test/*.gif \
+	test/*.eps \
+	test/*.root \
+	*/*~ *~
