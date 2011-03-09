@@ -217,10 +217,8 @@ namespace lands{
 	// LogNormal and TruncatedGaussian 
 	void CountingModel::AddUncertainty(int index_channel, int index_sample, double uncertainty_in_relative_fraction, int pdf_type, int index_correlation ){
 		if( uncertainty_in_relative_fraction < 0 ) {
-			//cout<<"Warning: Adding uncertainty < 0,  "<<endl; 
-			//consider it as non ,  just don't process it 
-			return;
-			//exit(0);
+			if(pdf_type==typeTruncatedGaussian) {}; //fine
+			if(uncertainty_in_relative_fraction <-1 && pdf_type==typeLogNormal) { cout<<"logNormal type uncertainties can't have kappa < 0, exit"<<endl; exit(0);}; //fine
 		} 
 		if(pdf_type!=typeLogNormal && pdf_type!= typeTruncatedGaussian && pdf_type!=typeGamma ) {
 			cout<<"Error: Currently only implemented LogNormal, Gamma and TruncatedGaussian. Your input "<<pdf_type<<" haven't been implemented, exit"<<endl;
@@ -241,9 +239,9 @@ namespace lands{
 	// when B is large, it's close to Gaussian. then use Gaussian, don't use Gamma function
 	void CountingModel::AddUncertainty(int index_channel, int index_sample, double rho, double rho_err, double B, int pdf_type, int index_correlation ){
 		if(B<0){
-			//cout<<"Error: B can't be less 0"<<endl;
-			//exit(0);
-			return;
+			cout<<"Gamma PDF, B can't be less 0"<<endl;
+			exit(0);
+			//return;
 		}
 		if(index_correlation <= 0) {
 			cout<<"Error: Adding index_correlation <=0, exit "<<endl;

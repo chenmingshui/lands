@@ -679,7 +679,7 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped){
 		// see CountingModel.h
 		if(ss[1]=="lnN") pdf=typeLogNormal;   // typeLogNormal
 		else if(ss[1]=="trG") pdf=typeTruncatedGaussian; // typeTruncatedGaussian
-		else if(ss[1]=="gmA") pdf=typeGamma; // typeControlSampleInferredLogNormal
+		else if(ss[1]=="gmA" or ss[1]=="gmN" or ss[1]=="gmM") pdf=typeGamma; // typeControlSampleInferredLogNormal;  gmA was chosen randomly, while in gmN, N stands for yield in control sample;  gmM stands for Multiplicative gamma distribution, it implies using a Gamma distribution not for a yield but for a multiplicative correction
 		else pdf =  (TString(ss[1])).Atoi();
 
 		tmps+= TString::Format("%3s ", ss[1].c_str());
