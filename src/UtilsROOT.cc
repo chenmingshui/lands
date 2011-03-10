@@ -683,7 +683,7 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped){
 		else pdf =  (TString(ss[1])).Atoi();
 
 		tmps+= TString::Format("%3s ", ss[1].c_str());
-		if(pdf==typeGamma) tmps+= TString::Format("%8s ", ss[2].c_str());
+		if(pdf==typeGamma && ss[1]!="gmM") tmps+= TString::Format("%8s ", ss[2].c_str());
 		else		   tmps+= "         ";
 
 		bool filledThisSource = false;
@@ -704,23 +704,48 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped){
 				if(err == 0.) continue;
 			}
 			else if(pdf==typeGamma){
-				rho= (TString(ss[p+3])).Atof(); // the factor between control region and signal region
-				tmps+= TString::Format("%7.2f ",rho);
-				if(rho < 0) {
-					cout<<"Alpha in gamma can't be negative, please check your input card at "<<s+1<<"th source, "<<p+3<<"th entry"<<endl;
+				if(ss[1]=="gmA" or ss[1]=="gmN"){
+					rho= (TString(ss[p+3])).Atof(); // the factor between control region and signal region
+					tmps+= TString::Format("%7.2f ",rho);
+					if(rho < 0) {
+						cout<<"Alpha in gamma can't be negative, please check your input card at "<<s+1<<"th source, "<<p+3<<"th entry"<<endl;
+						exit(0);
+					}
+					if(rho == 0.) continue;
+				}
+				else if(ss[1]=="gmM"){
+					err= (TString(ss[p+2])).Atof();
+					tmps+= TString::Format("%7.2f ",err);
+					if(err < 0 || err>1 ) {
+						cout<<"relative error in gamma function can't be negative or > 100%, please check your input card at "<<s+1<<"th source, "<<p+2<<"th entry"<<endl;
+						exit(0);
+					}
+					if(err == 0.) continue;
+				}else{
+					cout<<"Gamma function assumed,  the acronym should be gmA, gmN or gmM,  not "<< ss[1]<<", exit "<<endl;
 					exit(0);
 				}
-				if(rho == 0.) continue;
 			}
 			//cout<<"delete me: c="<<binnumber[p]-1<<" s="<< subprocess[p]<<endl;
 			if(pdf==typeLogNormal||pdf==typeTruncatedGaussian)cms->AddUncertainty(binnumber[p]-1, subprocess[p], err, pdf, indexcorrelation );
 			if(pdf==typeGamma){
-				double N = (TString(ss[2]).Atof()); 
-				if(N<0)  {
-					cout<<"Yield in control Region in gamma can't be negative, please check your input card at "<<s+1<<"th source, "<<2<<"th entry"<<endl;
-					exit(0);
+				if(ss[1]=="gmA" or ss[1]=="gmN"){
+					double N = (TString(ss[2]).Atof()); // your input should be Most Probable Value,  while mean value is N+1
+					if(N<0)  {
+						cout<<"Yield in control Region in gamma can't be negative, please check your input card at "<<s+1<<"th source, "<<2<<"th entry"<<endl;
+						exit(0);
+					}
+					cms->AddUncertainty(binnumber[p]-1, subprocess[p], rho, 0, N, pdf, indexcorrelation );
+					//FIXME  here need to check:  rho*N == cms->GetExpectedNumber(binnumber[p]-1, subprocess[p]);
 				}
-				cms->AddUncertainty(binnumber[p]-1, subprocess[p], rho, 0, N, pdf, indexcorrelation );
+				else if(ss[1]=="gmM"){
+					double N = 1./err/err-1; // we use convention: mean of events is 1./err/err,  so we do "-1" here, and then add back "1"  in src/CountingModel.cc
+					//double N = (int) (1./err/err);
+					cms->AddUncertainty(binnumber[p]-1, subprocess[p], -1, 0, N, pdf, indexcorrelation ); // use "rho = -1" here to imply that this gamma term is not for control sample inferred uncertainties, but multiplicative gamma function ....
+					//FIXME  here need to check:  all uncertainties with same indexcorrelation are the same,   can't be different currently ... 
+					//  e.g.   check   N == cms->Get_v_Gamma(indexcorrelation); // can't do here before ConfigUncertaintyPdfs()
+					//we might allow them different and do rescaling 
+				}
 			}
 
 			// because when err < 0, AddUncertainty do nothing,  but filledThisSource has been changed to be true
