@@ -252,7 +252,7 @@ namespace lands{
 			exit(0);
 		}
 		vector<double> vunc; vunc.clear();
-		vunc.push_back(rho);
+		vunc.push_back(rho);  // if rho<0, it means this gamma term is for multiplicative gamma function...
 		vunc.push_back(rho_err);
 		vunc.push_back(B);
 		vvvv_uncpar.at(index_channel).at(index_sample).push_back(vunc);
@@ -391,9 +391,13 @@ namespace lands{
 					else if(pdftype==typeTruncatedGaussian){
 						vv[ch][isam]*=( 1+vvvv_uncpar[ch][isam][iunc][0] / v_TruncatedGaussian_maxUnc[indexcorrl] * vrdm[indexcorrl] );			
 					}else if(pdftype==typeGamma){
-						tmp = vv_exp_sigbkgs_scaled[ch][isam];
-						if(tmp==0) vv[ch][isam] = vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0]; // Gamma
-						if(tmp!=0) {vv[ch][isam] /=tmp; vv[ch][isam]*=(vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0] );}
+						if(vvvv_uncpar[ch][isam][iunc][0]>0){
+							tmp = vv_exp_sigbkgs_scaled[ch][isam];
+							if(tmp==0) vv[ch][isam] = vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0]; // Gamma
+							if(tmp!=0) {vv[ch][isam] /=tmp; vv[ch][isam]*=(vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0] );}
+						}else{ // if rho<0,   then this is multiplicative gamma function ....
+							vv[ch][isam] *= (vrdm[indexcorrl]/v_GammaN[indexcorrl]);
+						}
 					}else if(pdftype==typeControlSampleInferredLogNormal){
 						// FIXME
 					}else {
