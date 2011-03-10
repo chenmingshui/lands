@@ -49,9 +49,11 @@ namespace lands{
 			void AddChannel(std::string channel_name, vector<double> num_expected_yields);
 
 			// LogNormal and TruncatedGaussian 
+			void AddUncertainty(int index_channel, int index_sample, double uncertainty_in_relative_fraction, int pdf_type, std::string uncname );
 			void AddUncertainty(int index_channel, int index_sample, double uncertainty_in_relative_fraction, int pdf_type, int index_correlation );
 
 			// From SideBand
+			void AddUncertainty(int index_channel, int index_sample, double rho, double rho_err, double B, int pdf_type, std::string uncname );
 			void AddUncertainty(int index_channel, int index_sample, double rho, double rho_err, double B, int pdf_type, int index_correlation );
 			// when B is large, it's close to Gaussian. then use Gaussian, don't use Gamma function
 
@@ -125,6 +127,8 @@ namespace lands{
 			bool b_AllowNegativeSignalStrength;
 
 			vector<double> v_GammaN; // record the number of sideband(or MC raw) events for each uncorrelated source
+
+			vector<std::string> v_uncname; 
 
 	};
 };
