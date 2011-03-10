@@ -37,6 +37,7 @@ namespace lands{
 		max_uncorrelation=0;
 		b_AllowNegativeSignalStrength = 1;
 		v_GammaN.clear();
+		v_uncname.clear();
 	}
 	CountingModel::~CountingModel(){
 		v_data.clear();
@@ -54,6 +55,7 @@ namespace lands{
 		v_TruncatedGaussian_maxUnc.clear();
 		v_pdftype.clear();
 		v_GammaN.clear();
+		v_uncname.clear();
 	}
 	void CountingModel::AddChannel(std::string channel_name, double num_expected_signal, double num_expected_bkg_1, double num_expected_bkg_2, 
 			double num_expected_bkg_3, double num_expected_bkg_4, double num_expected_bkg_5, double num_expected_bkg_6 ){
@@ -214,6 +216,36 @@ namespace lands{
 		vvv_idcorrl.push_back(vvidcorrl);
 
 	}	
+	void CountingModel::AddUncertainty(int index_channel, int index_sample, double uncertainty_in_relative_fraction, int pdf_type, string uncname ){
+		int index_correlation = -1; // numeration starts from 1
+		for(int i=0; i<v_uncname.size(); i++){
+			if(v_uncname[i]==uncname){
+				index_correlation = i+1;	
+				break;
+			}
+		}
+		if(index_correlation<0)  {
+			index_correlation = v_uncname.size()+1;
+			v_uncname.push_back(uncname);
+		}
+		AddUncertainty(index_channel, index_sample, uncertainty_in_relative_fraction, pdf_type, index_correlation );
+
+	}
+	void CountingModel::AddUncertainty(int index_channel, int index_sample, double rho, double rho_err, double B, int pdf_type, string uncname ){
+		int index_correlation = -1; // numeration starts from 1
+		for(int i=0; i<v_uncname.size(); i++){
+			if(v_uncname[i]==uncname){
+				index_correlation = i+1;	
+				break;
+			}
+		}
+		if(index_correlation<0)  {
+			index_correlation = v_uncname.size()+1;
+			v_uncname.push_back(uncname);
+		}
+		AddUncertainty(index_channel, index_sample, rho, rho_err, B, pdf_type, index_correlation );
+	}
+
 	// LogNormal and TruncatedGaussian 
 	void CountingModel::AddUncertainty(int index_channel, int index_sample, double uncertainty_in_relative_fraction, int pdf_type, int index_correlation ){
 		if( uncertainty_in_relative_fraction < 0 ) {

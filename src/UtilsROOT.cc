@@ -164,7 +164,7 @@ TString ReadFile(const char*fileName){
 		// Was line a single line comment?
 
 		if ((line.BeginsWith("/*") && line.EndsWith("*/")) ||
-				line.BeginsWith("//")){
+				line.BeginsWith("//") || line.BeginsWith("#")){
 			//if (fVerbose) Info("fReadFile","In single line comment ...");
 			if (debug) cout<<"fReadFile: In single line comment ..."<<endl;
 			continue;
@@ -338,7 +338,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped)
 					vector<string>	ss1; 
 					ss1.clear();
 					StringSplit(ss1, lines[k].Data(), " ");
-					if(TString(ss1[0]).Atoi()!=u) continue;
+					if(TString(ss1[0]).Atoi()!=u) continue; // FIXME  need to adapt to names 
 					TString s = ""; s+=u; s+=" "; s+=ss1[1].c_str(); s+=" "; // weired, it doesn't give good error message when using "s+=ss1[1]"
 					vs_unc.push_back(s);
 				}
@@ -606,6 +606,7 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped){
 	}
 
 
+	// FIXME we won't need this "kmax" keyword if we don't want to do a sanity check  ....
 	//  get number of independant systematics sources
 	int nsyssources = 0;
 	hasFilled = false;
@@ -641,11 +642,27 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped){
 
 	if(debug) cout<<"filled yields"<<endl;
 	// fill the model with systemics
+	
+	// sections are separated by "---------"  in the data card
+	// last section are all uncertainties,  it's analyzers' responsibility to make it right  
+	nsyssources = 0;
+	for(int j=lines.size()-1; j>=0; j--){
+		if(lines[j].BeginsWith("---") )	break;
+		if(lines[j].BeginsWith("rate"))	break;
+		if(lines[j].BeginsWith("bin") )	break;
+		if(lines[j].BeginsWith("process"))break;
+		if(lines[j].BeginsWith("imax"))break;
+		if(lines[j].BeginsWith("jmax"))break;
+		if(lines[j].BeginsWith("kmax"))break;
+		nsyssources++;
+	}
+
 	for(int s=0; s<nsyssources; s++){
 		TString tmps = TString::Format("%6d ",s+1);
 		vector<string>	ss; 
 
 		int hasUncSourceWithIndex_s = -1;
+		/*
 		for(int j=0; j<lines.size(); j++){
 			ss.clear();
 			StringSplit(ss, lines[j].Data(), " ");
@@ -659,17 +676,23 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped){
 			cout<<"   Prob. reasons: check kmax or index of systematics sources"<<endl;
 			exit(0); 
 		}
+		*/
+		hasUncSourceWithIndex_s = lines.size() - nsyssources + s;
 		ss.clear();
 		StringSplit(ss, lines[hasUncSourceWithIndex_s].Data(), " ");
 
+		/*
 		if(TString(ss[0]).IsDigit() == false) {
 			cout<<"   You are trying to assign the following line which not starting from digits to "<< s+1 <<"th systematics sources"<<endl;
 			cout<<"\""<<lines[hasUncSourceWithIndex_s]<<"\""<<endl;
 			cout<<"   Probable reasons: check kmax or index of systematics sources"<<endl;
 			exit(0);
 		}
+		*/
+		// FIXME need to check: don't have two lines with same uncertainty name...
 
-		int indexcorrelation = (TString(ss[0])).Atoi();
+		//int indexcorrelation = (TString(ss[0])).Atoi();
+		string indexcorrelation = ss[0];
 
 		//if(indexcorrelation != (nsyssources-s) ) {
 		//	cout<<"Warning: you are reading in "<<nsyssources-s<<"th nuisanse parameter, but this line start with "<<indexcorrelation<<endl;
@@ -690,6 +713,10 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped){
 		for(int p=0; p<ntotprocesses; p++){
 			double err, rho;
 			if(pdf==typeLogNormal){
+				if(ss[p+2]=="-") {
+					tmps+= "    -   ";
+					continue;
+				}
 			       	err= (TString(ss[p+2])).Atof()-1.0;
 				tmps+= TString::Format("%7.2f ",err+1.0);
 				if(err < -1) {
@@ -699,12 +726,20 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped){
 				if(err == 0.) continue;
 			}
 			else if(pdf==typeTruncatedGaussian){
+				if(ss[p+2]=="-"){
+					tmps+= "    -   ";
+				       	continue;
+				}
 			       	err= (TString(ss[p+2])).Atof();
 				tmps+= TString::Format("%7.2f ",err);
 				if(err == 0.) continue;
 			}
 			else if(pdf==typeGamma){
 				if(ss[1]=="gmA" or ss[1]=="gmN"){
+					if(ss[p+3]=="-"){
+						tmps+= "    -   ";
+						continue;
+					}
 					rho= (TString(ss[p+3])).Atof(); // the factor between control region and signal region
 					tmps+= TString::Format("%7.2f ",rho);
 					if(rho < 0) {
@@ -714,6 +749,10 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped){
 					if(rho == 0.) continue;
 				}
 				else if(ss[1]=="gmM"){
+					if(ss[p+2]=="-") {
+						tmps+= "    -   ";
+						continue;
+					}
 					err= (TString(ss[p+2])).Atof();
 					tmps+= TString::Format("%7.2f ",err);
 					if(err < 0 || err>1 ) {
