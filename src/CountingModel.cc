@@ -38,6 +38,7 @@ namespace lands{
 		b_AllowNegativeSignalStrength = 1;
 		v_GammaN.clear();
 		v_uncname.clear();
+		_debug=0;
 	}
 	CountingModel::~CountingModel(){
 		v_data.clear();
@@ -319,11 +320,14 @@ namespace lands{
 				for(int isam=0; isam<vvv_idcorrl.at(ch).size(); isam++){
 					for(int iunc=0; iunc<vvv_idcorrl.at(ch).at(isam).size(); iunc++){
 						int indexcorrl = vvv_idcorrl.at(ch).at(isam).at(iunc);
+						if(indexcorrl==i && v_pdftype.back()<0 ){
+							v_pdftype.back()=vvv_pdftype.at(ch).at(isam).at(iunc);
+						}
 						if(indexcorrl==i && vvv_pdftype.at(ch).at(isam).at(iunc)== typeTruncatedGaussian ){
 							if(tmpmax< fabs(vvvv_uncpar.at(ch).at(isam).at(iunc).at(0)) ) tmpmax=fabs(vvvv_uncpar.at(ch).at(isam).at(iunc).at(0));	
 						} 
-						if(indexcorrl==i && v_pdftype.back()<0 ){
-							v_pdftype.back()=vvv_pdftype.at(ch).at(isam).at(iunc);
+						if(indexcorrl==i && vvv_pdftype.at(ch).at(isam).at(iunc)== typeGamma){
+							v_GammaN.back()=vvvv_uncpar.at(ch).at(isam).at(iunc).at(2)+1;	
 
 				/*  from Andrey:
 					The typical convention between the number of observed events in the
@@ -347,7 +351,7 @@ namespace lands{
 					  If we need to change it later, it will be easy to do.
 				*/
 							//if(v_pdftype.back()==typeGamma)v_GammaN.back()=vvvv_uncpar.at(ch).at(isam).at(iunc).at(2);	
-							if(v_pdftype.back()==typeGamma)v_GammaN.back()=vvvv_uncpar.at(ch).at(isam).at(iunc).at(2)+1;	
+	//						if(v_pdftype.back()==typeGamma)v_GammaN.back()=vvvv_uncpar.at(ch).at(isam).at(iunc).at(2)+1;	
 						}
 						if(indexcorrl==i && v_pdftype.back()>0 ){
 							if( v_pdftype.back()!=vvv_pdftype.at(ch).at(isam).at(iunc) ){
@@ -377,7 +381,9 @@ namespace lands{
 		if(!b_systematics) return vv_exp_sigbkgs_scaled;
 
 		vector<double> vrdm; vrdm.clear();
+		if(_debug)cout<<" v_pdftype.size()="<<v_pdftype.size()<<endl;
 		for(int i=0; i<v_pdftype.size(); i++){
+			if(_debug)cout<<" vpdftype: "<<i<<"th --> "<<v_pdftype[i]<<endl;
 			vrdm.push_back(-999);
 			if(v_pdftype[i]== typeLogNormal) {
 				vrdm.back()=_rdm->Gaus();
@@ -396,8 +402,9 @@ namespace lands{
 
 
 			} else if (v_pdftype[i]==typeGamma){
-				double tmp = _rdm->Gamma(v_GammaN[i]);
-				vrdm.back()=tmp;
+				if(_debug)cout<<" i = "<<i<<"  v_GammaN[i]="<<v_GammaN[i]<<endl;
+				vrdm.back()=_rdm->Gamma(v_GammaN[i]);
+				if(_debug) cout<<"done for random gamma"<<endl;
 			} else if (v_pdftype[i]==typeControlSampleInferredLogNormal){
 				//dummy
 				cout<<"Error: We haven't implemented the pdf of typeControlSampleInferredLogNormal"<<endl;
@@ -407,14 +414,18 @@ namespace lands{
 				//cout<<"Error: Unknown pdf_type "<<v_pdftype[i]<<endl;
 				//exit(0);
 			}	
+			if(_debug) cout<<"done for random gen "<<i<<endl;
 		}		
+		if(_debug) cout<<"done for random gen"<<endl;
 
 		double tmp ; 
 		VChannelVSample vv = vv_exp_sigbkgs_scaled;
 		int indexcorrl, pdftype, isam, iunc;
+		if(_debug) cout<<"vvv_idcorrl.size="<<vvv_idcorrl.size()<<endl;
 		for(int ch=0; ch<vvv_idcorrl.size(); ch++){
 			for(isam=0; isam<vvv_idcorrl[ch].size(); isam++){
 				for(iunc=0; iunc<vvv_idcorrl[ch][isam].size(); iunc++){
+					if(_debug) cout<<ch<<" "<<isam<<" "<<iunc<<" "<<endl;
 					indexcorrl = vvv_idcorrl[ch][isam][iunc];
 					pdftype = vvv_pdftype[ch][isam][iunc];
 					if(pdftype==typeLogNormal){
@@ -519,7 +530,7 @@ namespace lands{
 			//    rotate the table,  simplified version
 			cout<<" \n\t -------- rotate print out, simplified version  ---------"<<endl;
 			if(_common_signal_strength!=1) cout<<"\t signal rates have been scaled by a factor of "<<_common_signal_strength<<endl;
-			if(b_systematics) {
+			if(0 && b_systematics) {
 				printf("%8s%8s%8s%8s%8s%8s%8s%8s%8s%8s\n", "channel", "signal", "es", "bkg", "eb", "pdf_es", "pdf_eb", "id_cor", "id_cor", "data");
 				for(int ch=0; ch<vv_exp_sigbkgs_scaled.size(); ch++) {
 					double tmp_totbkg=0;
@@ -621,12 +632,12 @@ namespace lands{
 				double tot = 0;
 				for(int p=0; p<vv_exp_sigbkgs_scaled[ch].size(); p++)	tot+=vv_exp_sigbkgs_scaled[ch][p];
 				/*if(tot<0) {
-					cout<<"Error: negative tot yield in channel "<<ch+1<<endl;
-					cout<<"Please SetAllowNegativeSignalStrength(false)"<<endl;
-					cout<<"Or we can think about setting a lower bound for the strength.."<<endl;
-					return;
-				}
-				*/
+				  cout<<"Error: negative tot yield in channel "<<ch+1<<endl;
+				  cout<<"Please SetAllowNegativeSignalStrength(false)"<<endl;
+				  cout<<"Or we can think about setting a lower bound for the strength.."<<endl;
+				  return;
+				  }
+				  */
 			}
 		}
 	};
@@ -655,6 +666,7 @@ namespace lands{
 		VChannelVSampleVUncertaintyVParameter tmp_vvvv_uncpar = cms1->Get_vvvv_uncpar();
 		VChannelVSampleVUncertainty tmp_vvv_pdftype=cms1->Get_vvv_pdftype();	
 		VChannelVSampleVUncertainty tmp_vvv_idcorrl=cms1->Get_vvv_idcorrl();	
+		vector<string> tmp_v_uncname = cms1->Get_v_uncname();
 		for(int ch=0; ch<cms1->NumOfChannels(); ch++){
 			//cms.AddChannel(cms1->GetExpectedNumber(ch,0),cms1->GetExpectedNumber(ch,1), cms1->GetExpectedNumber(ch,2), cms1->GetExpectedNumber(ch,3),
 			//		cms1->GetExpectedNumber(ch,4), cms1->GetExpectedNumber(ch, 5), cms1->GetExpectedNumber(ch, 6));	
@@ -665,7 +677,7 @@ namespace lands{
 						cms.AddUncertainty(ch, isamp, 
 								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(0), 
 								tmp_vvv_pdftype.at(ch).at(isamp).at(iunc),
-								tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)
+								tmp_v_uncname[tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)-1]
 								);
 					}
 					else if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeControlSampleInferredLogNormal
@@ -675,7 +687,7 @@ namespace lands{
 								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(1), 
 								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(2), 
 								tmp_vvv_pdftype.at(ch).at(isamp).at(iunc),
-								tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)
+								tmp_v_uncname[tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)-1]
 								);
 					}else {
 						cout<<"The pdftype Not implemented yet: "<<tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)<<endl;
@@ -687,27 +699,31 @@ namespace lands{
 		tmp_vvvv_uncpar = cms2->Get_vvvv_uncpar();
 		tmp_vvv_pdftype=cms2->Get_vvv_pdftype();	
 		tmp_vvv_idcorrl=cms2->Get_vvv_idcorrl();	
+		tmp_v_uncname = cms2->Get_v_uncname();
 		for(int ch=0; ch<cms2->NumOfChannels(); ch++){
+			int newch = cms1->NumOfChannels(); // like ++
 			//cms.AddChannel(cms2->GetExpectedNumber(ch,0),cms2->GetExpectedNumber(ch,1), cms2->GetExpectedNumber(ch,2), cms2->GetExpectedNumber(ch,3),
 			//		cms2->GetExpectedNumber(ch,4), cms2->GetExpectedNumber(ch, 5), cms2->GetExpectedNumber(ch, 6));	
+			if(_debug) cout<<"Adding ch = "<<newch<<"th channel"<<endl;
 			cms.AddChannel(cms2->Get_v_exp_sigbkgs(ch));
+			if(_debug) cout<<"now has total "<<cms.NumOfChannels()<<endl;
 			for(int isamp=0; isamp<tmp_vvv_pdftype.at(ch).size(); isamp++){
 				for(int iunc=0; iunc<tmp_vvv_pdftype.at(ch).at(isamp).size(); iunc++){
 					if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeLogNormal || tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeTruncatedGaussian){
-						cms.AddUncertainty(ch, isamp, 
+						cms.AddUncertainty(newch, isamp, 
 								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(0), 
 								tmp_vvv_pdftype.at(ch).at(isamp).at(iunc),
-								tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)
+								tmp_v_uncname[tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)-1]
 								);
 					}
 					else if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeControlSampleInferredLogNormal
 							|| tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeGamma){
-						cms.AddUncertainty(ch, isamp, 
+						cms.AddUncertainty(newch, isamp, 
 								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(0), 
 								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(1), 
 								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(2), 
 								tmp_vvv_pdftype.at(ch).at(isamp).at(iunc),
-								tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)
+								tmp_v_uncname[tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)-1]
 								);
 					}else {
 						cout<<"The pdftype Not implemented yet: "<<tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)<<endl;

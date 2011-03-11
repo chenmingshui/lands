@@ -280,9 +280,12 @@ namespace lands{
 			if(_debug){ start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_gausslaguerre " << (cur_time - start_time) << " microsec\n";}
 		}
 
+		if(_debug>=10)  cout<<"_nexps_to_averageout_sys="<<_nexps_to_averageout_sys<<endl;
 		vector< vector<double> > vv;
 		for(int i=0; i<_nexps_to_averageout_sys; i++){
+			if(_debug>=100)cout<<" _nexps_to_averageout_sys: "<<i<<endl;
 			vv = _cms->FluctuatedNumbers();
+			if(_debug>=100)cout<<" after fluctuation: "<<i<<endl;
 			double *s = new double[_nchannels];
 			double *b = new double[_nchannels];
 			_stot[i]=0; _btot[i]=0;
