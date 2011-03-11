@@ -6,6 +6,7 @@ EXEC = test/Significance_dataCard.exe \
 	test/ShapeAnalysis.exe \
 	test/CLs_dataCard.exe \
 	test/Bayesian_dataCard.exe \
+	test/Bayesian_2dataCards.exe \
 	test/ProfileLikelihoodApproxLimit.exe
 
 SOURCES = $(wildcard src/*.cc)
