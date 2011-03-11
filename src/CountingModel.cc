@@ -378,12 +378,13 @@ namespace lands{
 
 	}	
 	VChannelVSample CountingModel::FluctuatedNumbers(){
+		if(_rdm==NULL) {cout<<"Model random gen engine not set yet, exit "<<endl; exit(0);}
 		if(!b_systematics) return vv_exp_sigbkgs_scaled;
 
 		vector<double> vrdm; vrdm.clear();
-		if(_debug)cout<<" v_pdftype.size()="<<v_pdftype.size()<<endl;
+		//if(_debug)cout<<" v_pdftype.size()="<<v_pdftype.size()<<endl;
 		for(int i=0; i<v_pdftype.size(); i++){
-			if(_debug)cout<<" vpdftype: "<<i<<"th --> "<<v_pdftype[i]<<endl;
+			//if(_debug)cout<<" vpdftype: "<<i<<"th --> "<<v_pdftype[i]<<endl;
 			vrdm.push_back(-999);
 			if(v_pdftype[i]== typeLogNormal) {
 				vrdm.back()=_rdm->Gaus();
@@ -402,9 +403,9 @@ namespace lands{
 
 
 			} else if (v_pdftype[i]==typeGamma){
-				if(_debug)cout<<" i = "<<i<<"  v_GammaN[i]="<<v_GammaN[i]<<endl;
+				//if(_debug)cout<<" i = "<<i<<"  v_GammaN[i]="<<v_GammaN[i]<<endl;
 				vrdm.back()=_rdm->Gamma(v_GammaN[i]);
-				if(_debug) cout<<"done for random gamma"<<endl;
+				//if(_debug) cout<<"done for random gamma"<<endl;
 			} else if (v_pdftype[i]==typeControlSampleInferredLogNormal){
 				//dummy
 				cout<<"Error: We haven't implemented the pdf of typeControlSampleInferredLogNormal"<<endl;
@@ -414,14 +415,14 @@ namespace lands{
 				//cout<<"Error: Unknown pdf_type "<<v_pdftype[i]<<endl;
 				//exit(0);
 			}	
-			if(_debug) cout<<"done for random gen "<<i<<endl;
+			//if(_debug) cout<<"done for random gen "<<i<<endl;
 		}		
-		if(_debug) cout<<"done for random gen"<<endl;
+		//if(_debug) cout<<"done for random gen"<<endl;
 
 		double tmp ; 
 		VChannelVSample vv = vv_exp_sigbkgs_scaled;
 		int indexcorrl, pdftype, isam, iunc;
-		if(_debug) cout<<"vvv_idcorrl.size="<<vvv_idcorrl.size()<<endl;
+		//if(_debug) cout<<"vvv_idcorrl.size="<<vvv_idcorrl.size()<<endl;
 		for(int ch=0; ch<vvv_idcorrl.size(); ch++){
 			for(isam=0; isam<vvv_idcorrl[ch].size(); isam++){
 				for(iunc=0; iunc<vvv_idcorrl[ch][isam].size(); iunc++){
