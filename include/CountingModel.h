@@ -104,6 +104,8 @@ namespace lands{
 			bool AllowNegativeSignalStrength(){return b_AllowNegativeSignalStrength;};
 
 			vector<double> Get_v_GammaN(){return v_GammaN;};
+			vector<std::string> Get_v_uncname(){return v_uncname;};
+			void SetDebug(int i){_debug=i;};
 		private:
 			VDChannel v_data;
 			VChannelVSample vv_exp_sigbkgs;
@@ -129,6 +131,7 @@ namespace lands{
 			vector<double> v_GammaN; // record the number of sideband(or MC raw) events for each uncorrelated source
 
 			vector<std::string> v_uncname; 
+			int _debug;
 
 	};
 };
