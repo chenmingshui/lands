@@ -1,0 +1,48 @@
+Limit (hww1fb), mH = 300 GeV
+date 2010.11.30
+
+imax 4 number of channels
+jmax 4 number of background
+kmax 34 number of nuisance parameters
+---------------------------------------------------------------------------------------------------------------
+Observation  10.000   6.000  13.000  15.000
+---------------------------------------------------------------------------------------------------------------
+bin                                      1       1       1       1       1       2       2       2       2       2       3       3       3       3       3       4       4       4       4       4
+process                             higgs_  qqww_0  ggww_0  wz_zz_   top_0  higgs_  qqww_0  ggww_0  wz_zz_   top_0  higgs_  qqww_0  ggww_0  wz_zz_   top_0  higgs_  qqww_0  ggww_0  wz_zz_   top_0
+process                                  0       1       2       3       4       0       1       2       3       4       0       1       2       3       4       0       1       2       3       4
+rate                                  1.89    8.63    0.42    0.71    2.17    1.42    5.87    0.37    0.45    1.26    2.43   10.80    0.63    0.29    1.65    2.43   11.18    0.62    0.12    2.45
+---------------------------------------------------------------------------------------------------------------
+Lumi                            lnN  1.040   1.000   1.000   1.040   1.000   1.040   1.000   1.000   1.040   1.000   1.040   1.000   1.000   1.040   1.000   1.040   1.000   1.000   1.040   1.000     Luminosity
+Trig                            lnN  1.015   1.015   1.015   1.015   1.000   1.015   1.015   1.015   1.015   1.000   1.015   1.015   1.015   1.015   1.000   1.015   1.015   1.015   1.015   1.000     Trigger efficiencies
+Muon_Eff                        lnN  1.007   1.007   1.007   1.007   1.000   1.000   1.000   1.000   1.000   1.000   1.004   1.004   1.004   1.004   1.000   1.004   1.004   1.004   1.004   1.000     Muon efficiency
+Electron_id_Eff                 lnN  1.000   1.000   1.000   1.000   1.000   1.048   1.048   1.048   1.048   1.000   1.012   1.012   1.012   1.012   1.000   1.012   1.012   1.012   1.012   1.000     Electron id efficiency
+Reco_Eff                        lnN  1.014   1.014   1.014   1.014   1.000   1.014   1.014   1.014   1.014   1.000   1.014   1.014   1.014   1.014   1.000   1.014   1.014   1.014   1.014   1.000     Reconstruction efficiency
+momentum_scale                  lnN  1.013   1.013   1.013   1.015   1.000   1.013   1.013   1.013   1.015   1.000   1.013   1.013   1.013   1.015   1.000   1.013   1.013   1.013   1.015   1.000     momentum scale
+pile_up                         lnN  1.005   1.005   1.005   1.005   1.000   1.005   1.005   1.005   1.005   1.000   1.005   1.005   1.005   1.005   1.000   1.005   1.005   1.005   1.005   1.000     pile-up
+met_resolution                  lnN  1.010   1.010   1.010   1.010   1.010   1.010   1.010   1.010   1.010   1.010   1.010   1.010   1.010   1.010   1.010   1.010   1.010   1.010   1.010   1.010       met  resolution
+Jet_veto                        lnN  1.069   1.000   1.054   1.054   1.000   1.069   1.000   1.054   1.054   1.000   1.069   1.000   1.054   1.054   1.000   1.069   1.000   1.054   1.054   1.000     Jet veto
+Higgs_XS                        lnN  1.164   1.000   1.000   1.000   1.000   1.164   1.000   1.000   1.000   1.000   1.164   1.000   1.000   1.000   1.000   1.164   1.000   1.000   1.000   1.000     Higgs cross-section
+WZ_ZZ_XS                        lnN  1.000   1.000   1.000   1.030   1.000   1.000   1.000   1.000   1.030   1.000   1.000   1.000   1.000   1.030   1.000   1.000   1.000   1.000   1.030   1.000     WZ/ZZ cross-section
+qq_to_WW_Norm                   lnN  1.000   1.150   1.000   1.000   1.000   1.000   1.150   1.000   1.000   1.000   1.000   1.150   1.000   1.000   1.000   1.000   1.150   1.000   1.000   1.000      qq  to WW  normalization
+gg_to_WW_Norm                   lnN  1.000   1.000   1.500   1.000   1.000   1.000   1.000   1.500   1.000   1.000   1.000   1.000   1.500   1.000   1.000   1.000   1.000   1.500   1.000   1.000      gg  to WW  normalization
+tX_Norm                         lnN  1.000   1.000   1.000   1.000   1.300   1.000   1.000   1.000   1.000   1.300   1.000   1.000   1.000   1.000   1.300   1.000   1.000   1.000   1.000   1.300      tX  normalization
+Stat14                  gmN    1190 0.00159    0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0        Statistics in MC or control sample
+Stat15                  gmN    1737    0    0.00497    0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0        Statistics in MC or control sample
+Stat16                  gmN     211    0       0    0.00201    0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0        Statistics in MC or control sample
+Stat17                  gmN     194    0       0       0    0.00365    0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0        Statistics in MC or control sample
+Stat18                  gmN      22    0       0       0       0    0.09877    0       0       0       0       0       0       0       0       0       0       0       0       0       0       0        Statistics in MC or control sample
+Stat19                  gmN     919    0       0       0       0       0    0.00154    0       0       0       0       0       0       0       0       0       0       0       0       0       0        Statistics in MC or control sample
+Stat20                  gmN     731    0       0       0       0       0       0    0.00803    0       0       0       0       0       0       0       0       0       0       0       0       0        Statistics in MC or control sample
+Stat21                  gmN     332    0       0       0       0       0       0       0    0.00110    0       0       0       0       0       0       0       0       0       0       0       0        Statistics in MC or control sample
+Stat22                  gmN     107    0       0       0       0       0       0       0       0    0.00418    0       0       0       0       0       0       0       0       0       0       0        Statistics in MC or control sample
+Stat23                  gmN      18    0       0       0       0       0       0       0       0       0    0.07028    0       0       0       0       0       0       0       0       0       0        Statistics in MC or control sample
+Stat24                  gmN    1601    0       0       0       0       0       0       0       0       0       0    0.00152    0       0       0       0       0       0       0       0       0        Statistics in MC or control sample
+Stat25                  gmN    1277    0       0       0       0       0       0       0       0       0       0       0    0.00846    0       0       0       0       0       0       0       0        Statistics in MC or control sample
+Stat26                  gmN     474    0       0       0       0       0       0       0       0       0       0       0       0    0.00132    0       0       0       0       0       0       0        Statistics in MC or control sample
+Stat27                  gmN      27    0       0       0       0       0       0       0       0       0       0       0       0       0    0.01089    0       0       0       0       0       0        Statistics in MC or control sample
+Stat28                  gmN      20    0       0       0       0       0       0       0       0       0       0       0       0       0       0    0.08240    0       0       0       0       0        Statistics in MC or control sample
+Stat29                  gmN    1601    0       0       0       0       0       0       0       0       0       0       0       0       0       0       0    0.00152    0       0       0       0        Statistics in MC or control sample
+Stat30                  gmN    1891    0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0    0.00591    0       0       0        Statistics in MC or control sample
+Stat31                  gmN     320    0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0    0.00193    0       0        Statistics in MC or control sample
+Stat32                  gmN      20    0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0    0.00595    0        Statistics in MC or control sample
+Stat33                  gmN      34    0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0    0.07206     Statistics in MC or control sample
