@@ -137,7 +137,7 @@ namespace lands{
 }
 
 double MinuitFit(int model, double &r , double &er, double mu  ){
-	bool debugMinuit = 1;
+	bool debugMinuit = 0;
 	bool UseMinos = 0;
 
 	int npars = cms_global->Get_max_uncorrelation();
