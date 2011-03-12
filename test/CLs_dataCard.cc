@@ -260,14 +260,16 @@ int main(int argc, const char* argv[]){
 
 		double rmean, rm1s, rm2s, rp1s, rp2s;	
 		rmean=lb.GetCLsLimitMean();
+		double rmedian = lb.GetBysLimit(0);
 		rm1s=lb.GetCLsLimit(-1);rm2s=lb.GetCLsLimit(-2);rp1s=lb.GetCLsLimit(1);rp2s=lb.GetCLsLimit(2);
 		cout<<"------------------------------------------------------------"<<endl;
 		cout<<"Expected R@95%CL (from -2sigma -1sigma  mean  +1sigma  +2sigma) : "<<endl;
 		printf("--------- %10.5f %10.5f %10.5f %10.5f %10.5f\n", rm2s, rm1s, rmean, rp1s, rp2s);
+		printf("BANDS  %10.5f %10.5f %10.5f %10.5f %10.5f %10.5f\n", rm2s, rm1s, rmean, rp1s, rp2s, rmedian);
 		cout<<"------------------------------------------------------------"<<endl;
-
+	
 		TString ts(fileName); ts+="_clslimits";
-		FillTree(ts, lb.GetDifferentialLimitsBys());
+		FillTree(ts, lb.GetDifferentialLimitsCLs());
 
 		vector<double> difflimits=lb.GetDifferentialLimitsCLs();
 		TCanvas *c=new TCanvas("cme","cme");
@@ -288,6 +290,25 @@ int main(int argc, const char* argv[]){
 		PlotXvsCummulativeProb plotRvsP(all_calculated_R95s, cummulativeProbabilities,
 				rm1s, rp1s, rm2s, rp2s,ssave, stitle, pt);
 		plotRvsP.draw();
+
+		// show bands without interpolation,  basically using step function
+		double GreenBandLow = (1- 0.683)/2.; //1 sigma
+		double GreenBandHigh = 1 - (1- 0.683)/2.; //1 sigma
+		double YellowBandLow = (1- 0.955)/2.; //2 sigma
+		double YellowBandHigh = 1 - (1- 0.955)/2.; //2 sigma
+		double rmedian2, rm1s2, rm2s2, rp1s2, rp2s2;	
+		bool brmedian2=false, brm1s2=false, brm2s2=false, brp1s2=false, brp2s2=false;	
+		for(int i=0; i<cummulativeProbabilities.size(); i++){
+			if(cummulativeProbabilities[i]>=GreenBandLow && !brm1s2) { rm1s2 = all_calculated_R95s[i]; brm1s2 = true; } 
+			if(cummulativeProbabilities[i]>=GreenBandHigh && !brp1s2) { rp1s2 = all_calculated_R95s[i]; brp1s2 = true; } 
+			if(cummulativeProbabilities[i]>=YellowBandLow && !brm2s2) { rm2s2 = all_calculated_R95s[i]; brm2s2 = true; } 
+			if(cummulativeProbabilities[i]>=YellowBandHigh && !brp2s2) { rp2s2 = all_calculated_R95s[i]; brp2s2 = true; } 
+			if(cummulativeProbabilities[i]>=0.5 && !brmedian2) { rmedian2 = all_calculated_R95s[i]; brmedian2 = true; } 
+		}
+		cout<<"------------NO INTERPOLATION--------------------------------"<<endl;
+		cout<<"BandsNoInterpolation R@95%CL (from -2sigma -1sigma  mean  +1sigma  +2sigma,  median) : "<<endl;
+		printf("BANDS2 %10.5f %10.5f %10.5f %10.5f %10.5f %10.5f\n", rm2s2, rm1s2, rmean, rp1s2, rp2s2, rmedian2);
+		cout<<"------------------------------------------------------------"<<endl;
 
 
 	}
