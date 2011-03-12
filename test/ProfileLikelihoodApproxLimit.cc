@@ -76,11 +76,12 @@ int main(int argc, const char* argv[]){
 
 	gr1->Print("");
   */  
-	double y0_1 =  MinuitFit(3, tmp, tmp, 0);
-	cout<<y0_1<<endl;
+	double tmperr;
+	double y0_1 =  MinuitFit(3, tmp, tmperr, 0);
+	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
 	double tmpr = 0;
-	double y0_2 =  MinuitFit(2, tmpr, tmp) ;
-	cout<<y0_2<<endl;
+	double y0_2 =  MinuitFit(2, tmpr, tmperr) ;
+	cout<<y0_2<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
 	
 	double x1 =0, x2 =1;
 	double y0 = y0_1;  
@@ -91,6 +92,21 @@ int main(int argc, const char* argv[]){
 
 
 	double y =  MinuitFit(3, tmp, tmp, x2 );
+
+	//------------
+	//If we have a background as a Gaussian distribution G(x|b) with mean b,
+	//sigma sqrt(b), and observe x = b, then the upper limit on signal is
+	//mu = 1.64*sqrt(b), which gives a 5% chance for P(obs < b).
+	//
+	//Therefore:
+	//
+	//1) muhat = 0, given the observation x=b
+	//
+	//2) -2 * ln (lambda(mu)) = -2 * ln( G(x|b+mu) / G(x|b+muhat) ) = 1.64^2
+	//
+	//If we use the 1.96-rule, it may *artificially* improve, but not cure,
+	//the coverage for low statistics case, but would now give wrong coverage
+	//in asymptotic.
 
 	//http://en.wikipedia.org/wiki/Chi-square_distribution
 	//double CI = 1.921;  // = 1.96**2/2 ,  probably for two sided 
