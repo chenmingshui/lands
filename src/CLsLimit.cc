@@ -68,7 +68,7 @@ namespace lands{
 					else if(vvv_pdftype[c][0][u]==typeGamma){
 						tmp =par[0]*vv_sigbks[c][0];	
 						if(tmp==0) tc = vvvv_uncpar[c][0][u][0]*par[(vvv_idcorrl)[c][0][u]];
-						if(tmp!=0) { tc/=tmp; tc *= (vvvv_uncpar[c][0][u][0]*par[(vvv_idcorrl)[c][0][u]]); }
+						if(tmp!=0) { tc/=tmp; tc *= (par[0]*vvvv_uncpar[c][0][u][0]*par[(vvv_idcorrl)[c][0][u]]); }
 						//cout<<"s= "<< tc <<" alpha= "<< vvvv_uncpar[c][0][u][0]<<" B="<<par[(vvv_idcorrl)[c][0][u]]<<endl;
 					}
 					else {
@@ -124,7 +124,7 @@ namespace lands{
 }
 
 double MinuitFit(int model, double &r , double &er, double mu  ){
-	bool debugMinuit = 0;
+	bool debugMinuit = 1;
 	bool UseMinos = 0;
 
 	int npars = cms_global->Get_max_uncorrelation();
@@ -191,8 +191,8 @@ double MinuitFit(int model, double &r , double &er, double mu  ){
 			myMinuit->FixParameter(0);
 		}
 		else if(model==2){ // S+B,  float r
-			//myMinuit->mnparm(0, "ratio", 1, 0.1, -100, 100, ierflg); // andrey's suggestion, alow mu hat < 0
-			myMinuit->mnparm(0, "ratio", 1, 0.1, 0, 100, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
+			myMinuit->mnparm(0, "ratio", 1, 0.1, -100, 100, ierflg); // andrey's suggestion, alow mu hat < 0
+			//myMinuit->mnparm(0, "ratio", 1, 0.1, 0, 100, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
 		}
 		else if(model==3){ // profile mu
 			myMinuit->mnparm(0, "ratio", mu, 0.1, -100, 100, ierflg);
