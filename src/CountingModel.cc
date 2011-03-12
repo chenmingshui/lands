@@ -443,8 +443,13 @@ namespace lands{
 					}else if(pdftype==typeGamma){
 						if(vvvv_uncpar[ch][isam][iunc][0]>0){
 							tmp = vv_exp_sigbkgs_scaled[ch][isam];
-							if(tmp==0) vv[ch][isam] = vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0]; // Gamma
-							if(tmp!=0) {vv[ch][isam] /=tmp; vv[ch][isam]*=(vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0] );}
+							if(isam==0){
+								if(tmp==0) vv[ch][isam] = vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0] * _common_signal_strength ; // Gamma
+								if(tmp!=0) {vv[ch][isam] /=tmp; vv[ch][isam]*=(vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0] * _common_signal_strength );}
+							}else{
+								if(tmp==0) vv[ch][isam] = vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0]; // Gamma
+								if(tmp!=0) {vv[ch][isam] /=tmp; vv[ch][isam]*=(vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0] );}
+							}
 						}else{ // if rho<0,   then this is multiplicative gamma function ....
 							vv[ch][isam] *= (vrdm[indexcorrl]/v_GammaN[indexcorrl]);
 						}

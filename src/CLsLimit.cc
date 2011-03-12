@@ -58,7 +58,8 @@ namespace lands{
 		Double_t tc = 0;
 		Double_t bs = 0;
 		int u=0, s=0, c=0;
-		double tmp;
+		double tmp, tmp2;
+		int tmp3;
 		for(c=0; c<nchs; c++){
 			tc=par[0]*vv_sigbks[c][0];
 			if(cms_global->IsUsingSystematicsErrors()){
@@ -66,9 +67,15 @@ namespace lands{
 					if(vvv_pdftype[c][0][u]==typeLogNormal) tc *= (pow(1+vvvv_uncpar[c][0][u][0],par[(vvv_idcorrl)[c][0][u]]));
 					else if(vvv_pdftype[c][0][u]==typeTruncatedGaussian) tc*=(1+vvvv_uncpar[c][0][u][0]*par[(vvv_idcorrl)[c][0][u]]);
 					else if(vvv_pdftype[c][0][u]==typeGamma){
-						tmp =par[0]*vv_sigbks[c][0];	
-						if(tmp==0) tc = vvvv_uncpar[c][0][u][0]*par[(vvv_idcorrl)[c][0][u]];
-						if(tmp!=0) { tc/=tmp; tc *= (par[0]*vvvv_uncpar[c][0][u][0]*par[(vvv_idcorrl)[c][0][u]]); }
+						tmp2 = vvvv_uncpar[c][0][u][0];
+						tmp3 = vvv_idcorrl[c][0][u];
+						if(tmp2>0){
+							tmp =par[0]*vv_sigbks[c][0];	
+							if(tmp==0) tc = par[0]*tmp2*par[tmp3];
+							if(tmp!=0) { tc/=tmp; tc *= (par[0]*tmp2*par[tmp3]); }
+						}else{
+							tc*=(par[tmp3]/v_GammaN[tmp3]);
+						}
 						//cout<<"s= "<< tc <<" alpha= "<< vvvv_uncpar[c][0][u][0]<<" B="<<par[(vvv_idcorrl)[c][0][u]]<<endl;
 					}
 					else {
@@ -85,9 +92,15 @@ namespace lands{
 						if(vvv_pdftype[c][s][u]==typeLogNormal) bs*=(pow(1+vvvv_uncpar[c][s][u][0],par[(vvv_idcorrl)[c][s][u]]));
 						else if(vvv_pdftype[c][s][u]==typeTruncatedGaussian) bs*=(1+vvvv_uncpar[c][s][u][0]*par[(vvv_idcorrl)[c][s][u]]);
 						else if(vvv_pdftype[c][s][u]==typeGamma) {
-							tmp = vv_sigbks[c][s];	
-							if(tmp==0) bs = vvvv_uncpar[c][s][u][0]*par[(vvv_idcorrl)[c][s][u]];
-							if(tmp!=0) { bs/=tmp; bs *= (vvvv_uncpar[c][s][u][0]*par[(vvv_idcorrl)[c][s][u]]); }
+							tmp2 = vvvv_uncpar[c][s][u][0];
+							tmp3 = vvv_idcorrl[c][s][u];
+							if(tmp2>0){
+								tmp = vv_sigbks[c][s];	
+								if(tmp==0) bs = tmp2*par[tmp3];
+								if(tmp!=0) { bs/=tmp; bs *= (tmp2*par[tmp3]); }
+							}else{
+								bs*=(par[tmp3]/v_GammaN[tmp3]);
+							}
 							//	cout<<"b= "<< bs <<" alpha= "<< vvvv_uncpar[c][s][u][0]<<" B="<<par[(vvv_idcorrl)[c][s][u]]<<endl;
 						}
 						else {
@@ -1795,7 +1808,7 @@ double CLsLimit::FeldmanCousins(CountingModel *cms,
 				if(_debug) cout << " NeymanConstruction: "
 					<< "total MC = " << totalMC <<endl; 
 				if(_debug>=10)	cout<< "   this test stat = " << thisTestStatistic << endl
-						<< " upper edge -1sigma = " << upperEdgeMinusSigma
+					<< " upper edge -1sigma = " << upperEdgeMinusSigma
 						<< ", upperEdge = "<<upperEdgeOfAcceptance
 						<< ", upper edge +1sigma = " << upperEdgePlusSigma << endl
 						<< " lower edge -1sigma = " << lowerEdgeMinusSigma
@@ -1820,21 +1833,21 @@ double CLsLimit::FeldmanCousins(CountingModel *cms,
 			// using default comparison (operator <):
 			//sort(qs.begin(), qs.end());
 
-				sigma = 1;
-				upperEdgeOfAcceptance = InverseCDF(qs, _alpha, 1. - _alpha, sigma, upperEdgePlusSigma);
-				sigma = -1;
-				InverseCDF(qs, _alpha, 1. - _alpha , sigma, upperEdgeMinusSigma);
+			sigma = 1;
+			upperEdgeOfAcceptance = InverseCDF(qs, _alpha, 1. - _alpha, sigma, upperEdgePlusSigma);
+			sigma = -1;
+			InverseCDF(qs, _alpha, 1. - _alpha , sigma, upperEdgeMinusSigma);
 
-				sigma = 1;
-				lowerEdgeOfAcceptance = InverseCDF(qs, _alpha, 0, sigma, lowerEdgePlusSigma);
-				sigma = -1;
-				InverseCDF(qs, _alpha, 0, sigma, lowerEdgeMinusSigma);
+			sigma = 1;
+			lowerEdgeOfAcceptance = InverseCDF(qs, _alpha, 0, sigma, lowerEdgePlusSigma);
+			sigma = -1;
+			InverseCDF(qs, _alpha, 0, sigma, lowerEdgeMinusSigma);
 
 		}
 
 		double q_up;
 		/* 
-		 q_up = qs.back();
+		   q_up = qs.back();
 		// 1.   quantile with step function 
 		//q_up = qs[int(0.95*nexps)];
 
@@ -1842,28 +1855,28 @@ double CLsLimit::FeldmanCousins(CountingModel *cms,
 		vector<double> qn, pn;
 		SortAndCumulative(qs, qn, pn);
 		for(int i=0; i<pn.size(); i++){
-			if(pn[i]>=0.95) 
-				//if(pn[i]>0.95) 
-			{
-				q_up = qn[(i==pn.size()-1)?i:i+1];
-				//q_up = qn[i];
-				break;
-			}
+		if(pn[i]>=0.95) 
+		//if(pn[i]>0.95) 
+		{
+		q_up = qn[(i==pn.size()-1)?i:i+1];
+		//q_up = qn[i];
+		break;
+		}
 		}
 
-		
-		   cout<<endl<<" p: " ;
-		   for(int i=0; i<pn.size(); i++){
-		   cout<<pn[i]<<" " ;
-		   }
-		   cout<<endl;
 
-		   cout<<"p: ";
-		   for(int i=0; i<20; i++){
-		   cout<<TMath::Poisson(i, rmid+ vdata_global[0])<<" ";
-		   }
-		   cout<<endl;
-		   */	
+		cout<<endl<<" p: " ;
+		for(int i=0; i<pn.size(); i++){
+		cout<<pn[i]<<" " ;
+		}
+		cout<<endl;
+
+		cout<<"p: ";
+		for(int i=0; i<20; i++){
+		cout<<TMath::Poisson(i, rmid+ vdata_global[0])<<" ";
+		}
+		cout<<endl;
+		*/	
 
 		q_up = upperEdgeOfAcceptance;
 		if(_debug){
@@ -1871,11 +1884,11 @@ double CLsLimit::FeldmanCousins(CountingModel *cms,
 			if(q_up==frequentist->Get_m2lnQ_data())cout<<" =  "<<endl;
 			if(q_up>frequentist->Get_m2lnQ_data())cout<<"  >  "<<endl;
 			if(q_up<frequentist->Get_m2lnQ_data())cout<<" <  "<<endl;
-	//		cout<<" ------  rightmost "<<qn.back()<<endl;
-	//		for(int i=0; i<qn.size(); i++){
-	//			cout<<" "<<qn[i];
-	//		}
-	//		cout<<endl;
+			//		cout<<" ------  rightmost "<<qn.back()<<endl;
+			//		for(int i=0; i<qn.size(); i++){
+			//			cout<<" "<<qn[i];
+			//		}
+			//		cout<<endl;
 		}
 
 		qs.push_back(rmid);
