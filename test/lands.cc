@@ -38,7 +38,7 @@ int systematics; // default 1, will determin if use systematics according to dat
 float CL;  // default 0.95;  Confidence Level...
 lands::PRIOR prior; //default flat;   prior on signal.  other options:  corr,  1/sqrt(r)
 int calcsignificance; // default 0;  if 1, then calc significance instead of limit
-int lowerLimit; // in FeldmanCousins,  0 by default for upper limit,  if 1 then calc lower limit  
+bool lowerLimit; // in FeldmanCousins,  0 by default for upper limit,  if 1 then calc lower limit  
 int toysFactor; // in FeldmanCousins, Increase the toys per point by this factor w.r.t. the minimum from adaptive sampling,   default =1
 bool adaptiveSampling; // currently only implemented in FeldmanCousins,  turn on (=1) by default.  =0 off
 int testStat; //default LEP.  other options: TEV, Atlas, AtlasAllowMuHatNeg ...
@@ -49,7 +49,7 @@ double rRelAcc;// 0.01; Relative accuracy on r to reach to terminate the scan
 
 // for FeldmanCousins
 bool bQuickEstimateInitialLimit = true; 
-double intialRmin = 1., intialRmax = 21;// only when bQuickEstimateInitialLimit==false
+double initialRmin = 1., initialRmax = 21;// only when bQuickEstimateInitialLimit==false
 
 int oneside = 1; //for PLR limit
 
@@ -240,7 +240,7 @@ int main(int argc, const char*argv[]){
 			double r95_fc;
 
 			double fcMid = 0, fcErr = 0; 
-			double rmin = intialRmin,  rmax = intialRmax;
+			double rmin = initialRmin,  rmax = initialRmax;
 
 			if(bQuickEstimateInitialLimit){
 				BayesianBase bys(cms, 0.05, 1.e-2);
@@ -398,7 +398,7 @@ int main(int argc, const char*argv[]){
 			//double CI = 1.921;  // = 1.96**2/2 ,  probably for two sided 
 			//double CI = 1.64*1.64/2.;
 			double CI ;
-			if (oneside==0) CI= 1.921;  // = 1.96**2/2 ,  probably for two sided 
+			if (oneside==2) CI= 1.921;  // = 1.96**2/2 ,  probably for two sided 
 			else CI = 1.64*1.64/2.;
 			double precision = 0.001;
 			int nsearched = 2;
@@ -568,7 +568,7 @@ int main(int argc, const char*argv[]){
 		}
 		if(doExpectation){
 
-			TString ts=jobname; ts+="_PLRsignificances";
+			TString ts=jobname; ts+="_significances";
 			FillTree(ts, difflimits);
 
 			TCanvas *c=new TCanvas("csig","cSig");
@@ -576,7 +576,7 @@ int main(int argc, const char*argv[]){
 			TH1F *h=new TH1F("h",";ProfiledLikelihood significance; entries", 200, 0, 8);	
 			for(int i=0; i<difflimits.size(); i++) h->Fill(difflimits[i]);
 			h->Draw();
-			Save(c, "differential_PL_sig");
+			Save(c, (jobname+"differential_sig").Data());
 
 			vector<double> all_calculated_R95s;
 			vector<double> cummulativeProbabilities; // all_calculated_R95s has been sorted, each of them has a cummulative probability
@@ -584,7 +584,7 @@ int main(int argc, const char*argv[]){
 
 			pt = SetTPaveText(0.67, 0.4, 0.8, 0.7);
 			pt->AddText("PL significance statistical bands");
-			string ssave="plot_cump_vs_PLsig";
+			string ssave=(jobname+"_cummulativeS").Data();
 			string stitle="; ProfiledLikelihood significance; cumulative probability;";
 			PlotXvsCummulativeProb plotRvsP(all_calculated_R95s, cummulativeProbabilities,
 					rm1s, rp1s, rm2s, rp2s,ssave, stitle, pt);
@@ -644,9 +644,22 @@ void processParameters(int argc, const char* argv[]){
 	}
 
 	vector<TString> tmpv;
+	// limit or significance
+	tmpv = options["--significance"]; 
+	if( tmpv.size()!=1 ) { calcsignificance = 0; }
+	else calcsignificance = tmpv[0].Atoi();
+
 	tmpv = options["-M"]; if(tmpv.size()!=1) tmpv = options["--method"];
-	if( tmpv.size()!=1 ) { cout<<"*** No method specified, please use option \"-M or --method\" "<<endl; exit(0); }
-	method = tmpv[0];
+	if( tmpv.size()!=1 ) { cout<<"ERROR No method specified, please use option \"-M or --method\" "<<endl; exit(0); }
+	else {
+		method = tmpv[0];
+		if( calcsignificance && 
+				(method!="ProfiledLikelihood" and method!="Hybrid")
+				 ){cout<<"ERROR You are trying to use "<<method<<", which is not supported currently to calculate Significance"<<endl; exit(0);}
+		if( !calcsignificance && 
+				(method!="ProfiledLikelihood" and method!="Hybrid" and method!="Bayesian" and method!="FeldmanCousins" )
+				 ){cout<<"ERROR You are trying to use "<<method<<", which is not supported currently to calculate limit "<<endl; exit(0);}
+	}
 
 	tmpv = options["-v"]; if(tmpv.size()!=1) tmpv = options["--verbose"]; if(tmpv.size()!=1) tmpv = options["--debug"]; 
 	if( tmpv.size()!=1 ) { debug = 0; }
@@ -658,8 +671,11 @@ void processParameters(int argc, const char* argv[]){
 
 	tmpv = options["-D"]; if(tmpv.size()!=1) tmpv = options["--dataset"];
 	if( tmpv.size()!=1 ) { dataset = "data_obs"; }
-	else dataset = tmpv[0];
-
+	else { 
+		dataset = tmpv[0];
+		if(dataset!="data_obs" and dataset!="asimov_sb" and dataset!="asimov_b"){cout<<"ERROR: dataset option must be one of data_obs, asimov_sb and asimov_b"<<endl; exit(0);}
+	}
+	
 	tmpv = options["--doExpectation"]; 
 	if( tmpv.size()!=1 ) { doExpectation = 0; }
 	else doExpectation = tmpv[0].Atoi();
@@ -678,7 +694,10 @@ void processParameters(int argc, const char* argv[]){
 
 	tmpv = options["-C"]; if(tmpv.size()!=1) tmpv = options["--CL"];
 	if( tmpv.size()!=1 ) { CL = 0.95; }
-	else CL = tmpv[0].Atof();
+	else {
+		CL = tmpv[0].Atof();
+		if(CL<=0 or CL>=1) {cout<<"ERROR  CL must be in the range (0, 1)"<<endl; exit(0);}
+	}
 
 	// Bayesian specific options
 	tmpv = options["--prior"];
@@ -687,27 +706,31 @@ void processParameters(int argc, const char* argv[]){
 		if(tmpv[0]=="flat"){prior=flat;}
 		else if(tmpv[0]=="corr"){prior=corr;}
 		else if(tmpv[0]=="1/sqrt(r)"){prior=prior_1overSqrtS;}
-		else { cout<<"*** Unimplemented prior:  "<<tmpv[0]<<", switch to flat prior. "<<endl; prior = flat;}
+		else { cout<<"ERROR  supported baysian signal priors: flat , corr, 1/sqrt(r) "<<endl; exit(0);}
 	}
 
 	tmpv = options["-tB"]; if(tmpv.size()!=1) tmpv = options["--toysBayesian"];
 	if( tmpv.size()!=1 ) { toysBayesian = 10000; }
-	else toysBayesian = tmpv[0].Atoi();
-
-	// limit or significance
-	tmpv = options["--significance"]; 
-	if( tmpv.size()!=1 ) { calcsignificance = 0; }
-	else calcsignificance = tmpv[0].Atoi();
+	else {
+	       	toysBayesian = tmpv[0].Atoi();
+		if(toysBayesian<0) toysBayesian = 1;
+	}
 
 
 	// FeldmanCousins specific options
 	tmpv = options["--lowerLimit"]; 
-	if( tmpv.size()!=1 ) { lowerLimit = 0; }
-	else lowerLimit = tmpv[0].Atoi();
+	if( tmpv.size()!=1 ) { lowerLimit = false; }
+	else {
+		if(tmpv[0].Atoi()==0) lowerLimit=false;
+		else lowerLimit = true;
+	}
 
 	tmpv = options["--toysFactor"]; 
 	if( tmpv.size()!=1 ) { toysFactor = 1; }
-	else toysFactor = tmpv[0].Atoi();
+	else {
+		toysFactor = tmpv[0].Atoi();
+		if(toysFactor<1) toysFactor = 1;
+	}
 
 	tmpv = options["--adaptiveSampling"]; 
 	if( tmpv.size()!=1 ) { adaptiveSampling = true; }
@@ -716,11 +739,35 @@ void processParameters(int argc, const char* argv[]){
 		else adaptiveSampling = true;
 	}
 
+	tmpv = options["--bQuickEstimateInitialLimit"]; 
+	if( tmpv.size()!=1 ) { bQuickEstimateInitialLimit = true; }
+	else {
+		if(tmpv[0].Atoi()==0) bQuickEstimateInitialLimit=false;
+		else bQuickEstimateInitialLimit = true;
+	}
+
+	tmpv = options["--initialRmin"]; 
+	if( tmpv.size()!=1 ) { initialRmin = 0; }
+	else {
+		initialRmin = tmpv[0].Atof();
+		if(initialRmin<0) initialRmin = 0;
+	}
+
+	tmpv = options["--initialRmax"]; 
+	if( tmpv.size()!=1 ) { initialRmax = 20; }
+	else {
+		initialRmax = tmpv[0].Atof();
+		if(initialRmax<=0) initialRmax = 20;
+	}
+
 
 	// Hybrid specific options
 	tmpv = options["-tH"]; if(tmpv.size()!=1) tmpv = options["--toysHybrid"];
 	if( tmpv.size()!=1 ) { toysHybrid = 10000; }
-	else toysHybrid = tmpv[0].Atoi();
+	else {
+		toysHybrid = tmpv[0].Atoi();
+		if(toysHybrid<0) toysHybrid = 100;
+	}
 
 	tmpv = options["--testStat"]; 
 	if( tmpv.size()!=1 ) { testStat = 1; }
@@ -729,15 +776,15 @@ void processParameters(int argc, const char* argv[]){
 		else if(tmpv[0]=="TEV") testStat=2;
 		else if(tmpv[0]=="Atlas") testStat=3;
 		else if(tmpv[0]=="AtlasAllowMuHatNeg") testStat=32;
-		else {cout<<"**** Unimplemented testStat: "<<tmpv[0]<<", switch to LEP type. "<<endl; testStat=1; }
+		else {cout<<"ERROR Unimplemented testStat: "<<tmpv[0]<<". Supported: LEP, TEV, Atlas, AtlasAllowMuHatNeg "<<endl; exit(0); }
 	}
 
 	tmpv = options["--rule"]; 
 	if( tmpv.size()!=1 ) { rule = 1; }
 	else { 
-		if(tmpv[0]=="CLs") testStat=1;
-		else if(tmpv[0]=="CLsb") testStat=2;
-		else {cout<<"**** Unimplemented rule: "<<tmpv[0]<<", switch to CLs. "<<endl; rule=1;}
+		if(tmpv[0]=="CLs") rule=1;
+		else if(tmpv[0]=="CLsb" or tmpv[0]=="CLsplusb") rule=2;
+		else {cout<<"ERROR Unimplemented rule: "<<tmpv[0]<<". Supported: CLs,  CLsb "<<endl; exit(0); }
 	}
 
 	tmpv = options["--clsAcc"];
@@ -752,6 +799,60 @@ void processParameters(int argc, const char* argv[]){
 	if( tmpv.size()!=1 ) { rRelAcc = 0.01; }
 	else rRelAcc = tmpv[0].Atof();
 
+	// ProfiledLikelihood specific options
+	tmpv = options["--OneOrTwoSided"];
+	if( tmpv.size()!=1 ) { oneside = 1; }
+	else {
+		oneside = tmpv[0].Atoi();
+		if(oneside!=1 and oneside!=2)  {cout<<"ERROR --OneOrTwoSided can only have 1 or 2 as arg"<<endl; exit(0);}
+	}
+
+
+
+	printf("\n\n[ Summary of configuration in this job: ]\n");
+	cout<<"  Calculating "<<(calcsignificance?"significance":"limit")<<" with "<<method<<" method "<<endl;
+	cout<<"  datacards: "; for(int i=0; i<datacards.size(); i++) cout<<datacards[i]<<" "; cout<<endl;
+	cout<<"  "<<(systematics?"use systematics":"not use systematics")<<endl;
+	cout<<"  dataset is "<<dataset<<endl;
+	if(!calcsignificance) cout<<"  target confidence level = "<<CL<<endl;
+	cout<<"  "<<(doExpectation?"also calc expectation bands":"do not calc expectation bands")<<endl;
+	if(doExpectation)cout<<"  number of outcomes to build expecation bands: "<<toys<<endl;
+	if(method=="Bayesian") { 
+		cout<<"  prior = ";
+		if(prior==flat) cout<<"flat"<<endl;
+		else if(prior==corr) cout<<"corr"<<endl;
+		else if(prior==prior_1overSqrtS) cout<<"1/sqrt(r)"<<endl;
+		else cout<<"Unknow"<<endl;
+
+		cout<<"  toysBayesian = "<<toysBayesian<<endl;
+	}else if(method=="ProfiledLikelihood"){
+		if(!calcsignificance)cout<<(oneside==1?"  one sided":"  two sided")<<endl;
+	}else if(method=="FeldmanCousins"){
+		cout<<"  calc "<<(lowerLimit?"lower limit":"upper limit")<<endl;
+		cout<<"  "<<(adaptiveSampling?"use adaptiveSampling":"do not use adaptiveSampling")<<endl;
+		cout<<"  toysFactor = "<<toysFactor<<endl;
+		if(adaptiveSampling==false) cout<<"   number of toys per point = "<<toysHybrid<<endl;
+		cout<<"  do "<<(bQuickEstimateInitialLimit?"":"not")<<" estimate initial limit with bayesian method"<<endl;
+		if(!bQuickEstimateInitialLimit){
+			cout<<"   initialRmin = "<<initialRmin<<", initialRmax = "<<initialRmax<<endl;
+			if(initialRmax<initialRmin) {cout<<"  initialRmin can't be < initialRmax"<<endl; exit(0);}
+		}
+	}else if(method=="Hybrid"){
+		if(calcsignificance==false){
+			cout<<"  testStat = "; if(testStat==1) cout<<"LEP"; if(testStat==2)cout<<"TEV"; if(testStat==3)cout<<"Atals"; if(testStat==32)cout<<"AtlasAllowMuHatNeg";
+			cout<<endl;
+			cout<<"  rule     = "; if(rule==1) cout<<"CLs"; if(rule==2)cout<<"CLsb";
+			cout<<endl;
+		}
+		cout<<"  number of toys to build Q distribution = "<<toysHybrid<<endl;
+	}
+
+	cout<<"  random number generator seed: "<<seed<<endl;
+	cout<<"  debug level = "<<debug<<endl;
+	cout<<"  job name: "<<jobname<<endl;
+	cout<<endl<<endl;
+
+	fflush(stdout);	
 }
 
 void PrintHelpMessage(){
@@ -778,13 +879,19 @@ void PrintHelpMessage(){
 	printf("--lowerLimit arg (=0)                 Compute the lower limit instead of the upper limit \n"); 
 	printf("--toysFactor arg (=1)                 Increase the toys per point by this factor w.r.t. the minimum from adaptive sampling \n"); 
 	printf("--adaptiveSampling arg (=1)           currently only implemented in FeldmanCousins,  turn on (=1) by default.  =0 off \n"); 
+	printf("--bQuickEstimateInitialLimit arg (=1) quickly estimate initial limit from bayesian technique, turn off by 0  \n"); 
+	printf("--initialRmin arg (=0)                only effective when bQuickEstimateInitialLimit=0 \n"); 
+	printf("--initialRmax arg (=20)               only effective when bQuickEstimateInitialLimit=0 \n"); 
 	printf(" \n"); 
 	printf("Hybrid specific options: \n"); 
 	printf("-tH [ --toysHybrid ] arg (=10000)     Number of Toy MC extractions to compute CLs+b, CLb and CLs \n"); 
 	printf("--clsAcc arg (=0.001)                 Absolute accuracy on CLs to reach to terminate the scan \n"); 
 	printf("--rAbsAcc arg (=0.01)                 Absolute accuracy on r to reach to terminate the scan \n"); 
 	printf("--rRelAcc arg (=0.01)                 Relative accuracy on r to reach to terminate the scan \n"); 
-	printf("--rule arg (=CLs)                     Rule to use: CLs, CLsplusb \n"); 
+	printf("--rule arg (=CLs)                     Rule to use: CLs, CLsb \n"); 
 	printf("--testStat arg (=LEP)                 Test statistics: LEP, TEV, Atlas, AtlasAllowMuHatNeg. \n"); 
+	printf(" \n"); 
+	printf("ProfileLikelihood specific options: \n"); 
+	printf("--OneOrTwoSided arg (=1)              1 sided limit -lnL = 1.345;  2 sided limit -lnL = 1.921 \n"); 
 	exit(0);
 }
