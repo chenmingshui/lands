@@ -706,6 +706,7 @@ namespace lands{
 					}
 				}
 			}	
+			cms.AddObservedData(ch, cms1->Get_v_data()[ch]);
 		}	
 
 		tmp_vvvv_uncpar = cms2->Get_vvvv_uncpar();
@@ -742,6 +743,7 @@ namespace lands{
 					}
 				}
 			}	
+			cms.AddObservedData(newch, cms2->Get_v_data()[ch]);
 		}	
 
 
