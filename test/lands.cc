@@ -297,63 +297,69 @@ int main(int argc, const char*argv[]){
 			} while (fcErr > std::max(rAbsAcc, rRelAcc* fcMid));
 
 			r95_fc = fcMid;
-			if (1) {
+			if (0) {
 				std::cout << "\n -- FeldmanCousins++ -- \n";
 				std::cout << "Limit: r " << (lowerLimit_ ? "> " : "< ") << fcMid << " +/- "<<fcErr << "\n";
 			}
 
 
+			if(debug) cout <<"95\% CL upper limit by FC: "<<r95_fc<<",   use bys: "<<rtmp<<endl;
 
-			// for plots...
-			TCanvas *can = new TCanvas("c","c");	
-			TString ssave = "fc";
-			TString stmp = "hframe"; stmp += ssave;
-			double xmax = 0;
-			for(int i=0; i<vv_all.size(); i++){
-				int n = vv_all[i].size();
-				if(vv_all[i][n-2]>xmax) xmax= vv_all[i][n-2];
+			cout<<"------------------------------------------------------------"<<endl;
+			cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<r95_fc<<endl;
+			cout<<"------------------------------------------------------------"<<endl;
+
+
+			if(debug){
+				// for plots...
+				TCanvas *can = new TCanvas("c","c");	
+				TString ssave = "fc";
+				TString stmp = "hframe"; stmp += ssave;
+				double xmax = 0;
+				for(int i=0; i<vv_all.size(); i++){
+					int n = vv_all[i].size();
+					if(vv_all[i][n-2]>xmax) xmax= vv_all[i][n-2];
+				}
+				TH1F *hframe= new TH1F(stmp, "; q_{#mu}; #mu", 1000, 0, 2*xmax);
+				hframe->SetMinimum(rtmp/10.);
+				hframe->SetMaximum(rtmp*2.);
+				hframe->SetStats(0);
+				hframe->SetFillStyle(1);
+				hframe->Draw(" ");
+
+				float *r_tested = new float[vv_all.size()];
+				float *q_data = new float[vv_all.size()];
+
+				float q95=0;
+				for(int i=0; i<vv_all.size(); i++){
+					int n = vv_all[i].size();
+					double x[2]={0, vv_all[i][n-2]};	// q_up	
+					double y[2]={vv_all[i][n-3], vv_all[i][n-3]}; // r
+					TGraph *gr = new TGraph(2, x, y);
+					gr->Draw("l same");
+
+					r_tested[i]=vv_all[i][n-3];
+					q_data[i]=vv_all[i][n-1];
+
+					//if(r95_fc==vv_all[i][n-3]) q95 = q_data[i];
+					if(fabs(r95_fc-r_tested[i])/r95_fc<0.00001) q95 = q_data[i];
+				}
+
+				TGraph gr(vv_all.size(), q_data, r_tested);
+				gr.Sort(&TGraph::CompareY);
+				gr.Draw("l same");
+
+				TArrow *arrow95 = new TArrow(0, r95_fc, q95, r95_fc, 0.03, "|>");
+				arrow95->SetLineWidth(3);
+				arrow95->SetLineColor(kRed);
+				//arrow95->SetFillColor(kRed);
+				arrow95->SetFillStyle(0);
+				arrow95->Draw();
+				Save(can, "fc");
+				delete r_tested;
+				delete q_data;
 			}
-			TH1F *hframe= new TH1F(stmp, "; q_{#mu}; #mu", 1000, 0, 2*xmax);
-			hframe->SetMinimum(rtmp/10.);
-			hframe->SetMaximum(rtmp*2.);
-			hframe->SetStats(0);
-			hframe->SetFillStyle(1);
-			hframe->Draw(" ");
 
-			float *r_tested = new float[vv_all.size()];
-			float *q_data = new float[vv_all.size()];
-
-			float q95=0;
-			for(int i=0; i<vv_all.size(); i++){
-				int n = vv_all[i].size();
-				double x[2]={0, vv_all[i][n-2]};	// q_up	
-				double y[2]={vv_all[i][n-3], vv_all[i][n-3]}; // r
-				TGraph *gr = new TGraph(2, x, y);
-				gr->Draw("l same");
-
-				r_tested[i]=vv_all[i][n-3];
-				q_data[i]=vv_all[i][n-1];
-
-				//if(r95_fc==vv_all[i][n-3]) q95 = q_data[i];
-				if(fabs(r95_fc-r_tested[i])/r95_fc<0.00001) q95 = q_data[i];
-			}
-
-			TGraph gr(vv_all.size(), q_data, r_tested);
-			gr.Sort(&TGraph::CompareY);
-			gr.Draw("l same");
-
-			TArrow *arrow95 = new TArrow(0, r95_fc, q95, r95_fc, 0.03, "|>");
-			arrow95->SetLineWidth(3);
-			arrow95->SetLineColor(kRed);
-			//arrow95->SetFillColor(kRed);
-			arrow95->SetFillStyle(0);
-			arrow95->Draw();
-			Save(can, "fc");
-
-			cout <<"95\% CL upper limit by FC: "<<r95_fc<<",   use bys: "<<rtmp<<endl;
-
-			delete r_tested;
-			delete q_data;
 			return 1;
 		}else if(method=="ProfiledLikelihood"){
 
@@ -364,10 +370,10 @@ int main(int argc, const char*argv[]){
 			double tmp;
 			double tmperr;
 			double y0_1 =  MinuitFit(3, tmp, tmperr, 0);
-		if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
+			if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
 			double tmpr = 0;
 			double y0_2 =  MinuitFit(2, tmpr, tmperr) ;
-		if(debug)	cout<<y0_2<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
+			if(debug)	cout<<y0_2<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
 
 			double x1 =0, x2 =1;
 			double y0 = y0_1;  
@@ -431,8 +437,12 @@ int main(int argc, const char*argv[]){
 				r95 = x2;
 			}
 
-			cout<<"r95 = "<<r95<<",  "<<nsearched<<" steps"<<endl;
+			if(debug)cout<<"r95 = "<<r95<<",  "<<nsearched<<" steps"<<endl;
 
+
+			cout<<"------------------------------------------------------------"<<endl;
+			cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<r95<<endl;
+			cout<<"------------------------------------------------------------"<<endl;
 
 
 			if(debug>=10){ // show a plot for  -log(Lambda(mu)) vs. mu 
@@ -655,10 +665,10 @@ void processParameters(int argc, const char* argv[]){
 		method = tmpv[0];
 		if( calcsignificance && 
 				(method!="ProfiledLikelihood" and method!="Hybrid")
-				 ){cout<<"ERROR You are trying to use "<<method<<", which is not supported currently to calculate Significance"<<endl; exit(0);}
+		  ){cout<<"ERROR You are trying to use "<<method<<", which is not supported currently to calculate Significance"<<endl; exit(0);}
 		if( !calcsignificance && 
 				(method!="ProfiledLikelihood" and method!="Hybrid" and method!="Bayesian" and method!="FeldmanCousins" )
-				 ){cout<<"ERROR You are trying to use "<<method<<", which is not supported currently to calculate limit "<<endl; exit(0);}
+		  ){cout<<"ERROR You are trying to use "<<method<<", which is not supported currently to calculate limit "<<endl; exit(0);}
 	}
 
 	tmpv = options["-v"]; if(tmpv.size()!=1) tmpv = options["--verbose"]; if(tmpv.size()!=1) tmpv = options["--debug"]; 
@@ -675,7 +685,7 @@ void processParameters(int argc, const char* argv[]){
 		dataset = tmpv[0];
 		if(dataset!="data_obs" and dataset!="asimov_sb" and dataset!="asimov_b"){cout<<"ERROR: dataset option must be one of data_obs, asimov_sb and asimov_b"<<endl; exit(0);}
 	}
-	
+
 	tmpv = options["--doExpectation"]; 
 	if( tmpv.size()!=1 ) { doExpectation = 0; }
 	else doExpectation = tmpv[0].Atoi();
@@ -712,7 +722,7 @@ void processParameters(int argc, const char* argv[]){
 	tmpv = options["-tB"]; if(tmpv.size()!=1) tmpv = options["--toysBayesian"];
 	if( tmpv.size()!=1 ) { toysBayesian = 10000; }
 	else {
-	       	toysBayesian = tmpv[0].Atoi();
+		toysBayesian = tmpv[0].Atoi();
 		if(toysBayesian<0) toysBayesian = 1;
 	}
 
@@ -747,10 +757,10 @@ void processParameters(int argc, const char* argv[]){
 	}
 
 	tmpv = options["--initialRmin"]; 
-	if( tmpv.size()!=1 ) { initialRmin = 0; }
+	if( tmpv.size()!=1 ) { initialRmin = 1; }
 	else {
 		initialRmin = tmpv[0].Atof();
-		if(initialRmin<0) initialRmin = 0;
+		if(initialRmin<0) initialRmin = 1;
 	}
 
 	tmpv = options["--initialRmax"]; 
@@ -835,7 +845,7 @@ void processParameters(int argc, const char* argv[]){
 		cout<<"  do "<<(bQuickEstimateInitialLimit?"":"not")<<" estimate initial limit with bayesian method"<<endl;
 		if(!bQuickEstimateInitialLimit){
 			cout<<"   initialRmin = "<<initialRmin<<", initialRmax = "<<initialRmax<<endl;
-			if(initialRmax<initialRmin) {cout<<"  initialRmin can't be < initialRmax"<<endl; exit(0);}
+			if(initialRmax<initialRmin) {cout<<"  initialRmin can't be > initialRmax"<<endl; exit(0);}
 		}
 	}else if(method=="Hybrid"){
 		if(calcsignificance==false){
@@ -880,7 +890,7 @@ void PrintHelpMessage(){
 	printf("--toysFactor arg (=1)                 Increase the toys per point by this factor w.r.t. the minimum from adaptive sampling \n"); 
 	printf("--adaptiveSampling arg (=1)           currently only implemented in FeldmanCousins,  turn on (=1) by default.  =0 off \n"); 
 	printf("--bQuickEstimateInitialLimit arg (=1) quickly estimate initial limit from bayesian technique, turn off by 0  \n"); 
-	printf("--initialRmin arg (=0)                only effective when bQuickEstimateInitialLimit=0 \n"); 
+	printf("--initialRmin arg (=1)                only effective when bQuickEstimateInitialLimit=0 \n"); 
 	printf("--initialRmax arg (=20)               only effective when bQuickEstimateInitialLimit=0 \n"); 
 	printf(" \n"); 
 	printf("Hybrid specific options: \n"); 
