@@ -25,7 +25,7 @@ void PrintHelpMessage();
 
 // parameters :
 vector<TString> datacards; // enable multiple cards combination, and allow "* ?" in the input
-TString method; // ProfileLikelihood, Bayesian, Hybrid, FeldmanCousins 
+TString method; // ProfiledLikelihood, Bayesian, Hybrid, FeldmanCousins 
 TString jobname; // default constructed as "fist_card_name"+"method"
 TString dataset; // default: data_obs;  asimov_b, asimov_sb
 int debug; // default 0
@@ -355,7 +355,7 @@ int main(int argc, const char*argv[]){
 			delete r_tested;
 			delete q_data;
 			return 1;
-		}else if(method=="ProfileLikelihood"){
+		}else if(method=="ProfiledLikelihood"){
 
 			cms_global= cms;
 			vdata_global=cms->Get_v_data();
@@ -364,10 +364,10 @@ int main(int argc, const char*argv[]){
 			double tmp;
 			double tmperr;
 			double y0_1 =  MinuitFit(3, tmp, tmperr, 0);
-			cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
+		if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
 			double tmpr = 0;
 			double y0_2 =  MinuitFit(2, tmpr, tmperr) ;
-			cout<<y0_2<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
+		if(debug)	cout<<y0_2<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
 
 			double x1 =0, x2 =1;
 			double y0 = y0_1;  
@@ -517,7 +517,7 @@ int main(int argc, const char*argv[]){
 		double tmp, tmperr;
 		double rmean, rm1s, rm2s, rp1s, rp2s;	
 		vector<double> difflimits; 
-		if(method == "ProfileLikelihood"){
+		if(method == "ProfiledLikelihood"){
 
 			cms_global= cms;
 			vdata_global=cms->Get_v_data();
@@ -863,13 +863,13 @@ void PrintHelpMessage(){
 	printf("-n [ --name ] arg                     Name of the job,  default is \"datacard\"+\"method\" \n"); 
 	printf("-d [ --datacards ] args               Datacard files,  can contain \"*, ?\" \n"); 
 	printf("-D [ --dataset ] arg (=data_obs)      Dataset for observed limit,  data_obs,  asimov_b, asimov_sb \n"); 
-	printf("-M [ --method ] arg                   Method to extract upper limit. Supported methods are: Bayesian, FeldmanCousins, Hybrid, ProfileLikelihood \n"); 
+	printf("-M [ --method ] arg                   Method to extract upper limit. Supported methods are: Bayesian, FeldmanCousins, Hybrid, ProfiledLikelihood \n"); 
 	printf("--doExpectation arg (=0)              i.e calc expected bands and mean/median values     \n"); 
 	printf("-t [ --toys ] arg (=1000)             Number of Toy MC extractions for expectation \n"); 
 	printf("-s [ --seed ] arg (=1234)             Toy MC random seed \n"); 
 	printf("-S [ --systematics ] arg (=1)         if 0, then will not use systematics  \n"); 
 	printf("-C [ --cl ] arg (=0.95)               Confidence Level \n"); 
-	printf("--significance arg (=0)               Compute significance instead of upper limit,  supported methods: ProfileLikelihood and Hybrid (CLb) \n"); 
+	printf("--significance arg (=0)               Compute significance instead of upper limit,  supported methods: ProfiledLikelihood and Hybrid (CLb) \n"); 
 	printf(" \n"); 
 	printf("Bayesian specific options: \n"); 
 	printf("--prior arg (=flat)            	      Prior to use: \'flat\' (default), \'1/sqrt(r)\', \'corr\' \n"); 
@@ -891,7 +891,7 @@ void PrintHelpMessage(){
 	printf("--rule arg (=CLs)                     Rule to use: CLs, CLsb \n"); 
 	printf("--testStat arg (=LEP)                 Test statistics: LEP, TEV, Atlas, AtlasAllowMuHatNeg. \n"); 
 	printf(" \n"); 
-	printf("ProfileLikelihood specific options: \n"); 
+	printf("ProfiledLikelihood specific options: \n"); 
 	printf("--OneOrTwoSided arg (=1)              1 sided limit -lnL = 1.345;  2 sided limit -lnL = 1.921 \n"); 
 	exit(0);
 }
