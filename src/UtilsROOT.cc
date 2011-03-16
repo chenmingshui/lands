@@ -297,7 +297,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped)
 				if(lines[k].BeginsWith("kmax")){
 					newlines.push_back(lines[k]);
 				}
-				if(lines[k].BeginsWith("Observation")){
+				if(lines[k].BeginsWith("Observation") or lines[k].BeginsWith("Observation")){
 					vector<string> ss_old; ss_old.clear();
 					StringSplit(ss_old, lines[k].Data(), " ");
 					TString s = "Observation ";
@@ -477,10 +477,13 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped){
 			if(debug)cout<<"NChannel = "<<ss[1]<<endl;
 			TString s = ss[1];
 			if(s.IsDigit()==false) {
-				cout<<"need a number after imax"<<", currently it's not a number but \'"<<s<<"\'"<<endl;
-				exit(0);
+				//cout<<"need a number after imax"<<", currently it's not a number but \'"<<s<<"\'"<<endl;
+				//exit(0);
+				nchannel = -1;
+				cout<<"WARNING: You input of imax (number of channels) is not digit, hence LandS will not check the consistency"<<endl;
+			}else {
+				nchannel = s.Atoi();
 			}
-			nchannel = s.Atoi();
 
 			duplicatingLines.push_back(lines[l]);
 		} 
@@ -490,33 +493,115 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped){
 		return false;
 	}
 
+	// get observed dataset and cout how many channels in your model
+	//
+	vector<double> observeddata;
+	bool hasFilled = false;
+	for(int l=0; l<lines.size(); l++){
+		if(lines[l].BeginsWith("Observation") or lines[l].BeginsWith("observation")){
+			observeddata.clear();
+			if(hasFilled) cout<<"WARNING: You have two lines started with \"observation\", we will use the second line"<<endl;
+			vector<string>	ss; 
+			ss.clear();
+			StringSplit(ss, lines[l].Data(), " ");
+			for(int i=1; i<ss.size(); i++){
+				if(TString(ss[i]).IsFloat()){
+					double ev = (TString(ss[i])).Atof();
+					observeddata.push_back(ev);
+				}
+			}
+			hasFilled =  true;
+			duplicatingLines.push_back(lines[l]);
+		}
+	}
+	if(hasFilled==false) {cout<<"ERROR: need a line starting with \"Observation\" "<<endl; exit(0);}
+	if(nchannel<0) nchannel = observeddata.size(); // if you don't assign a number to imax
+	if(nchannel!= observeddata.size()) {
+		cout<<"ERROR: number of channels spcified in \"imax\" line is not consistent with \"observation\" line "<<endl;
+		exit(0);
+	}
+	if(debug){
+		cout<<"observed data: ";
+		for(int i=0; i<nchannel; i++) cout<<observeddata[i]<<" ";
+		cout<<endl;
+	}
+
+	// there must be one line of "process", which contains enumeration of processes in each channel
+	// you might have another line with "process" which contains process names in each channel
+	// since in one of the "process" lines,  for each channel, there must be one and only one process enumerated as "0"
+	// we will count how many "0" in that line to determine how many channels actually go into your model
+	// double check ....
+	//
+	// first check how many lines started with "process"
+	int nlines_with_process = 0;
+	vector< vector<string> > vss_processes; vss_processes.clear();
+	for(int l=0; l<lines.size(); l++){
+		if(lines[l].BeginsWith("process")){
+			nlines_with_process++;
+			vector<string>	ss; 
+			ss.clear();
+			StringSplit(ss, lines[l].Data(), " ");
+			vss_processes.push_back(ss);
+			duplicatingLines.push_back(lines[l]);
+		}
+	}
+	if(nlines_with_process<1 or nlines_with_process>2 ){ cout<<"ERROR: you have "<<nlines_with_process<<" lines started with \"process\".  must be one or two"<<endl; exit(0); }
+	// read number of channels from process line
+	int tmpn = 0;  int l_proc = 0;
+	vector<int> nsigproc; nsigproc.clear(); // record number of signal processes in each channel  (with process number <= 0)
+	vector<string> processnames; processnames.clear();
+	for(int l=0; l<vss_processes.size(); l++){
+		for(int i=1; i<vss_processes[l].size(); i++){ // vss_processes[0] is "process"
+			if(!TString(vss_processes[l][i]).IsFloat()) break; // you encounter comments or non-numbers, stop processing 
+			if(tmpn==nsigproc.size())nsigproc.push_back(0);
+			if(TString(vss_processes[l][i]).Atoi()<=0) nsigproc[nsigproc.size()-1]++;
+			if(TString(vss_processes[l][i]).Atoi()==0) tmpn++; // as each channel has "0" standing for one of signal processes
+			processnames.push_back(vss_processes[l][i]); // we temporarily assign process name as the "number", if another "process" line found,  we'll make change later
+		}
+		// debug
+		for(int i=0; i<nsigproc.size(); i++){
+			if(debug)cout<<" n signal process in channel "<<i<<": "<<nsigproc[i]<<endl;
+		}
+
+
+		if(tmpn>0) {
+			l_proc = l; // record which line of "process" lines is for enumeration
+			break; // already got the wanted line 
+		}
+	}
+	if(nchannel != tmpn ) { cout<<"ERROR: \"observation\" and \"process\" are not consistent"<<endl; exit(0);}
+	// read process names 
+	if(vss_processes.size()==2){
+		for(int i=1; i<vss_processes[1-l_proc].size(); i++){
+			if(i>processnames.size()) break;
+			processnames[i-1] = vss_processes[1-l_proc][i];
+		}
+	}
 
 	// get numbers of processes in each channel
 	int *nprocesses = new int[nchannel];
 	for(int i=0; i<nchannel; i++) nprocesses[i]=0;
 	bool hasLineStartWithBin = false;
+	vector<string> channelnames; channelnames.clear();
 	for(int l=0; l<lines.size(); l++){
-		if(lines[l].BeginsWith("bin") && hasLineStartWithBin==true){
+		if(lines[l].BeginsWith("bin ") && hasLineStartWithBin==true){
 			cout<<"WARNING:  there are two lines beginning with \"bin\" in your card. We will take the first one"<<endl;
 		}
-		if(lines[l].BeginsWith("bin") && hasLineStartWithBin==false){
-			TString tmps = TString::Format("%10s ","bin");
+		if(lines[l].BeginsWith("bin ") && hasLineStartWithBin==false){
 			vector<string>	ss; 
 			ss.clear();
 			StringSplit(ss, lines[l].Data(), " ");
+
+			// we now can proceed with names of bins instead of just numbers 1, 2, 3, ... N 
+			int bin = 0;
 			for(int i=1; i<ss.size(); i++){
-				int bin = (TString(ss[i])).Atoi();
+				if(ss[i]!=ss[i-1]) { bin++; channelnames.push_back(ss[i]);	}
 				if(bin<(nchannel+1) && bin>=1) nprocesses[bin-1]++;
-				else {
-					cout<<"WARNING: there is a bin number = "<<bin<<", out of [1,"<<nchannel<<"]"<<endl;
-					cout<<"We take "<<nchannel<<" bins indicated by imax, and skip the rest bins "<<endl;
-					break;
-					//return false;
-				}
-				tmps+= TString::Format("%7d ",bin);
 			}
+			if(bin != nchannel) {cout<<"ERROR: number of channels got from \"bin\" line is not consistent with \"observation\" line"<<endl; exit(0);};
+
 			hasLineStartWithBin = true;
-			duplicatingLines.push_back(tmps);
+			duplicatingLines.push_back(lines[l]);
 		} 
 	}	
 	if(!hasLineStartWithBin) {
@@ -526,7 +611,20 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped){
 	if(debug){
 		for(int i = 0; i<nchannel; i++) cout<<"processes in Channel "<<i<<" = "<<nprocesses[i]<<endl;
 	}
-	for(int i=0; i<nchannel; i++) if(nprocesses[i]==0) {cout<<"channel "<<i<<", number of processes = 0"<<endl; return false;}
+	for(int i=0; i<nchannel; i++) if(nprocesses[i]==0) {cout<<"ERROR: channel "<<i<<", number of processes = 0"<<endl; exit(0);}
+
+	// if you have "bins" or "binname" line,  then replace channel name  with the ones from this line
+	for(int l=0; l<lines.size(); l++){
+		if(lines[l].BeginsWith("bins ") or lines[l].BeginsWith("binname") ){
+			vector<string>	ss; 
+			ss.clear();
+			StringSplit(ss, lines[l].Data(), " ");
+			for(int i=1; i<ss.size(); i++){
+				if(i>nchannel) break;
+				channelnames[i-1]=ss[i];
+			}
+		}
+	}
 
 	int ntotprocesses = 0;
 	for(int i = 0; i<nchannel; i++) ntotprocesses+=nprocesses[i];
@@ -553,7 +651,7 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped){
 	//
 	double *eventrate =new double[ntotprocesses];
 	for(int i=0; i<ntotprocesses; i++) eventrate[i]=0;
-	bool hasFilled = false;
+	hasFilled = false;
 	for(int l=0; l<lines.size(); l++){
 		if(lines[l].BeginsWith("rate")){
 			TString tmps = TString::Format("%10s ","rate");
@@ -574,34 +672,6 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped){
 	if(debug){
 		cout<<"event rate: ";
 		for(int i=0; i<ntotprocesses; i++) cout<<eventrate[i]<<" ";
-		cout<<endl;
-	}
-
-	// get observed dataset
-	//
-	double *observeddata=new double[nchannel];
-	for(int i=0; i<nchannel; i++) observeddata[i]=0;
-	hasFilled = false;
-	for(int l=0; l<lines.size(); l++){
-		if(lines[l].BeginsWith("Observation")){
-			TString tmps = TString::Format("%10s ","Observation");
-			vector<string>	ss; 
-			ss.clear();
-			StringSplit(ss, lines[l].Data(), " ");
-			if(ss.size()-1<nchannel) {cout<<"channels of observed data < "<<nchannel<<endl; return false;} 
-			for(int i=1; i<(nchannel+1); i++){
-				double ev = (TString(ss[i])).Atof();
-				observeddata[i-1] = ev;
-				tmps+= TString::Format("%7.2f ",ev);
-			}
-			hasFilled =  true;
-			duplicatingLines.push_back(tmps);
-		}
-	}
-	if(hasFilled==false) {cout<<"need a line starting with \"Observation\" "<<endl; return false;}
-	if(debug){
-		cout<<"observed data: ";
-		for(int i=0; i<nchannel; i++) cout<<observeddata[i]<<" ";
 		cout<<endl;
 	}
 
@@ -630,11 +700,15 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped){
 	index=0;
 	for(int c=0; c<nchannel; c++){
 		vector<double> sigbkgs; sigbkgs.clear();
+		vector<string> tmpprocn; tmpprocn.clear();
 		for(int p=0; p<nprocesses[c]; p++) {
 			sigbkgs.push_back(eventrate[index]);
+			tmpprocn.push_back(processnames[index]);
 			index++;
 		}
-		cms->AddChannel( sigbkgs );
+		if(debug) cout<<" nsigproc["<<c<<"] = "<<nsigproc[c]<<endl;
+		cms->AddChannel(channelnames[c], sigbkgs, nsigproc[c]);
+		cms->SetProcessNames(c, tmpprocn);
 		cms->AddObservedData(c, observeddata[c]);
 	}	
 

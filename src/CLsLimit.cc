@@ -55,37 +55,42 @@ namespace lands{
 			cout<<"vdata_global.size = "<<vdata_global.size()<<",  model_channels = "<<nchs<<endl;
 			exit(0);
 		}
-		Double_t tc = 0;
-		Double_t bs = 0;
+		Double_t tc =0, ss=0,  bs = 0;
 		int u=0, s=0, c=0;
 		double tmp, tmp2;
 		int tmp3;
+		int nsigproc = 1;	
 		for(c=0; c<nchs; c++){
-			tc=par[0]*vv_sigbks[c][0];
-			if(cms_global->IsUsingSystematicsErrors()){
-				for(u = 0; u<vvv_pdftype[c][0].size(); u++){
-					if(vvv_pdftype[c][0][u]==typeLogNormal) tc *= (pow(1+vvvv_uncpar[c][0][u][0],par[(vvv_idcorrl)[c][0][u]]));
-					else if(vvv_pdftype[c][0][u]==typeTruncatedGaussian) tc*=(1+vvvv_uncpar[c][0][u][0]*par[(vvv_idcorrl)[c][0][u]]);
-					else if(vvv_pdftype[c][0][u]==typeGamma){
-						tmp2 = vvvv_uncpar[c][0][u][0];
-						tmp3 = vvv_idcorrl[c][0][u];
-						if(tmp2>0){
-							tmp =par[0]*vv_sigbks[c][0];	
-							if(tmp==0) tc = par[0]*tmp2*par[tmp3];
-							if(tmp!=0) { tc/=tmp; tc *= (par[0]*tmp2*par[tmp3]); }
-						}else{
-							tc*=(par[tmp3]/v_GammaN[tmp3]);
+			nsigproc = cms_global->GetNSigprocInChannel(c);	
+			tc=0; 
+			for(s=0; s<nsigproc; s++){
+				ss =par[0]*vv_sigbks[c][s];
+				if(cms_global->IsUsingSystematicsErrors()){
+					for(u = 0; u<vvv_pdftype[c][s].size(); u++){
+						if(vvv_pdftype[c][s][u]==typeLogNormal) ss *= (pow(1+vvvv_uncpar[c][s][u][0],par[(vvv_idcorrl)[c][s][u]]));
+						else if(vvv_pdftype[c][s][u]==typeTruncatedGaussian) ss*=(1+vvvv_uncpar[c][s][u][0]*par[(vvv_idcorrl)[c][s][u]]);
+						else if(vvv_pdftype[c][s][u]==typeGamma){
+							tmp2 = vvvv_uncpar[c][s][u][0];
+							tmp3 = vvv_idcorrl[c][s][u];
+							if(tmp2>0){
+								tmp =par[0]*vv_sigbks[c][s];	
+								if(tmp==0) ss = par[0]*tmp2*par[tmp3];
+								if(tmp!=0) { ss/=tmp; ss *= (par[0]*tmp2*par[tmp3]); }
+							}else{
+								ss*=(par[tmp3]/v_GammaN[tmp3]);
+							}
+							//cout<<"s= "<< ss <<" alpha= "<< vvvv_uncpar[c][s][u][0]<<" B="<<par[(vvv_idcorrl)[c][s][u]]<<endl;
 						}
-						//cout<<"s= "<< tc <<" alpha= "<< vvvv_uncpar[c][0][u][0]<<" B="<<par[(vvv_idcorrl)[c][0][u]]<<endl;
-					}
-					else {
-						cout<<"pdf_type = "<<vvv_pdftype[c][0][u]<<" not defined yet"<<endl;
-						exit(0);
+						else {
+							cout<<"pdf_type = "<<vvv_pdftype[c][s][u]<<" not defined yet"<<endl;
+							exit(0);
+						}
 					}
 				}
+				tc+=ss;
 			}
 
-			for(s = 1; s<vvv_pdftype[c].size(); s++){
+			for(s = nsigproc; s<vvv_pdftype[c].size(); s++){
 				bs = vv_sigbks[c][s];	
 				if(cms_global->IsUsingSystematicsErrors()){
 					for(u=0; u<vvv_pdftype[c][s].size(); u++){
@@ -354,11 +359,13 @@ bool CLsBase::BuildM2lnQ(int nexps, int sbANDb_bOnly_sbOnly, bool reUsePreviousT
 	vector<double> vs, vb, vd; 
 	vs.clear(); vb.clear(); vd.clear();
 	for(int i=0; i<_nchannels; i++){
-		double totbkg = 0;
-		for(int isamp = 1; isamp<(_model->Get_vv_exp_sigbkgs())[i].size(); isamp++){
-			totbkg+=(_model->Get_vv_exp_sigbkgs())[i][isamp];
+		double totbkg = 0, totsig=0;
+		for(int isamp = 0; isamp<(_model->Get_vv_exp_sigbkgs())[i].size(); isamp++){
+			if(_debug>=100) cout<<"ch "<<i<<" isamp "<<isamp<<",  nsigproc= "<<_model->GetNSigprocInChannel(i)<<endl;
+			if(isamp<_model->GetNSigprocInChannel(i)) totsig+= (_model->Get_vv_exp_sigbkgs())[i][isamp];
+			else totbkg+=(_model->Get_vv_exp_sigbkgs())[i][isamp];
 		}
-		vs.push_back((_model->Get_vv_exp_sigbkgs())[i][0]);
+		vs.push_back(totsig);
 		vb.push_back(totbkg);
 		vd.push_back((_model->Get_v_data())[i]);
 		_nsig += vs[i];
@@ -548,13 +555,14 @@ bool CLsBase::BuildM2lnQ(int nexps, int sbANDb_bOnly_sbOnly, bool reUsePreviousT
 		if(test_statistics==1){
 			vector< vector<double> > vv = _model->FluctuatedNumbers();
 			for(int ch=0; ch<_nchannels; ch++){	
-				double totbkg = 0; 
-				for(int isamp=1; isamp<vv[ch].size(); isamp++){
-					totbkg+=vv[ch][isamp];
+				double totbkg = 0, totsig=0; 
+				for(int isamp=0; isamp<vv[ch].size(); isamp++){
+					if(isamp<_model->GetNSigprocInChannel(ch)) totsig+=vv[ch][isamp];
+					else totbkg+=vv[ch][isamp];
 				}
-				if( (_model->AllowNegativeSignalStrength()==true || vv[ch][0] > 0) && totbkg > 0 ) {
+				if( (_model->AllowNegativeSignalStrength()==true || totsig > 0) && totbkg > 0 ) {
 					if( sbANDb_bOnly_sbOnly != 1 ){
-						nsbi = _rdm->Poisson( vv[ch][0] + totbkg );	
+						nsbi = _rdm->Poisson( totsig + totbkg );	
 						Q_sb[i] += (nsbi*lognoverb[ch]) ;
 					}
 					if( sbANDb_bOnly_sbOnly != 2 ){
@@ -896,11 +904,12 @@ double CLsBase::Get_m2lnQ_data(){
 	vs.clear(); vb.clear(); vd.clear();
 	_nsig=0; Q_b_data = 0;
 	for(int i=0; i<_nchannels; i++){
-		double totbkg = 0;
-		for(int isamp = 1; isamp<(_model->Get_vv_exp_sigbkgs())[i].size(); isamp++){
-			totbkg+=(_model->Get_vv_exp_sigbkgs())[i][isamp];
+		double totbkg = 0, totsig = 0;
+		for(int isamp = 0; isamp<(_model->Get_vv_exp_sigbkgs())[i].size(); isamp++){
+			if(isamp<_model->GetNSigprocInChannel(i)) totsig+=((_model->Get_vv_exp_sigbkgs())[i][isamp]);
+			else totbkg+=(_model->Get_vv_exp_sigbkgs())[i][isamp];
 		}
-		vs.push_back((_model->Get_vv_exp_sigbkgs())[i][0]);
+		vs.push_back(totsig);
 		vb.push_back(totbkg);
 		vd.push_back((_model->Get_v_data())[i]);
 		_nsig += vs[i];

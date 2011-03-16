@@ -38,6 +38,8 @@ namespace lands{
 		b_AllowNegativeSignalStrength = 1;
 		v_GammaN.clear();
 		v_uncname.clear();
+		v_sigproc.clear();
+		vv_procname.clear();
 		_debug=0;
 	}
 	CountingModel::~CountingModel(){
@@ -57,6 +59,8 @@ namespace lands{
 		v_pdftype.clear();
 		v_GammaN.clear();
 		v_uncname.clear();
+		v_sigproc.clear();
+		vv_procname.clear();
 	}
 	void CountingModel::AddChannel(std::string channel_name, double num_expected_signal, double num_expected_bkg_1, double num_expected_bkg_2, 
 			double num_expected_bkg_3, double num_expected_bkg_4, double num_expected_bkg_5, double num_expected_bkg_6 ){
@@ -156,7 +160,14 @@ namespace lands{
 		vvvv_uncpar.push_back(vvvuncpar);
 		vvv_pdftype.push_back(vvpdftype);
 		vvv_idcorrl.push_back(vvidcorrl);
-
+		v_sigproc.push_back(1);
+		vector<string> vproc; vproc.clear();
+	       	for(int i=0; i<7; i++) {
+			char tmp[256];
+			sprintf(tmp, "%d", i);
+			vproc.push_back(tmp);
+		}
+		vv_procname.push_back(vproc);
 	}
 	void CountingModel::AddChannel(double num_expected_signal, double num_expected_bkg_1, double num_expected_bkg_2, 
 			double num_expected_bkg_3, double num_expected_bkg_4, double num_expected_bkg_5, double num_expected_bkg_6 ){
@@ -167,17 +178,25 @@ namespace lands{
 	void CountingModel::AddChannel(double num_expected_signal, vector<double> num_expected_bkgs){
 		AddChannel("",  num_expected_signal,  num_expected_bkgs);
 	}
-	void CountingModel::AddChannel(vector<double> num_expected_yields){
+	void CountingModel::AddChannel(vector<double> num_expected_yields, int signal_processes){
 		AddChannel("",  num_expected_yields);
 	}
-	void CountingModel::AddChannel(string channel_name, vector<double> num_expected_yields){
-		double num_expected_signal = num_expected_yields[0];
-		vector<double> num_expected_bkgs(&num_expected_yields[1], &num_expected_yields[num_expected_yields.size()]);
-		AddChannel(channel_name, num_expected_signal,  num_expected_bkgs);
-		//cout<<"tot.size="<<num_expected_yields.size()<<" bkg.size="<<num_expected_bkgs.size()<<endl;
+	void CountingModel::AddChannel(string channel_name, vector<double> num_expected_yields, int signal_processes){
+		if(_debug>=100)cout<<"AddChannel: nsigpro = "<<signal_processes<<endl;
+		if(signal_processes<=0)  {cout<<"ERROR: you add a channel with number of signal_processes <=0 "<<endl; exit(0);}
+		if(num_expected_yields.size()<=signal_processes){cout<<"ERROR: you add a channel with no background process"<<endl; exit(0);}
+		vector<double> num_expected_signals(&num_expected_yields[0], &num_expected_yields[signal_processes]); 
+		vector<double> num_expected_bkgs(&num_expected_yields[signal_processes], &num_expected_yields[num_expected_yields.size()]);
+		if(_debug>=100)cout<<"channel "<<channel_name<<": tot.size="<<num_expected_yields.size()<<" bkg.size="<<num_expected_bkgs.size()<<endl;
+		AddChannel(channel_name, num_expected_signals,  num_expected_bkgs);
 	}
+	void CountingModel::AddChannel(string channel_name, vector<double> num_expected_signals, vector<double> num_expected_bkgs){
+		int signal_processes = num_expected_signals.size();
+		int bkg_processes = num_expected_bkgs.size();
+		if(signal_processes<=0)  {cout<<"ERROR: you add a channel with number of signal_processes <=0 "<<endl; exit(0);}
+		if(bkg_processes<=0)  {cout<<"ERROR: you add a channel with number of bkg_processes <=0 "<<endl; exit(0);}
+		v_sigproc.push_back(signal_processes);
 
-	void CountingModel::AddChannel(string channel_name, double num_expected_signal, vector<double> num_expected_bkgs){
 		if(channel_name==""){
 			char tmp[256];
 			sprintf(tmp, "channel_%d", v_channelname.size());
@@ -188,19 +207,23 @@ namespace lands{
 		else v_channelname.push_back(channel_name);
 
 		double tmp_totbkg = 0;
-		
+
 		vector<double> vsigbkgs; vsigbkgs.clear();
-		vsigbkgs.push_back(num_expected_signal);
 		vector< vector< vector<double> > > vvvuncpar; vvvuncpar.clear();
 		vector< vector<int> > vvpdftype; vvpdftype.clear();
 		vector< vector<int> > vvidcorrl; vvidcorrl.clear();
 
 		vector< vector<double> > vvunc; vvunc.clear();
-		vvvuncpar.push_back(vvunc);
 		vector<int> vpdftype; vpdftype.clear();
-		vvpdftype.push_back(vpdftype);
 		vector<int> vidcorrl; vidcorrl.clear();
-		vvidcorrl.push_back(vidcorrl);
+
+		for(int i=0; i<num_expected_signals.size(); i++){
+			vsigbkgs.push_back(num_expected_signals[i]);
+			vvvuncpar.push_back(vvunc);
+			vvpdftype.push_back(vpdftype);
+			vvidcorrl.push_back(vidcorrl);
+		}
+
 		for(int i=0; i<num_expected_bkgs.size(); i++){
 			vsigbkgs.push_back(num_expected_bkgs[i]);
 			vvvuncpar.push_back(vvunc);
@@ -215,7 +238,24 @@ namespace lands{
 		vvvv_uncpar.push_back(vvvuncpar);
 		vvv_pdftype.push_back(vvpdftype);
 		vvv_idcorrl.push_back(vvidcorrl);
-
+		if(_debug>=100)cout<<"channel "<<channel_name<<": tot.size="<<signal_processes+bkg_processes<<" bkg.size="<<bkg_processes<<endl;
+		vector<string> vproc; vproc.clear();
+	       	for(int i=0; i<num_expected_signals.size(); i++) {
+			char tmp[256];
+			sprintf(tmp, "%d", i-num_expected_signals.size());
+			vproc.push_back(tmp);
+		}
+	       	for(int i=0; i<num_expected_bkgs.size(); i++) {
+			char tmp[256];
+			sprintf(tmp, "%d", i+1);
+			vproc.push_back(tmp);
+		}
+		vv_procname.push_back(vproc);
+	}
+	void CountingModel::AddChannel(string channel_name, double num_expected_signal, vector<double> num_expected_bkgs){
+		vector<double> num_expected_signals; num_expected_signals.clear();
+		num_expected_signals.push_back(num_expected_signal);
+		AddChannel(channel_name, num_expected_signals, num_expected_bkgs);
 	}	
 	void CountingModel::AddUncertainty(int index_channel, int index_sample, double uncertainty_in_relative_fraction, int pdf_type, string uncname ){
 		int index_correlation = -1; // numeration starts from 1
@@ -297,6 +337,9 @@ namespace lands{
 		v_data.at(index_channel)=num_data;
 	}
 
+	void CountingModel::SetProcessNames(int index_channel, vector<string> vproc){
+		vv_procname.at(index_channel)=vproc;
+	}
 	void CountingModel::ConfigUncertaintyPdfs(){
 		v_TruncatedGaussian_maxUnc.clear();
 		v_TruncatedGaussian.clear();
@@ -429,10 +472,12 @@ namespace lands{
 		VChannelVSample vv = vv_exp_sigbkgs_scaled;
 		int indexcorrl, pdftype, isam, iunc;
 		//if(_debug) cout<<"vvv_idcorrl.size="<<vvv_idcorrl.size()<<endl;
+		int nsigproc = 1;
 		for(int ch=0; ch<vvv_idcorrl.size(); ch++){
+			nsigproc = v_sigproc[ch];
 			for(isam=0; isam<vvv_idcorrl[ch].size(); isam++){
 				for(iunc=0; iunc<vvv_idcorrl[ch][isam].size(); iunc++){
-					if(_debug) cout<<ch<<" "<<isam<<" "<<iunc<<" "<<endl;
+					//if(_debug) cout<<ch<<" "<<isam<<" "<<iunc<<" "<<endl;
 					indexcorrl = vvv_idcorrl[ch][isam][iunc];
 					pdftype = vvv_pdftype[ch][isam][iunc];
 					if(pdftype==typeLogNormal){
@@ -443,7 +488,7 @@ namespace lands{
 					}else if(pdftype==typeGamma){
 						if(vvvv_uncpar[ch][isam][iunc][0]>0){
 							tmp = vv_exp_sigbkgs_scaled[ch][isam];
-							if(isam==0){
+							if(isam<nsigproc){
 								if(tmp==0) vv[ch][isam] = vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0] * _common_signal_strength ; // Gamma
 								if(tmp!=0) {vv[ch][isam] /=tmp; vv[ch][isam]*=(vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0] * _common_signal_strength );}
 							}else{
@@ -471,7 +516,7 @@ namespace lands{
 		double tmp;
 		for(int ch=0; ch<vv.size(); ch++){
 			tmp=0;
-			for(int isam=1; isam<vv[ch].size(); isam++){
+			for(int isam=v_sigproc[ch]; isam<vv[ch].size(); isam++){
 				//start from 1,  don't add signal
 				tmp+=vv[ch][isam];	
 			}
@@ -500,6 +545,12 @@ namespace lands{
 	void CountingModel::Print(int printLevel){
 
 		if(printLevel >= 100) {
+			// this print out only work for  nsigproc=1
+			
+			for(int i=0; i<v_sigproc.size(); i++){
+				if(v_sigproc[i]>1) return;
+			}
+
 			//	cout<<"I'm here, dummy"<<endl;
 			cout<<"\n\n\t ***********Start Model Printout*************"<<endl;		
 			cout<<"  -------- print out, messy version  ---------"<<endl;
@@ -587,13 +638,12 @@ namespace lands{
 		if(printLevel<=1) step= vv_exp_sigbkgs_scaled.size()/10;
 		for(int ch=0; ch<vv_exp_sigbkgs_scaled.size(); ch+=(step+1)) {
 			cout<<endl;
-			cout<<"Channel "<<ch<<" signal events "<<vv_exp_sigbkgs_scaled[ch][0]<<endl;
-			for(int ierr=0; ierr<vvvv_uncpar[ch][0].size(); ierr++)
-				cout<<" \t e"<<ierr<<" "<< vvv_pdftype[ch][0][ierr]<< " " << vvv_idcorrl[ch][0][ierr] <<" "<<vvvv_uncpar[ch][0][ierr][0]<<endl;	
-			for(int ns=1; ns<vv_exp_sigbkgs_scaled[ch].size(); ns++) {
-				cout<<"  bkg"<<ns<<" events "<<vv_exp_sigbkgs_scaled[ch][ns]<<endl;
+			cout<<"c"<<ch<<" ("<<v_channelname[ch]<<"):"<<endl;
+			for(int ns=0; ns<vv_exp_sigbkgs_scaled[ch].size(); ns++) {
+				if(ns<v_sigproc[ch])cout<<"  signal "<<vv_procname[ch][ns]<<": events "<<vv_exp_sigbkgs_scaled[ch][ns]<<endl;
+				else cout<<"  bkg "<<vv_procname[ch][ns]<<": events "<<vv_exp_sigbkgs_scaled[ch][ns]<<endl;
 				if(b_systematics){	for(int ierr=0; ierr<vvvv_uncpar[ch][ns].size(); ierr++)
-					cout<<" \t e"<<ierr<<" "<< vvv_pdftype[ch][ns][ierr]<< " " << vvv_idcorrl[ch][ns][ierr] <<" "<<vvvv_uncpar[ch][ns][ierr][0]<<endl;	
+					cout<<" \t unc "<<v_uncname[vvv_idcorrl[ch][ns][ierr] - 1]<<" "<< vvv_pdftype[ch][ns][ierr]<< " "  <<" "<<vvvv_uncpar[ch][ns][ierr][0]<<endl;	
 				}
 			}
 			cout<<"\t\t  observed data events = " << v_data[ch]<<endl;
@@ -635,7 +685,9 @@ namespace lands{
 		_common_signal_strength=r;
 		vv_exp_sigbkgs_scaled = vv_exp_sigbkgs;
 		for(int ch=0; ch<vv_exp_sigbkgs_scaled.size(); ch++){
-			vv_exp_sigbkgs_scaled[ch][0]*=_common_signal_strength;
+			for(int isam=0; isam<v_sigproc[ch]; isam++){
+				vv_exp_sigbkgs_scaled[ch][isam]*=_common_signal_strength;
+			}
 		}
 
 		//if allow signal strength to be non-positive, then please make sure sig+bkgs >=0 in each channel 
@@ -658,7 +710,7 @@ namespace lands{
 			cout<<"		Using Asimov dataset: background only hypothesis"<<endl;
 			for(int i=0; i<v_data.size(); i++){
 				v_data[i]=0;
-				for(int b=1; b<vv_exp_sigbkgs.at(i).size(); b++){
+				for(int b=v_sigproc[i]; b<vv_exp_sigbkgs.at(i).size(); b++){
 					v_data[i]+= vv_exp_sigbkgs.at(i).at(b);
 				}
 			}
@@ -682,7 +734,7 @@ namespace lands{
 		for(int ch=0; ch<cms1->NumOfChannels(); ch++){
 			//cms.AddChannel(cms1->GetExpectedNumber(ch,0),cms1->GetExpectedNumber(ch,1), cms1->GetExpectedNumber(ch,2), cms1->GetExpectedNumber(ch,3),
 			//		cms1->GetExpectedNumber(ch,4), cms1->GetExpectedNumber(ch, 5), cms1->GetExpectedNumber(ch, 6));	
-			cms.AddChannel(cms1->Get_v_exp_sigbkgs(ch));
+			cms.AddChannel(cms1->GetChannelName(ch), cms1->Get_v_exp_sigbkgs(ch), cms1->GetNSigprocInChannel(ch));
 			for(int isamp=0; isamp<tmp_vvv_pdftype.at(ch).size(); isamp++){
 				for(int iunc=0; iunc<tmp_vvv_pdftype.at(ch).at(isamp).size(); iunc++){
 					if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeLogNormal || tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeTruncatedGaussian){
@@ -715,10 +767,8 @@ namespace lands{
 		tmp_v_uncname = cms2->Get_v_uncname();
 		for(int ch=0; ch<cms2->NumOfChannels(); ch++){
 			int newch = cms1->NumOfChannels(); // like ++
-			//cms.AddChannel(cms2->GetExpectedNumber(ch,0),cms2->GetExpectedNumber(ch,1), cms2->GetExpectedNumber(ch,2), cms2->GetExpectedNumber(ch,3),
-			//		cms2->GetExpectedNumber(ch,4), cms2->GetExpectedNumber(ch, 5), cms2->GetExpectedNumber(ch, 6));	
 			if(_debug) cout<<"Adding ch = "<<newch<<"th channel"<<endl;
-			cms.AddChannel(cms2->Get_v_exp_sigbkgs(ch));
+			cms.AddChannel(cms2->GetChannelName(ch), cms2->Get_v_exp_sigbkgs(ch), cms2->GetNSigprocInChannel(ch));
 			if(_debug) cout<<"now has total "<<cms.NumOfChannels()<<endl;
 			for(int isamp=0; isamp<tmp_vvv_pdftype.at(ch).size(); isamp++){
 				for(int iunc=0; iunc<tmp_vvv_pdftype.at(ch).at(isamp).size(); iunc++){
@@ -774,10 +824,13 @@ namespace lands{
 			  ) {
 				iter=vv_exp_sigbkgs.erase( iter );
 				v_data.erase( v_data.begin()+position );
+				v_sigproc.erase( v_sigproc.begin()+position );
+				v_channelname.erase(v_channelname.begin()+position);
 				vv_exp_sigbkgs_scaled.erase( vv_exp_sigbkgs_scaled.begin()+position );
 				vvvv_uncpar.erase( vvvv_uncpar.begin()+position );
 				vvv_pdftype.erase( vvv_pdftype.begin()+position );
 				vvv_idcorrl.erase( vvv_idcorrl.begin()+position );
+				vv_procname.erase( vv_procname.begin()+position );
 
 				if( (king==1||king==2) && sig<=0 )skippedchannels_s++;
 				if( (king==0||king==2) && bkg<=0 )skippedchannels_b++;

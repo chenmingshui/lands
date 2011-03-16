@@ -45,8 +45,9 @@ namespace lands{
 
 			void AddChannel(double num_expected_signal, vector<double> num_expected_bkgs);
 			void AddChannel(std::string channel_name, double num_expected_signal, vector<double> num_expected_bkgs);
-			void AddChannel(vector<double> num_expected_yields);
-			void AddChannel(std::string channel_name, vector<double> num_expected_yields);
+			void AddChannel(vector<double> num_expected_yields, int signal_processes=1);
+			void AddChannel(std::string channel_name, vector<double> num_expected_yields, int signal_processes=1);
+			void AddChannel(std::string channel_name, vector<double> num_expected_signals, vector<double> num_expected_bkgs);
 
 			// LogNormal and TruncatedGaussian 
 			void AddUncertainty(int index_channel, int index_sample, double uncertainty_in_relative_fraction, int pdf_type, std::string uncname );
@@ -106,6 +107,10 @@ namespace lands{
 			vector<double> Get_v_GammaN(){return v_GammaN;};
 			vector<std::string> Get_v_uncname(){return v_uncname;};
 			void SetDebug(int i){_debug=i;};
+			std::string GetChannelName(int i){return v_channelname.at(i);};
+			int GetNSigprocInChannel(int i){return v_sigproc.at(i);};
+			vector<int> Get_v_sigproc(){return v_sigproc;};
+			void SetProcessNames(int ch, vector<std::string> vproc);
 		private:
 			VDChannel v_data;
 			VChannelVSample vv_exp_sigbkgs;
@@ -132,6 +137,9 @@ namespace lands{
 
 			vector<std::string> v_uncname; 
 			int _debug;
+
+			vector<int> v_sigproc; // number of signal processes in each channel
+			vector< vector<std::string> > vv_procname; //name of each process in each channel
 
 	};
 };

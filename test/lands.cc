@@ -66,6 +66,7 @@ int main(int argc, const char*argv[]){
 	if(datacards.size()>100) {cout<<"too many datacards "<<datacards.size()<<endl; exit(0);}
 	for(int i=0; i<datacards.size(); i++){
 		tmp[i] = new CountingModel();
+		tmp[i] -> SetDebug(debug);
 		ConfigureModel(tmp[i], datacards[i].Data());
 		tmp[i]->SetUseSystematicErrors(true);
 	}

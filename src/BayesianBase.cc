@@ -282,6 +282,7 @@ namespace lands{
 
 		if(_debug>=10)  cout<<"_nexps_to_averageout_sys="<<_nexps_to_averageout_sys<<endl;
 		vector< vector<double> > vv;
+		vector<int> v_sigproc = _cms->Get_v_sigproc();
 		for(int i=0; i<_nexps_to_averageout_sys; i++){
 			if(_debug>=100)cout<<" _nexps_to_averageout_sys: "<<i<<endl;
 			vv = _cms->FluctuatedNumbers();
@@ -291,10 +292,14 @@ namespace lands{
 			_stot[i]=0; _btot[i]=0;
 			for(int ch=0; ch<_nchannels; ch++){	
 				double totbkg = 0; 
-				for(int isamp=1; isamp<vv[ch].size(); isamp++){
+				double totsig = 0; 
+				for(int isamp=v_sigproc[ch]; isamp<vv[ch].size(); isamp++){
 					totbkg+=vv[ch][isamp];
 				}
-				s[ch]=vv[ch][0];
+				for(int isamp=0; isamp<v_sigproc[ch]; isamp++){
+					totsig+=vv[ch][isamp];
+				}
+				s[ch]=totsig;
 				b[ch]=totbkg; //FIXME just sum up the bkgs
 				if(_debug>=100 && i<100 ){
 					cout<<"ch = "<<ch<<" s="<<s[ch]<<" b="<<b[ch]<<" d="<<_d[ch]<<endl;
