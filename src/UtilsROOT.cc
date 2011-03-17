@@ -797,26 +797,42 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped){
 
 		bool filledThisSource = false;
 		for(int p=0; p<ntotprocesses; p++){
-			double err, rho;
+			double err, errup, rho;  // to allow asymetric uncertainties
 			if(pdf==typeLogNormal){
 				if(ss[p+2]=="-") {
 					tmps+= "    -   ";
 					continue;
 				}
-				err= (TString(ss[p+2])).Atof()-1.0;
+				if(TString(ss[p+2]).Contains("/")){
+					vector<string> asymetricerrors; asymetricerrors.clear();
+				       	StringSplit(asymetricerrors, ss[p+2], "/");
+					err= (TString(asymetricerrors[0])).Atof()-1.0;
+					errup= (TString(asymetricerrors[1])).Atof()-1.0;
+				}else {
+					err= (TString(ss[p+2])).Atof()-1.0;
+					errup = err;
+				}
 				tmps+= TString::Format("%7.2f ",err+1.0);
-				if(err < -1) {
+				if(err < -1 or errup <-1) {
 					cout<<"Kappa in lognormal  can't be negative, please check your input card at "<<s+1<<"th source, "<<p+2<<"th entry"<<endl;
 					exit(0);
 				}
-				if(err == 0.) continue;
+				if(err == 0. && errup==0.) continue;
 			}
 			else if(pdf==typeTruncatedGaussian){
 				if(ss[p+2]=="-"){
 					tmps+= "    -   ";
 					continue;
 				}
-				err= (TString(ss[p+2])).Atof();
+				if(TString(ss[p+2]).Contains("/")){
+					vector<string> asymetricerrors; asymetricerrors.clear();
+				       	StringSplit(asymetricerrors, ss[p+2], "/");
+					err= (TString(asymetricerrors[0])).Atof();
+					errup= (TString(asymetricerrors[1])).Atof();
+				}else {
+					err= (TString(ss[p+2])).Atof();
+					errup = err;
+				}
 				tmps+= TString::Format("%7.2f ",err);
 				if(err == 0.) continue;
 			}
@@ -852,7 +868,7 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped){
 				}
 			}
 			//cout<<"delete me: c="<<binnumber[p]-1<<" s="<< subprocess[p]<<endl;
-			if(pdf==typeLogNormal||pdf==typeTruncatedGaussian)cms->AddUncertainty(binnumber[p]-1, subprocess[p], err, pdf, indexcorrelation );
+			if(pdf==typeLogNormal||pdf==typeTruncatedGaussian)cms->AddUncertainty(binnumber[p]-1, subprocess[p], err, errup, pdf, indexcorrelation );
 			if(pdf==typeGamma){
 				if(ss[1]=="gmA" or ss[1]=="gmN"){
 					double N = (TString(ss[2]).Atof()); // your input should be Most Probable Value,  while mean value is N+1
