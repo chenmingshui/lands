@@ -67,8 +67,8 @@ namespace lands{
 				ss =par[0]*vv_sigbks[c][s];
 				if(cms_global->IsUsingSystematicsErrors()){
 					for(u = 0; u<vvv_pdftype[c][s].size(); u++){
-						if(vvv_pdftype[c][s][u]==typeLogNormal) ss *= (pow(1+vvvv_uncpar[c][s][u][0],par[(vvv_idcorrl)[c][s][u]]));
-						else if(vvv_pdftype[c][s][u]==typeTruncatedGaussian) ss*=(1+vvvv_uncpar[c][s][u][0]*par[(vvv_idcorrl)[c][s][u]]);
+						if(vvv_pdftype[c][s][u]==typeLogNormal) ss *= (pow(1+vvvv_uncpar[c][s][u][ (par[(vvv_idcorrl)[c][s][u]]>0?1:0) ],par[(vvv_idcorrl)[c][s][u]]));
+						else if(vvv_pdftype[c][s][u]==typeTruncatedGaussian) ss*=(1+vvvv_uncpar[c][s][u][ (par[(vvv_idcorrl)[c][s][u]]>0?1:0) ]*par[(vvv_idcorrl)[c][s][u]]);
 						else if(vvv_pdftype[c][s][u]==typeGamma){
 							tmp2 = vvvv_uncpar[c][s][u][0];
 							tmp3 = vvv_idcorrl[c][s][u];
@@ -94,8 +94,8 @@ namespace lands{
 				bs = vv_sigbks[c][s];	
 				if(cms_global->IsUsingSystematicsErrors()){
 					for(u=0; u<vvv_pdftype[c][s].size(); u++){
-						if(vvv_pdftype[c][s][u]==typeLogNormal) bs*=(pow(1+vvvv_uncpar[c][s][u][0],par[(vvv_idcorrl)[c][s][u]]));
-						else if(vvv_pdftype[c][s][u]==typeTruncatedGaussian) bs*=(1+vvvv_uncpar[c][s][u][0]*par[(vvv_idcorrl)[c][s][u]]);
+						if(vvv_pdftype[c][s][u]==typeLogNormal) bs*=(pow(1+vvvv_uncpar[c][s][u][ (par[(vvv_idcorrl)[c][s][u]]>0?1:0) ],par[(vvv_idcorrl)[c][s][u]]));
+						else if(vvv_pdftype[c][s][u]==typeTruncatedGaussian) bs*=(1+vvvv_uncpar[c][s][u][ (par[(vvv_idcorrl)[c][s][u]]>0?1:0) ]*par[(vvv_idcorrl)[c][s][u]]);
 						else if(vvv_pdftype[c][s][u]==typeGamma) {
 							tmp2 = vvvv_uncpar[c][s][u][0];
 							tmp3 = vvv_idcorrl[c][s][u];

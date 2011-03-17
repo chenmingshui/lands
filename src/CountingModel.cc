@@ -258,6 +258,9 @@ namespace lands{
 		AddChannel(channel_name, num_expected_signals, num_expected_bkgs);
 	}	
 	void CountingModel::AddUncertainty(int index_channel, int index_sample, double uncertainty_in_relative_fraction, int pdf_type, string uncname ){
+		AddUncertainty(index_channel, index_sample, uncertainty_in_relative_fraction, uncertainty_in_relative_fraction, pdf_type, uncname);
+	}
+	void CountingModel::AddUncertainty(int index_channel, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, string uncname ){
 		int index_correlation = -1; // numeration starts from 1
 		for(int i=0; i<v_uncname.size(); i++){
 			if(v_uncname[i]==uncname){
@@ -269,7 +272,7 @@ namespace lands{
 			index_correlation = v_uncname.size()+1;
 			v_uncname.push_back(uncname);
 		}
-		AddUncertainty(index_channel, index_sample, uncertainty_in_relative_fraction, pdf_type, index_correlation );
+		AddUncertainty(index_channel, index_sample, uncertainty_in_relative_fraction_down, uncertainty_in_relative_fraction_up, pdf_type, index_correlation );
 
 	}
 	void CountingModel::AddUncertainty(int index_channel, int index_sample, double rho, double rho_err, double B, int pdf_type, string uncname ){
@@ -288,10 +291,15 @@ namespace lands{
 	}
 
 	// LogNormal and TruncatedGaussian 
-	void CountingModel::AddUncertainty(int index_channel, int index_sample, double uncertainty_in_relative_fraction, int pdf_type, int index_correlation ){
-		if( uncertainty_in_relative_fraction < 0 ) {
+	void CountingModel::AddUncertainty(int index_channel, int index_sample, double uncertainty_in_relative_fraction,  int pdf_type, int index_correlation ){
+		// sysmetric uncertainties
+		AddUncertainty(index_channel, index_sample, uncertainty_in_relative_fraction, uncertainty_in_relative_fraction, pdf_type, index_correlation );
+	}
+	void CountingModel::AddUncertainty(int index_channel, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, int index_correlation ){
+		// to deal with asymetric uncertainties
+		if( uncertainty_in_relative_fraction_down < 0 or uncertainty_in_relative_fraction_up < 0 ) {
 			if(pdf_type==typeTruncatedGaussian) {}; //fine
-			if(uncertainty_in_relative_fraction <-1 && pdf_type==typeLogNormal) { cout<<"logNormal type uncertainties can't have kappa < 0, exit"<<endl; exit(0);}; //fine
+			if( (uncertainty_in_relative_fraction_down <-1 or uncertainty_in_relative_fraction_up <-1) && pdf_type==typeLogNormal) { cout<<"logNormal type uncertainties can't have kappa < 0, exit"<<endl; exit(0);}; //fine
 		} 
 		if(pdf_type!=typeLogNormal && pdf_type!= typeTruncatedGaussian && pdf_type!=typeGamma ) {
 			cout<<"Error: Currently only implemented LogNormal, Gamma and TruncatedGaussian. Your input "<<pdf_type<<" haven't been implemented, exit"<<endl;
@@ -301,7 +309,9 @@ namespace lands{
 			cout<<"Error: index_correlation < 0 "<<endl;
 			exit(0);
 		}
-		vector<double> vunc; vunc.clear(); vunc.push_back(uncertainty_in_relative_fraction);
+		vector<double> vunc; vunc.clear(); 
+		vunc.push_back(uncertainty_in_relative_fraction_down);
+		vunc.push_back(uncertainty_in_relative_fraction_up);
 		vvvv_uncpar.at(index_channel).at(index_sample).push_back(vunc);
 		vvv_pdftype.at(index_channel).at(index_sample).push_back(pdf_type);
 		vvv_idcorrl.at(index_channel).at(index_sample).push_back(index_correlation);
@@ -368,6 +378,7 @@ namespace lands{
 						}
 						if(indexcorrl==i && vvv_pdftype.at(ch).at(isam).at(iunc)== typeTruncatedGaussian ){
 							if(tmpmax< fabs(vvvv_uncpar.at(ch).at(isam).at(iunc).at(0)) ) tmpmax=fabs(vvvv_uncpar.at(ch).at(isam).at(iunc).at(0));	
+							if(tmpmax< fabs(vvvv_uncpar.at(ch).at(isam).at(iunc).at(1)) ) tmpmax=fabs(vvvv_uncpar.at(ch).at(isam).at(iunc).at(0));	
 						} 
 						if(indexcorrl==i && vvv_pdftype.at(ch).at(isam).at(iunc)== typeGamma){
 							if(vvvv_uncpar.at(ch).at(isam).at(iunc).at(0)>0 && 
@@ -481,10 +492,10 @@ namespace lands{
 					indexcorrl = vvv_idcorrl[ch][isam][iunc];
 					pdftype = vvv_pdftype[ch][isam][iunc];
 					if(pdftype==typeLogNormal){
-						vv[ch][isam]*=pow( (1+vvvv_uncpar[ch][isam][iunc][0]), vrdm[indexcorrl] );
+						vv[ch][isam]*=pow( (1+ vvvv_uncpar[ch][isam][iunc][ (vrdm[indexcorrl]>0?1:0) ]), vrdm[indexcorrl] );
 					}
 					else if(pdftype==typeTruncatedGaussian){
-						vv[ch][isam]*=( 1+vvvv_uncpar[ch][isam][iunc][0] / v_TruncatedGaussian_maxUnc[indexcorrl] * vrdm[indexcorrl] );			
+						vv[ch][isam]*=( 1+vvvv_uncpar[ch][isam][iunc][(vrdm[indexcorrl]>0?1:0)] / v_TruncatedGaussian_maxUnc[indexcorrl] * vrdm[indexcorrl] );			
 					}else if(pdftype==typeGamma){
 						if(vvvv_uncpar[ch][isam][iunc][0]>0){
 							tmp = vv_exp_sigbkgs_scaled[ch][isam];
@@ -740,6 +751,7 @@ namespace lands{
 					if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeLogNormal || tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeTruncatedGaussian){
 						cms.AddUncertainty(ch, isamp, 
 								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(0), 
+								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(1), 
 								tmp_vvv_pdftype.at(ch).at(isamp).at(iunc),
 								tmp_v_uncname[tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)-1]
 								);
@@ -775,6 +787,7 @@ namespace lands{
 					if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeLogNormal || tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeTruncatedGaussian){
 						cms.AddUncertainty(newch, isamp, 
 								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(0), 
+								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(1), 
 								tmp_vvv_pdftype.at(ch).at(isamp).at(iunc),
 								tmp_v_uncname[tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)-1]
 								);
