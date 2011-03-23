@@ -806,7 +806,8 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped){
 				if(TString(ss[p+2]).Contains("/")){
 					vector<string> asymetricerrors; asymetricerrors.clear();
 				       	StringSplit(asymetricerrors, ss[p+2], "/");
-					err= (TString(asymetricerrors[0])).Atof()-1.0;
+					if((TString(asymetricerrors[0])).Atof()<=0) { cout<<"ERROR:  Kappa can't be <=0 "<<endl; exit(0); };
+					err= 1./(TString(asymetricerrors[0])).Atof()-1.0;
 					errup= (TString(asymetricerrors[1])).Atof()-1.0;
 				}else {
 					err= (TString(ss[p+2])).Atof()-1.0;
@@ -814,7 +815,7 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped){
 				}
 				tmps+= TString::Format("%7.2f ",err+1.0);
 				if(err < -1 or errup <-1) {
-					cout<<"Kappa in lognormal  can't be negative, please check your input card at "<<s+1<<"th source, "<<p+2<<"th entry"<<endl;
+					cout<<"ERROR: Kappa in lognormal  can't be negative, please check your input card at "<<s+1<<"th source, "<<p+2<<"th entry"<<endl;
 					exit(0);
 				}
 				if(err == 0. && errup==0.) continue;
