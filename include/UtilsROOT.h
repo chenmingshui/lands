@@ -30,9 +30,9 @@ void StringSplit( std::vector < std::string > & splitValues,
 		const std::string & str,
 		const std::string & delim ); 
 TString ReadFile(const char*fileName);
-bool ConfigureModel(CountingModel *cms, TString ifileContentStripped);
-bool ConfigureModel(CountingModel *cms, const char* fileName);
-bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped);
+bool ConfigureModel(CountingModel *cms, TString ifileContentStripped, int debug=0);
+bool ConfigureModel(CountingModel *cms, const char* fileName, int debug=0);
+bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped, int debug=0);
 vector<TString> SplitIntoLines(TString ifileContentStripped, bool debug=false);
 
 TH1F* GetHisto(string filename, string histoname);

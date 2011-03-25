@@ -69,20 +69,22 @@ int main(int argc, const char*argv[]){
 	for(int i=0; i<datacards.size(); i++){
 		tmp[i] = new CountingModel();
 		tmp[i] -> SetDebug(debug);
-		ConfigureModel(tmp[i], datacards[i].Data());
+		ConfigureModel(tmp[i], datacards[i].Data(), debug);
 		tmp[i]->SetUseSystematicErrors(true);
 	}
 	if(debug)cout<<"totally "<<datacards.size()<<" data cards processed"<<endl;
 	if(datacards.size()==1) cms=tmp[0];
 	else if(datacards.size()>=2){
-		tmp1[1] = cms->CombineModels(tmp[0], tmp[1]);
+		tmp1[1] = CombineModels(tmp[0], tmp[1]);
+		tmp1[1].SetUseSystematicErrors(true);
 		if(debug)cout<<"2 data cards have been combined"<<endl;
 		for(int i=2; i<datacards.size(); i++){
-			tmp1[i] = cms->CombineModels(&tmp1[i-1], tmp[i]);
+			tmp1[i] = CombineModels(&tmp1[i-1], tmp[i]);
+			tmp1[i].SetUseSystematicErrors(true);
 		}	
 		cms = &tmp1[datacards.size()-1];
 	}else{exit(0);}
-	if(debug)cout<<"totally "<<datacards.size()<<" data cards combined"<<endl;
+	cout<<"totally "<<datacards.size()<<" data cards combined"<<endl;
 	cms->SetUseSystematicErrors(systematics);
 	// done combination
 

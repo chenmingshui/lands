@@ -41,6 +41,7 @@ namespace lands{
 		v_sigproc.clear();
 		vv_procname.clear();
 		_debug=0;
+		_modelName = "model";
 	}
 	CountingModel::~CountingModel(){
 		v_data.clear();
@@ -242,7 +243,7 @@ namespace lands{
 		vector<string> vproc; vproc.clear();
 	       	for(int i=0; i<num_expected_signals.size(); i++) {
 			char tmp[256];
-			sprintf(tmp, "%d", i-num_expected_signals.size());
+			sprintf(tmp, "%d", i-num_expected_signals.size()+1);
 			vproc.push_back(tmp);
 		}
 	       	for(int i=0; i<num_expected_bkgs.size(); i++) {
@@ -416,6 +417,12 @@ namespace lands{
 						if(indexcorrl==i && v_pdftype.back()>0 ){
 							if( v_pdftype.back()!=vvv_pdftype.at(ch).at(isam).at(iunc) ){
 								cout<<" Error:  two uncertainties with 100% correlation must be with same pdftype, exit "<<endl;
+								cout<<" Independant unc "<<indexcorrl<<"th, name "<<v_uncname[indexcorrl];
+								cout<<" should be "<<v_pdftype.back()<<", but "<<vvv_pdftype.at(ch).at(isam).at(iunc)<<" for ch"<<ch<<"("<<v_channelname[ch]<<")"
+									<<" isam"<<isam<<"("<<vv_procname[ch][isam]<<")"
+									<<" iunc"<<iunc<<"("<<v_uncname[indexcorrl]<<")"<<endl;
+								cout<<" The conflict unc at above process is for "<<vvv_idcorrl[ch][isam][iunc]
+									<<"th source, name "<<v_uncname[vvv_idcorrl[ch][isam][iunc]]<<endl;
 								exit(0);
 							}
 						}
@@ -642,6 +649,14 @@ namespace lands{
 				}
 			}
 		}
+		cout<<" "<<v_uncname.size()<<" "<<v_pdftype.size()<<endl;
+		cout<<" list of independant uncertainties: (index  name  type)"<<endl;
+		for(int i=0; i<v_uncname.size(); i++){
+			cout<<i+1<<" "<<v_uncname[i]<<"  ";
+			if(v_pdftype.size()>0) cout	<< v_pdftype[i+1] ;
+			cout<<endl;
+		}
+		cout<<endl;
 
 		//  more detail print out
 		cout<<" -------- more detail print out ---------"<<endl;
@@ -735,7 +750,7 @@ namespace lands{
 			}
 		}
 	}
-	CountingModel CountingModel::CombineModels(CountingModel *cms1, CountingModel *cms2){
+	CountingModel CombineModels(CountingModel *cms1, CountingModel *cms2){
 		CountingModel cms;
 
 		VChannelVSampleVUncertaintyVParameter tmp_vvvv_uncpar = cms1->Get_vvvv_uncpar();
@@ -771,6 +786,7 @@ namespace lands{
 				}
 			}	
 			cms.AddObservedData(ch, cms1->Get_v_data()[ch]);
+			cms.SetProcessNames(ch, cms1->GetProcessNames(ch));
 		}	
 
 		tmp_vvvv_uncpar = cms2->Get_vvvv_uncpar();
@@ -779,9 +795,9 @@ namespace lands{
 		tmp_v_uncname = cms2->Get_v_uncname();
 		for(int ch=0; ch<cms2->NumOfChannels(); ch++){
 			int newch = cms1->NumOfChannels(); // like ++
-			if(_debug) cout<<"Adding ch = "<<newch<<"th channel"<<endl;
+			//if(_debug) cout<<"Adding ch = "<<newch<<"th channel from "<<cms2->GetModelName()<<endl;
 			cms.AddChannel(cms2->GetChannelName(ch), cms2->Get_v_exp_sigbkgs(ch), cms2->GetNSigprocInChannel(ch));
-			if(_debug) cout<<"now has total "<<cms.NumOfChannels()<<endl;
+			//if(_debug) cout<<"now has total "<<cms.NumOfChannels()<<endl;
 			for(int isamp=0; isamp<tmp_vvv_pdftype.at(ch).size(); isamp++){
 				for(int iunc=0; iunc<tmp_vvv_pdftype.at(ch).at(isamp).size(); iunc++){
 					if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeLogNormal || tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeTruncatedGaussian){
@@ -807,6 +823,7 @@ namespace lands{
 				}
 			}	
 			cms.AddObservedData(newch, cms2->Get_v_data()[ch]);
+			cms.SetProcessNames(newch, cms2->GetProcessNames(ch));
 		}	
 
 

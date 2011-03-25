@@ -92,7 +92,6 @@ namespace lands{
 
 			void UseAsimovData(int b=0);
 
-			CountingModel CombineModels(CountingModel *cms1, CountingModel *cms2);
 
 			VChannelVSampleVUncertaintyVParameter Get_vvvv_uncpar(){return vvvv_uncpar;};
 			VChannelVSampleVUncertainty Get_vvv_pdftype(){return vvv_pdftype;};
@@ -114,6 +113,9 @@ namespace lands{
 			int GetNSigprocInChannel(int i){return v_sigproc.at(i);};
 			vector<int> Get_v_sigproc(){return v_sigproc;};
 			void SetProcessNames(int ch, vector<std::string> vproc);
+			vector<std::string> GetProcessNames(int ch){return vv_procname[ch];};
+			void SetModelName(std::string s){_modelName = s;};
+			std::string GetModelName(){return _modelName;};
 		private:
 			VDChannel v_data;
 			VChannelVSample vv_exp_sigbkgs;
@@ -144,6 +146,9 @@ namespace lands{
 			vector<int> v_sigproc; // number of signal processes in each channel
 			vector< vector<std::string> > vv_procname; //name of each process in each channel
 
+			std::string _modelName;
+
 	};
+	CountingModel CombineModels(CountingModel *cms1, CountingModel *cms2);
 };
 #endif   /* ----- #ifndef CountingModel_H----- */

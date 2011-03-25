@@ -186,8 +186,8 @@ TString ReadFile(const char*fileName){
 	in_comment=false;
 	return ifileContentStripped;
 }
-bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped){
-	int debug = 0;
+bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped, int debug){
+	//int debug = 0;
 	vector<TString> lines;
 	lines = SplitIntoLines(ifileContentStripped, debug);
 
@@ -204,7 +204,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped)
 			if(ss.size()>=2)shapefilename = ss[1];
 		}
 	}
-	if(hasShape==false) ConfigureModel(cms, ifileContentStripped);
+	if(hasShape==false) ConfigureModel(cms, ifileContentStripped, debug);
 	if(hasShape){
 		//   
 		//  For Andrey's input format 
@@ -452,18 +452,18 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped)
 		if(debug) cout<<"***********print out of the new huge table****************"<<endl;
 		cout<<cardExpanded<<endl;
 		//exit(1);
-		ConfigureModel(cms, cardExpanded);
+		ConfigureModel(cms, cardExpanded, debug);
 	}// line begin with "shape"
 }
 
-bool ConfigureModel(CountingModel *cms, TString ifileContentStripped){
+bool ConfigureModel(CountingModel *cms, TString ifileContentStripped, int debug){
 	// channel index starts from 1
 	// systematics source index also starts from 1
 
 	TString duplicatingCard;
 	vector<TString> duplicatingLines;
 
-	bool debug = true;
+	//bool debug = true;
 	// Now proceed with the parsing of the stripped file
 
 	vector<TString> lines;
@@ -898,7 +898,7 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped){
 			//FIXME temporarily solution:  when reading a source with all error = 0,  then assign it to be logNormal, error =0,  in UtilsROOT.cc 
 			// to incorporate the MinuitFit.  This ad-hoc fix will slow down the toy generation because there are lots of non-use random numebrs and operations ...
 			// cms->AddUncertainty(0, 0, 0, 1, indexcorrelation );
-			cms->AddUncertainty(0, 0, 0, 1, indexcorrelation );
+			//cms->AddUncertainty(0, 0, 0, 1, indexcorrelation ); //FIXME  no need now, because we use name of uncertainties, 
 			//exit(0);
 		}
 		duplicatingLines.push_back(tmps);
@@ -916,9 +916,10 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped){
 	return true;
 }
 
-bool ConfigureModel(CountingModel *cms, const char* fileName){
+bool ConfigureModel(CountingModel *cms, const char* fileName, int debug){
 	TString s = ReadFile(fileName);
-	return CheckIfDoingShapeAnalysis(cms, s);
+	cms->SetModelName(fileName);
+	return CheckIfDoingShapeAnalysis(cms, s, debug);
 }
 
 

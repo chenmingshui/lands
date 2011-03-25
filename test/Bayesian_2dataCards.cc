@@ -35,7 +35,7 @@ int main(int argc, const char* argv[]){
 	cms1->SetUseSystematicErrors(true);
 	cms2->SetUseSystematicErrors(true);
 	cout<<"before combine"<<endl;
-	CountingModel cms3 = cms->CombineModels(cms1, cms2);
+	CountingModel cms3 = CombineModels(cms1, cms2);
 	cout<<"after combine"<<endl;
 	cms = &cms3;
 
