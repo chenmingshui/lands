@@ -57,6 +57,8 @@ int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
 
 	CountingModel *cms; // this instance will be the one combining all sub cards
+	cms = new CountingModel();
+	cms->SetDebug(debug);
 
 	/*
 	 * combining at most 100 datacards
@@ -70,14 +72,17 @@ int main(int argc, const char*argv[]){
 		ConfigureModel(tmp[i], datacards[i].Data());
 		tmp[i]->SetUseSystematicErrors(true);
 	}
+	if(debug)cout<<"totally "<<datacards.size()<<" data cards processed"<<endl;
 	if(datacards.size()==1) cms=tmp[0];
 	else if(datacards.size()>=2){
 		tmp1[1] = cms->CombineModels(tmp[0], tmp[1]);
+		if(debug)cout<<"2 data cards have been combined"<<endl;
 		for(int i=2; i<datacards.size(); i++){
 			tmp1[i] = cms->CombineModels(&tmp1[i-1], tmp[i]);
 		}	
 		cms = &tmp1[datacards.size()-1];
 	}else{exit(0);}
+	if(debug)cout<<"totally "<<datacards.size()<<" data cards combined"<<endl;
 	cms->SetUseSystematicErrors(systematics);
 	// done combination
 
