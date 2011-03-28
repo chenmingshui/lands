@@ -448,45 +448,50 @@ namespace lands{
 		if(_rdm==NULL) {cout<<"Model random gen engine not set yet, exit "<<endl; exit(0);}
 		if(!b_systematics) return vv_exp_sigbkgs_scaled;
 
+		double tmp ; 
 		vector<double> vrdm; vrdm.clear();
 		//if(_debug)cout<<" v_pdftype.size()="<<v_pdftype.size()<<endl;
 		for(int i=0; i<v_pdftype.size(); i++){
 			//if(_debug)cout<<" vpdftype: "<<i<<"th --> "<<v_pdftype[i]<<endl;
 			vrdm.push_back(-999);
-			if(v_pdftype[i]== typeLogNormal) {
-				vrdm.back()=_rdm->Gaus();
-			}
-			else if(v_pdftype[i]== typeTruncatedGaussian){
-				//      one way is to build  TruncatedGaussian function and throw random number from it
+			switch (v_pdftype[i]){
+				case typeLogNormal:
+					vrdm.back()=_rdm->Gaus();
+					break;
 
-				//		vrdm.back()=v_TruncatedGaussian[i]->GetRandom();
+				case typeTruncatedGaussian:
+					//      one way is to build  TruncatedGaussian function and throw random number from it
 
-				//      another way is to throw normal gaus random number and regenerate if x<-1, it's more transparent
-				double tmp = -2;
-				while(tmp<-1){
-					tmp=_rdm->Gaus(0, v_TruncatedGaussian_maxUnc[i]);
-				}
-				vrdm.back()=tmp;
+					//		vrdm.back()=v_TruncatedGaussian[i]->GetRandom();
 
+					//      another way is to throw normal gaus random number and regenerate if x<-1, it's more transparent
+					tmp = -2;
+					while(tmp<-1){
+						tmp=_rdm->Gaus(0, v_TruncatedGaussian_maxUnc[i]);
+					}
+					vrdm.back()=tmp;
+					break;
 
-			} else if (v_pdftype[i]==typeGamma){
-				//if(_debug)cout<<" i = "<<i<<"  v_GammaN[i]="<<v_GammaN[i]<<endl;
-				vrdm.back()=_rdm->Gamma(v_GammaN[i]);
-				//if(_debug) cout<<"done for random gamma"<<endl;
-			} else if (v_pdftype[i]==typeControlSampleInferredLogNormal){
-				//dummy
-				cout<<"Error: We haven't implemented the pdf of typeControlSampleInferredLogNormal"<<endl;
-				exit(0);
-			} else {
-				//dummy
-				//cout<<"Error: Unknown pdf_type "<<v_pdftype[i]<<endl;
-				//exit(0);
+				case typeGamma:
+					//if(_debug)cout<<" i = "<<i<<"  v_GammaN[i]="<<v_GammaN[i]<<endl;
+					vrdm.back()=_rdm->Gamma(v_GammaN[i]);
+					//if(_debug) cout<<"done for random gamma"<<endl;
+					break;
+				case typeControlSampleInferredLogNormal:
+					//dummy
+					cout<<"Error: We haven't implemented the pdf of typeControlSampleInferredLogNormal"<<endl;
+					exit(0);
+					break;
+				default:
+					break;
+					//dummy
+					//cout<<"Error: Unknown pdf_type "<<v_pdftype[i]<<endl;
+					//exit(0);
 			}	
 			//if(_debug) cout<<"done for random gen "<<i<<endl;
 		}		
 		//if(_debug) cout<<"done for random gen"<<endl;
 
-		double tmp ; 
 		VChannelVSample vv = vv_exp_sigbkgs_scaled;
 		int indexcorrl, pdftype, isam, iunc;
 		//if(_debug) cout<<"vvv_idcorrl.size="<<vvv_idcorrl.size()<<endl;
@@ -498,28 +503,37 @@ namespace lands{
 					//if(_debug) cout<<ch<<" "<<isam<<" "<<iunc<<" "<<endl;
 					indexcorrl = vvv_idcorrl[ch][isam][iunc];
 					pdftype = vvv_pdftype[ch][isam][iunc];
-					if(pdftype==typeLogNormal){
-						vv[ch][isam]*=pow( (1+ vvvv_uncpar[ch][isam][iunc][ (vrdm[indexcorrl]>0?1:0) ]), vrdm[indexcorrl] );
-					}
-					else if(pdftype==typeTruncatedGaussian){
-						vv[ch][isam]*=( 1+vvvv_uncpar[ch][isam][iunc][(vrdm[indexcorrl]>0?1:0)] / v_TruncatedGaussian_maxUnc[indexcorrl] * vrdm[indexcorrl] );			
-					}else if(pdftype==typeGamma){
-						if(vvvv_uncpar[ch][isam][iunc][0]>0){
-							tmp = vv_exp_sigbkgs_scaled[ch][isam];
-							if(isam<nsigproc){
-								if(tmp==0) vv[ch][isam] = vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0] * _common_signal_strength ; // Gamma
-								if(tmp!=0) {vv[ch][isam] /=tmp; vv[ch][isam]*=(vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0] * _common_signal_strength );}
-							}else{
-								if(tmp==0) vv[ch][isam] = vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0]; // Gamma
-								if(tmp!=0) {vv[ch][isam] /=tmp; vv[ch][isam]*=(vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0] );}
+					switch (pdftype){
+						case typeLogNormal : 
+							vv[ch][isam]*=pow( (1+ vvvv_uncpar[ch][isam][iunc][ (vrdm[indexcorrl]>0?1:0) ]), vrdm[indexcorrl] );
+							break;
+
+						case typeTruncatedGaussian :
+							vv[ch][isam]*=( 1+vvvv_uncpar[ch][isam][iunc][(vrdm[indexcorrl]>0?1:0)] / v_TruncatedGaussian_maxUnc[indexcorrl] * vrdm[indexcorrl] );		
+							break;
+
+						case typeGamma :
+							if(vvvv_uncpar[ch][isam][iunc][0]>0){
+								tmp = vv_exp_sigbkgs_scaled[ch][isam];
+								if(isam<nsigproc){
+									if(tmp!=0) {vv[ch][isam] /=tmp; vv[ch][isam]*=(vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0] * _common_signal_strength );}
+									else vv[ch][isam] = vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0] * _common_signal_strength ; // Gamma
+								}else{
+									if(tmp!=0) {vv[ch][isam] /=tmp; vv[ch][isam]*=(vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0] );}
+									else vv[ch][isam] = vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0]; // Gamma
+								}
+							}else{ // if rho<0,   then this is multiplicative gamma function ....
+								vv[ch][isam] *= (vrdm[indexcorrl]/v_GammaN[indexcorrl]);
 							}
-						}else{ // if rho<0,   then this is multiplicative gamma function ....
-							vv[ch][isam] *= (vrdm[indexcorrl]/v_GammaN[indexcorrl]);
-						}
-					}else if(pdftype==typeControlSampleInferredLogNormal){
-						// FIXME
-					}else {
+							break;
+
+						case typeControlSampleInferredLogNormal :
+							// FIXME
+							break;
+						default:
+							break;
 					}
+
 				}
 			}
 		}
@@ -564,7 +578,7 @@ namespace lands{
 
 		if(printLevel >= 100) {
 			// this print out only work for  nsigproc=1
-			
+
 			for(int i=0; i<v_sigproc.size(); i++){
 				if(v_sigproc[i]>1) return;
 			}

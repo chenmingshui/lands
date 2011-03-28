@@ -67,23 +67,28 @@ namespace lands{
 				ss =par[0]*vv_sigbks[c][s];
 				if(cms_global->IsUsingSystematicsErrors()){
 					for(u = 0; u<vvv_pdftype[c][s].size(); u++){
-						if(vvv_pdftype[c][s][u]==typeLogNormal) ss *= (pow(1+vvvv_uncpar[c][s][u][ (par[(vvv_idcorrl)[c][s][u]]>0?1:0) ],par[(vvv_idcorrl)[c][s][u]]));
-						else if(vvv_pdftype[c][s][u]==typeTruncatedGaussian) ss*=(1+vvvv_uncpar[c][s][u][ (par[(vvv_idcorrl)[c][s][u]]>0?1:0) ]*par[(vvv_idcorrl)[c][s][u]]);
-						else if(vvv_pdftype[c][s][u]==typeGamma){
-							tmp2 = vvvv_uncpar[c][s][u][0];
-							tmp3 = vvv_idcorrl[c][s][u];
-							if(tmp2>0){
-								tmp =par[0]*vv_sigbks[c][s];	
-								if(tmp==0) ss = par[0]*tmp2*par[tmp3];
-								if(tmp!=0) { ss/=tmp; ss *= (par[0]*tmp2*par[tmp3]); }
-							}else{
-								ss*=(par[tmp3]/v_GammaN[tmp3]);
-							}
-							//cout<<"s= "<< ss <<" alpha= "<< vvvv_uncpar[c][s][u][0]<<" B="<<par[(vvv_idcorrl)[c][s][u]]<<endl;
-						}
-						else {
-							cout<<"pdf_type = "<<vvv_pdftype[c][s][u]<<" not defined yet"<<endl;
-							exit(0);
+						switch (vvv_pdftype[c][s][u]) {
+							case typeLogNormal :
+								ss *= (pow(1+vvvv_uncpar[c][s][u][ (par[(vvv_idcorrl)[c][s][u]]>0?1:0) ],par[(vvv_idcorrl)[c][s][u]]));
+								break;
+							case typeTruncatedGaussian :
+								ss*=(1+vvvv_uncpar[c][s][u][ (par[(vvv_idcorrl)[c][s][u]]>0?1:0) ]*par[(vvv_idcorrl)[c][s][u]]);
+								break;
+							case typeGamma :
+								tmp2 = vvvv_uncpar[c][s][u][0];
+								tmp3 = vvv_idcorrl[c][s][u];
+								if(tmp2>0){
+									tmp =par[0]*vv_sigbks[c][s];	
+									if(tmp==0) ss = par[0]*tmp2*par[tmp3];
+									if(tmp!=0) { ss/=tmp; ss *= (par[0]*tmp2*par[tmp3]); }
+								}else{
+									ss*=(par[tmp3]/v_GammaN[tmp3]);
+								}
+								//cout<<"s= "<< ss <<" alpha= "<< vvvv_uncpar[c][s][u][0]<<" B="<<par[(vvv_idcorrl)[c][s][u]]<<endl;
+								break;
+							default:
+								cout<<"pdf_type = "<<vvv_pdftype[c][s][u]<<" not defined yet"<<endl;
+								exit(0);
 						}
 					}
 				}
@@ -94,23 +99,28 @@ namespace lands{
 				bs = vv_sigbks[c][s];	
 				if(cms_global->IsUsingSystematicsErrors()){
 					for(u=0; u<vvv_pdftype[c][s].size(); u++){
-						if(vvv_pdftype[c][s][u]==typeLogNormal) bs*=(pow(1+vvvv_uncpar[c][s][u][ (par[(vvv_idcorrl)[c][s][u]]>0?1:0) ],par[(vvv_idcorrl)[c][s][u]]));
-						else if(vvv_pdftype[c][s][u]==typeTruncatedGaussian) bs*=(1+vvvv_uncpar[c][s][u][ (par[(vvv_idcorrl)[c][s][u]]>0?1:0) ]*par[(vvv_idcorrl)[c][s][u]]);
-						else if(vvv_pdftype[c][s][u]==typeGamma) {
-							tmp2 = vvvv_uncpar[c][s][u][0];
-							tmp3 = vvv_idcorrl[c][s][u];
-							if(tmp2>0){
-								tmp = vv_sigbks[c][s];	
-								if(tmp==0) bs = tmp2*par[tmp3];
-								if(tmp!=0) { bs/=tmp; bs *= (tmp2*par[tmp3]); }
-							}else{
-								bs*=(par[tmp3]/v_GammaN[tmp3]);
-							}
-							//	cout<<"b= "<< bs <<" alpha= "<< vvvv_uncpar[c][s][u][0]<<" B="<<par[(vvv_idcorrl)[c][s][u]]<<endl;
-						}
-						else {
-							cout<<"pdf_type = "<<vvv_pdftype[c][s][u]<<" not defined yet"<<endl;
-							exit(0);
+						switch (vvv_pdftype[c][s][u]){
+							case typeLogNormal:
+								bs*=(pow(1+vvvv_uncpar[c][s][u][ (par[(vvv_idcorrl)[c][s][u]]>0?1:0) ],par[(vvv_idcorrl)[c][s][u]]));
+								break;
+							case typeTruncatedGaussian:
+								bs*=(1+vvvv_uncpar[c][s][u][ (par[(vvv_idcorrl)[c][s][u]]>0?1:0) ]*par[(vvv_idcorrl)[c][s][u]]);
+								break;
+							case typeGamma:
+								tmp2 = vvvv_uncpar[c][s][u][0];
+								tmp3 = vvv_idcorrl[c][s][u];
+								if(tmp2>0){
+									tmp = vv_sigbks[c][s];	
+									if(tmp==0) bs = tmp2*par[tmp3];
+									if(tmp!=0) { bs/=tmp; bs *= (tmp2*par[tmp3]); }
+								}else{
+									bs*=(par[tmp3]/v_GammaN[tmp3]);
+								}
+								//	cout<<"b= "<< bs <<" alpha= "<< vvvv_uncpar[c][s][u][0]<<" B="<<par[(vvv_idcorrl)[c][s][u]]<<endl;
+								break;	
+							default:
+								cout<<"pdf_type = "<<vvv_pdftype[c][s][u]<<" not defined yet"<<endl;
+								exit(0);
 						}
 					}
 				}
