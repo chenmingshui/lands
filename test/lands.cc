@@ -412,8 +412,8 @@ int main(int argc, const char*argv[]){
 			//double CI = 1.921;  // = 1.96**2/2 ,  probably for two sided 
 			//double CI = 1.64*1.64/2.;
 			double CI ;
-			if (oneside==2) CI= 1.921;  // = 1.96**2/2 ,  probably for two sided 
-			else CI = 1.64*1.64/2.;
+			if (oneside==2) CI= 1.921;  // = 1.96**2/2 , two sided 95% CL --->  one sided 97.5%
+			else CI = 1.64*1.64/2.; // two sided 90% CL
 			double precision = 0.001;
 			int nsearched = 2;
 			//1.925 for 95% CL,   ....   

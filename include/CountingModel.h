@@ -31,7 +31,9 @@ namespace lands{
 	typedef vector< vector< vector<int> > > VChannelVSampleVUncertainty;
 	typedef vector< vector< vector< vector<double> > > > VChannelVSampleVUncertaintyVParameter;
 
-	enum enumPdfType {typeLogNormal=1, typeTruncatedGaussian=2, typeGamma=3, typeControlSampleInferredLogNormal=11 };
+	enum enumPdfType {typeLogNormal=1, typeTruncatedGaussian=2, typeGamma=3, typeShapeGaussianLinearMorph=4, typeShapeGaussianQuadraticMorph=5, typeControlSampleInferredLogNormal=11 };
+	// for uncertainties only affecting Shape, we can choose different morphing algorithm.  in commom, user must provide three templates:  norminal,  shift_1sigma_up, shift_1sigma_down
+	// i.e. 3 parameters for each shape uncertainty in each bin .... ,  the interface alway do normalization (to unity) for all three templates.
 	
 	class CountingModel
 	{ 

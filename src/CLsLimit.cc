@@ -79,8 +79,8 @@ namespace lands{
 								tmp3 = vvv_idcorrl[c][s][u];
 								if(tmp2>0){
 									tmp =par[0]*vv_sigbks[c][s];	
-									if(tmp==0) ss = par[0]*tmp2*par[tmp3];
 									if(tmp!=0) { ss/=tmp; ss *= (par[0]*tmp2*par[tmp3]); }
+									else ss = par[0]*tmp2*par[tmp3];
 								}else{
 									ss*=(par[tmp3]/v_GammaN[tmp3]);
 								}
@@ -111,8 +111,8 @@ namespace lands{
 								tmp3 = vvv_idcorrl[c][s][u];
 								if(tmp2>0){
 									tmp = vv_sigbks[c][s];	
-									if(tmp==0) bs = tmp2*par[tmp3];
 									if(tmp!=0) { bs/=tmp; bs *= (tmp2*par[tmp3]); }
+									else bs = tmp2*par[tmp3];
 								}else{
 									bs*=(par[tmp3]/v_GammaN[tmp3]);
 								}
@@ -134,16 +134,27 @@ namespace lands{
 	}
 	// to be identical with ATLAS TDR description, for limit only
 	//http://cdsweb.cern.ch/record/1159618/files/Higgs%20Boson%20%28p1197%29.pdf
-	chisq*=2;
+	chisq*=2;  //
 	if(cms_global->IsUsingSystematicsErrors()){
 		// FIXME  when    unc = 0,  then  don't add it 
+		double k, tmp;
 		for(u=1; u<=cms_global->Get_max_uncorrelation(); u++){
-			if(v_pdftype[u]==typeTruncatedGaussian || v_pdftype[u]==typeLogNormal)chisq += pow(par[u],2);
-			else if(v_pdftype[u]==typeGamma) {
-				// this is important, one need constraint on the pdf 
-				double k = v_GammaN[u];
-				double tmp = (k-1)*log(par[u]) - par[u];
-				chisq-=tmp;
+			//normal distribution (mu=0, sigma=1):  1/sqrt(2*PI) * exp(-x^2/2)
+			// we are evaluating chisq = -2 * ( ln(Q_H1) - ln(Q_H0) )
+			switch (v_pdftype[u]) {
+				case typeTruncatedGaussian:
+				case typeLogNormal:
+					chisq += pow(par[u],2);  
+					break;
+				case typeGamma:
+					// this is important, one need constraint on the pdf 
+					//see wiki,  gamma distribution with theta = 1 :  x^(k-1)*exp(-x)/ (k-1)!
+					k = v_GammaN[u];
+					tmp = (k-1)*log(par[u]) - par[u];
+					chisq-=tmp*2; // we are evaluating chisq = -2 * ( ln(Q_H1) - ln(Q_H0) )
+					break;
+				default:
+					break;
 			}
 		}
 	}

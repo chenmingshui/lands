@@ -18,6 +18,8 @@
 #include "CountingModel.h"
 #include <iostream>
 #include <cstdio>
+#include <cmath>
+//#include <math.h>
 using namespace std;
 namespace lands{
 	CountingModel::CountingModel(){
@@ -383,7 +385,7 @@ namespace lands{
 						} 
 						if(indexcorrl==i && vvv_pdftype.at(ch).at(isam).at(iunc)== typeGamma){
 							if(vvvv_uncpar.at(ch).at(isam).at(iunc).at(0)>0 && 
-									fabs(vvvv_uncpar.at(ch).at(isam).at(iunc).at(0)*vvvv_uncpar.at(ch).at(isam).at(iunc).at(2) - vv_exp_sigbkgs.at(ch).at(isam)) / vvvv_uncpar.at(ch).at(isam).at(iunc).at(2)>0.02
+									fabs(vvvv_uncpar.at(ch).at(isam).at(iunc).at(0)*vvvv_uncpar.at(ch).at(isam).at(iunc).at(2) - vv_exp_sigbkgs.at(ch).at(isam)) / vvvv_uncpar.at(ch).at(isam).at(iunc).at(2)/vvvv_uncpar.at(ch).at(isam).at(iunc).at(0)>0.2
 									) {
 								cout<<"channel "<<ch<<"th, "<<v_channelname[ch]<<": process "<<isam<<" using gamma pdf, but rho*B!=b, please check"<<endl; 
 								exit(0);
@@ -456,6 +458,8 @@ namespace lands{
 			vrdm.push_back(-999);
 			switch (v_pdftype[i]){
 				case typeLogNormal:
+				case typeShapeGaussianLinearMorph:
+				case typeShapeGaussianQuadraticMorph:
 					vrdm.back()=_rdm->Gaus();
 					break;
 
@@ -494,8 +498,10 @@ namespace lands{
 
 		VChannelVSample vv = vv_exp_sigbkgs_scaled;
 		int indexcorrl, pdftype, isam, iunc;
+		double ran = 0, h;
 		//if(_debug) cout<<"vvv_idcorrl.size="<<vvv_idcorrl.size()<<endl;
 		int nsigproc = 1;
+		double * uncpars;
 		for(int ch=0; ch<vvv_idcorrl.size(); ch++){
 			nsigproc = v_sigproc[ch];
 			for(isam=0; isam<vvv_idcorrl[ch].size(); isam++){
@@ -503,32 +509,47 @@ namespace lands{
 					//if(_debug) cout<<ch<<" "<<isam<<" "<<iunc<<" "<<endl;
 					indexcorrl = vvv_idcorrl[ch][isam][iunc];
 					pdftype = vvv_pdftype[ch][isam][iunc];
+					ran = vrdm[indexcorrl];
+					uncpars  = &(vvvv_uncpar[ch][isam][iunc][0]);
 					switch (pdftype){
 						case typeLogNormal : 
-							vv[ch][isam]*=pow( (1+ vvvv_uncpar[ch][isam][iunc][ (vrdm[indexcorrl]>0?1:0) ]), vrdm[indexcorrl] );
+							//vv[ch][isam]*=pow( (1+ vvvv_uncpar[ch][isam][iunc][ (ran>0?1:0) ]), ran );
+							vv[ch][isam]*=pow( (1+ (ran>0? *(uncpars+1):*uncpars) ) , ran );
 							break;
 
 						case typeTruncatedGaussian :
-							vv[ch][isam]*=( 1+vvvv_uncpar[ch][isam][iunc][(vrdm[indexcorrl]>0?1:0)] / v_TruncatedGaussian_maxUnc[indexcorrl] * vrdm[indexcorrl] );		
+							vv[ch][isam]*=( 1+vvvv_uncpar[ch][isam][iunc][(ran>0?1:0)] / v_TruncatedGaussian_maxUnc[indexcorrl] * ran );		
 							break;
 
 						case typeGamma :
 							if(vvvv_uncpar[ch][isam][iunc][0]>0){
 								tmp = vv_exp_sigbkgs_scaled[ch][isam];
 								if(isam<nsigproc){
-									if(tmp!=0) {vv[ch][isam] /=tmp; vv[ch][isam]*=(vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0] * _common_signal_strength );}
-									else vv[ch][isam] = vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0] * _common_signal_strength ; // Gamma
+									if(tmp!=0) {vv[ch][isam] /=tmp; vv[ch][isam]*=(ran * vvvv_uncpar[ch][isam][iunc][0] * _common_signal_strength );}
+									else vv[ch][isam] = ran * vvvv_uncpar[ch][isam][iunc][0] * _common_signal_strength ; // Gamma
 								}else{
-									if(tmp!=0) {vv[ch][isam] /=tmp; vv[ch][isam]*=(vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0] );}
-									else vv[ch][isam] = vrdm[indexcorrl] * vvvv_uncpar[ch][isam][iunc][0]; // Gamma
+									if(tmp!=0) {vv[ch][isam] /=tmp; vv[ch][isam]*=(ran * vvvv_uncpar[ch][isam][iunc][0] );}
+									else vv[ch][isam] = ran * vvvv_uncpar[ch][isam][iunc][0]; // Gamma
 								}
 							}else{ // if rho<0,   then this is multiplicative gamma function ....
-								vv[ch][isam] *= (vrdm[indexcorrl]/v_GammaN[indexcorrl]);
+								vv[ch][isam] *= (ran/v_GammaN[indexcorrl]);
 							}
 							break;
 
 						case typeControlSampleInferredLogNormal :
 							// FIXME
+							break;
+						case typeShapeGaussianLinearMorph:
+							h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) + fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization for the histogram
+							//if(vv_exp_sigbkgs_scaled[ch][isam]!=0 && vv[ch][isam]!=0) {
+							if( *(uncpars+2)!=0 && vv[ch][isam]!=0) {
+								vv[ch][isam]*=h/(*(uncpars+2));	
+							}else if(*(uncpars+2)==0 && vv[ch][isam]!=0 ){ ;}
+							else vv[ch][isam] = (*(uncpars+3))*h;
+
+							break;
+						case typeShapeGaussianQuadraticMorph:
+							vv[ch][isam]*=pow( (1+ vvvv_uncpar[ch][isam][iunc][ (ran>0?1:0) ]), ran );
 							break;
 						default:
 							break;
