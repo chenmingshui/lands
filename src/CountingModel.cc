@@ -540,16 +540,28 @@ namespace lands{
 							// FIXME
 							break;
 						case typeShapeGaussianLinearMorph:
-							h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) + fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization for the histogram
-							//if(vv_exp_sigbkgs_scaled[ch][isam]!=0 && vv[ch][isam]!=0) {
+							h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) + fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm
+							//if(vv_exp_sigbkgs_scaled[ch][isam]!=0 && vv[ch][isam]!=0) 
 							if( *(uncpars+2)!=0 && vv[ch][isam]!=0) {
 								vv[ch][isam]*=h/(*(uncpars+2));	
-							}else if(*(uncpars+2)==0 && vv[ch][isam]!=0 ){ ;}
-							else vv[ch][isam] = (*(uncpars+3))*h;
+							}else if(vv[ch][isam]==0) vv[ch][isam] = (*(uncpars+3))*h;
+							else { ;}
+
+							vv[ch][isam]*=pow( (1+ (ran>0? *(uncpars+5):*(uncpars+4)) ) , ran );
 
 							break;
 						case typeShapeGaussianQuadraticMorph:
-							vv[ch][isam]*=pow( (1+ vvvv_uncpar[ch][isam][iunc][ (ran>0?1:0) ]), ran );
+							if(fabs(ran)<1)
+								h = *(uncpars+2) + ran * (ran-1)/2. * (*uncpars) + ran * (ran+1)/2. * (*(uncpars+1)) - ran*ran*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm
+							else 
+								h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) + fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm
+							if( *(uncpars+2)!=0 && vv[ch][isam]!=0) {
+								vv[ch][isam]*=h/(*(uncpars+2));	
+							}else if(vv[ch][isam]==0) vv[ch][isam] = (*(uncpars+3))*h;
+							else { ;}
+
+							vv[ch][isam]*=pow( (1+ (ran>0? *(uncpars+5):*(uncpars+4)) ) , ran );
+
 							break;
 						default:
 							break;

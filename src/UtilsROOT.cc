@@ -3,13 +3,16 @@
 #include "TH1F.h"
 #include <iostream>
 #include <fstream>
+#include "TSystem.h"
 TH1F* GetHisto(string filename, string histoname){
 
 	//cout<<filename<<", "<<histoname<<endl;
 
 	// FIXME need to check if filename is exist, and histoname is exist 
+	if( gSystem->AccessPathName(filename.c_str())) {cout<<filename<<" couldn't be found"<<endl; exit(0);};
 	TFile *f =new TFile(filename.c_str());
 	TH1F *h = (TH1F*)f->Get(histoname.c_str());
+	if(!h) {cout<<"hist ["<<histoname<<"] in file ["<<filename<<"] couldn't be found"<<endl; exit(0);};
 	return h;
 }
 void FillTree(TString sfile, vector<int> array){
@@ -186,6 +189,22 @@ TString ReadFile(const char*fileName){
 	in_comment=false;
 	return ifileContentStripped;
 }
+int GetTotProc(int c, int p, vector< vector<string> >vv_procnames){
+	int stop = 0;
+	for(int i=0; i<c; i++){
+		stop += vv_procnames[i].size();
+	}
+	return stop+p;
+}
+string GetUncertainy(int c, int p, vector< vector<string> >vv_procnames, vector<string>ss1){
+	int stop = 0;
+	for(int i=0; i<c; i++){
+		stop += vv_procnames[i].size();
+	}
+	//cout<<stop+p+3<<endl;
+	if(ss1[1]=="gmN" or ss1[1]=="gmA") return ss1[stop+p+3];
+	else return ss1[stop+p+2];
+}
 bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped, int debug){
 	//int debug = 0;
 	vector<TString> lines;
@@ -194,23 +213,17 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 	// check if there is key word "shape", if yes, we need expand the
 	// whole file to include all bins of shapes
 	bool hasShape = false;
-	string shapefilename;
+	vector<TString> shapeinfo; 
 	for(int l=0; l<lines.size(); l++){
-		if(lines[l].BeginsWith("shape")){
+		if(lines[l].BeginsWith("shapes")){
 			hasShape = true;
-			vector<string>	ss; 
-			ss.clear();
-			StringSplit(ss, lines[l].Data(), " ");
-			if(ss.size()>=2)shapefilename = ss[1];
+			shapeinfo.push_back(lines[l]);
 		}
 	}
 	if(hasShape==false) ConfigureModel(cms, ifileContentStripped, debug);
 	if(hasShape){
-		//   
-		//  For Andrey's input format 
-
 		// get number of channels
-		int nchannel = 0;
+		int nchannel = -1;
 		for(int l=0; l<lines.size(); l++){
 			if(lines[l].BeginsWith("imax")){
 				vector<string>	ss; 
@@ -219,10 +232,13 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 				if(debug)cout<<"NChannel = "<<ss[1]<<endl;
 				TString s = ss[1];
 				if(s.IsDigit()==false) {
-					cout<<"need a number after imax"<<", currently it's not a number but \'"<<s<<"\'"<<endl;
-					exit(0);
+					//cout<<"need a number after imax"<<", currently it's not a number but \'"<<s<<"\'"<<endl;
+					//exit(0);
+					nchannel = -1;
+					cout<<"WARNING: You input of imax (number of channels) is not digit, hence LandS will not check the consistency"<<endl;
+				}else {
+					nchannel = s.Atoi();
 				}
-				nchannel = s.Atoi();
 			} 
 		}	
 		if(nchannel==0) {
@@ -230,109 +246,371 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 			return false;
 		}
 
-		//  get number of independant systematics sources
-		int nsyssources = 0;
+		// get observed dataset and cout how many channels in your model
+		//
+		vector<double> observeddata;
 		bool hasFilled = false;
+		for(int l=0; l<lines.size(); l++){
+			if(lines[l].BeginsWith("Observation") or lines[l].BeginsWith("observation")){
+				observeddata.clear();
+				if(hasFilled) cout<<"WARNING: You have two lines started with \"observation\", we will use the second line"<<endl;
+				vector<string>	ss; 
+				ss.clear();
+				StringSplit(ss, lines[l].Data(), " ");
+				for(int i=1; i<ss.size(); i++){
+					if(TString(ss[i]).IsFloat()){
+						double ev = (TString(ss[i])).Atof();
+						observeddata.push_back(ev);
+					}
+				}
+				hasFilled =  true;
+			}
+		}
+		if(hasFilled==false) {cout<<"ERROR: need a line starting with \"Observation\" "<<endl; exit(0);}
+		if(nchannel<0) nchannel = observeddata.size(); // if you don't assign a number to imax
+		if(nchannel!= observeddata.size()) {
+			cout<<"ERROR: number of channels spcified in \"imax\" line is not consistent with \"observation\" line "<<endl;
+			exit(0);
+		}
+		if(debug){
+			cout<<"observed data: ";
+			for(int i=0; i<nchannel; i++) cout<<observeddata[i]<<" ";
+			cout<<endl;
+		}
+
+
+		// there must be one line of "process", which contains enumeration of processes in each channel
+		// you might have another line with "process" which contains process names in each channel
+		// since in one of the "process" lines,  for each channel, there must be one and only one process enumerated as "0"
+		// we will count how many "0" in that line to determine how many channels actually go into your model
+		// double check ....
+		//
+		// first check how many lines started with "process"
+		int nlines_with_process = 0;
+		vector< vector<string> > vss_processes; vss_processes.clear();
+		for(int l=0; l<lines.size(); l++){
+			if(lines[l].BeginsWith("process")){
+				nlines_with_process++;
+				vector<string>	ss; 
+				ss.clear();
+				StringSplit(ss, lines[l].Data(), " ");
+				vss_processes.push_back(ss);
+			}
+		}
+		if(nlines_with_process<1 or nlines_with_process>2 ){ cout<<"ERROR: you have "<<nlines_with_process<<" lines started with \"process\".  must be one or two"<<endl; exit(0); }
+		// read number of channels from process line
+		int tmpn = 0;  int l_proc = 0;
+		vector<int> nsigproc; nsigproc.clear(); // record number of signal processes in each channel  (with process number <= 0)
+		vector<string> processnames; processnames.clear();
+		for(int l=0; l<vss_processes.size(); l++){
+			for(int i=1; i<vss_processes[l].size(); i++){ // vss_processes[0] is "process"
+				if(!TString(vss_processes[l][i]).IsFloat()) break; // you encounter comments or non-numbers, stop processing 
+				if(tmpn==nsigproc.size())nsigproc.push_back(0);
+				if(TString(vss_processes[l][i]).Atoi()<=0) nsigproc[nsigproc.size()-1]++;
+				if(TString(vss_processes[l][i]).Atoi()==0) tmpn++; // as each channel has "0" standing for one of signal processes
+				processnames.push_back(vss_processes[l][i]); // we temporarily assign process name as the "number", if another "process" line found,  we'll make change later
+			}
+			// debug
+			for(int i=0; i<nsigproc.size(); i++){
+				if(debug)cout<<" n signal process in channel "<<i<<": "<<nsigproc[i]<<endl;
+			}
+
+
+			if(tmpn>0) {
+				l_proc = l; // record which line of "process" lines is for enumeration
+				break; // already got the wanted line 
+			}
+		}
+		if(nchannel != tmpn ) { cout<<"ERROR: \"observation\" and \"process\" are not consistent"<<endl; exit(0);}
+		// read process names 
+		if(vss_processes.size()==2){
+			for(int i=1; i<vss_processes[1-l_proc].size(); i++){
+				if(i>processnames.size()) break;
+				processnames[i-1] = vss_processes[1-l_proc][i];
+			}
+		}
+
+		vector<string> ss_old_rate; 
+		ss_old_rate.clear();
+		// get numbers of processes in each channel
+		int *nprocesses = new int[nchannel];
+		for(int i=0; i<nchannel; i++) nprocesses[i]=0;
+		bool hasLineStartWithBin = false;
+		vector<string> channelnames; channelnames.clear();
+		for(int l=0; l<lines.size(); l++){
+			//if(lines[l].BeginsWith("bin ") && hasLineStartWithBin==true){
+			//	cout<<"WARNING:  there are two lines beginning with \"bin\" in your card. We will take the first one"<<endl;
+			//}
+			if(lines[l].BeginsWith("bin ") && hasLineStartWithBin==false ){
+				vector<string>	ss; 
+				ss.clear();
+				StringSplit(ss, lines[l].Data(), " ");
+				if(ss.size() < 1+2*nchannel) continue; // this "bin" line is too short, will process in below code
+
+				// we now can proceed with names of bins instead of just numbers 1, 2, 3, ... N 
+				int bin = 0;
+				for(int i=1; i<ss.size(); i++){
+					if(ss[i]!=ss[i-1]) { bin++; channelnames.push_back(ss[i]);	}
+					if(bin<(nchannel+1) && bin>=1) nprocesses[bin-1]++;
+				}
+				if(bin != nchannel) {cout<<"ERROR: number of channels got from \"bin\" line is not consistent with \"observation\" line"<<endl; exit(0);};
+
+				hasLineStartWithBin = true;
+			} 
+		}	
+		if(!hasLineStartWithBin) {
+			cout<<"Line beginning with \"bin\" is not found in your card"<<endl;
+			exit(0);
+		}
+		if(debug){
+			for(int i = 0; i<nchannel; i++) cout<<"processes in Channel "<<i<<" = "<<nprocesses[i]<<endl;
+		}
+		for(int i=0; i<nchannel; i++) if(nprocesses[i]==0) {cout<<"ERROR: channel "<<i<<", number of processes = 0"<<endl; exit(0);}
+
+		// if you have "bins" or "binname" line,  then replace channel name  with the ones from this line
+		for(int l=0; l<lines.size(); l++){
+			if(lines[l].BeginsWith("bins ") or lines[l].BeginsWith("binname") or lines[l].BeginsWith("bin ") ){
+				vector<string>	ss; 
+				ss.clear();
+				StringSplit(ss, lines[l].Data(), " ");
+				if(ss.size() >= 1+nchannel*2) continue;// this "bin" line is too long, processed in above code 
+				for(int i=1; i<ss.size(); i++){
+					if(i>nchannel) break;
+					channelnames[i-1]=ss[i];
+				}
+			}
+		}
+
+		int ntotprocesses = 0;
+		for(int i = 0; i<nchannel; i++) ntotprocesses+=nprocesses[i];
+
+		int *binnumber = new int[ntotprocesses];
+		int *subprocess=new int[ntotprocesses];
+		int index =0 ;
+		vector< vector<string> > vv_procnames; vv_procnames.clear();
+		for(int c=0; c<nchannel; c++){
+			vector<string> vtmp; vtmp.clear();
+			for(int p=0; p<nprocesses[c]; p++) 
+			{
+				binnumber[index] = (c+1);
+				subprocess[index]=p;
+				vtmp.push_back(processnames[index]);
+				index++;
+			}
+			vv_procnames.push_back(vtmp);
+		}
+		if(debug){
+			cout<<"bin ";
+			for(int i=0; i<ntotprocesses; i++) cout<<binnumber[i]<<" ";
+			cout<<endl;
+		}
+
+
+		// get expected event rate
+		//
+		double *eventrate =new double[ntotprocesses];
+		for(int i=0; i<ntotprocesses; i++) eventrate[i]=0;
+		hasFilled = false;
+		for(int l=0; l<lines.size(); l++){
+			if(lines[l].BeginsWith("rate")){
+				TString tmps = TString::Format("%10s ","rate");
+				vector<string>	ss; 
+				ss.clear();
+				StringSplit(ss, lines[l].Data(), " ");
+				if(ss.size()-1<ntotprocesses) {cout<<"number of eventrate < "<<ntotprocesses<<endl; exit(0);} 
+				for(int i=1; i<(ntotprocesses+1); i++){
+					float ev = (TString(ss[i])).Atof();
+					eventrate[i-1] = ev;
+					tmps+= TString::Format("%7.2f ",ev);
+				}
+				hasFilled =  true;
+				StringSplit(ss_old_rate, lines[l].Data(), " ");
+			}
+		}
+		if(hasFilled==false) {cout<<"need a line starting with \"rate\" "<<endl; exit(0);}
+		if(debug){
+			cout<<"event rate: ";
+			for(int i=0; i<ntotprocesses; i++) cout<<eventrate[i]<<" ";
+			cout<<endl;
+		}
+
+
+		// FIXME we won't need this "kmax" keyword if we don't want to do a sanity check  ....
+		//  get number of independant systematics sources
+		int kmax = -1;
+		//hasFilled = false;
 		for(int l=0; l<lines.size(); l++){
 			if(lines[l].BeginsWith("kmax")){
 				vector<string>	ss; 
 				ss.clear();
 				StringSplit(ss, lines[l].Data(), " ");
-				nsyssources = (TString(ss[1])).Atoi();
-				hasFilled = true;
+				if(ss.size()>=2 && TString(ss[1]).IsFloat()){
+					kmax = (TString(ss[1])).Atoi();
+				}else{
+					cout<<"WARNING: You input of kmax (number of systematic lines ) is not digit, hence LandS will not check the consistency"<<endl;
+					kmax = -1;
+				}
+				//hasFilled = true;
 			}
 		}
-		if (hasFilled == false) cout<<"need \"kmax\" to set number of independant systematic sources "<<endl;
-		if (nsyssources==0) cout<<"no systematics input, kmax=0"<<endl;
+		//if (hasFilled == false) cout<<"need \"kmax\" to set number of independant systematic sources "<<endl;
+		if (kmax==0) cout<<"no systematics input, kmax=0"<<endl;
+
+
+		// fill the model with systemics
+		// sections are separated by "---------"  in the data card
+		// last section are all uncertainties,  it's analyzers' responsibility to make it right  
+		int nsyssources = 0;
+		vector<string> uncernames; uncernames.clear();
+		vector<string> uncertypes; uncertypes.clear();
+		for(int j=lines.size()-1; j>=0; j--){
+			if(lines[j].BeginsWith("---") )	break;
+			if(lines[j].BeginsWith("rate"))	break;
+			if(lines[j].BeginsWith("bin") )	break;
+			if(lines[j].BeginsWith("process"))break;
+			if(lines[j].BeginsWith("imax"))break;
+			if(lines[j].BeginsWith("jmax"))break;
+			if(lines[j].BeginsWith("kmax"))break;
+			if(lines[j].BeginsWith("shapes"))continue;
+			vector<string>	ss; 
+			ss.clear();
+			StringSplit(ss, lines[j].Data(), " ");
+			if(ss.size()<ntotprocesses+2){
+			       	cout<<"uncertainty configuration is not correct"<<endl; 
+				cout<<lines[j]<<endl;
+				exit(0);
+			}else{
+				nsyssources++;
+				uncernames.push_back(ss[0]);
+				uncertypes.push_back(ss[1]);
+			}
+		}
+		if(kmax>=0 && kmax!=nsyssources) {cout<<"kmax !=  number of independant uncertainties"<<endl; exit(0);}
+
 		if(debug) cout<<"number of independant systematics sources = "<<nsyssources<<endl;
 
-		//hasShape = true;
 		if(debug) cout<<"*************shape analysis**************"<<endl;
 		TString cardExpanded;
 		vector<TString> newlines; // will modify old file line by line
 
 		// must eliminate the "shape" in this new card,
 		// otherwise it will enter into unlimited loop
-		vector<TString> shapeinfo = SplitIntoLines(ReadFile(shapefilename.c_str())); // additional file for shape infos
 
 		if(debug) cout<<"shapeinfo lines = "<<shapeinfo.size()<<endl;
 
-		vector<int> s_bins, s_procs, u_bins, u_procs, u_indexs;
-		vector<TString> s_files, s_histos, u_files, u_histos;
-
+		int INDEXofProcess = 1, INDEXofChannel=2;
 		vector< vector<string> > shape;
-		vector< vector<string> > uncertainty;
-		vector< vector<string> > observation;
+		vector< vector<string> > uncertainties;
+		vector< vector<string> > xx_needtointerpret;
+		vector< vector<string> > xxu_needtointerpret;
 		for(int j=0; j<shapeinfo.size(); j++){
-			if(shapeinfo[j].BeginsWith("shape")){
+			if(shapeinfo[j].BeginsWith("shapes")){
 				vector<string>	ss; 
 				ss.clear();
 				StringSplit(ss, shapeinfo[j].Data(), " ");
-				shape.push_back(ss);
-			}
-			if(shapeinfo[j].BeginsWith("uncertainty")){
-				vector<string>	ss; 
-				ss.clear();
-				StringSplit(ss, shapeinfo[j].Data(), " ");
-				uncertainty.push_back(ss);
-			}
-			if(shapeinfo[j].BeginsWith("observation")){
-				vector<string>	ss; 
-				ss.clear();
-				StringSplit(ss, shapeinfo[j].Data(), " ");
-				observation.push_back(ss);
+				if(ss.size()==5){
+					if(ss[1]=="*" || ss[2]=="*") xx_needtointerpret.push_back(ss);
+					else shape.push_back(ss);
+				}else if(ss.size()>5){
+					if(ss[1]=="*" || ss[2]=="*") xxu_needtointerpret.push_back(ss);
+					else uncertainties.push_back(ss);
+				}
 			}
 		}
+		if(debug)cout<<"xx_needtointerpret.size="<<xx_needtointerpret.size()<<endl;
+		if(debug)cout<<"shape.size="<<shape.size()<<endl;
+
+		for(int i=0; i<xx_needtointerpret.size(); i++){
+			for(int c=0; c<nchannel; c++){
+				if(xx_needtointerpret[i][INDEXofChannel]=="*" or xx_needtointerpret[i][INDEXofChannel]==channelnames[c]){
+					for(int p=0; p<vv_procnames[c].size(); p++){
+						if(xx_needtointerpret[i][INDEXofProcess]=="*" or xx_needtointerpret[i][INDEXofProcess]==vv_procnames[c][p]){
+							vector<string> newline = xx_needtointerpret[i];
+							newline[INDEXofChannel] = channelnames[c]; newline[INDEXofProcess]=vv_procnames[c][p];
+							newline[4] = TString(newline[4]).ReplaceAll("$CHANNEL", channelnames[c]);
+							newline[4] = TString(newline[4]).ReplaceAll("$PROCESS", vv_procnames[c][p]);
+							shape.push_back(newline);
+						}
+					}
+					if(xx_needtointerpret[i][INDEXofProcess]=="*" or xx_needtointerpret[i][INDEXofProcess]=="data_obs"){
+						vector<string> newline = xx_needtointerpret[i];
+						newline[INDEXofChannel] = channelnames[c]; newline[INDEXofProcess]="data_obs";
+						newline[4] = TString(newline[4]).ReplaceAll("$CHANNEL", channelnames[c]);
+						newline[4] = TString(newline[4]).ReplaceAll("$PROCESS", "data_obs");
+						shape.push_back(newline);
+					}
+				}
+			}
+		}
+		// remove duplicate channel/process 
+		for(int i=0; i<shape.size(); i++){
+			for(int j=i+1; j<shape.size(); j++){
+				if(shape[j][1]==shape[i][1] and shape[j][2]==shape[i][2]) {
+					shape[j][0] = "##";
+					shape[j][1] = "##";
+					shape[j][2] = "##";
+				}
+			}
+		}
+
+		if(debug){
+			cout<<"shape.size="<<shape.size()<<endl;
+			for(int i=0; i<shape.size(); i++){
+				for(int j=0; j<shape[i].size(); j++){
+					cout<<shape[i][j]<<" ";
+				}
+				cout<<endl;
+			}
+		}
+
+		// need to make a lot of checks:
+		// same binning within a channel 
+		// normalization of histogram should be equal to expected rate/total observation number
+		// normalize shape uncertainties to 1. ,  and also record normalization of  shift_up, shift_down
+
+
 		int newchannels = nchannel;
-		for(int j=0; j<shape.size(); j++){
-			TString s = shape[j][2];
-			if(s.Atoi()!=0)continue;
-			TH1F *h = (TH1F*)GetHisto(shape[j][3],shape[j][4]);
-			newchannels+=h->GetNbinsX();
-			newchannels-=1;
-			delete h;
+		for(int c = 0; c<channelnames.size(); c++){
+			for(int j=0; j<shape.size(); j++){
+				TString s = shape[j][INDEXofChannel];
+				if(s!=channelnames[c])continue;
+				TH1F *h = (TH1F*)GetHisto(shape[j][3],shape[j][4]);
+				newchannels+=h->GetNbinsX();
+				newchannels-=1;
+				delete h;
+				break;
+			}
 		}
 
 		if(debug) cout<<"new number of channels: "<<newchannels<<endl;
 
-		if(1){
-			TString s = "imax "; s+=newchannels;
-			newlines.push_back(s);
-		}
-		vector<string> ss_old_bin, ss_old_rate; 
-		ss_old_bin.clear(); ss_old_rate.clear();
+		TString s = "imax "; s+=newchannels;
+		newlines.push_back(s);
+		s = "jmax *"; 
+		newlines.push_back(s);
+		s = "kmax "; s+=nsyssources;
+		newlines.push_back(s);
+
 		for(int k=0; k<lines.size(); k++){
-			if(lines[k].BeginsWith("kmax")){
-				newlines.push_back(lines[k]);
-			}
-			if(lines[k].BeginsWith("Observation") or lines[k].BeginsWith("Observation")){
+			if(lines[k].BeginsWith("Observation") or lines[k].BeginsWith("observation")){
 				vector<string> ss_old; ss_old.clear();
 				StringSplit(ss_old, lines[k].Data(), " ");
 				TString s = "Observation ";
 				int n = 0; // for index of new whole channels
-				for(int c=1; c<=nchannel; c++){//old channel number will be replaced 
+				for(int c=0; c<nchannel; c++){//old channel number will be replaced 
 					bool isShapeChannel = false;
 					for(int p=0; p<shape.size(); p++){
-						if(TString(shape[p][1]).Atoi()!=c || TString(shape[p][2]).Atoi()!=0) continue; // find the signal one
+						if(shape[p][INDEXofChannel] !=channelnames[c] || shape[p][INDEXofProcess]!="data_obs") continue; // find the signal one
 						isShapeChannel=true;
-						for(int q=0; q<observation.size(); q++){
-							if(TString(observation[q][1]).Atoi()!=c) continue; // find the signal one
-							TH1F* h = (TH1F*)GetHisto(observation[q][2], observation[q][3]);
-							for(int r=1; r<=h->GetNbinsX(); r++){
-								n++; s+=h->GetBinContent(r); s+=" ";
-							}
-							delete h;
+						TH1F* h = (TH1F*)GetHisto(shape[p][3], shape[p][4]);
+						for(int r=1; r<=h->GetNbinsX(); r++){
+							n++; s+=h->GetBinContent(r); s+=" ";
 						}
+						delete h;
 					}
-					if(isShapeChannel==false) {n++; s+=ss_old[c]; s+=" ";}
+					if(isShapeChannel==false) {n++; s+=ss_old[c+1]; s+=" ";}
 				}	
 				newlines.push_back(s);
-			}
-			if(lines[k].BeginsWith("bin")){
-				StringSplit(ss_old_bin, lines[k].Data(), " ");
-			}
-			if(lines[k].BeginsWith("rate")){
-				StringSplit(ss_old_rate, lines[k].Data(), " ");
 			}
 		}
 
@@ -340,78 +618,76 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 
 		TString s_bin = "bin ";
 		TString s_rate = "rate ";
+		TString s_process = "process ";
+		TString s_process_name = "process ";
 		vector<TString> vs_unc; vs_unc.clear();
-		for(int u=1; u<=nsyssources; u++) {
+		for(int u=0; u<nsyssources; u++) {
 			for(int k=0; k<lines.size(); k++){
 				vector<string>	ss1; 
 				ss1.clear();
 				StringSplit(ss1, lines[k].Data(), " ");
-				if(TString(ss1[0]).Atoi()!=u) continue; // FIXME  need to adapt to names 
-				TString s = ""; s+=u; s+=" "; s+=ss1[1].c_str(); s+=" "; // weired, it doesn't give good error message when using "s+=ss1[1]"
+				if(ss1[0]!=uncernames[u]) continue; // FIXME  need to adapt to names 
+				TString s = ""; s+=ss1[0].c_str(); s+=" "; s+=ss1[1].c_str(); s+=" "; // weired, it doesn't give good error message when using "s+=ss1[1]"
+				if(ss1[1]=="gmA" or ss1[1]=="gmN"){s+=ss1[2]; s+=" ";};
 				vs_unc.push_back(s);
 			}
 		}
 
 		int n = 0; // for index of new whole channels
-		for(int c=1; c<=nchannel; c++){//old channel number will be replaced 
+		for(int c=0; c<nchannel; c++){//old channel number will be replaced 
 			bool isShapeChannel = false;
 			for(int p=0; p<shape.size(); p++){
-				if(TString(shape[p][1]).Atoi()!=c || TString(shape[p][2]).Atoi()!=0) continue; // find the signal one
+				if(shape[p][INDEXofChannel]!=channelnames[c] || shape[p][INDEXofProcess]!="data_obs") continue; // find the signal one
 				isShapeChannel=true;
 
-				if(debug)cout<<"channel "<<c <<", shape p "<<p<<endl;
+				if(debug)cout<<"channel="<<shape[p][INDEXofChannel]<<" data_obs file="<<shape[p][3]<<" hist="<<shape[p][4]<<endl;
 
-				int n_proc = 0;
-				for(int t=0; t<ss_old_bin.size(); t++){
-					if(TString(ss_old_bin[t]).Atoi()!=c) continue;
-					n_proc++;
-				}
+				int n_proc = nprocesses[c];
 				TH1F* h = (TH1F*)GetHisto(shape[p][3], shape[p][4]);
 				TH1F* hn[n_proc];
-				//	= new TH1F[n_proc];
+				TH1F *hnorm[n_proc];
+				TH1F *hunc_up[n_proc][nsyssources];
 				for(int t=0; t<n_proc; t++){
 					for(int q=0; q<shape.size(); q++){
-						if(TString(shape[q][1]).Atoi()!=c || TString(shape[q][2]).Atoi()!=t) continue; // find the signal one
+						if(shape[q][INDEXofChannel]!=channelnames[c] || shape[q][INDEXofProcess]!=vv_procnames[c][t]) continue; 
 						hn[t] = ((TH1F*)GetHisto(shape[q][3], shape[q][4]));
+						hnorm[t]=(TH1F*)hn[t]->Clone("del_clone"+t);
+						hnorm[t]->Scale(1./hn[t]->Integral());
 					}
 				}
 				for(int r=1; r<=h->GetNbinsX(); r++){
 					n++; 
 					int proc = 0;
-					for(int t=0; t<ss_old_bin.size(); t++){
-						if(TString(ss_old_bin[t]).Atoi()!=c) continue;
-						s_bin+=n; s_bin+=" ";
+					for(int t=0; t<n_proc; t++){
+						s_bin+=channelnames[c]; s_bin+="_"; s_bin+=r; s_bin+=" ";
 						s_rate+=((hn[proc]))->GetBinContent(r);s_rate+=" ";
+						// fill  s_process  //FIXME
+						s_process += (proc-nsigproc[c]+1) ; s_process += " ";
+						s_process_name += vv_procnames[c][proc] ; s_process_name += " ";
 
-						if(debug)cout<<"channel "<<c <<", histo bin"<<r<<" oldbin "<<t<<endl;
+						if(debug>=10)cout<<"channel "<<c <<", histo bin"<<r<<" oldbin "<<t<<endl;
 
-						for(int u=1; u<=nsyssources; u++){
-							bool shapeuncertainty = false;
-							for(int a=0; a<uncertainty.size(); a++){
-								if(TString(uncertainty[a][1]).Atoi()==c && TString(uncertainty[a][2]).Atoi()==proc && TString(uncertainty[a][3]).Atoi()==u){
-									shapeuncertainty = true;
-									TH1F *hu = (TH1F*) GetHisto(uncertainty[a][4], uncertainty[a][5]);
-									vs_unc[u-1]+=hu->GetBinContent(r); vs_unc[u-1] += " ";
-									delete hu;
-								}
-							}
-							if(shapeuncertainty==false){
-								for(int k=0; k<lines.size(); k++){
-									vector<string>	ss1; 
-									ss1.clear();
-									StringSplit(ss1, lines[k].Data(), " ");
-									if(TString(ss1[0]).Atoi()!=u) continue;
+						for(int u=0; u<nsyssources; u++){
+							for(int k=0; k<lines.size(); k++){
+								vector<string>	ss1; 
+								ss1.clear();
+								StringSplit(ss1, lines[k].Data(), " ");
+								if(ss1[0]!=uncernames[u]) continue;
+								if(uncernames[u]=="shape" or uncertypes[u]=="shapeL" or uncertypes[u]=="shapeQ" or uncertypes[u]=="shapeN"){
+										TH1F *hu = (TH1F*) GetHisto(shape[0][4], uncertainties[0][5]);
+										vs_unc[u]+=hu->GetBinContent(r); vs_unc[u] += " ";
+										delete hu;
+								}else{
 
-									int totproc = 0;
-									int proc_in_c = 0;
-									for(int b=1; b<ss_old_bin.size(); b++){
-										totproc++;
-										if(TString(ss_old_bin[b]).Atoi()==c){
-											if(proc_in_c==proc) break;
-											proc_in_c++;
+									string tmp =GetUncertainy(c, proc, vv_procnames, ss1); 
+									if(ss1[1]=="gmA" or ss1[1]=="gmN"){
+										if(TString(tmp).IsFloat()){
+											float tmpd = TString(tmp).Atof()*hnorm[t]->GetBinContent(r);
+											TString tmps = ""; tmps+=tmpd;
+											tmp = tmps;
 										}
 									}
-									vs_unc[u-1]+=ss1[totproc+1]; vs_unc[u-1] += " ";
+									vs_unc[u]+=tmp; vs_unc[u] += " ";  // must be careful with gamma uncertainties
 								}
 							}
 						}
@@ -422,35 +698,51 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 					}
 				}
 				delete h;
-				for(int t=0; t<n_proc; t++) delete hn[t];
+				for(int t=0; t<n_proc; t++) {delete hn[t]; delete hnorm[t]; }
 
 			}// shape channels
 			if(isShapeChannel==false) {
 				n++;
-				int totproc = 0;
-				for(int t=0; t<ss_old_bin.size(); t++){
-					totproc++;
-					if(TString(ss_old_bin[t]).Atoi()!=c) continue;
-					s_bin+=n; s_bin+=" ";
-					s_rate+=ss_old_rate[totproc];s_rate+=" ";
+				for(int t=0; t<vv_procnames[c].size(); t++){
+					int totproc = GetTotProc(c, t, vv_procnames);
+					s_bin+=channelnames[c]; s_bin+=" ";
+					s_rate+=ss_old_rate[totproc+1];s_rate+=" ";
+					// fill  s_process  //FIXME
+					s_process += (t-nsigproc[c]+1) ; s_process += " ";
+					s_process_name += vv_procnames[c][t] ; s_process_name += " ";
+
+					for(int u=0; u<nsyssources; u++){
+						for(int k=0; k<lines.size(); k++){
+							vector<string>	ss1; 
+							ss1.clear();
+							StringSplit(ss1, lines[k].Data(), " ");
+							if(ss1[0]!=uncernames[u]) continue;
+							vs_unc[u]+=GetUncertainy(c, t, vv_procnames, ss1); vs_unc[u] += " ";  // must be careful with gamma uncertainties
+						}
+					}
+
 				}
 			}
 		}
 		newlines.push_back(s_bin);
+		newlines.push_back(s_process_name);
+		newlines.push_back(s_process);
 		newlines.push_back(s_rate);
 
 		// extend uncertainty lines
-		for(int u=1; u<=nsyssources; u++){
+		for(int u=0; u<nsyssources; u++){
 			// line start with int number  "u"		
-			newlines.push_back(vs_unc[u-1]);
+			newlines.push_back(vs_unc[u]);
 		}
 
 		for(int j=0; j<newlines.size(); j++){
 			cardExpanded+=newlines[j]; 
 			if(j<(newlines.size()-1)) cardExpanded+="\n";
 		}
-		if(debug) cout<<"***********print out of the new huge table****************"<<endl;
-		cout<<cardExpanded<<endl;
+		if(debug){
+			cout<<"***********print out of the new huge table****************"<<endl<<endl;
+			cout<<cardExpanded<<endl<<endl<<endl;
+		}
 		//exit(1);
 		ConfigureModel(cms, cardExpanded, debug);
 	}// line begin with "shape"
@@ -805,7 +1097,7 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped, int debug)
 				}
 				if(TString(ss[p+2]).Contains("/")){
 					vector<string> asymetricerrors; asymetricerrors.clear();
-				       	StringSplit(asymetricerrors, ss[p+2], "/");
+					StringSplit(asymetricerrors, ss[p+2], "/");
 					if((TString(asymetricerrors[0])).Atof()<=0) { cout<<"ERROR:  Kappa can't be <=0 "<<endl; exit(0); };
 					err= 1./(TString(asymetricerrors[0])).Atof()-1.0;
 					errup= (TString(asymetricerrors[1])).Atof()-1.0;
@@ -827,7 +1119,7 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped, int debug)
 				}
 				if(TString(ss[p+2]).Contains("/")){
 					vector<string> asymetricerrors; asymetricerrors.clear();
-				       	StringSplit(asymetricerrors, ss[p+2], "/");
+					StringSplit(asymetricerrors, ss[p+2], "/");
 					err= (TString(asymetricerrors[0])).Atof();
 					errup= (TString(asymetricerrors[1])).Atof();
 				}else {
