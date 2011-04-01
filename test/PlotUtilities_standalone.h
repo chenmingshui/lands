@@ -297,6 +297,7 @@ class DrawMultiGraph{
 		TCanvas *getCanvas(){return cCanvas;};
 		void drawOption(int i, string op){if(i<maxNumGraphs && i>=0)_drawOptions[i]=op;};
 		void setLegendXY(double x, double y){legendX=x; legendY=y;};
+		//void save();
 	private:
 		TCanvas *cCanvas;
 		string _ssave;
