@@ -196,6 +196,19 @@ int GetTotProc(int c, int p, vector< vector<string> >vv_procnames){
 	}
 	return stop+p;
 }
+string GetUncertainy(string c, vector<string> channelnames, string p, vector< vector<string> >vv_procnames, vector<string>ss1){
+	int stop = 0;
+	for(int i=0; i<channelnames.size(); i++){
+		for(int j=0; j< vv_procnames[i].size(); j++){
+			if(channelnames[i]==c && vv_procnames[i][j]==p) break;
+			stop ++; 
+		}
+		if(channelnames[i]==c) break;
+	}
+	//cout<<stop+p+3<<endl;
+	if(ss1[1]=="gmN" or ss1[1]=="gmA") return ss1[stop+3];
+	else return ss1[stop+2];
+}
 string GetUncertainy(int c, int p, vector< vector<string> >vv_procnames, vector<string>ss1){
 	int stop = 0;
 	for(int i=0; i<c; i++){
@@ -463,6 +476,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 		int nsyssources = 0;
 		vector<string> uncernames; uncernames.clear();
 		vector<string> uncertypes; uncertypes.clear();
+		vector< vector<string> >uncerlines; uncerlines.clear();
 		for(int j=lines.size()-1; j>=0; j--){
 			if(lines[j].BeginsWith("---") )	break;
 			if(lines[j].BeginsWith("rate"))	break;
@@ -476,13 +490,14 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 			ss.clear();
 			StringSplit(ss, lines[j].Data(), " ");
 			if(ss.size()<ntotprocesses+2){
-			       	cout<<"uncertainty configuration is not correct"<<endl; 
+				cout<<"uncertainty configuration is not correct"<<endl; 
 				cout<<lines[j]<<endl;
 				exit(0);
 			}else{
 				nsyssources++;
 				uncernames.push_back(ss[0]);
 				uncertypes.push_back(ss[1]);
+				uncerlines.push_back(ss);
 			}
 		}
 		if(kmax>=0 && kmax!=nsyssources) {cout<<"kmax !=  number of independant uncertainties"<<endl; exit(0);}
@@ -500,25 +515,49 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 
 		int INDEXofProcess = 1, INDEXofChannel=2;
 		vector< vector<string> > shape;
-		vector< vector<string> > uncertainties;
+		vector< vector<string> > shapeuncertainties;
 		vector< vector<string> > xx_needtointerpret;
-		vector< vector<string> > xxu_needtointerpret;
 		for(int j=0; j<shapeinfo.size(); j++){
 			if(shapeinfo[j].BeginsWith("shapes")){
 				vector<string>	ss; 
 				ss.clear();
 				StringSplit(ss, shapeinfo[j].Data(), " ");
-				if(ss.size()==5){
+				if(ss.size()>=5){
 					if(ss[1]=="*" || ss[2]=="*") xx_needtointerpret.push_back(ss);
-					else shape.push_back(ss);
-				}else if(ss.size()>5){
-					if(ss[1]=="*" || ss[2]=="*") xxu_needtointerpret.push_back(ss);
-					else uncertainties.push_back(ss);
+					else {
+						shape.push_back(ss);
+						if(ss.size()>5){
+							if(ss.size()==6){
+								string ss6=ss[5]+"Down";
+								ss[5]+="Up";
+								ss.push_back(ss6);
+
+								// for channel c, process t,  looking for uncer which is shaping 
+								for(int u=0; u<nsyssources; u++){
+									TString type = uncerlines[u][1];
+									if(type.BeginsWith("shape")){ 
+										ss[4]=uncerlines[u][0];
+										string n5 = ss[5];
+										string n6 = ss[6];
+
+										TString unc = GetUncertainy(ss[INDEXofChannel], channelnames, ss[INDEXofProcess], vv_procnames, uncerlines[u]);
+										if(unc.IsFloat() && unc.Atof()>0){ // number should be > 0
+											ss[5] = TString(ss[5]).ReplaceAll("$SYSTEMATIC", ss[4]);
+											ss[6] = TString(ss[6]).ReplaceAll("$SYSTEMATIC", ss[4]);
+											shapeuncertainties.push_back(ss);
+											ss[5] = n5; ss[6]=n6;
+										}
+									}
+								}
+							}else shapeuncertainties.push_back(ss);
+						}
+					}
 				}
 			}
 		}
 		if(debug)cout<<"xx_needtointerpret.size="<<xx_needtointerpret.size()<<endl;
 		if(debug)cout<<"shape.size="<<shape.size()<<endl;
+		if(debug)cout<<"shapeuncertainties.size="<<shapeuncertainties.size()<<endl;
 
 		for(int i=0; i<xx_needtointerpret.size(); i++){
 			for(int c=0; c<nchannel; c++){
@@ -530,6 +569,37 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 							newline[4] = TString(newline[4]).ReplaceAll("$CHANNEL", channelnames[c]);
 							newline[4] = TString(newline[4]).ReplaceAll("$PROCESS", vv_procnames[c][p]);
 							shape.push_back(newline);
+							if(newline.size()>5){
+								if(debug) cout<<"debug 0"<<endl;
+								if(newline.size()==6){
+									string ss6=newline[5]+"Down";
+									newline[5]+="Up";
+									newline.push_back(ss6);
+									// for channel c, process t,  looking for uncer which is shaping 
+									for(int u=0; u<nsyssources; u++){
+										TString type = uncerlines[u][1];
+										if(type.BeginsWith("shape")){ 
+											if(debug) cout<<"debug 1"<<endl;
+											newline[4]=uncerlines[u][0];
+											string n5 = newline[5];
+											string n6 = newline[6];
+
+											TString unc = GetUncertainy(c, p, vv_procnames, uncerlines[u]);
+											if(unc.IsFloat() && unc.Atof()>0){ // number should be > 0
+												newline[5] = TString(newline[5]).ReplaceAll("$SYSTEMATIC", newline[4]);
+												newline[6] = TString(newline[6]).ReplaceAll("$SYSTEMATIC", newline[4]);
+												newline[5] = TString(newline[5]).ReplaceAll("$CHANNEL", channelnames[c]);
+												newline[5] = TString(newline[5]).ReplaceAll("$PROCESS", vv_procnames[c][p]);
+												newline[6] = TString(newline[6]).ReplaceAll("$CHANNEL", channelnames[c]);
+												newline[6] = TString(newline[6]).ReplaceAll("$PROCESS", vv_procnames[c][p]);
+												shapeuncertainties.push_back(newline);
+												newline[5] = n5; newline[6]=n6;
+											}
+										}
+									}
+								}
+								else shapeuncertainties.push_back(newline);
+							}
 						}
 					}
 					if(xx_needtointerpret[i][INDEXofProcess]=="*" or xx_needtointerpret[i][INDEXofProcess]=="data_obs"){
@@ -552,12 +622,30 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 				}
 			}
 		}
+		for(int i=0; i<shapeuncertainties.size(); i++){
+			for(int j=i+1; j<shapeuncertainties.size(); j++){
+				if(shapeuncertainties[j][1]==shapeuncertainties[i][1] and shapeuncertainties[j][2]==shapeuncertainties[i][2]
+						and shapeuncertainties[j][5] == shapeuncertainties[i][5]
+				  ) {
+					shapeuncertainties[j][0] = "##";
+					shapeuncertainties[j][1] = "##";
+					shapeuncertainties[j][2] = "##";
+				}
+			}
+		}
 
 		if(debug){
 			cout<<"shape.size="<<shape.size()<<endl;
 			for(int i=0; i<shape.size(); i++){
 				for(int j=0; j<shape[i].size(); j++){
 					cout<<shape[i][j]<<" ";
+				}
+				cout<<endl;
+			}
+			if(debug)cout<<"uncertainties.size="<<shapeuncertainties.size()<<endl;
+			for(int i=0; i<shapeuncertainties.size(); i++){
+				for(int j=0; j<shapeuncertainties[i].size(); j++){
+					cout<<shapeuncertainties[i][j]<<" ";
 				}
 				cout<<endl;
 			}
@@ -622,15 +710,14 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 		TString s_process_name = "process ";
 		vector<TString> vs_unc; vs_unc.clear();
 		for(int u=0; u<nsyssources; u++) {
-			for(int k=0; k<lines.size(); k++){
-				vector<string>	ss1; 
-				ss1.clear();
-				StringSplit(ss1, lines[k].Data(), " ");
-				if(ss1[0]!=uncernames[u]) continue; // FIXME  need to adapt to names 
-				TString s = ""; s+=ss1[0].c_str(); s+=" "; s+=ss1[1].c_str(); s+=" "; // weired, it doesn't give good error message when using "s+=ss1[1]"
-				if(ss1[1]=="gmA" or ss1[1]=="gmN"){s+=ss1[2]; s+=" ";};
-				vs_unc.push_back(s);
-			}
+			vector<string>	ss1 = uncerlines[u]; 
+			TString s = ""; s+=ss1[0].c_str(); s+=" "; s+=ss1[1].c_str(); s+=" "; // weired, it doesn't give good error message when using "s+=ss1[1]"
+			if(ss1[1]=="gmA" or ss1[1]=="gmN"){
+				s+=ss1[2]; s+=" ";
+				//cout<<s<<endl;
+			};
+			//if(uncerlines[u][1]=="gmN") cout<<s<<endl;
+			vs_unc.push_back(s);
 		}
 
 		int n = 0; // for index of new whole channels
@@ -647,14 +734,64 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 				TH1F* hn[n_proc];
 				TH1F *hnorm[n_proc];
 				TH1F *hunc_up[n_proc][nsyssources];
+				TH1F *hunc_dn[n_proc][nsyssources];
+				TH1F *hunc_up_norm[n_proc][nsyssources];
+				TH1F *hunc_dn_norm[n_proc][nsyssources];
 				for(int t=0; t<n_proc; t++){
 					for(int q=0; q<shape.size(); q++){
 						if(shape[q][INDEXofChannel]!=channelnames[c] || shape[q][INDEXofProcess]!=vv_procnames[c][t]) continue; 
 						hn[t] = ((TH1F*)GetHisto(shape[q][3], shape[q][4]));
+						if(hn[t]->Integral()== 0) { 
+							cout<<"ERROR: channel ["<<channelnames[c]<<"] process ["<<vv_procnames[c][t]
+								<<"] is shape, but the norminal histogram->Integral = 0"<<endl;
+							exit(0);
+						}
 						hnorm[t]=(TH1F*)hn[t]->Clone("del_clone"+t);
 						hnorm[t]->Scale(1./hn[t]->Integral());
 					}
+
+					// for channel c, process t,  looking for uncer which is shaping 
+					for(int u=0; u<nsyssources; u++){
+						TString type = uncerlines[u][1];
+						if(type.BeginsWith("shape")){ 
+							TString unc = GetUncertainy(c, t, vv_procnames, uncerlines[u]);
+							if(unc.IsFloat() && unc.Atof()>0){ // number should be > 0
+								bool filled = false;
+								for(int i=0; i<shapeuncertainties.size(); i++){ // look for the histograms from the list 
+									if(shapeuncertainties[i][INDEXofChannel]==channelnames[c] 
+											and shapeuncertainties[i][INDEXofProcess]==vv_procnames[c][t]
+											and shapeuncertainties[i][4]==uncerlines[u][0]){
+										hunc_up[t][u] = (TH1F*)GetHisto(shapeuncertainties[i][3], shapeuncertainties[i][5]);
+										if(hunc_up[t][u]->Integral()== 0) { 
+											cout<<"ERROR: channel ["<<channelnames[c]<<"] process ["<<vv_procnames[c][t]
+												<<"] is shape, but the up_shift histogram->Integral = 0"<<endl;
+											exit(0);
+										}
+										hunc_dn[t][u] = (TH1F*)GetHisto(shapeuncertainties[i][3], shapeuncertainties[i][6]);
+										if(hunc_dn[t][u]->Integral()== 0) { 
+											cout<<"ERROR: channel ["<<channelnames[c]<<"] process ["<<vv_procnames[c][t]
+												<<"] is shape, but the down_shift histogram->Integral = 0"<<endl;
+											exit(0);
+										}
+										hunc_up_norm[t][u]=(TH1F*)hunc_up[t][u]->Clone("up_clone"+t+u);
+										hunc_up_norm[t][u]->Scale(1./hunc_up[t][u]->Integral());
+										hunc_dn_norm[t][u]=(TH1F*)hunc_dn[t][u]->Clone("dn_clone"+t+u);
+										hunc_dn_norm[t][u]->Scale(1./hunc_dn[t][u]->Integral());
+										filled = true;
+									}
+								}	
+								if(!filled) {
+									cout<<"ERROR channel ["<<channelnames[c]<<"] process ["<<vv_procnames[c][t]<<"] sys ["<<uncerlines[u][0]
+										<<"] is shape uncertainty, we need corresponding histogram "<<endl;
+									exit(0);
+								}
+							}
+						}
+					}
 				}
+
+
+
 				for(int r=1; r<=h->GetNbinsX(); r++){
 					n++; 
 					int proc = 0;
@@ -668,27 +805,59 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 						if(debug>=10)cout<<"channel "<<c <<", histo bin"<<r<<" oldbin "<<t<<endl;
 
 						for(int u=0; u<nsyssources; u++){
-							for(int k=0; k<lines.size(); k++){
-								vector<string>	ss1; 
-								ss1.clear();
-								StringSplit(ss1, lines[k].Data(), " ");
-								if(ss1[0]!=uncernames[u]) continue;
-								if(uncernames[u]=="shape" or uncertypes[u]=="shapeL" or uncertypes[u]=="shapeQ" or uncertypes[u]=="shapeN"){
-										TH1F *hu = (TH1F*) GetHisto(shape[0][4], uncertainties[0][5]);
-										vs_unc[u]+=hu->GetBinContent(r); vs_unc[u] += " ";
-										delete hu;
+							//for(int k=0; k<uncerlines.size(); k++)
+							if(1){
+								if(debug>=100) cout<<"debug "<<uncertypes[u]<<endl;
+								if(uncertypes[u]=="shape" or uncertypes[u]=="shapeL" or uncertypes[u]=="shapeQ" or uncertypes[u]=="shapeN"){
+									TString unc = GetUncertainy(c, t, vv_procnames, uncerlines[u]);
+									if(unc.IsFloat() && unc.Atof()>0){ // number should be > 0
+										float down = hunc_dn_norm[t][u]->GetBinContent(r);
+										if(debug) cout<<"down "<<down<<endl;
+										float up = hunc_up_norm[t][u]->GetBinContent(r);
+										float norminal = hnorm[t]->GetBinContent(r);
+										float norm_down = hunc_dn[t][u]->Integral();
+										float norm_up = hunc_up[t][u]->Integral();
+										float norm_norminal = hn[t]->Integral();
+										TString stmp;
+										if(uncertypes[u]=="shapeN"){
+											vs_unc[u]+=(norminal==0?1:down/norminal); vs_unc[u] += "/";
+											stmp.Form("%g",(norminal==0?1:up/norminal));
+											//vs_unc[u]+=(norminal==0?1:up/norminal); vs_unc[u] += " ";
+											vs_unc[u]+=stmp; vs_unc[u] += " ";
+											if(debug>=10)cout<<vs_unc[u]<<endl;
+										}else {
+											vs_unc[u]+=down; vs_unc[u] += "/";
+											stmp.Form("%g",up);
+											vs_unc[u]+=stmp; vs_unc[u] += "/";
+											stmp.Form("%g",norminal);
+											vs_unc[u]+=stmp; vs_unc[u] += "/";
+											stmp.Form("%g",norm_norminal);
+											vs_unc[u]+=stmp; vs_unc[u] += "/";
+											stmp.Form("%g",norm_norminal/norm_down);
+											vs_unc[u]+=stmp; vs_unc[u] += "/";
+											stmp.Form("%g",norm_up/norm_norminal);
+											vs_unc[u]+=stmp; vs_unc[u] += "/";
+											vs_unc[u]+=unc; vs_unc[u] += " ";
+											if(debug>=10)cout<<vs_unc[u]<<endl;
+										}
+									}else{
+										vs_unc[u]+=" - ";
+									}
 								}else{
 
-									string tmp =GetUncertainy(c, proc, vv_procnames, ss1); 
-									if(ss1[1]=="gmA" or ss1[1]=="gmN"){
+									string tmp =GetUncertainy(c, t, vv_procnames, uncerlines[u]); 
+									if(uncertypes[u]=="gmA" or uncertypes[u]=="gmN"){
+										cout<<"gamma "<<tmp<<endl;
 										if(TString(tmp).IsFloat()){
 											float tmpd = TString(tmp).Atof()*hnorm[t]->GetBinContent(r);
-											TString tmps = ""; tmps+=tmpd;
-											tmp = tmps;
+											TString tmps; 
+											tmps.Form("%g",tmpd);
+											tmp = tmps.Data();
 										}
 									}
 									vs_unc[u]+=tmp; vs_unc[u] += " ";  // must be careful with gamma uncertainties
 								}
+								if(debug>=100) cout<<"debug "<<uncertypes[u]<< " "<<u<<endl;
 							}
 						}
 
@@ -699,8 +868,19 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 				}
 				delete h;
 				for(int t=0; t<n_proc; t++) {delete hn[t]; delete hnorm[t]; }
+				for(int t=0; t<n_proc; t++){
+					for(int u=0; u<nsyssources; u++){
+						/*
+						   if(hunc_up[t][u]) delete hunc_up[t][u];
+						   if(hunc_up_norm[t][u]) delete hunc_up_norm[t][u];
+						   if(hunc_dn[t][u]) delete hunc_dn[t][u];
+						   if(hunc_dn_norm[t][u]) delete hunc_dn_norm[t][u];
+						   */
+					}
+				}
 
 			}// shape channels
+			if(debug) cout<<" middle "<<endl;
 			if(isShapeChannel==false) {
 				n++;
 				for(int t=0; t<vv_procnames[c].size(); t++){
@@ -712,17 +892,14 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 					s_process_name += vv_procnames[c][t] ; s_process_name += " ";
 
 					for(int u=0; u<nsyssources; u++){
-						for(int k=0; k<lines.size(); k++){
-							vector<string>	ss1; 
-							ss1.clear();
-							StringSplit(ss1, lines[k].Data(), " ");
-							if(ss1[0]!=uncernames[u]) continue;
-							vs_unc[u]+=GetUncertainy(c, t, vv_procnames, ss1); vs_unc[u] += " ";  // must be careful with gamma uncertainties
-						}
+						vector<string>	ss1 = uncerlines[u]; 
+						if(ss1[0]!=uncernames[u]) continue;
+						vs_unc[u]+=GetUncertainy(c, t, vv_procnames, ss1); vs_unc[u] += " ";  // must be careful with gamma uncertainties
 					}
 
 				}
 			}
+			if(debug) cout<<" done channel "<<channelnames[c]<<endl;
 		}
 		newlines.push_back(s_bin);
 		newlines.push_back(s_process_name);
@@ -1081,6 +1258,9 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped, int debug)
 		if(ss[1]=="lnN") pdf=typeLogNormal;   // typeLogNormal
 		else if(ss[1]=="trG") pdf=typeTruncatedGaussian; // typeTruncatedGaussian
 		else if(ss[1]=="gmA" or ss[1]=="gmN" or ss[1]=="gmM") pdf=typeGamma; // typeControlSampleInferredLogNormal;  gmA was chosen randomly, while in gmN, N stands for yield in control sample;  gmM stands for Multiplicative gamma distribution, it implies using a Gamma distribution not for a yield but for a multiplicative correction
+		else if(ss[1]=="shapeN") pdf=typeLogNormal;
+		else if(ss[1]=="shape" or ss[1]=="shapeL") pdf=typeShapeGaussianLinearMorph;
+		else if(ss[1]=="shapeQ" ) pdf=typeShapeGaussianQuadraticMorph;
 		else pdf =  (TString(ss[1])).Atoi();
 
 		tmps+= TString::Format("%3s ", ss[1].c_str());
@@ -1090,6 +1270,7 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped, int debug)
 		bool filledThisSource = false;
 		for(int p=0; p<ntotprocesses; p++){
 			double err, errup, rho;  // to allow asymetric uncertainties
+			double shape[8];
 			if(pdf==typeLogNormal){
 				if(ss[p+2]=="-") {
 					tmps+= "    -   ";
@@ -1128,6 +1309,35 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped, int debug)
 				}
 				tmps+= TString::Format("%7.2f ",err);
 				if(err == 0.) continue;
+			}else if(pdf==typeShapeGaussianQuadraticMorph or pdf==typeShapeGaussianLinearMorph){
+				if(ss[p+2]=="-"){
+					tmps+= "    -   ";
+					continue;
+				}
+				if(TString(ss[p+2]).Contains("/")){
+					vector<string> params; params.clear();
+					StringSplit(params, ss[p+2], "/");
+					if(params.size()==7) {
+						for(int i=0; i<7; i++) shape[i]=TString(params[i]).Atof();
+						shape[7]=1.;
+					}else if(params.size()==2){
+						for(int i=0; i<6; i++) {
+							if(i<4)shape[i]= 0 ;
+							else shape[i]=TString(params[i-4]).Atof();
+						}
+						shape[6]=0;
+						shape[7]=0;
+					}else { cout<<"ERROR: typeShape input format not correct "<<endl; exit(0);}
+				}else{
+					for(int i=0; i<4; i++) {
+						shape[i]= 0 ;
+					}
+					shape[4]=TString(ss[p+2]).Atof();
+					shape[5]=shape[4];
+					shape[6]=0;
+					shape[7]=0;
+				}
+				tmps= TString::Format("%7.2f ", shape[0]);
 			}
 			else if(pdf==typeGamma){
 				if(ss[1]=="gmA" or ss[1]=="gmN"){
@@ -1180,6 +1390,9 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped, int debug)
 					//  e.g.   check   N == cms->Get_v_Gamma(indexcorrelation); // can't do here before ConfigUncertaintyPdfs()
 					//we might allow them different and do rescaling 
 				}
+			}
+			if(pdf==typeShapeGaussianLinearMorph or pdf==typeShapeGaussianQuadraticMorph){
+				cms->AddUncertainty(binnumber[p]-1, subprocess[p], 8, shape, pdf, indexcorrelation );
 			}
 
 			// because when err < 0, AddUncertainty do nothing,  but filledThisSource has been changed to be true

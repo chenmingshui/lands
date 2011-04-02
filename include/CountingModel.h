@@ -63,6 +63,9 @@ namespace lands{
 			void AddUncertainty(int index_channel, int index_sample, double rho, double rho_err, double B, int pdf_type, int index_correlation );
 			// when B is large, it's close to Gaussian. then use Gaussian, don't use Gamma function
 
+			// For Shape parameters
+			void AddUncertainty(int index_channel, int index_sample, int npar, double *par, int pdf_type, int index_correlation );
+			void AddUncertainty(int index_channel, int index_sample, int npar, double *par, int pdf_type, std::string uncname );
 
 			void AddObservedData(int index_channel, double num_data);
 			void SetData(VDChannel data){v_data=data;};
@@ -111,6 +114,7 @@ namespace lands{
 			vector<double> Get_v_GammaN(){return v_GammaN;};
 			vector<std::string> Get_v_uncname(){return v_uncname;};
 			void SetDebug(int i){_debug=i;};
+			int GetDebug(){return _debug;};
 			std::string GetChannelName(int i){return v_channelname.at(i);};
 			int GetNSigprocInChannel(int i){return v_sigproc.at(i);};
 			vector<int> Get_v_sigproc(){return v_sigproc;};

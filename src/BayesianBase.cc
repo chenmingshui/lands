@@ -307,6 +307,9 @@ namespace lands{
 				_stot[i]+=s[ch];
 				_btot[i]+=b[ch];
 			}
+				if(_debug>=100 && i<100 ){
+					cout<<" toy  "<<i<<" stot="<<_stot[i]<<" btot="<<_btot[i]<<endl;
+				}
 			_vs.push_back(s);
 			_vb.push_back(b);
 		}

@@ -278,6 +278,21 @@ namespace lands{
 		AddUncertainty(index_channel, index_sample, uncertainty_in_relative_fraction_down, uncertainty_in_relative_fraction_up, pdf_type, index_correlation );
 
 	}
+	void CountingModel::AddUncertainty(int index_channel, int index_sample, int npar, double *par, int pdf_type, string uncname ){
+		int index_correlation = -1; // numeration starts from 1
+		for(int i=0; i<v_uncname.size(); i++){
+			if(v_uncname[i]==uncname){
+				index_correlation = i+1;	
+				break;
+			}
+		}
+		if(index_correlation<0)  {
+			index_correlation = v_uncname.size()+1;
+			v_uncname.push_back(uncname);
+		}
+		AddUncertainty(index_channel, index_sample, npar, par, pdf_type, index_correlation );
+
+	}
 	void CountingModel::AddUncertainty(int index_channel, int index_sample, double rho, double rho_err, double B, int pdf_type, string uncname ){
 		int index_correlation = -1; // numeration starts from 1
 		for(int i=0; i<v_uncname.size(); i++){
@@ -315,6 +330,22 @@ namespace lands{
 		vector<double> vunc; vunc.clear(); 
 		vunc.push_back(uncertainty_in_relative_fraction_down);
 		vunc.push_back(uncertainty_in_relative_fraction_up);
+		vvvv_uncpar.at(index_channel).at(index_sample).push_back(vunc);
+		vvv_pdftype.at(index_channel).at(index_sample).push_back(pdf_type);
+		vvv_idcorrl.at(index_channel).at(index_sample).push_back(index_correlation);
+		//ConfigUncertaintyPdfs();
+	}
+	void CountingModel::AddUncertainty(int index_channel, int index_sample, int npar, double *par, int pdf_type, int index_correlation ){
+		if(pdf_type!=typeShapeGaussianQuadraticMorph  && pdf_type!=typeShapeGaussianLinearMorph ) {
+			cout<<"Error: AddUncertainty for typeShapeGaussianLinearMorph and typeShapeGaussianQuadraticMorph only. exit"<<endl;
+			exit(0);
+		}
+		if(index_correlation <= 0) { 
+			cout<<"Error: index_correlation < 0 "<<endl;
+			exit(0);
+		}
+		vector<double> vunc; vunc.clear(); 
+		for(int i=0; i<npar; i++) vunc.push_back(par[i]);
 		vvvv_uncpar.at(index_channel).at(index_sample).push_back(vunc);
 		vvv_pdftype.at(index_channel).at(index_sample).push_back(pdf_type);
 		vvv_idcorrl.at(index_channel).at(index_sample).push_back(index_correlation);
@@ -388,6 +419,7 @@ namespace lands{
 									fabs(vvvv_uncpar.at(ch).at(isam).at(iunc).at(0)*vvvv_uncpar.at(ch).at(isam).at(iunc).at(2) - vv_exp_sigbkgs.at(ch).at(isam)) / vvvv_uncpar.at(ch).at(isam).at(iunc).at(2)/vvvv_uncpar.at(ch).at(isam).at(iunc).at(0)>0.2
 									) {
 								cout<<"channel "<<ch<<"th, "<<v_channelname[ch]<<": process "<<isam<<" using gamma pdf, but rho*B!=b, please check"<<endl; 
+								cout<< "rho="<<vvvv_uncpar[ch][isam][iunc][0]<<"  B="<<vvvv_uncpar[ch][isam][iunc][2]<<" b="<<vv_exp_sigbkgs[ch][isam]<<endl;
 								exit(0);
 							}	
 							v_GammaN.back()=vvvv_uncpar.at(ch).at(isam).at(iunc).at(2)+1;	
@@ -502,6 +534,7 @@ namespace lands{
 		//if(_debug) cout<<"vvv_idcorrl.size="<<vvv_idcorrl.size()<<endl;
 		int nsigproc = 1;
 		double * uncpars;
+		double tmprand;
 		for(int ch=0; ch<vvv_idcorrl.size(); ch++){
 			nsigproc = v_sigproc[ch];
 			for(isam=0; isam<vvv_idcorrl[ch].size(); isam++){
@@ -513,7 +546,7 @@ namespace lands{
 					uncpars  = &(vvvv_uncpar[ch][isam][iunc][0]);
 					switch (pdftype){
 						case typeLogNormal : 
-							//vv[ch][isam]*=pow( (1+ vvvv_uncpar[ch][isam][iunc][ (ran>0?1:0) ]), ran );
+							//vv[ch][isam]*=pow( (1+ vvvv_uncpar[ch][isam][iunc][ (ran>0?1:0) ]), ran ); // down/up
 							vv[ch][isam]*=pow( (1+ (ran>0? *(uncpars+1):*uncpars) ) , ran );
 							break;
 
@@ -540,27 +573,41 @@ namespace lands{
 							// FIXME
 							break;
 						case typeShapeGaussianLinearMorph:
-							h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) + fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm
-							//if(vv_exp_sigbkgs_scaled[ch][isam]!=0 && vv[ch][isam]!=0) 
-							if( *(uncpars+2)!=0 && vv[ch][isam]!=0) {
-								vv[ch][isam]*=h/(*(uncpars+2));	
-							}else if(vv[ch][isam]==0) vv[ch][isam] = (*(uncpars+3))*h;
-							else { ;}
-
-							vv[ch][isam]*=pow( (1+ (ran>0? *(uncpars+5):*(uncpars+4)) ) , ran );
+							if(*(uncpars+7) == 1.){
+								tmprand = ran; 
+								ran*= (*(uncpars+6));
+								h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm,  siglebin_or_binned
+								if(h<0) h=0;
+								//if(vv_exp_sigbkgs_scaled[ch][isam]!=0 && vv[ch][isam]!=0) 
+								if( *(uncpars+2)!=0 && vv[ch][isam]!=0) {
+									vv[ch][isam]*=h/(*(uncpars+2));	
+								}else if(vv[ch][isam]==0) vv[ch][isam] = (*(uncpars+3))*h;
+								else { ;}
+								ran = tmprand;
+							}
+							if(_debug>=100)cout<< "main =" << *(uncpars+2) << " up="<< *(uncpars+1) << " down="<< *uncpars << " ran="<<ran<< " --> h="<<h<<endl;
+							vv[ch][isam]*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran );
+							if(_debug>=100)cout<<ch<<" "<<isam<<" "<<iunc<<" : "<<vv[ch][isam]<<endl;
 
 							break;
 						case typeShapeGaussianQuadraticMorph:
-							if(fabs(ran)<1)
-								h = *(uncpars+2) + ran * (ran-1)/2. * (*uncpars) + ran * (ran+1)/2. * (*(uncpars+1)) - ran*ran*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm
-							else 
-								h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) + fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm
-							if( *(uncpars+2)!=0 && vv[ch][isam]!=0) {
-								vv[ch][isam]*=h/(*(uncpars+2));	
-							}else if(vv[ch][isam]==0) vv[ch][isam] = (*(uncpars+3))*h;
-							else { ;}
+							if(*(uncpars+7) == 1.){
+								tmprand = ran; 
+								ran*= (*(uncpars+6));
+								if(fabs(ran)<1)
+									h = *(uncpars+2) + ran * (ran-1)/2. * (*uncpars) + ran * (ran+1)/2. * (*(uncpars+1)) - ran*ran*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm, siglebin_or_binned
+								else 
+									h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm
+								if(h<0) h=0;
+								if( *(uncpars+2)!=0 && vv[ch][isam]!=0) {
+									vv[ch][isam]*=h/(*(uncpars+2));	
+								}else if(vv[ch][isam]==0) vv[ch][isam] = (*(uncpars+3))*h;
+								else { ;}
+								ran = tmprand;
+							}
+							if(_debug>=100)cout<< "main =" << *(uncpars+2) << " up="<< *(uncpars+1) << " down="<< *uncpars << " ran="<<ran<< " --> h="<<h<<endl;
 
-							vv[ch][isam]*=pow( (1+ (ran>0? *(uncpars+5):*(uncpars+4)) ) , ran );
+							vv[ch][isam]*=pow( (ran>0? *(uncpars+5):*(uncpars+4) ) , ran );
 
 							break;
 						default:
@@ -817,8 +864,7 @@ namespace lands{
 								tmp_vvv_pdftype.at(ch).at(isamp).at(iunc),
 								tmp_v_uncname[tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)-1]
 								);
-					}
-					else if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeControlSampleInferredLogNormal
+					}else if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeControlSampleInferredLogNormal
 							|| tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeGamma){
 						cms.AddUncertainty(ch, isamp, 
 								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(0), 
@@ -827,6 +873,15 @@ namespace lands{
 								tmp_vvv_pdftype.at(ch).at(isamp).at(iunc),
 								tmp_v_uncname[tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)-1]
 								);
+					}else if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeShapeGaussianQuadraticMorph
+							|| tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeShapeGaussianLinearMorph){
+						int npar = tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).size();
+						cms.AddUncertainty(ch, isamp, 
+								npar, &(tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc)[0]), 
+								tmp_vvv_pdftype.at(ch).at(isamp).at(iunc),
+								tmp_v_uncname[tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)-1]
+								);
+
 					}else {
 						cout<<"The pdftype Not implemented yet: "<<tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)<<endl;
 					}
@@ -841,10 +896,10 @@ namespace lands{
 		tmp_vvv_idcorrl=cms2->Get_vvv_idcorrl();	
 		tmp_v_uncname = cms2->Get_v_uncname();
 		for(int ch=0; ch<cms2->NumOfChannels(); ch++){
-			int newch = cms1->NumOfChannels(); // like ++
-			//if(_debug) cout<<"Adding ch = "<<newch<<"th channel from "<<cms2->GetModelName()<<endl;
+			int newch = cms.NumOfChannels(); // like ++
+			if(cms2->GetDebug()) cout<<"Adding ch = "<<newch<<"th channel from "<<cms2->GetModelName()<<endl;
 			cms.AddChannel(cms2->GetChannelName(ch), cms2->Get_v_exp_sigbkgs(ch), cms2->GetNSigprocInChannel(ch));
-			//if(_debug) cout<<"now has total "<<cms.NumOfChannels()<<endl;
+			if(cms2->GetDebug()) cout<<"now has total "<<cms.NumOfChannels()<<endl;
 			for(int isamp=0; isamp<tmp_vvv_pdftype.at(ch).size(); isamp++){
 				for(int iunc=0; iunc<tmp_vvv_pdftype.at(ch).at(isamp).size(); iunc++){
 					if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeLogNormal || tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeTruncatedGaussian){
@@ -864,6 +919,15 @@ namespace lands{
 								tmp_vvv_pdftype.at(ch).at(isamp).at(iunc),
 								tmp_v_uncname[tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)-1]
 								);
+					}else if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeShapeGaussianQuadraticMorph
+							|| tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeShapeGaussianLinearMorph){
+						int npar = tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).size();
+						cms.AddUncertainty(newch, isamp, 
+								npar, &(tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc)[0]), 
+								tmp_vvv_pdftype.at(ch).at(isamp).at(iunc),
+								tmp_v_uncname[tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)-1]
+								);
+
 					}else {
 						cout<<"The pdftype Not implemented yet: "<<tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)<<endl;
 					}
