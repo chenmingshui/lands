@@ -94,6 +94,7 @@ int main(int argc, const char*argv[]){
 	cms->SetRdm(rdm);
 	cms->SetUseSystematicErrors(systematics);
 	cms->RemoveChannelsWithExpectedSignal0orBkg0();
+	//cms->RemoveChannelsWithExpectedSignal0orBkg0(-1);
 	//cms->SetAllowNegativeSignalStrength(false);
 	if(dataset == "asimov_b")cms->UseAsimovData(0);
 	else if(dataset == "asimov_sb")cms->UseAsimovData(1);
@@ -196,7 +197,8 @@ int main(int argc, const char*argv[]){
 			double rtmp;
 			clsr95.SetAlpha(1-CL);
 
-			rtmp = clsr95.LimitOnSignalScaleFactor(cms, &frequentist, toysHybrid);
+			if(bQuickEstimateInitialLimit) rtmp = clsr95.LimitOnSignalScaleFactor(cms, &frequentist, toysHybrid);
+			else rtmp = clsr95.LimitOnSignalScaleFactor(cms, initialRmin, initialRmax, &frequentist, toysHybrid, 3);
 
 			if(debug){
 				DrawEvolution2D d2d(clsr95.GetvTestedScaleFactors(), clsr95.GetvTestedCLs(), "; r ; CLs", (jobname+"_r_vs_cl").Data(), pt);
@@ -622,11 +624,11 @@ void processParameters(int argc, const char* argv[]){
 	for(int i=0; i<allargs.size(); i++){
 		if(allargs[i]=="--help" or allargs[i]=="-h" ) PrintHelpMessage();
 		//cout<<allargs[i]<<endl;
-		if(allargs[i].BeginsWith("-")){
+		if(allargs[i].BeginsWith("-") and !allargs[i].IsFloat()){
 			TString key = allargs[i];
 			vector<TString> values;
 			for(int j=i+1; j<allargs.size(); j++){
-				if(allargs[j].BeginsWith("-")) break;
+				if(allargs[j].BeginsWith("-") and !allargs[j].IsFloat()) break;
 				values.push_back(allargs[j]);
 			}
 			options.insert(TPair(key, values));
@@ -768,14 +770,14 @@ void processParameters(int argc, const char* argv[]){
 	if( tmpv.size()!=1 ) { initialRmin = 1; }
 	else {
 		initialRmin = tmpv[0].Atof();
-		if(initialRmin<0) initialRmin = 1;
+		//if(initialRmin<0) initialRmin = 1;
 	}
 
 	tmpv = options["--initialRmax"]; 
 	if( tmpv.size()!=1 ) { initialRmax = 20; }
 	else {
 		initialRmax = tmpv[0].Atof();
-		if(initialRmax<=0) initialRmax = 20;
+		//if(initialRmax<=0) initialRmax = 20;
 	}
 
 
