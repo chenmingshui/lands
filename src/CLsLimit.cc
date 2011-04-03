@@ -57,9 +57,10 @@ namespace lands{
 		}
 		Double_t tc =0, ss=0,  bs = 0;
 		int u=0, s=0, c=0;
-		double tmp, tmp2;
-		int tmp3;
+		double tmp, tmp2,  ran, h, tmprand;
+		int ipar;
 		int nsigproc = 1;	
+		double *uncpars;
 		for(c=0; c<nchs; c++){
 			nsigproc = cms_global->GetNSigprocInChannel(c);	
 			tc=0; 
@@ -67,22 +68,58 @@ namespace lands{
 				ss =par[0]*vv_sigbks[c][s];
 				if(cms_global->IsUsingSystematicsErrors()){
 					for(u = 0; u<vvv_pdftype[c][s].size(); u++){
+						ran = par[(vvv_idcorrl)[c][s][u]];
+						uncpars = &(vvvv_uncpar[c][s][u][0]);
 						switch (vvv_pdftype[c][s][u]) {
+							case typeShapeGaussianLinearMorph:
+								if(*(uncpars+7) == 1.){
+									tmprand = ran; 
+									ran*= (*(uncpars+6));
+									h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm,  scale_down_of_gaussian, siglebin_or_binned
+									if(h<0) h=0;
+									if( *(uncpars+2)!=0 && ss!=0) {
+										ss*=h/(*(uncpars+2));	
+									}else if(ss==0) ss = (*(uncpars+3))*h*par[0];
+									else { ;}
+									ran = tmprand;
+								}
+								//if(_debug>=100)cout<< "main =" << *(uncpars+2) << " up="<< *(uncpars+1) << " down="<< *uncpars << " ran="<<ran<< " --> h="<<h<<endl;
+								ss*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran );
+								//if(_debug>=100)cout<<c<<" "<<s<<" "<<u<<" : "<<ss<<endl;
+								break;
+							case typeShapeGaussianQuadraticMorph:
+								if(*(uncpars+7) == 1.){
+									tmprand = ran; 
+									ran*= (*(uncpars+6));
+									if(fabs(ran)<1)
+										h = *(uncpars+2) + ran * (ran-1)/2. * (*uncpars) + ran * (ran+1)/2. * (*(uncpars+1)) - ran*ran*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm, scale_down_of_gaussian, siglebin_or_binned
+									else 
+										h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm,  scale_down_of_gaussian, siglebin_or_binned
+									if(h<0) h=0;
+									if( *(uncpars+2)!=0 && ss!=0) {
+										ss*=h/(*(uncpars+2));	
+									}else if(ss==0) ss = (*(uncpars+3))*h*par[0];
+									else { ;}
+									ran = tmprand;
+								}
+								ss*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran );
+								break;
 							case typeLogNormal :
-								ss *= (pow(1+vvvv_uncpar[c][s][u][ (par[(vvv_idcorrl)[c][s][u]]>0?1:0) ],par[(vvv_idcorrl)[c][s][u]]));
+								//ss *= (pow(1+vvvv_uncpar[c][s][u][ (ran>0?1:0) ],ran));
+								ss *= (pow(1+ (*(uncpars+ (ran>0?1:0))),ran));
 								break;
 							case typeTruncatedGaussian :
-								ss*=(1+vvvv_uncpar[c][s][u][ (par[(vvv_idcorrl)[c][s][u]]>0?1:0) ]*par[(vvv_idcorrl)[c][s][u]]);
+								ss*=(1+  (*(uncpars+ (ran>0?1:0)))*ran);
 								break;
 							case typeGamma :
-								tmp2 = vvvv_uncpar[c][s][u][0];
-								tmp3 = vvv_idcorrl[c][s][u];
-								if(tmp2>0){
+								//tmp2 = vvvv_uncpar[c][s][u][0];
+								ipar = vvv_idcorrl[c][s][u];
+								if(*uncpars>0){
 									tmp =par[0]*vv_sigbks[c][s];	
-									if(tmp!=0) { ss/=tmp; ss *= (par[0]*tmp2*par[tmp3]); }
-									else ss = par[0]*tmp2*par[tmp3];
+									if(tmp!=0) { ss/=tmp; ss *= (par[0]*(*uncpars)*ran); }
+									else ss = par[0]*(*uncpars)*ran;
 								}else{
-									ss*=(par[tmp3]/v_GammaN[tmp3]);
+									ss*=(ran/v_GammaN[ipar]);
 								}
 								//cout<<"s= "<< ss <<" alpha= "<< vvvv_uncpar[c][s][u][0]<<" B="<<par[(vvv_idcorrl)[c][s][u]]<<endl;
 								break;
@@ -99,24 +136,55 @@ namespace lands{
 				bs = vv_sigbks[c][s];	
 				if(cms_global->IsUsingSystematicsErrors()){
 					for(u=0; u<vvv_pdftype[c][s].size(); u++){
+						ran = par[(vvv_idcorrl)[c][s][u]];
+						uncpars = &(vvvv_uncpar[c][s][u][0]);
 						switch (vvv_pdftype[c][s][u]){
+							case typeShapeGaussianLinearMorph:
+								if(*(uncpars+7) == 1.){
+									tmprand = ran; 
+									ran*= (*(uncpars+6));
+									h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; 
+									if(h<0) h=0;
+									if( *(uncpars+2)!=0 && bs!=0) {
+										bs*=h/(*(uncpars+2));	
+									}else if(bs==0) bs = (*(uncpars+3))*h;
+									else { ;}
+									ran = tmprand;
+								}
+								bs*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran );
+								break;
+							case typeShapeGaussianQuadraticMorph:
+								if(*(uncpars+7) == 1.){
+									tmprand = ran; 
+									ran*= (*(uncpars+6));
+									if(fabs(ran)<1)
+										h = *(uncpars+2) + ran * (ran-1)/2. * (*uncpars) + ran * (ran+1)/2. * (*(uncpars+1)) - ran*ran*(*(uncpars+2)) ; 
+									else 
+										h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ;
+									if(h<0) h=0;
+									if( *(uncpars+2)!=0 && bs!=0) {
+										bs*=h/(*(uncpars+2));	
+									}else if(bs==0) bs = (*(uncpars+3))*h;
+									else { ;}
+									ran = tmprand;
+								}
+								bs*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran );
+								break;
 							case typeLogNormal:
-								bs*=(pow(1+vvvv_uncpar[c][s][u][ (par[(vvv_idcorrl)[c][s][u]]>0?1:0) ],par[(vvv_idcorrl)[c][s][u]]));
+								bs*=(pow( 1+ (*(uncpars+ (ran>0?1:0))), ran) );
 								break;
 							case typeTruncatedGaussian:
-								bs*=(1+vvvv_uncpar[c][s][u][ (par[(vvv_idcorrl)[c][s][u]]>0?1:0) ]*par[(vvv_idcorrl)[c][s][u]]);
+								bs*=(1+ (*(uncpars+ (ran>0?1:0)))*ran);
 								break;
 							case typeGamma:
-								tmp2 = vvvv_uncpar[c][s][u][0];
-								tmp3 = vvv_idcorrl[c][s][u];
-								if(tmp2>0){
+								ipar = vvv_idcorrl[c][s][u];
+								if(*uncpars>0){
 									tmp = vv_sigbks[c][s];	
-									if(tmp!=0) { bs/=tmp; bs *= (tmp2*par[tmp3]); }
-									else bs = tmp2*par[tmp3];
+									if(tmp!=0) { bs/=tmp; bs *= ((*uncpars)*ran); }
+									else bs = (*uncpars)*ran;
 								}else{
-									bs*=(par[tmp3]/v_GammaN[tmp3]);
+									bs*=(ran/v_GammaN[ipar]);
 								}
-								//	cout<<"b= "<< bs <<" alpha= "<< vvvv_uncpar[c][s][u][0]<<" B="<<par[(vvv_idcorrl)[c][s][u]]<<endl;
 								break;	
 							default:
 								cout<<"pdf_type = "<<vvv_pdftype[c][s][u]<<" not defined yet"<<endl;
@@ -143,6 +211,8 @@ namespace lands{
 			// we are evaluating chisq = -2 * ( ln(Q_H1) - ln(Q_H0) )
 			switch (v_pdftype[u]) {
 				case typeTruncatedGaussian:
+				case typeShapeGaussianQuadraticMorph:
+				case typeShapeGaussianLinearMorph:
 				case typeLogNormal:
 					chisq += pow(par[u],2);  
 					break;
@@ -199,23 +269,30 @@ double MinuitFit(int model, double &r , double &er, double mu  ){
 		vector<int> v_pdftype = cms_global->Get_v_pdftype();
 		vector<double> v_TG_maxUnc = cms_global->Get_v_TruncatedGaussian_maxUnc();
 		vector<double> v_GammaN = cms_global->Get_v_GammaN();
+		double maxunc;
 		for(int i=1; i<=npars; i++){
 			TString sname; 
 			sname.Form("p%d",i);
-			if(v_pdftype[i] == typeLogNormal )
-				myMinuit->mnparm(i, sname, 0., 0.1, -20, 20,ierflg); // was 5,  causing problem with significance larger than > 7 
-			else if(v_pdftype[i] == typeTruncatedGaussian ){
-				double maxunc = v_TG_maxUnc[i];	
-				if(maxunc>0.2) maxunc = -1./maxunc;
-				else maxunc = -5;   // FIXME is hear also need to be extended to -20  ?
-				myMinuit->mnparm(i, sname, 0., 0.1, maxunc, 20,ierflg); // was 5
-			}else if(v_pdftype[i]==typeGamma){
-				myMinuit->mnparm(i, sname, v_GammaN[i], 0.5, 0, 100000, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
-			}else {
-				cout<<"pdftype not yet defined:  "<<v_pdftype[i]<<", npars="<<npars<<", i="<<i<<endl;
-				cout<<"**********"<<endl;
-				//cms_global->Print(100);
-				exit(0);
+			switch (v_pdftype[i]){
+				case typeLogNormal:
+				case typeShapeGaussianLinearMorph:
+				case typeShapeGaussianQuadraticMorph:
+					myMinuit->mnparm(i, sname, 0., 0.1, -20, 20,ierflg); // was 5,  causing problem with significance larger than > 7 
+					break;
+				case typeTruncatedGaussian :
+					maxunc = v_TG_maxUnc[i];	
+					if(maxunc>0.2) maxunc = -1./maxunc;
+					else maxunc = -5;   // FIXME is hear also need to be extended to -20  ?
+					myMinuit->mnparm(i, sname, 0., 0.1, maxunc, 20,ierflg); // was 5
+					break;
+				case typeGamma:
+					myMinuit->mnparm(i, sname, v_GammaN[i], 0.5, 0, 100000, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
+					break;
+				default:
+					cout<<"pdftype not yet defined:  "<<v_pdftype[i]<<", npars="<<npars<<", i="<<i<<endl;
+					cout<<"**********"<<endl;
+					//cms_global->Print(100);
+					exit(0);
 			}
 		}
 

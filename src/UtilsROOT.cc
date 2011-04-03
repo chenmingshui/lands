@@ -711,6 +711,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 		vector<TString> vs_unc; vs_unc.clear();
 		for(int u=0; u<nsyssources; u++) {
 			vector<string>	ss1 = uncerlines[u]; 
+			if(ss1[1]=="shapeN") ss1[1]="lnN";
 			TString s = ""; s+=ss1[0].c_str(); s+=" "; s+=ss1[1].c_str(); s+=" "; // weired, it doesn't give good error message when using "s+=ss1[1]"
 			if(ss1[1]=="gmA" or ss1[1]=="gmN"){
 				s+=ss1[2]; s+=" ";
@@ -1259,8 +1260,8 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped, int debug)
 		else if(ss[1]=="trG") pdf=typeTruncatedGaussian; // typeTruncatedGaussian
 		else if(ss[1]=="gmA" or ss[1]=="gmN" or ss[1]=="gmM") pdf=typeGamma; // typeControlSampleInferredLogNormal;  gmA was chosen randomly, while in gmN, N stands for yield in control sample;  gmM stands for Multiplicative gamma distribution, it implies using a Gamma distribution not for a yield but for a multiplicative correction
 		else if(ss[1]=="shapeN") pdf=typeLogNormal;
-		else if(ss[1]=="shape" or ss[1]=="shapeL") pdf=typeShapeGaussianLinearMorph;
-		else if(ss[1]=="shapeQ" ) pdf=typeShapeGaussianQuadraticMorph;
+		else if(ss[1]=="shape" or ss[1]=="shapeQ") pdf=typeShapeGaussianQuadraticMorph;
+		else if(ss[1]=="shapeL" ) pdf=typeShapeGaussianLinearMorph;
 		else pdf =  (TString(ss[1])).Atoi();
 
 		tmps+= TString::Format("%3s ", ss[1].c_str());
