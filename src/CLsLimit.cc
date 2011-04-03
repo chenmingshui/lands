@@ -43,7 +43,8 @@ namespace lands{
 
 		// need unscaled signal yields here....   
 		// before it used scaled yields, and it was ok for PLR approximation methods, because they don't advoke SetSignalScaleFactor. 
-		VChannelVSample vv_sigbks = cms_global -> Get_vv_exp_sigbkgs_nonscaled(); 
+		cms_global->SetSignalScaleFactor(par[0]);
+		VChannelVSample vv_sigbks = cms_global -> Get_vv_exp_sigbkgs(); 
 		vector<int> v_pdftype = cms_global->Get_v_pdftype();
 		vector<double> v_GammaN = cms_global->Get_v_GammaN();
 
@@ -64,6 +65,7 @@ namespace lands{
 		for(c=0; c<nchs; c++){
 			nsigproc = cms_global->GetNSigprocInChannel(c);	
 			tc=0; 
+		/*
 			for(s=0; s<nsigproc; s++){
 				ss =par[0]*vv_sigbks[c][s];
 				if(cms_global->IsUsingSystematicsErrors()){
@@ -133,6 +135,8 @@ namespace lands{
 			}
 
 			for(s = nsigproc; s<vvv_pdftype[c].size(); s++){
+				*/
+			for(s = 0; s<vvv_pdftype[c].size(); s++){
 				bs = vv_sigbks[c][s];	
 				if(cms_global->IsUsingSystematicsErrors()){
 					for(u=0; u<vvv_pdftype[c][s].size(); u++){
