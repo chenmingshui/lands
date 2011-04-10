@@ -3,7 +3,6 @@ EXEC = test/Significance_dataCard.exe \
 	test/MultipleChannels.exe \
 	test/CLs.exe \
 	test/Bayesian.exe \
-	test/ShapeAnalysis.exe \
 	test/CLs_dataCard.exe \
 	test/Bayesian_dataCard.exe \
 	test/Bayesian_2dataCards.exe \
