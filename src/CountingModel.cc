@@ -32,7 +32,6 @@ namespace lands{
 		v_channelname.clear();
 		_rdm=0;
 		b_systematics=0;
-		v_TruncatedGaussian.clear();
 		v_TruncatedGaussian_maxUnc.clear();
 		v_pdftype.clear();
 		_common_signal_strength=1;
@@ -56,9 +55,6 @@ namespace lands{
 		vvv_idcorrl.clear();
 		v_channelname.clear();
 		_rdm=0;
-		for(int i=0; i<v_TruncatedGaussian.size(); i++){
-			if(v_TruncatedGaussian.at(i) ) delete v_TruncatedGaussian.at(i);
-		}
 
 		v_TruncatedGaussian_maxUnc.clear();
 		v_pdftype.clear();
@@ -389,7 +385,6 @@ namespace lands{
 	}
 	void CountingModel::ConfigUncertaintyPdfs(){
 		v_TruncatedGaussian_maxUnc.clear();
-		v_TruncatedGaussian.clear();
 		v_pdftype.clear();
 		max_uncorrelation = 0;
 		for(int ch=0; ch<vvv_idcorrl.size(); ch++){
@@ -401,7 +396,6 @@ namespace lands{
 			}
 		}
 		for(int i=0; i<=max_uncorrelation; i++){
-			v_TruncatedGaussian.push_back(0);	
 			v_TruncatedGaussian_maxUnc.push_back(-1);
 			v_pdftype.push_back(-1);	
 			v_GammaN.push_back(-1);
@@ -467,14 +461,6 @@ namespace lands{
 				}
 			}
 			if(tmpmax>0){
-				//cout<<" index_correlation "<<i<<", max unc="<<tmpmax<<endl;
-				PdfRandom *f=new PdfRandom();
-				double tmp[1]={tmpmax};
-				f->SetFunction(TruncatedGaussianPdf, tmp);	
-				f->SetRndGen(_rdm);
-				f->SetRange(-5*tmpmax, 5*tmpmax);
-				f->SetNpx(1000);
-				v_TruncatedGaussian.back()=f;
 				v_TruncatedGaussian_maxUnc.back()=tmpmax;
 			} 
 		}

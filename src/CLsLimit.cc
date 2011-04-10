@@ -11,7 +11,6 @@
 
 #include "CLsLimit.h"
 #include "CRandom.h"
-#include "PdfRandom.h"
 #include "Utilities.h"
 #include "BayesianBase.h"
 

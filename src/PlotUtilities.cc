@@ -10,7 +10,6 @@
 #include <math.h>
 #include <iostream>
 
-#include "BayesianLimitBase.h"
 #include "PlotUtilities.h"
 #include "Utilities.h"
 using namespace std;
@@ -831,16 +830,12 @@ void DrawMultiGraph::draw(){
 	//	Save(cCanvas,_ssave); // it changes the legend 
 	//	cout<<"delete me legendY2="<<legend->GetY2()<<endl;
 }
-DrawPdfRLikelihood::DrawPdfRLikelihood(UnbinnedBayesianLimit *ubl, string stitle, string ssave, TPaveText *pt){
-	_ubl=ubl; _r95=ubl->GetRLimit();	_stitle=stitle; _ssave=ssave; _pt=pt;
-	hist=0; cCanvas=0; arrow=0;  _bUnbinned=true;
-}
 DrawPdfRLikelihood::DrawPdfRLikelihood(double r95, double *par, int npar, string stitle, string ssave, TPaveText *pt){
 	_r95=r95; _par=par; _npar=npar; _stitle=stitle; _ssave=ssave; _pt=pt;
-	hist=0; cCanvas=0; arrow=0; _ubl=0; _bUnbinned=false;
+	hist=0; cCanvas=0; arrow=0;
 }
 DrawPdfRLikelihood::~DrawPdfRLikelihood(){
-	delete hist; cCanvas=0; delete arrow; _pt=0; _ubl=0;
+	delete hist; cCanvas=0; delete arrow; _pt=0; 
 }
 void DrawPdfRLikelihood::draw(){
 	double xmax = _r95*2;
@@ -851,8 +846,7 @@ void DrawPdfRLikelihood::draw(){
 	hist=new TH1F("h",_stitle.c_str(),100,0,xmax);
 	for(int i=0; i<100; i++){
 		double x[1]={step*i};		
-		if(!_bUnbinned)y[i]=P_n0_Given_brs(x, _par, _npar);
-		else y[i]=_ubl->P_vm_Given_brs(x[0]);
+		y[i]=fP_n0_Given_brs(x, _par, _npar);
 		if(ymax<y[i]) ymax=y[i];
 		norm+=y[i]*step;
 		hist->SetBinContent(i,y[i]);

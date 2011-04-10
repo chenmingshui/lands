@@ -11,7 +11,6 @@
 #include <TCanvas.h>
 #include <TArrow.h>
 
-#include "UnbinnedBayesianLimit.h"
 using namespace std;
 
 namespace lands{
@@ -319,7 +318,6 @@ class DrawMultiGraph{
 };
 class DrawPdfRLikelihood{
 	public:
-		DrawPdfRLikelihood(UnbinnedBayesianLimit *ubl, string stitle, string ssave, TPaveText *pt);
 		DrawPdfRLikelihood(double r95, double *par, int npar, string stitle, string ssave, TPaveText *pt);
 		~DrawPdfRLikelihood();
 		void draw();
@@ -343,8 +341,6 @@ class DrawPdfRLikelihood{
 		TPaveText *_pt;
 		TArrow *arrow;
 		TH1F *hist;
-		bool _bUnbinned;
-		UnbinnedBayesianLimit *_ubl;
 		double _r95;
 		double *_par;
 		int _npar;

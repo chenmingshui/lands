@@ -20,7 +20,6 @@
 #include <vector>
 #include <string>
 #include "CRandom.h"
-#include "PdfRandom.h"
 #include "Utilities.h"
 
 namespace lands{
@@ -139,7 +138,6 @@ namespace lands{
 			CRandom *_rdm;
 			bool b_systematics;
 
-			vector<PdfRandom*> v_TruncatedGaussian; // for different truncated gaussion functions,  now already deprecated
 			vector<double> v_TruncatedGaussian_maxUnc;// record the maximum uncertainty for each uncorrelated source
 			vector<int> v_pdftype;
 			double _common_signal_strength;
