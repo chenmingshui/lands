@@ -99,6 +99,7 @@ int main(int argc, const char*argv[]){
 	if(dataset == "asimov_b")cms->UseAsimovData(0);
 	else if(dataset == "asimov_sb")cms->UseAsimovData(1);
 
+	cms->SetMoveUpShapeUncertainties(1);
 
 	// common results
 	double rmean;

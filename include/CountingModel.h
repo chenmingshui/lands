@@ -115,13 +115,17 @@ namespace lands{
 			vector<std::string> Get_v_uncname(){return v_uncname;};
 			void SetDebug(int i){_debug=i;};
 			int GetDebug(){return _debug;};
-			std::string GetChannelName(int i){return v_channelname.at(i);};
-			int GetNSigprocInChannel(int i){return v_sigproc.at(i);};
+			std::string GetChannelName(int i){return v_channelname.at(i);}; //need make check 
+			int GetNSigprocInChannel(int i){return v_sigproc.at(i);}; //need make check
 			vector<int> Get_v_sigproc(){return v_sigproc;};
-			void SetProcessNames(int ch, vector<std::string> vproc);
-			vector<std::string> GetProcessNames(int ch){return vv_procname[ch];};
+			void SetProcessNames(int ch, vector<std::string> vproc); //need make check
+			vector<std::string> GetProcessNames(int ch){return vv_procname[ch];};  //need make check
 			void SetModelName(std::string s){_modelName = s;};
 			std::string GetModelName(){return _modelName;};
+			void MakeListOfShapeUncertainties();
+			vector<int> GetListOfShapeUncertainties(int c, int p){ return vvv_shapeuncindex[c][p]; }; // need make check
+			void SetMoveUpShapeUncertainties(bool b){bMoveUpShapeUncertainties=b;};
+			bool GetMoveUpShapeUncertainties(){return bMoveUpShapeUncertainties;};
 		private:
 			VDChannel v_data;
 			VChannelVSample vv_exp_sigbkgs;
@@ -153,6 +157,10 @@ namespace lands{
 			vector< vector<std::string> > vv_procname; //name of each process in each channel
 
 			std::string _modelName;
+
+			vector< vector< vector<int> > > vvv_shapeuncindex; //channel:process:shapeunc
+
+			bool bMoveUpShapeUncertainties;
 
 	};
 	CountingModel CombineModels(CountingModel *cms1, CountingModel *cms2);

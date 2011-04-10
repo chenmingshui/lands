@@ -62,117 +62,186 @@ namespace lands{
 		int ipar;
 		int nsigproc = 1;	
 		double *uncpars;
+		bool added = false;
+		int indexcorrl, pdftype;
+		double norminal = 0;
+		double normalization = 0;
+		vector<int> shapeuncs;
 		for(c=0; c<nchs; c++){
 			nsigproc = cms_global->GetNSigprocInChannel(c);	
 			tc=0; 
-		/*
-			for(s=0; s<nsigproc; s++){
-				ss =par[0]*vv_sigbks[c][s];
-				if(cms_global->IsUsingSystematicsErrors()){
-					for(u = 0; u<vvv_pdftype[c][s].size(); u++){
-						ran = par[(vvv_idcorrl)[c][s][u]];
-						uncpars = &(vvvv_uncpar[c][s][u][0]);
-						switch (vvv_pdftype[c][s][u]) {
-							case typeShapeGaussianLinearMorph:
-								if(*(uncpars+7) == 1.){
-									tmprand = ran; 
-									ran*= (*(uncpars+6));
-									h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm,  scale_down_of_gaussian, siglebin_or_binned
-									if(h<0) h=0;
-									if( *(uncpars+2)!=0 && ss!=0) {
-										ss*=h/(*(uncpars+2));	
-									}else if(ss==0) ss = (*(uncpars+3))*h*par[0];
-									else { ;}
-									ran = tmprand;
-								}
-								//if(_debug>=100)cout<< "main =" << *(uncpars+2) << " up="<< *(uncpars+1) << " down="<< *uncpars << " ran="<<ran<< " --> h="<<h<<endl;
-								ss*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran );
-								//if(_debug>=100)cout<<c<<" "<<s<<" "<<u<<" : "<<ss<<endl;
-								break;
-							case typeShapeGaussianQuadraticMorph:
-								if(*(uncpars+7) == 1.){
-									tmprand = ran; 
-									ran*= (*(uncpars+6));
-									if(fabs(ran)<1)
-										h = *(uncpars+2) + ran * (ran-1)/2. * (*uncpars) + ran * (ran+1)/2. * (*(uncpars+1)) - ran*ran*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm, scale_down_of_gaussian, siglebin_or_binned
-									else 
-										h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm,  scale_down_of_gaussian, siglebin_or_binned
-									if(h<0) h=0;
-									if( *(uncpars+2)!=0 && ss!=0) {
-										ss*=h/(*(uncpars+2));	
-									}else if(ss==0) ss = (*(uncpars+3))*h*par[0];
-									else { ;}
-									ran = tmprand;
-								}
-								ss*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran );
-								break;
-							case typeLogNormal :
-								//ss *= (pow(1+vvvv_uncpar[c][s][u][ (ran>0?1:0) ],ran));
-								ss *= (pow(1+ (*(uncpars+ (ran>0?1:0))),ran));
-								break;
-							case typeTruncatedGaussian :
-								ss*=(1+  (*(uncpars+ (ran>0?1:0)))*ran);
-								break;
-							case typeGamma :
-								//tmp2 = vvvv_uncpar[c][s][u][0];
-								ipar = vvv_idcorrl[c][s][u];
-								if(*uncpars>0){
-									tmp =par[0]*vv_sigbks[c][s];	
-									if(tmp!=0) { ss/=tmp; ss *= (par[0]*(*uncpars)*ran); }
-									else ss = par[0]*(*uncpars)*ran;
-								}else{
-									ss*=(ran/v_GammaN[ipar]);
-								}
-								//cout<<"s= "<< ss <<" alpha= "<< vvvv_uncpar[c][s][u][0]<<" B="<<par[(vvv_idcorrl)[c][s][u]]<<endl;
-								break;
-							default:
-								cout<<"pdf_type = "<<vvv_pdftype[c][s][u]<<" not defined yet"<<endl;
-								exit(0);
-						}
-					}
-				}
-				tc+=ss;
+			/*
+			   for(s=0; s<nsigproc; s++){
+			   ss =par[0]*vv_sigbks[c][s];
+			   if(cms_global->IsUsingSystematicsErrors()){
+			   for(u = 0; u<vvv_pdftype[c][s].size(); u++){
+			   ran = par[(vvv_idcorrl)[c][s][u]];
+			   uncpars = &(vvvv_uncpar[c][s][u][0]);
+			   switch (vvv_pdftype[c][s][u]) {
+			   case typeShapeGaussianLinearMorph:
+			   if(*(uncpars+7) == 1.){
+			   tmprand = ran; 
+			   ran*= (*(uncpars+6));
+			   h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm,  scale_down_of_gaussian, siglebin_or_binned
+			   if(h<0) h=0;
+			   if( *(uncpars+2)!=0 && ss!=0) {
+			   ss*=h/(*(uncpars+2));	
+			   }else if(ss==0) ss = (*(uncpars+3))*h*par[0];
+			   else { ;}
+			   ran = tmprand;
+			   }
+			//if(_debug>=100)cout<< "main =" << *(uncpars+2) << " up="<< *(uncpars+1) << " down="<< *uncpars << " ran="<<ran<< " --> h="<<h<<endl;
+			ss*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran );
+			//if(_debug>=100)cout<<c<<" "<<s<<" "<<u<<" : "<<ss<<endl;
+			break;
+			case typeShapeGaussianQuadraticMorph:
+			if(*(uncpars+7) == 1.){
+			tmprand = ran; 
+			ran*= (*(uncpars+6));
+			if(fabs(ran)<1)
+			h = *(uncpars+2) + ran * (ran-1)/2. * (*uncpars) + ran * (ran+1)/2. * (*(uncpars+1)) - ran*ran*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm, scale_down_of_gaussian, siglebin_or_binned
+			else 
+			h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm,  scale_down_of_gaussian, siglebin_or_binned
+			if(h<0) h=0;
+			if( *(uncpars+2)!=0 && ss!=0) {
+			ss*=h/(*(uncpars+2));	
+			}else if(ss==0) ss = (*(uncpars+3))*h*par[0];
+			else { ;}
+			ran = tmprand;
+			}
+			ss*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran );
+			break;
+			case typeLogNormal :
+			//ss *= (pow(1+vvvv_uncpar[c][s][u][ (ran>0?1:0) ],ran));
+			ss *= (pow(1+ (*(uncpars+ (ran>0?1:0))),ran));
+			break;
+			case typeTruncatedGaussian :
+			ss*=(1+  (*(uncpars+ (ran>0?1:0)))*ran);
+			break;
+			case typeGamma :
+			//tmp2 = vvvv_uncpar[c][s][u][0];
+			ipar = vvv_idcorrl[c][s][u];
+			if(*uncpars>0){
+			tmp =par[0]*vv_sigbks[c][s];	
+			if(tmp!=0) { ss/=tmp; ss *= (par[0]*(*uncpars)*ran); }
+			else ss = par[0]*(*uncpars)*ran;
+			}else{
+			ss*=(ran/v_GammaN[ipar]);
+			}
+			//cout<<"s= "<< ss <<" alpha= "<< vvvv_uncpar[c][s][u][0]<<" B="<<par[(vvv_idcorrl)[c][s][u]]<<endl;
+			break;
+			default:
+			cout<<"pdf_type = "<<vvv_pdftype[c][s][u]<<" not defined yet"<<endl;
+			exit(0);
+			}
+			}
+			}
+			tc+=ss;
 			}
 
 			for(s = nsigproc; s<vvv_pdftype[c].size(); s++){
-				*/
+			*/
 			for(s = 0; s<vvv_pdftype[c].size(); s++){
 				bs = vv_sigbks[c][s];	
 				if(cms_global->IsUsingSystematicsErrors()){
+					if(cms_global->GetMoveUpShapeUncertainties()){
+						shapeuncs = cms_global->GetListOfShapeUncertainties(c, s);
+						h=0;
+						added = false;
+						for(int i = 0; i<shapeuncs.size(); i++){
+							indexcorrl = vvv_idcorrl[c][s][shapeuncs[i]];
+							pdftype = vvv_pdftype[c][s][shapeuncs[i]];
+							ran = par[indexcorrl];
+							uncpars  = &(vvvv_uncpar[c][s][shapeuncs[i]][0]);
+							switch (pdftype){
+								case typeShapeGaussianLinearMorph:
+									if(*(uncpars+7) == 1.){
+										tmprand = ran; 
+										ran*= (*(uncpars+6));
+										if(!added) {h+=*(uncpars+2); added=true; norminal = h; normalization = *(uncpars+3); }
+										h += max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm, scale_down_of_gaussian,  siglebin_or_binned
+									}
+
+									break;
+								case typeShapeGaussianQuadraticMorph:
+									if(*(uncpars+7) == 1.){
+										tmprand = ran; 
+										ran*= (*(uncpars+6));
+										if(!added) {h+=*(uncpars+2); added=true; norminal = h;  normalization = *(uncpars+3); }
+										if(fabs(ran)<1.){
+											h += ran * (ran-1)/2. * (*uncpars) + ran * (ran+1)/2. * (*(uncpars+1)) - ran*ran*(*(uncpars+2)) ; 
+											//h += ran * (ran-1)/2. * (*(uncpars+2)) + ran * (ran+1)/2. * (*(uncpars+1)) - ran*ran*(*(uncpars)) ; 
+										}else  
+											h += max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; 
+									}
+									break;
+								default:
+									break;
+							}
+						}
+
+						if(added){
+							if(h<=0) h=10e-9;
+							/*
+							   if( norminal !=0 && bs!=0) {
+							   bs*=h/norminal;	
+							   }else if(bs==0) bs = h*normalization;
+							   else { ;}
+
+							   if( norminal !=0) 
+							   bs*=h/norminal;	
+							   else
+							   bs=h*normalization; //need to be carefull with signal strength --> change the normalization 
+
+							   cout<<"c="<<c<<" s="<<s<<" normalization = "<<normalization<<" ran="<<ran
+							   <<" h="<<h<<" h*normalization="<<h*normalization<<" r="<<par[0]
+							   <<" bs="<<bs<<" norminal="<<norminal<<" h/norminal="<<h/norminal
+							   <<" bs*=h/norminal = "<<(bs*=(h/norminal)) <<endl;	
+							   */
+							bs = h*normalization*(s<nsigproc?par[0]:1);
+						}
+					}
 					for(u=0; u<vvv_pdftype[c][s].size(); u++){
 						ran = par[(vvv_idcorrl)[c][s][u]];
 						uncpars = &(vvvv_uncpar[c][s][u][0]);
 						switch (vvv_pdftype[c][s][u]){
 							case typeShapeGaussianLinearMorph:
-								if(*(uncpars+7) == 1.){
-									tmprand = ran; 
-									ran*= (*(uncpars+6));
-									h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; 
-									if(h<0) h=0;
-									if( *(uncpars+2)!=0 && bs!=0) {
-										bs*=h/(*(uncpars+2));	
-									}else if(bs==0) bs = (*(uncpars+3))*h;
-									else { ;}
-									ran = tmprand;
+								if(!cms_global->GetMoveUpShapeUncertainties()){
+									if(*(uncpars+7) == 1.){
+										tmprand = ran; 
+										ran*= (*(uncpars+6));
+										h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; 
+										if(h<=0) h=10e-9;
+										if( *(uncpars+2)!=0 && bs!=0) {
+											bs*=h/(*(uncpars+2));	
+										}else if(bs==0) bs = (*(uncpars+3))*h*(s<nsigproc?par[0]:1);
+										else { ;}
+										ran = tmprand;
+									}
 								}
-								bs*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran );
+								//bs*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran*(*(uncpars+6)) );
+								bs*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran>0?ran*(*(uncpars+6)): -ran*(*(uncpars+6)));
 								break;
 							case typeShapeGaussianQuadraticMorph:
-								if(*(uncpars+7) == 1.){
-									tmprand = ran; 
-									ran*= (*(uncpars+6));
-									if(fabs(ran)<1)
-										h = *(uncpars+2) + ran * (ran-1)/2. * (*uncpars) + ran * (ran+1)/2. * (*(uncpars+1)) - ran*ran*(*(uncpars+2)) ; 
-									else 
-										h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ;
-									if(h<0) h=0;
-									if( *(uncpars+2)!=0 && bs!=0) {
-										bs*=h/(*(uncpars+2));	
-									}else if(bs==0) bs = (*(uncpars+3))*h;
-									else { ;}
-									ran = tmprand;
+								if(!cms_global->GetMoveUpShapeUncertainties()){
+									if(*(uncpars+7) == 1.){
+										tmprand = ran; 
+										ran*= (*(uncpars+6));
+										if(fabs(ran)<1)
+											h = *(uncpars+2) + ran * (ran-1)/2. * (*uncpars) + ran * (ran+1)/2. * (*(uncpars+1)) - ran*ran*(*(uncpars+2)) ; 
+										else 
+											h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ;
+										if(h<=0) h=10e-9;
+										if( *(uncpars+2)!=0 && bs!=0) {
+											bs*=h/(*(uncpars+2));	
+										}else if(bs==0) bs = (*(uncpars+3))*h*(s<nsigproc?par[0]:1);
+										else { ;}
+										ran = tmprand;
+									}
 								}
-								bs*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran );
+								//cout<<*(uncpars+5)<<" "<<*(uncpars+4)<<endl;
+								bs*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran>0?ran*(*(uncpars+6)): -ran*(*(uncpars+6)));
+								//bs*=pow( (ran>0? *(uncpars+4):*(uncpars+5)) , ran>0?ran*(*(uncpars+6)): -ran*(*(uncpars+6)));
 								break;
 							case typeLogNormal:
 								bs*=(pow( 1+ (*(uncpars+ (ran>0?1:0))), ran) );
@@ -184,9 +253,9 @@ namespace lands{
 								ipar = vvv_idcorrl[c][s][u];
 								if(*uncpars>0){
 									tmp = vv_sigbks[c][s];	
-									if(tmp!=0) { bs/=tmp; bs *= ((*uncpars)*ran); }
-									else bs = (*uncpars)*ran;
-								}else{
+									if(tmp!=0) { bs/=tmp; bs *= ((*uncpars)*ran*(s<nsigproc?par[0]:1)); }
+									else bs = (*uncpars)*ran*(s<nsigproc?par[0]:1);
+								}else{ // if *uncpars, i.e. rho <0, then it's multiplicative gamma
 									bs*=(ran/v_GammaN[ipar]);
 								}
 								break;	
@@ -203,38 +272,39 @@ namespace lands{
 				//			chisq +=( tc ); //- vdata_global[c]); // to be identical with ATLAS TDR description, for limit only
 			}else chisq += (tc-vdata_global[c] - vdata_global[c]*log(tc/vdata_global[c]));
 			//		}else chisq += (tc - vdata_global[c]*log(tc));   // to be identical with ATLAS TDR description, for limit only
-	}
-	// to be identical with ATLAS TDR description, for limit only
-	//http://cdsweb.cern.ch/record/1159618/files/Higgs%20Boson%20%28p1197%29.pdf
-	chisq*=2;  //
-	if(cms_global->IsUsingSystematicsErrors()){
-		// FIXME  when    unc = 0,  then  don't add it 
-		double k, tmp;
-		for(u=1; u<=cms_global->Get_max_uncorrelation(); u++){
-			//normal distribution (mu=0, sigma=1):  1/sqrt(2*PI) * exp(-x^2/2)
-			// we are evaluating chisq = -2 * ( ln(Q_H1) - ln(Q_H0) )
-			switch (v_pdftype[u]) {
-				case typeTruncatedGaussian:
-				case typeShapeGaussianQuadraticMorph:
-				case typeShapeGaussianLinearMorph:
-				case typeLogNormal:
-					chisq += pow(par[u],2);  
-					break;
-				case typeGamma:
-					// this is important, one need constraint on the pdf 
-					//see wiki,  gamma distribution with theta = 1 :  x^(k-1)*exp(-x)/ (k-1)!
-					k = v_GammaN[u];
-					tmp = (k-1)*log(par[u]) - par[u];
-					chisq-=tmp*2; // we are evaluating chisq = -2 * ( ln(Q_H1) - ln(Q_H0) )
-					break;
-				default:
-					break;
+		}
+		// to be identical with ATLAS TDR description, for limit only
+		//http://cdsweb.cern.ch/record/1159618/files/Higgs%20Boson%20%28p1197%29.pdf
+		chisq*=2;  //
+		if(cms_global->IsUsingSystematicsErrors()){
+			// FIXME  when    unc = 0,  then  don't add it 
+			double k, tmp;
+			for(u=1; u<=cms_global->Get_max_uncorrelation(); u++){
+				//normal distribution (mu=0, sigma=1):  1/sqrt(2*PI) * exp(-x^2/2)
+				// we are evaluating chisq = -2 * ( ln(Q_H1) - ln(Q_H0) )
+				switch (v_pdftype[u]) {
+					case typeTruncatedGaussian:
+					case typeShapeGaussianQuadraticMorph:
+					case typeShapeGaussianLinearMorph:
+					case typeLogNormal:
+						chisq += pow(par[u],2);  
+						break;
+					case typeGamma:
+						// this is important, one need constraint on the pdf 
+						//see wiki,  gamma distribution with theta = 1 :  x^(k-1)*exp(-x)/ (k-1)!
+						k = v_GammaN[u];
+						tmp = (k-1)*log(par[u]) - par[u];
+						chisq-=tmp*2; // we are evaluating chisq = -2 * ( ln(Q_H1) - ln(Q_H0) )
+						break;
+					default:
+						break;
+				}
 			}
 		}
-	}
-	// to be identical with ATLAS TDR description, for limit only
-	f=chisq;
+		// to be identical with ATLAS TDR description, for limit only
+		f=chisq;
 }
+
 
 double MinuitFit(int model, double &r , double &er, double mu  ){
 	bool debugMinuit = 0;
@@ -278,9 +348,9 @@ double MinuitFit(int model, double &r , double &er, double mu  ){
 			TString sname; 
 			sname.Form("p%d",i);
 			switch (v_pdftype[i]){
-				case typeLogNormal:
 				case typeShapeGaussianLinearMorph:
 				case typeShapeGaussianQuadraticMorph:
+				case typeLogNormal:
 					myMinuit->mnparm(i, sname, 0., 0.1, -20, 20,ierflg); // was 5,  causing problem with significance larger than > 7 
 					break;
 				case typeTruncatedGaussian :

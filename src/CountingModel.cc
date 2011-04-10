@@ -44,6 +44,8 @@ namespace lands{
 		vv_procname.clear();
 		_debug=0;
 		_modelName = "model";
+		vvv_shapeuncindex.clear();
+		bMoveUpShapeUncertainties = false;
 	}
 	CountingModel::~CountingModel(){
 		v_data.clear();
@@ -64,6 +66,7 @@ namespace lands{
 		v_uncname.clear();
 		v_sigproc.clear();
 		vv_procname.clear();
+		vvv_shapeuncindex.clear();
 	}
 	void CountingModel::AddChannel(std::string channel_name, double num_expected_signal, double num_expected_bkg_1, double num_expected_bkg_2, 
 			double num_expected_bkg_3, double num_expected_bkg_4, double num_expected_bkg_5, double num_expected_bkg_6 ){
@@ -475,9 +478,25 @@ namespace lands{
 				v_TruncatedGaussian_maxUnc.back()=tmpmax;
 			} 
 		}
-
-
+		MakeListOfShapeUncertainties();
 	}	
+	void CountingModel::MakeListOfShapeUncertainties(){
+		vvv_shapeuncindex.clear();
+		for(int ch=0; ch<vvv_idcorrl.size(); ch++){
+			vector< vector<int> > vvp; vvp.clear();
+			for(int isam=0; isam<vvv_idcorrl.at(ch).size(); isam++){
+				vector<int> vshape; vshape.clear();
+				for(int iunc=0; iunc<vvv_idcorrl.at(ch).at(isam).size(); iunc++){
+					int indexcorrl = vvv_idcorrl.at(ch).at(isam).at(iunc);
+					if(v_pdftype[indexcorrl]==typeShapeGaussianQuadraticMorph or v_pdftype[indexcorrl]==typeShapeGaussianLinearMorph)
+						vshape.push_back(iunc);
+				}
+				vvp.push_back(vshape);
+			}
+			vvv_shapeuncindex.push_back(vvp);
+		}
+
+	}
 	VChannelVSample CountingModel::FluctuatedNumbers(){
 		if(_rdm==NULL) {cout<<"Model random gen engine not set yet, exit "<<endl; exit(0);}
 		if(!b_systematics) return vv_exp_sigbkgs_scaled;
@@ -490,8 +509,18 @@ namespace lands{
 			vrdm.push_back(-999);
 			switch (v_pdftype[i]){
 				case typeLogNormal:
+					vrdm.back()=_rdm->Gaus();
+					break;
 				case typeShapeGaussianLinearMorph:
 				case typeShapeGaussianQuadraticMorph:
+				/*	
+					tmp = -5;
+					while(fabs(tmp)>4){
+						tmp=_rdm->Gaus();
+					}
+					vrdm.back()=tmp;
+					break;
+				*/	
 					vrdm.back()=_rdm->Gaus();
 					break;
 
@@ -530,14 +559,79 @@ namespace lands{
 
 		VChannelVSample vv = vv_exp_sigbkgs_scaled;
 		int indexcorrl, pdftype, isam, iunc;
+		vector<int> shapeuncs;
 		double ran = 0, h;
 		//if(_debug) cout<<"vvv_idcorrl.size="<<vvv_idcorrl.size()<<endl;
 		int nsigproc = 1;
 		double * uncpars;
 		double tmprand;
+		bool added = false;
+		double norminal = 0;
+		double normalization = 0;
 		for(int ch=0; ch<vvv_idcorrl.size(); ch++){
 			nsigproc = v_sigproc[ch];
 			for(isam=0; isam<vvv_idcorrl[ch].size(); isam++){
+				if(bMoveUpShapeUncertainties){
+					shapeuncs = vvv_shapeuncindex[ch][isam];
+					h=0;
+					added = false;
+					for(int i = 0; i<shapeuncs.size(); i++){
+						indexcorrl = vvv_idcorrl[ch][isam][shapeuncs[i]];
+						pdftype = vvv_pdftype[ch][isam][shapeuncs[i]];
+						ran = vrdm[indexcorrl];
+						uncpars  = &(vvvv_uncpar[ch][isam][shapeuncs[i]][0]);
+						switch (pdftype){
+							case typeShapeGaussianLinearMorph:
+								if(*(uncpars+7) == 1.){
+									tmprand = ran; 
+									ran*= (*(uncpars+6));
+									if(!added) {h+=*(uncpars+2); added=true; norminal = h; normalization = *(uncpars+3); }
+									//h += max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm, scale_down_of_gaussian,  siglebin_or_binned
+									h += ( ran * (ran>0? *(uncpars+1)-*(uncpars+2): *(uncpars+2)-*uncpars) );
+									ran = tmprand;
+								}
+
+								break;
+							case typeShapeGaussianQuadraticMorph:
+								if(*(uncpars+7) == 1.){
+									tmprand = ran; 
+									ran*= (*(uncpars+6));
+									if(!added) {h+=*(uncpars+2); added=true; norminal = h;  normalization = *(uncpars+3); }
+									if(fabs(ran)<1){
+										h += ran * (ran-1)/2. * (*uncpars) + ran * (ran+1)/2. * (*(uncpars+1)) - ran*ran*(*(uncpars+2)) ; 
+									} else { 
+										//h += max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; 
+										h += ( ran * (ran>0? *(uncpars+1)-*(uncpars+2): *(uncpars+2)-*uncpars) );
+									}
+									ran = tmprand;
+								}
+								break;
+							default:
+								break;
+						}
+					}
+					
+					if(added){
+						if(h<=0) h=10e-9;
+						/*
+						if( norminal !=0 && vv[ch][isam]!=0) {
+							vv[ch][isam]*=h/norminal;	
+						}else if(vv[ch][isam]==0) vv[ch][isam] = h*normalization;
+						else { ;}
+						*/
+						
+						if(_debug>=100)	cout<<"c="<<ch<<" s="<<isam<<" normalization = "<<normalization<<" ran="<<ran
+								<<" h="<<h<<" h*normalization="<<h*normalization
+								<<" bs="<<vv[ch][isam]<<" norminal="<<norminal<<" h/norminal="<<h/norminal
+								<<" bs*=h/norminal = "<<(vv[ch][isam]*(h/norminal)) <<endl;	
+						if( norminal !=0) 
+							vv[ch][isam]*=h/norminal;	
+						else
+							vv[ch][isam]=h*normalization;
+						//here no need to take again the r into account....   if norminal = 0
+					}
+				}
+
 				for(iunc=0; iunc<vvv_idcorrl[ch][isam].size(); iunc++){
 					//if(_debug) cout<<ch<<" "<<isam<<" "<<iunc<<" "<<endl;
 					indexcorrl = vvv_idcorrl[ch][isam][iunc];
@@ -573,41 +667,49 @@ namespace lands{
 							// FIXME
 							break;
 						case typeShapeGaussianLinearMorph:
-							if(*(uncpars+7) == 1.){
-								tmprand = ran; 
-								ran*= (*(uncpars+6));
-								h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm, scale_down_of_gaussian,  siglebin_or_binned
-								if(h<0) h=0;
-								//if(vv_exp_sigbkgs_scaled[ch][isam]!=0 && vv[ch][isam]!=0) 
-								if( *(uncpars+2)!=0 && vv[ch][isam]!=0) {
-									vv[ch][isam]*=h/(*(uncpars+2));	
-								}else if(vv[ch][isam]==0) vv[ch][isam] = (*(uncpars+3))*h;
-								else { ;}
-								ran = tmprand;
+							if(!bMoveUpShapeUncertainties){
+								if(*(uncpars+7) == 1.){
+									tmprand = ran; 
+									ran*= (*(uncpars+6));
+									h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm, scale_down_of_gaussian,  siglebin_or_binned
+									//if(h<0) h=0;
+									if(h<=0) h=10e-9;
+									//if(vv_exp_sigbkgs_scaled[ch][isam]!=0 && vv[ch][isam]!=0) 
+									if( *(uncpars+2)!=0 && vv[ch][isam]!=0) {
+										vv[ch][isam]*=h/(*(uncpars+2));	
+									}else if(vv[ch][isam]==0) vv[ch][isam] = (*(uncpars+3))*h;
+									else { ;}
+									ran = tmprand;
+								}
 							}
 							if(_debug>=100)cout<< "main =" << *(uncpars+2) << " up="<< *(uncpars+1) << " down="<< *uncpars << " ran="<<ran<< " --> h="<<h<<endl;
-							vv[ch][isam]*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran );
+							//vv[ch][isam]*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran*(*(uncpars+6)) );
+							vv[ch][isam]*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran>0?ran*(*(uncpars+6)): -ran*(*(uncpars+6)));
 							if(_debug>=100)cout<<ch<<" "<<isam<<" "<<iunc<<" : "<<vv[ch][isam]<<endl;
 
 							break;
 						case typeShapeGaussianQuadraticMorph:
-							if(*(uncpars+7) == 1.){
-								tmprand = ran; 
-								ran*= (*(uncpars+6));
-								if(fabs(ran)<1)
-									h = *(uncpars+2) + ran * (ran-1)/2. * (*uncpars) + ran * (ran+1)/2. * (*(uncpars+1)) - ran*ran*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm, scale_down_of_gaussian, siglebin_or_binned
-								else 
-									h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm,  scale_down_of_gaussian, siglebin_or_binned
-								if(h<0) h=0;
-								if( *(uncpars+2)!=0 && vv[ch][isam]!=0) {
-									vv[ch][isam]*=h/(*(uncpars+2));	
-								}else if(vv[ch][isam]==0) vv[ch][isam] = (*(uncpars+3))*h;
-								else { ;}
-								ran = tmprand;
+							//vv[ch][isam]*=pow( (ran>0? *(uncpars+5):*(uncpars+4) ) , ran*(*(uncpars+6)) );
+							vv[ch][isam]*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran>0?ran*(*(uncpars+6)): -ran*(*(uncpars+6)));
+							if(!bMoveUpShapeUncertainties){
+								if(*(uncpars+7) == 1.){
+									tmprand = ran; 
+									ran*= (*(uncpars+6));
+									if(fabs(ran)<1)
+										h = *(uncpars+2) + ran * (ran-1)/2. * (*uncpars) + ran * (ran+1)/2. * (*(uncpars+1)) - ran*ran*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm, scale_down_of_gaussian, siglebin_or_binned
+									else 
+										h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm,  scale_down_of_gaussian, siglebin_or_binned
+									//if(h<0) h=0;
+									if(h<=0) h=10e-9;
+									if( *(uncpars+2)!=0 && vv[ch][isam]!=0) {
+										vv[ch][isam]*=h/(*(uncpars+2));	
+									}else if(vv[ch][isam]==0) vv[ch][isam] = (*(uncpars+3))*h;
+									else { ;}
+									ran = tmprand;
+								}
 							}
 							if(_debug>=100)cout<< "main =" << *(uncpars+2) << " up="<< *(uncpars+1) << " down="<< *uncpars << " ran="<<ran<< " --> h="<<h<<endl;
 
-							vv[ch][isam]*=pow( (ran>0? *(uncpars+5):*(uncpars+4) ) , ran );
 
 							break;
 						default:
@@ -936,7 +1038,6 @@ namespace lands{
 			cms.AddObservedData(newch, cms2->Get_v_data()[ch]);
 			cms.SetProcessNames(newch, cms2->GetProcessNames(ch));
 		}	
-
 
 		return cms;
 

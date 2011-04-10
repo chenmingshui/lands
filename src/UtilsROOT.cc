@@ -812,13 +812,13 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 								if(uncertypes[u]=="shape" or uncertypes[u]=="shapeL" or uncertypes[u]=="shapeQ" or uncertypes[u]=="shapeN"){
 									TString unc = GetUncertainy(c, t, vv_procnames, uncerlines[u]);
 									if(unc.IsFloat() && unc.Atof()>0){ // number should be > 0
-										float down = hunc_dn_norm[t][u]->GetBinContent(r);
+										double down = hunc_dn_norm[t][u]->GetBinContent(r);
 										if(debug) cout<<"down "<<down<<endl;
-										float up = hunc_up_norm[t][u]->GetBinContent(r);
-										float norminal = hnorm[t]->GetBinContent(r);
-										float norm_down = hunc_dn[t][u]->Integral();
-										float norm_up = hunc_up[t][u]->Integral();
-										float norm_norminal = hn[t]->Integral();
+										double up = hunc_up_norm[t][u]->GetBinContent(r);
+										double norminal = hnorm[t]->GetBinContent(r);
+										double norm_down = hunc_dn[t][u]->Integral();
+										double norm_up = hunc_up[t][u]->Integral();
+										double norm_norminal = hn[t]->Integral();
 										TString stmp;
 										if(uncertypes[u]=="shapeN"){
 											vs_unc[u]+=(norminal==0?1:down/norminal); vs_unc[u] += "/";
@@ -834,7 +834,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 											vs_unc[u]+=stmp; vs_unc[u] += "/";
 											stmp.Form("%g",norm_norminal);
 											vs_unc[u]+=stmp; vs_unc[u] += "/";
-											stmp.Form("%g",norm_norminal/norm_down);
+											stmp.Form("%g",norm_down/norm_norminal);
 											vs_unc[u]+=stmp; vs_unc[u] += "/";
 											stmp.Form("%g",norm_up/norm_norminal);
 											vs_unc[u]+=stmp; vs_unc[u] += "/";
@@ -1281,8 +1281,8 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped, int debug)
 					vector<string> asymetricerrors; asymetricerrors.clear();
 					StringSplit(asymetricerrors, ss[p+2], "/");
 					if((TString(asymetricerrors[0])).Atof()<=0) { cout<<"ERROR:  Kappa can't be <=0 "<<endl; exit(0); };
-					err= 1./(TString(asymetricerrors[0])).Atof()-1.0;
-					errup= (TString(asymetricerrors[1])).Atof()-1.0;
+					err= 1./(TString(asymetricerrors[0])).Atof()-1.0; // downside 
+					errup= (TString(asymetricerrors[1])).Atof()-1.0;  // upside
 				}else {
 					err= (TString(ss[p+2])).Atof()-1.0;
 					errup = err;
