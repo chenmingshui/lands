@@ -528,8 +528,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 						shape.push_back(ss);
 						if(ss.size()>5){
 							if(ss.size()==6){
-								string ss6=ss[5]+"Down";
-								ss[5]+="Up";
+								string ss6=ss[5];
 								ss.push_back(ss6);
 
 								// for channel c, process t,  looking for uncer which is shaping 
@@ -542,8 +541,8 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 
 										TString unc = GetUncertainy(ss[INDEXofChannel], channelnames, ss[INDEXofProcess], vv_procnames, uncerlines[u]);
 										if(unc.IsFloat() && unc.Atof()>0){ // number should be > 0
-											ss[5] = TString(ss[5]).ReplaceAll("$SYSTEMATIC", ss[4]);
-											ss[6] = TString(ss[6]).ReplaceAll("$SYSTEMATIC", ss[4]);
+											ss[5] = TString(ss[5]).ReplaceAll("$SYSTEMATIC", ss[4]+"Up");
+											ss[6] = TString(ss[6]).ReplaceAll("$SYSTEMATIC", ss[4]+"Down");
 											shapeuncertainties.push_back(ss);
 											ss[5] = n5; ss[6]=n6;
 										}
@@ -572,8 +571,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 							if(newline.size()>5){
 								if(debug) cout<<"debug 0"<<endl;
 								if(newline.size()==6){
-									string ss6=newline[5]+"Down";
-									newline[5]+="Up";
+									string ss6=newline[5];
 									newline.push_back(ss6);
 									// for channel c, process t,  looking for uncer which is shaping 
 									for(int u=0; u<nsyssources; u++){
@@ -586,8 +584,8 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 
 											TString unc = GetUncertainy(c, p, vv_procnames, uncerlines[u]);
 											if(unc.IsFloat() && unc.Atof()>0){ // number should be > 0
-												newline[5] = TString(newline[5]).ReplaceAll("$SYSTEMATIC", newline[4]);
-												newline[6] = TString(newline[6]).ReplaceAll("$SYSTEMATIC", newline[4]);
+												newline[5] = TString(newline[5]).ReplaceAll("$SYSTEMATIC", newline[4]+"Up");
+												newline[6] = TString(newline[6]).ReplaceAll("$SYSTEMATIC", newline[4]+"Down");
 												newline[5] = TString(newline[5]).ReplaceAll("$CHANNEL", channelnames[c]);
 												newline[5] = TString(newline[5]).ReplaceAll("$PROCESS", vv_procnames[c][p]);
 												newline[6] = TString(newline[6]).ReplaceAll("$CHANNEL", channelnames[c]);
