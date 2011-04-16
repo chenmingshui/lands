@@ -63,6 +63,9 @@ namespace lands{
 			vector<double> _vr, _vp;
 			double _dtot;
 			PRIOR _prior;
+
+			vector< vector< vector<double> > > _vNorms_forShapeChannels;
+			vector< vector<double>  > _vParams_forShapeChannels;
 	};
 };
 

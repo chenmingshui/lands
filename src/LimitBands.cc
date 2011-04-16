@@ -2,6 +2,9 @@
 #include <time.h> // upto micro second
 #include <cstdio>
 #include <iostream>
+#include "RooDataSet.h"
+
+using namespace RooFit;
 namespace lands{
 	LimitBands::LimitBands(){
 		_frequentist=0;	_clslimit=0; _byslimit=0; _cms=0;
@@ -67,22 +70,36 @@ namespace lands{
 		vector<int> vEntries; vEntries.clear();  // index of vvPossibleOutcomes are the same as vEntries
 		VIChannel vbkg_tmp; 
 
+		vector< vector< RooDataSet* > > vvPossibleOutcomes_forUnbinnedChannels;
+		vvPossibleOutcomes_forUnbinnedChannels.clear();
+
 		if(_debug) cout<<" _noutcomes="<<_noutcomes<<endl;
 
 		for(int n=0; n<_noutcomes; n++){
 			vbkg_tmp.clear(); 
 			vbkg_tmp=_cms->GetToyData_H0();
-			bool flag=true;
-			for(int t=0; t<vvPossibleOutcomes.size(); t++){
-				if(vbkg_tmp==vvPossibleOutcomes.at(t)) {
-					flag=false;
-					vEntries.at(t)+=1;
-					break;
+			if(!_cms->hasParametricShape()){
+				bool flag=true;
+				for(int t=0; t<vvPossibleOutcomes.size(); t++){
+					if(vbkg_tmp==vvPossibleOutcomes.at(t)) {
+						flag=false;
+						vEntries.at(t)+=1;
+						break;
+					}
 				}
-			}
-			if(flag) { 
+				if(flag) { 
+					vvPossibleOutcomes.push_back(vbkg_tmp);
+					vEntries.push_back(1);	
+				}
+			}else{
 				vvPossibleOutcomes.push_back(vbkg_tmp);
 				vEntries.push_back(1);	
+				vector<RooDataSet*> vrds; vrds.clear();
+				for(int c=0; c<_cms->Get_vv_pdfs().size(); c++){
+					RooDataSet *rds = new RooDataSet(_cms->Get_v_pdfs_roodataset_toy()[c]);
+					vrds.push_back(rds);
+				}
+				vvPossibleOutcomes_forUnbinnedChannels.push_back(vrds);
 			}
 		}	// _noutcomes
 
@@ -95,17 +112,24 @@ namespace lands{
 			Entries_v[i]=vEntries.at(i);
 		}
 		int *iEntries_v = new int[npsbl_outcomes];
-		Sort(npsbl_outcomes, Entries_v, iEntries_v, 1); // sorted it by "down",  Desc
-		if(_debug) {
-			cout<<"\n\t\t ProjectingLimits possible outcomes and their entries "<<endl;
-			cout<<"\t\t n_possible_outcomes size= "<<npsbl_outcomes<<endl;
-			int step = npsbl_outcomes/10;
-			for(int i=0; i<npsbl_outcomes; i+=(step+1) ){
-				printf("\t%dth\t ", i);
-				for(int j=0; j<vvPossibleOutcomes.at(iEntries_v[i]).size(); j++){
-					if(_debug>=10)	printf("%4d ", vvPossibleOutcomes.at(iEntries_v[i]).at(j));
-				}		
-				printf("\t %5d\n", vEntries.at(iEntries_v[i]));
+
+		if(!_cms->hasParametricShape()){
+			Sort(npsbl_outcomes, Entries_v, iEntries_v, 1); // sorted it by "down",  Desc
+			if(_debug) {
+				cout<<"\n\t\t ProjectingLimits possible outcomes and their entries "<<endl;
+				cout<<"\t\t n_possible_outcomes size= "<<npsbl_outcomes<<endl;
+				int step = npsbl_outcomes/10;
+				for(int i=0; i<npsbl_outcomes; i+=(step+1) ){
+					printf("\t%dth\t ", i);
+					for(int j=0; j<vvPossibleOutcomes.at(iEntries_v[i]).size(); j++){
+						if(_debug>=10)	printf("%4d ", vvPossibleOutcomes.at(iEntries_v[i]).at(j));
+					}		
+					printf("\t %5d\n", vEntries.at(iEntries_v[i]));
+				}
+			}
+		}else{
+			for(int i=0; i<npsbl_outcomes; i++){
+				iEntries_v[i]=i;
 			}
 		}
 
@@ -124,15 +148,18 @@ namespace lands{
 			if(_debug){
 				cout<<"\t ProjectingRLimits scanning outcomes: "<<n<<"th \t";
 				for(int j=0; j<nchs; j++){
-				if(_debug>=10)printf("%4d ", vvPossibleOutcomes.at(iEntries_v[n]).at(j));
+					if(_debug>=10)printf("%4d ", vvPossibleOutcomes.at(iEntries_v[n]).at(j));
 				}		
 				cout<<"\t p="<<p<<endl;
 			}
 			_cms->SetData( vvPossibleOutcomes.at(iEntries_v[n]) ); 
+			if(_cms->hasParametricShape()){
+				_cms->SetDataForUnbinned(vvPossibleOutcomes_forUnbinnedChannels[n]);
+			}
 
 
-				int nentries_for_thisR=(int)(vEntries.at(iEntries_v[n]));
-				//int nentries_for_thisR=(int)(vEntries.at(iEntries_v[n]));
+			int nentries_for_thisR=(int)(vEntries.at(iEntries_v[n]));
+			//int nentries_for_thisR=(int)(vEntries.at(iEntries_v[n]));
 			if(_doCLs) { 
 				//--------------calc r95% with (s,b,n) by throwing pseudo experiments and using the fits to get r95% at CLs=5
 				r=_clslimit->LimitOnSignalScaleFactor(_cms, _frequentist, _ntoysM2lnQ);
@@ -247,5 +274,13 @@ namespace lands{
 		}
 		if(_debug) { start_time=cur_time; cur_time=clock(); cout << "\t\t\t TIME_in_BAND, final printing took " <<(cur_time - start_time)/1000. << " milisec\n"; }
 		if(_debug) { cur_time=clock(); cout << "\t\t\t TIME_in_BAND finishing "<<_noutcomes<<" outcomes: " << (cur_time - funcStart_time)/1000000./60. << " minutes\n"; }
+
+
+
+		for(int i=0; i<vvPossibleOutcomes_forUnbinnedChannels.size(); i++){
+			for(int j=0; j<vvPossibleOutcomes_forUnbinnedChannels[i].size(); j++){
+		//		delete (vvPossibleOutcomes_forUnbinnedChannels[i][j]);
+			}
+		}
 	}	
 };

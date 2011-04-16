@@ -253,6 +253,9 @@ namespace lands{
 		if(_stot) delete [] _stot;
 		if(_btot) delete [] _btot;
 
+		_vNorms_forShapeChannels.clear();
+		_vParams_forShapeChannels.clear();
+
 		_d = new double[_nchannels];
 		_stot=new double[_nexps_to_averageout_sys];
 		_btot=new double[_nexps_to_averageout_sys];
@@ -263,6 +266,9 @@ namespace lands{
 			_d[ch]=_cms->Get_v_data()[ch];
 			dtot+=_d[ch];
 			_logscale-=lgamma(_d[ch]+1);
+		}
+		for(int ch=0; ch<_cms->Get_vv_pdfs().size(); ch++){
+			dtot+=(_cms->Get_vv_pdfs_data()[ch]).size();
 		}
 		if(dtot!=_dtot) _ngl=0;
 		_dtot=dtot;
@@ -307,6 +313,15 @@ namespace lands{
 				_stot[i]+=s[ch];
 				_btot[i]+=b[ch];
 			}
+			_vNorms_forShapeChannels.push_back(_cms->Get_vv_pdfs_norm_varied());
+			_vParams_forShapeChannels.push_back(_cms->Get_v_pdfs_floatParamsVaried());
+			for(int ch=0; ch<_cms->Get_vv_pdfs().size(); ch++){
+				for(int isamp=0; isamp<_cms->Get_vv_pdfs()[ch].size(); isamp++){
+					if(isamp<(_cms->Get_v_pdfs_sigproc())[ch])
+						_stot[i]=(_cms->Get_vv_pdfs_norm_varied())[ch][isamp];
+					else _btot[i]= (_cms->Get_vv_pdfs_norm_varied())[ch][isamp];
+				}
+			}
 				if(_debug>=100 && i<100 ){
 					cout<<" toy  "<<i<<" stot="<<_stot[i]<<" btot="<<_btot[i]<<endl;
 				}
@@ -337,6 +352,10 @@ namespace lands{
 			for(i=0;i<_nchannels;++i)
 				if(_d[i]>0)
 					t += _d[i] * log( xr*_vs[iexps][i] + _vb[iexps][i] );
+			t+=_cms->EvaluateGL(_vNorms_forShapeChannels[iexps], _vParams_forShapeChannels[iexps], xr);
+			//for(i=0; i<_cms->Get_vv_pdfs().size(); i++){
+			//	t+=_cms->EvaluateGL(i, xr);
+			//}
 			if(_prior == prior_1overSqrtS)t -= 0.5*log(_xgl[k] + rlow * _stot[iexps] );
 			sum += v = exp(_lwgl[k]+t);
 			if(v<DBL_EPSILON*sum) break;
@@ -358,6 +377,11 @@ namespace lands{
 			for(c=0; c<_nchannels; c++)
 				if(_d[c]>0) 
 					t += _d[c] * log( _vb[i][c] + r*_vs[i][c] );
+			t+=_cms->EvaluateGL(_vNorms_forShapeChannels[i], _vParams_forShapeChannels[i], r);
+			//for(c=0; c<_cms->Get_vv_pdfs().size(); c++){
+			//	t+=_cms->EvaluateGL(c, r);
+			//}
+
 			if(_prior==flat)
 				ret += exp(t);
 			if(_prior==corr){

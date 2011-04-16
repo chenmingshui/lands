@@ -13,14 +13,15 @@
 #include "CLsLimit.h"
 #include "SignificanceBands.h"
 #include "RooRandom.h"
+#include "TFile.h"
 
 using namespace std;
 using namespace lands;
 using namespace RooFit;
 
-typedef std::map<TString, vector<TString> > TMap;
-typedef std::pair<TString, vector<TString> > TPair;
-TMap options;
+typedef std::map<TString, vector<TString> > Tmap;
+typedef std::pair<TString, vector<TString> > Tpair;
+Tmap options;
 void processParameters(int argc, const char* argv[]);
 void PrintHelpMessage();
 
@@ -86,6 +87,28 @@ int main(int argc, const char*argv[]){
 		cms = &tmp1[datacards.size()-1];
 	}else{exit(0);}
 	cout<<"totally "<<datacards.size()<<" data cards combined"<<endl;
+
+	TFile *f = new TFile("/data/Projects/cvs/HiggsAnalysis/CombinedLimit/data/benchmarks/shapes/simple-shapes-UnbinnedParam.root");	
+	RooWorkspace *w = (RooWorkspace*)f->Get("w");
+	RooAbsPdf *sigpdf = w->pdf("signal");
+	RooAbsPdf *bkgpdf = w->pdf("background");
+	RooRealVar *x = w->var("x");
+	x->setRange(0, 10);
+	sigpdf->setNormRange("x");
+	bkgpdf->setNormRange("x");
+
+	vector<RooAbsPdf*> vs, vb;
+	vs.push_back(sigpdf);
+	vb.push_back(bkgpdf);
+	vector<double> vsnorm, vbnorm;
+	vsnorm.push_back(10);
+	vbnorm.push_back(85);
+	cms->AddChannel("testHiggs", x, vs, vsnorm, vb, vbnorm, w );
+	cms->AddObservedDataSet(0, (RooDataSet*)w->data("data_obs"));
+	//cms->AddUncertaintyOnShapeNorm(0, 0, 0.6, 0.6, 1, "hello" );// in relative fraction
+	//cms->AddUncertaintyOnShapeNorm(0, 1, 0.6, 0.6, 1, "hello" );
+	cms->AddUncertaintyOnShapeParam("sigma", 1, 2, 2, 0.4, 4  );//parameter name,  mean,  bifurcated gaussian L, R,  range Min, Max
+
 	cms->SetUseSystematicErrors(systematics);
 	// done combination
 
@@ -635,11 +658,11 @@ void processParameters(int argc, const char* argv[]){
 				if(allargs[j].BeginsWith("-") and !allargs[j].IsFloat()) break;
 				values.push_back(allargs[j]);
 			}
-			options.insert(TPair(key, values));
+			options.insert(Tpair(key, values));
 		}
 	}
 
-	TMap::iterator p;
+	Tmap::iterator p;
 
 	cout<<"Your arguments: "<<endl;
 	for(p=options.begin(); p!=options.end();++p){

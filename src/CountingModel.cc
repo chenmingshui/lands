@@ -19,8 +19,19 @@
 #include <iostream>
 #include <cstdio>
 #include <cmath>
-//#include <math.h>
+#include "TF1.h"
+#include "TFile.h"
+#include "TH1F.h"
+#include "RooAbsPdf.h"
+#include "RooDataSet.h"
+#include "RooRealVar.h"
+#include "RooBifurGauss.h"
+#include "RooWorkspace.h"
+#include "RooStats/RooStatsUtils.h"
+
 using namespace std;
+using namespace RooFit;
+using namespace RooStats;
 namespace lands{
 	CountingModel::CountingModel(){
 		v_data.clear();
@@ -45,6 +56,46 @@ namespace lands{
 		_modelName = "model";
 		vvv_shapeuncindex.clear();
 		bMoveUpShapeUncertainties = false;
+
+		bHasParametricShape = false;
+		vv_pdfs.clear();	
+		vv_pdfs_params.clear();	
+		vv_pdfs_norm.clear();	
+		vv_pdfs_norm_scaled.clear();	
+		vv_pdfs_npar.clear();	
+		v_pdfs_nbin.clear();	
+		v_pdfs_xmin.clear();	
+		v_pdfs_xmax.clear();	
+		vv_pdfs_data.clear();	
+		vvv_pdfs_idcorrl.clear();
+		vvv_pdfs_pdftype.clear();
+		vvv_pdfs_unctype.clear();
+		vvv_pdfs_params_up.clear();
+		vvv_pdfs_params_down.clear();
+		vvv_pdfs_normvariation.clear();
+		vv_pdfs_params_varied.clear();
+		vv_pdfs_norm_varied.clear();
+		vv_pdfs_data_toy.clear();
+		v_pdfs_sigproc.clear();
+		v_pdfs_channelname.clear();
+		vv_pdfs_procname.clear();
+		v_pdfs_sb.clear();
+		v_pdfs_b.clear();
+		v_pdfs_s.clear();
+		vvv_pdfs_params_min.clear();
+		vvv_pdfs_params_max.clear();
+		v_pdfs_observables.clear();
+		v_pdfs_roodataset_toy.clear();
+		v_pdfs_roodataset.clear();
+		vv_pdfs_normNAME.clear();
+		vvv_pdfs_paramsRRV.clear();
+
+		v_pdfs_floatParamsName.clear();
+		v_pdfs_floatParamsIndcorr.clear();
+
+
+		_workspace = new RooWorkspace();
+		_workspace_varied = new RooWorkspace();
 	}
 	CountingModel::~CountingModel(){
 		v_data.clear();
@@ -63,6 +114,57 @@ namespace lands{
 		v_sigproc.clear();
 		vv_procname.clear();
 		vvv_shapeuncindex.clear();
+
+		//pdfs shapes
+		for(int i=0; i<vv_pdfs.size(); i++){
+			for(int j=0; j<vv_pdfs[i].size(); j++){
+				if(vv_pdfs[i][j]) delete vv_pdfs[i][j];
+				//if(vv_pdfs_params[i][j]) delete vv_pdfs_params[i][j];
+			}
+			if(v_pdfs_sb[i]) delete v_pdfs_sb[i];
+			if(v_pdfs_b[i]) delete v_pdfs_b[i];
+			if(v_pdfs_s[i]) delete v_pdfs_s[i];
+			if(v_pdfs_observables[i]) delete v_pdfs_observables[i];
+			if(v_pdfs_roodataset[i]) delete v_pdfs_roodataset[i];
+			if(v_pdfs_roodataset_toy[i]) delete v_pdfs_roodataset_toy[i];
+		}
+		vv_pdfs.clear();	
+		vv_pdfs_params.clear();	
+		vv_pdfs_norm.clear();	
+		vv_pdfs_norm_scaled.clear();	
+		vv_pdfs_npar.clear();	
+		v_pdfs_nbin.clear();	
+		v_pdfs_xmin.clear();	
+		v_pdfs_xmax.clear();	
+		vv_pdfs_data.clear();	
+		vvv_pdfs_idcorrl.clear();
+		vvv_pdfs_pdftype.clear();
+		vvv_pdfs_unctype.clear();
+		vvv_pdfs_params_up.clear();
+		vvv_pdfs_params_down.clear();
+		vvv_pdfs_normvariation.clear();
+		vv_pdfs_params_varied.clear();
+		vv_pdfs_norm_varied.clear();
+		vv_pdfs_data_toy.clear();
+		v_pdfs_sigproc.clear();
+		v_pdfs_channelname.clear();
+		vv_pdfs_procname.clear();
+		v_pdfs_sb.clear();
+		v_pdfs_b.clear();
+		v_pdfs_s.clear();
+		vvv_pdfs_params_min.clear();
+		vvv_pdfs_params_max.clear();
+		v_pdfs_observables.clear();
+		v_pdfs_roodataset_toy.clear();
+		v_pdfs_roodataset.clear();
+		vv_pdfs_normNAME.clear();
+		vvv_pdfs_paramsRRV.clear();
+		v_pdfs_floatParamsName.clear();
+		v_pdfs_floatParamsIndcorr.clear();
+
+
+		delete _workspace;
+		delete _workspace_varied;
 	}
 	void CountingModel::AddChannel(std::string channel_name, double num_expected_signal, double num_expected_bkg_1, double num_expected_bkg_2, 
 			double num_expected_bkg_3, double num_expected_bkg_4, double num_expected_bkg_5, double num_expected_bkg_6 ){
@@ -395,6 +497,16 @@ namespace lands{
 				}
 			}
 		}
+		for(int ch=0; ch<vvv_pdfs_idcorrl.size(); ch++){
+			for(int isam=0; isam<vvv_pdfs_idcorrl.at(ch).size(); isam++){
+				for(int iunc=0; iunc<vvv_pdfs_idcorrl.at(ch).at(isam).size(); iunc++){
+					int indexcorrl = vvv_pdfs_idcorrl.at(ch).at(isam).at(iunc);
+					if(max_uncorrelation<indexcorrl) max_uncorrelation=indexcorrl;
+				}
+			}
+		}
+		max_uncorrelation+=v_pdfs_floatParamsName.size();
+
 		for(int i=0; i<=max_uncorrelation; i++){
 			v_TruncatedGaussian_maxUnc.push_back(-1);
 			v_pdftype.push_back(-1);	
@@ -414,36 +526,36 @@ namespace lands{
 						if(indexcorrl==i && vvv_pdftype.at(ch).at(isam).at(iunc)== typeGamma){
 							if(vvvv_uncpar.at(ch).at(isam).at(iunc).at(0)>0 && 
 									fabs(vvvv_uncpar.at(ch).at(isam).at(iunc).at(0)*vvvv_uncpar.at(ch).at(isam).at(iunc).at(2) - vv_exp_sigbkgs.at(ch).at(isam)) / vvvv_uncpar.at(ch).at(isam).at(iunc).at(2)/vvvv_uncpar.at(ch).at(isam).at(iunc).at(0)>0.2
-									) {
+							  ) {
 								cout<<"channel "<<ch<<"th, "<<v_channelname[ch]<<": process "<<isam<<" using gamma pdf, but rho*B!=b, please check"<<endl; 
 								cout<< "rho="<<vvvv_uncpar[ch][isam][iunc][0]<<"  B="<<vvvv_uncpar[ch][isam][iunc][2]<<" b="<<vv_exp_sigbkgs[ch][isam]<<endl;
 								exit(0);
 							}	
 							v_GammaN.back()=vvvv_uncpar.at(ch).at(isam).at(iunc).at(2)+1;	
 
-				/*  from Andrey:
-					The typical convention between the number of observed events in the
-					control region B and pdf(b) is what we wrote in the note. E.g. see
+							/*  from Andrey:
+							    The typical convention between the number of observed events in the
+							    control region B and pdf(b) is what we wrote in the note. E.g. see
 
-					-) Bob Cosins's note http://arxiv.org/abs/physics/0702156v4
+							    -) Bob Cosins's note http://arxiv.org/abs/physics/0702156v4
 
-					-) Stat commitee recomendation at
-					  http://www.physics.ucla.edu/~cousins/stats/cousins_lognormal_prior.pdf
+							    -) Stat commitee recomendation at
+http://www.physics.ucla.edu/~cousins/stats/cousins_lognormal_prior.pdf
 
-					  On the wikipidia page, they derive the pdf starting from a scale-invariant
-					  prior, which I think is a uniform prior for log(B), which is 1/B for B.
+On the wikipidia page, they derive the pdf starting from a scale-invariant
+prior, which I think is a uniform prior for log(B), which is 1/B for B.
 
-					  If one starts from the uniform prior for B, the answer would be what we
-					  use in the note and in the references above. Such convention makes much
-					  more sense. E.g., the most probable value for b is B*r.
-					  Also, Z_{\Gamma} with the gamma distribution from our note is the same
-					  as the pure frequentist construct Z_{Bi}.
+If one starts from the uniform prior for B, the answer would be what we
+use in the note and in the references above. Such convention makes much
+more sense. E.g., the most probable value for b is B*r.
+Also, Z_{\Gamma} with the gamma distribution from our note is the same
+as the pure frequentist construct Z_{Bi}.
 
-					  So the bottom line is, let's stick to what we wrote in the note.
-					  If we need to change it later, it will be easy to do.
-				*/
+So the bottom line is, let's stick to what we wrote in the note.
+If we need to change it later, it will be easy to do.
+*/
 							//if(v_pdftype.back()==typeGamma)v_GammaN.back()=vvvv_uncpar.at(ch).at(isam).at(iunc).at(2);	
-	//						if(v_pdftype.back()==typeGamma)v_GammaN.back()=vvvv_uncpar.at(ch).at(isam).at(iunc).at(2)+1;	
+							//						if(v_pdftype.back()==typeGamma)v_GammaN.back()=vvvv_uncpar.at(ch).at(isam).at(iunc).at(2)+1;	
 						}
 						if(indexcorrl==i && v_pdftype.back()>0 ){
 							if( v_pdftype.back()!=vvv_pdftype.at(ch).at(isam).at(iunc) ){
@@ -460,9 +572,49 @@ namespace lands{
 					}
 				}
 			}
+			for(int ch=0; ch<vvv_pdfs_idcorrl.size(); ch++){
+				for(int isam=0; isam<vvv_pdfs_idcorrl.at(ch).size(); isam++){
+					for(int iunc=0; iunc<vvv_pdfs_idcorrl.at(ch).at(isam).size(); iunc++){
+						int indexcorrl = vvv_pdfs_idcorrl.at(ch).at(isam).at(iunc);
+						if(indexcorrl==i && v_pdftype.back()<0 ){
+							v_pdftype.back()=vvv_pdfs_pdftype.at(ch).at(isam).at(iunc);
+						}
+						if(indexcorrl==i && vvv_pdfs_pdftype.at(ch).at(isam).at(iunc)== typeTruncatedGaussian ){
+							if(tmpmax< fabs(vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(0)) ) tmpmax=fabs(vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(0));	
+							if(tmpmax< fabs(vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(1)) ) tmpmax=fabs(vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(1));	
+						} 
+						if(indexcorrl==i && vvv_pdfs_pdftype.at(ch).at(isam).at(iunc)== typeGamma){
+							if(vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(0)>0 && 
+									fabs(vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(0)*vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(2) - vv_pdfs_norm.at(ch).at(isam)) / vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(2)/vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(0)>0.2
+							  ) {
+								cout<<"Shape channel "<<ch<<"th, "<<v_pdfs_channelname[ch]<<": process "<<isam<<" using gamma pdf, but rho*B!=b, please check"<<endl; 
+								cout<< "rho="<<vvv_pdfs_normvariation[ch][isam][iunc][0]<<"  B="<<vvv_pdfs_normvariation[ch][isam][iunc][2]<<" b="<<vv_exp_sigbkgs[ch][isam]<<endl;
+								exit(0);
+							}	
+							v_GammaN.back()=vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(2)+1;	
+
+						}
+						if(indexcorrl==i && v_pdftype.back()>0 ){
+							if( v_pdftype.back()!=vvv_pdfs_pdftype.at(ch).at(isam).at(iunc) ){
+								cout<<" Error:  two uncertainties with 100% correlation must be with same pdftype, exit "<<endl;
+								cout<<" Independant unc "<<indexcorrl<<"th, name "<<v_uncname[indexcorrl];
+								cout<<" should be "<<v_pdftype.back()<<", but "<<vvv_pdfs_pdftype.at(ch).at(isam).at(iunc)<<" for shape ch"<<ch<<"("<<v_pdfs_channelname[ch]<<")"
+									<<" isam"<<isam<<"("<<vv_pdfs_procname[ch][isam]<<")"
+									<<" iunc"<<iunc<<"("<<v_uncname[indexcorrl]<<")"<<endl;
+								cout<<" The conflict unc at above process is for "<<vvv_pdfs_idcorrl[ch][isam][iunc]
+									<<"th source, name "<<v_uncname[vvv_idcorrl[ch][isam][iunc]]<<endl;
+								exit(0);
+							}
+						}
+					}
+				}
+			}
 			if(tmpmax>0){
 				v_TruncatedGaussian_maxUnc.back()=tmpmax;
 			} 
+		}
+		for(int i=0; i<v_pdfs_floatParamsName.size(); i++){
+			v_pdftype[v_pdfs_floatParamsIndcorr[i]] = typeBifurcatedGaussian;
 		}
 		MakeListOfShapeUncertainties();
 	}	
@@ -483,63 +635,90 @@ namespace lands{
 		}
 
 	}
-	VChannelVSample CountingModel::FluctuatedNumbers(){
+	VChannelVSample CountingModel::FluctuatedNumbers(double *par){
 		if(_rdm==NULL) {cout<<"Model random gen engine not set yet, exit "<<endl; exit(0);}
-		if(!b_systematics) return vv_exp_sigbkgs_scaled;
+		if(!b_systematics) {
+			if(bHasParametricShape){
+				vv_pdfs_params_varied = vv_pdfs_params;
+				vv_pdfs_norm_varied = vv_pdfs_norm_scaled;
+				for(int ch=0; ch<vv_pdfs.size(); ch++){
+					int nsigproc = v_pdfs_sigproc[ch];
+					for(int isam=0; isam<vv_pdfs[ch].size(); isam++){
+						_workspace_varied->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_varied[ch][isam]);
+					}
+				}
+			}
+			return vv_exp_sigbkgs_scaled;
+		}
 
 		double tmp ; 
 		vector<double> vrdm; vrdm.clear();
-		//if(_debug)cout<<" v_pdftype.size()="<<v_pdftype.size()<<endl;
-		for(int i=0; i<v_pdftype.size(); i++){
-			//if(_debug)cout<<" vpdftype: "<<i<<"th --> "<<v_pdftype[i]<<endl;
-			vrdm.push_back(-999);
-			switch (v_pdftype[i]){
-				case typeLogNormal:
-					vrdm.back()=_rdm->Gaus();
-					break;
-				case typeShapeGaussianLinearMorph:
-				case typeShapeGaussianQuadraticMorph:
-				/*	
-					tmp = -5;
-					while(fabs(tmp)>4){
-						tmp=_rdm->Gaus();
-					}
-					vrdm.back()=tmp;
-					break;
-				*/	
-					vrdm.back()=_rdm->Gaus();
-					break;
+		v_pdfs_floatParamsVaried.clear();
+		if(par==0){
+			for(int i=0; i<v_pdftype.size(); i++){
+				if(_debug>=100)cout<<" vpdftype: "<<i<<"th --> "<<v_pdftype[i]<<endl;
+				vrdm.push_back(-999);
+				switch (v_pdftype[i]){
+					case typeLogNormal:
+						vrdm.back()=_rdm->Gaus();
+						break;
+					case typeShapeGaussianLinearMorph:
+					case typeShapeGaussianQuadraticMorph:
+						/*	
+							tmp = -5;
+							while(fabs(tmp)>4){
+							tmp=_rdm->Gaus();
+							}
+							vrdm.back()=tmp;
+							break;
+							*/	
+						vrdm.back()=_rdm->Gaus();
+						break;
 
-				case typeTruncatedGaussian:
-					//      one way is to build  TruncatedGaussian function and throw random number from it
+					case typeTruncatedGaussian:
+						//      another way is to throw normal gaus random number and regenerate if x<-1, it's more transparent
+						tmp = -2;
+						while(tmp<-1){
+							tmp=_rdm->Gaus(0, v_TruncatedGaussian_maxUnc[i]);
+						}
+						vrdm.back()=tmp;
+						break;
 
-					//		vrdm.back()=v_TruncatedGaussian[i]->GetRandom();
-
-					//      another way is to throw normal gaus random number and regenerate if x<-1, it's more transparent
-					tmp = -2;
-					while(tmp<-1){
-						tmp=_rdm->Gaus(0, v_TruncatedGaussian_maxUnc[i]);
-					}
-					vrdm.back()=tmp;
-					break;
-
-				case typeGamma:
-					//if(_debug)cout<<" i = "<<i<<"  v_GammaN[i]="<<v_GammaN[i]<<endl;
-					vrdm.back()=_rdm->Gamma(v_GammaN[i]);
-					//if(_debug) cout<<"done for random gamma"<<endl;
-					break;
-				case typeControlSampleInferredLogNormal:
-					//dummy
-					cout<<"Error: We haven't implemented the pdf of typeControlSampleInferredLogNormal"<<endl;
-					exit(0);
-					break;
-				default:
-					break;
-					//dummy
-					//cout<<"Error: Unknown pdf_type "<<v_pdftype[i]<<endl;
-					//exit(0);
-			}	
-			//if(_debug) cout<<"done for random gen "<<i<<endl;
+					case typeGamma:
+						//if(_debug)cout<<" i = "<<i<<"  v_GammaN[i]="<<v_GammaN[i]<<endl;
+						vrdm.back()=_rdm->Gamma(v_GammaN[i]);
+						//if(_debug) cout<<"done for random gamma"<<endl;
+						break;
+					case typeBifurcatedGaussian:
+						{
+							if(_debug>=100) cout<<" generating new value for parameter "<<v_uncname[i-1]<<endl;
+							RooDataSet *tmpRDS =  _workspace_varied->pdf(TString::Format("%s_bfg",v_uncname[i-1].c_str()))
+								->generate(RooArgSet(*_workspace_varied->var(TString::Format("%s_x", v_uncname[i-1].c_str()))), 1);
+							vrdm.back()= dynamic_cast<RooRealVar*> ( tmpRDS->get(0)->first() )->getVal();
+							delete tmpRDS;
+							if(_debug>=100) cout<<"  "<<vrdm.back()<<endl;
+							v_pdfs_floatParamsVaried.push_back(vrdm.back());
+							break;
+						}
+					case typeControlSampleInferredLogNormal:
+						//dummy
+						cout<<"Error: We haven't implemented the pdf of typeControlSampleInferredLogNormal"<<endl;
+						exit(0);
+						break;
+					default:
+						break;
+						//dummy
+						//cout<<"Error: Unknown pdf_type "<<v_pdftype[i]<<endl;
+						//exit(0);
+				}	
+				//if(_debug) cout<<"done for random gen "<<i<<endl;
+			}
+		}else{
+			vrdm.push_back(0);
+			for(int i=1; i<v_pdftype.size(); i++){
+				vrdm.push_back(par[i]);
+				if(_debug>=100)cout<<" index "<<i<<": "<<par[i]<<endl;
+			}
 		}		
 		//if(_debug) cout<<"done for random gen"<<endl;
 
@@ -596,18 +775,18 @@ namespace lands{
 								break;
 						}
 					}
-					
+
 					if(added){
 						if(h<=0) h=10e-9;
 						/*
-						if( norminal !=0 && vv[ch][isam]!=0) {
-							vv[ch][isam]*=h/norminal;	
-						}else if(vv[ch][isam]==0) vv[ch][isam] = h*normalization;
-						else { ;}
-						*/
-						
+						   if( norminal !=0 && vv[ch][isam]!=0) {
+						   vv[ch][isam]*=h/norminal;	
+						   }else if(vv[ch][isam]==0) vv[ch][isam] = h*normalization;
+						   else { ;}
+						   */
+
 						if(_debug>=100)	cout<<"c="<<ch<<" s="<<isam<<" normalization = "<<normalization<<" ran="<<ran
-								<<" h="<<h<<" h*normalization="<<h*normalization
+							<<" h="<<h<<" h*normalization="<<h*normalization
 								<<" bs="<<vv[ch][isam]<<" norminal="<<norminal<<" h/norminal="<<h/norminal
 								<<" bs*=h/norminal = "<<(vv[ch][isam]*(h/norminal)) <<endl;	
 						if( norminal !=0) 
@@ -706,6 +885,46 @@ namespace lands{
 			}
 		}
 
+		if(bHasParametricShape){
+			vv_pdfs_params_varied = vv_pdfs_params;
+			vv_pdfs_norm_varied = vv_pdfs_norm_scaled;
+			for(int ch=0; ch<vv_pdfs.size(); ch++){
+				nsigproc = v_pdfs_sigproc[ch];
+				for(isam=0; isam<vv_pdfs[ch].size(); isam++){
+					for(iunc=0; iunc<vvv_pdfs_idcorrl[ch][isam].size(); iunc++){
+						indexcorrl = vvv_pdfs_idcorrl[ch][isam][iunc];
+						pdftype = vvv_pdfs_pdftype[ch][isam][iunc];
+						ran = vrdm[indexcorrl];
+						switch (pdftype){
+							default:
+								if(_debug>=100) cout<<" in FluctuatedNumbers, bHasParametricShape: ch["<<ch<<"] isam["<<isam<<"] iunc["<<iunc<<"]"<<" pdftype="<<pdftype<<endl;
+								/*
+								   for(int i=0; i<vv_pdfs_npar[ch][isam]; i++){
+								   vv_pdfs_params_varied[ch][isam][i] += 
+								   ( ran * (ran>0? vvv_pdfs_params_up[ch][isam][iunc][i] -vv_pdfs_params[ch][isam][i] 
+								   : vv_pdfs_params[ch][isam][i] -vvv_pdfs_params_down[ch][isam][iunc][i] ) );
+								   }
+								   */		
+								vv_pdfs_norm_varied[ch][isam] *= pow( (1+ (ran>0? vvv_pdfs_normvariation[ch][isam][iunc][1]: vvv_pdfs_normvariation[ch][isam][iunc][0])) , ran );
+								if(_debug>=100) cout<<" norm varied after this unc = "<<vv_pdfs_norm_varied[ch][isam]<<endl;
+								break;
+
+						}
+					}
+					if(_debug>=100) cout<<" norm varied after all unc = "<<vv_pdfs_norm_varied[ch][isam]<<endl;
+					_workspace_varied->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_varied[ch][isam]);
+				}
+			}
+			for(int i=0; i<v_pdfs_floatParamsName.size(); i++){
+				if(_debug>=100) cout<<" setting new value for parameter "<<v_pdfs_floatParamsName[i]<<": "<<vrdm[v_pdfs_floatParamsIndcorr[i]]<<endl;
+				_workspace_varied->var(v_pdfs_floatParamsName[i].c_str())->setVal(vrdm[v_pdfs_floatParamsIndcorr[i]]);
+			}
+			if(_debug>=100) {
+				cout<<"FluctuatedNumbers, varied workspace: "<<endl;
+				_workspace_varied->Print("V");
+			}
+		}
+
 		return vv;
 	}	
 	VIChannel CountingModel::GetToyData_H0(){
@@ -722,11 +941,44 @@ namespace lands{
 			}
 			v.push_back(_rdm->Poisson(tmp));
 		}
+
+		if(bHasParametricShape){
+			for(int ch=0; ch<v_pdfs_roodataset_toy.size(); ch++){
+				delete v_pdfs_roodataset_toy[ch];
+			}
+			v_pdfs_roodataset_toy.clear();
+			for(int ch=0; ch<vv_pdfs.size(); ch++){
+				vector<double> vtmp;vtmp.clear();
+				if(_debug>=100)cout<<" in GetToyData_H0, bHasParametricShape: ch = "<<ch<<endl;
+				v_pdfs_roodataset_toy.push_back( _workspace_varied->pdf(v_pdfs_b[ch]->GetName())->generate(RooArgSet(*v_pdfs_observables[ch]), Extended()));
+
+				if(_debug>=1000)v_pdfs_roodataset_toy[ch]->Print("V");
+
+				if(_debug>=1000){
+					TString s = "H0_"; s+= (int)(10000000*_rdm->Rndm()); s+=".root";
+					TFile f(s, "RECREATE") ;
+					TH1F h("H0","H0", 100, v_pdfs_observables[ch]->getMin(), v_pdfs_observables[ch]->getMax() );
+					v_pdfs_roodataset_toy[ch]->fillHistogram(&h, RooArgList(*v_pdfs_observables[ch]));
+					f.WriteTObject(&h);
+					f.Close();
+				}
+
+				if(_debug>=10)cout<<"H0, number of events generated for channel "<<ch<<": "<<v_pdfs_roodataset_toy[ch]->sumEntries()<<endl;
+				for(int i=0; i<v_pdfs_roodataset_toy[ch]->sumEntries(); i++){
+					RooRealVar *r = dynamic_cast<RooRealVar*>(v_pdfs_roodataset_toy[ch]->get(i)->first());
+					vtmp.push_back( r->getVal() );
+				}
+				vv_pdfs_data_toy.push_back(vtmp);
+			}
+		}	
+
 		return v;
 	}
 	VIChannel CountingModel::GetToyData_H1(){
 		// alternative hypothesis
 		VChannelVSample vv = FluctuatedNumbers();
+
+		if(_debug>=100)cout<<" in GetToyData_H1 ......"<<endl;
 
 		VIChannel v; v.clear();
 		double tmp;
@@ -737,9 +989,48 @@ namespace lands{
 				tmp+=vv[ch][isam];	
 			}
 			v.push_back(_rdm->Poisson(tmp));
-			//cout<<"debug tmp="<<tmp<<", pos="<<v[v.size()-1]<<endl;
 		}
-		//cout<<"delete me, CountingModel::GetToyData_H1 v.size= "<<v.size()<<endl;
+
+		if(_debug>=100)cout<<" in GetToyData_H1 done for counting channels"<<endl;
+		if(bHasParametricShape){
+			if(_debug>=100)cout<<" in GetToyData_H1 start to destroy old toy"<<endl;
+			for(int ch=0; ch<v_pdfs_roodataset_toy.size(); ch++){
+				if(v_pdfs_roodataset_toy[ch])	delete v_pdfs_roodataset_toy[ch];
+			}
+			v_pdfs_roodataset_toy.clear();
+			if(_debug>=100)cout<<" in GetToyData_H1 old toy destroyed"<<endl;
+			for(int ch=0; ch<vv_pdfs.size(); ch++){
+				vector<double> vtmp;vtmp.clear();
+
+				//FIXME   we need release memory of used toys,  but delete them cause some segmentation fault 
+				//if(!v_pdfs_roodataset_toy[ch]->IsZombie()) delete v_pdfs_roodataset_toy[ch];
+				//v_pdfs_roodataset_toy[ch]->Delete();
+
+				//v_pdfs_roodataset_toy[ch] =(RooDataSet*) v_pdfs_sb[ch]->generate(RooArgSet(*(v_pdfs_observables[ch])), Extended());
+				if(_debug>=100)cout<<" in GetToyData_H1, bHasParametricShape: ch = "<<ch<<endl;
+				v_pdfs_roodataset_toy.push_back(_workspace_varied->pdf(v_pdfs_sb[ch]->GetName())->generate(RooArgSet(*v_pdfs_observables[ch]), Extended()));
+
+				if(_debug>=100)v_pdfs_roodataset_toy[ch]->Print("V");
+
+				if(_debug>=1000){
+					TString s = "H1_"; s+= (int)(10000000*_rdm->Rndm()); s+=".root";
+					TFile f(s, "RECREATE") ;
+					TH1F h("H1","H1", 100, v_pdfs_observables[ch]->getMin(), v_pdfs_observables[ch]->getMax() );
+					v_pdfs_roodataset_toy[ch]->fillHistogram(&h, RooArgList(*v_pdfs_observables[ch]));
+					h.Write();
+					f.Write();
+					f.Close();
+				}
+
+				if(_debug>=10) cout<<"H1, number of events generated for channel "<<ch<<": "<<v_pdfs_roodataset_toy[ch]->sumEntries()<<endl;
+				for(int i=0; i<v_pdfs_roodataset_toy[ch]->sumEntries(); i++){
+					RooRealVar *r = dynamic_cast<RooRealVar*>(v_pdfs_roodataset_toy[ch]->get(i)->first());
+					vtmp.push_back( r->getVal() );
+				}
+				vv_pdfs_data_toy.push_back(vtmp);
+			}
+		}	
+
 		return v;
 	}
 	void CountingModel::Print(int printLevel){
@@ -885,6 +1176,7 @@ namespace lands{
 		return true;
 	}
 	void CountingModel::SetSignalScaleFactor(double r){
+		if(_debug>=10) cout<<"\n  *** SetSignalScaleFactor r= "<<r<<endl;
 		if(!b_AllowNegativeSignalStrength && r<=0 ){
 			cout<<"Error: signal strength r <=0"<<endl;
 			cout<<"If you want to allow signal strength to be non-positive, please \n *** model->SetAllowNegativeSignalStrength(true)"<<endl;
@@ -896,6 +1188,39 @@ namespace lands{
 			for(int isam=0; isam<v_sigproc[ch]; isam++){
 				vv_exp_sigbkgs_scaled[ch][isam]*=_common_signal_strength;
 			}
+		}
+		vv_pdfs_norm_scaled = vv_pdfs_norm;
+		for(int ch=0; ch<vv_pdfs_norm_scaled.size(); ch++){
+			for(int isam=0; isam<v_pdfs_sigproc[ch]; isam++){
+				vv_pdfs_norm_scaled[ch][isam]*=_common_signal_strength;
+				_workspace->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_scaled[ch][isam]);
+				_workspace_varied->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_scaled[ch][isam]);
+			}
+		}
+
+		if(_debug>=1000 and bHasParametricShape){
+			TString s = "pdf_r"; s+=r; s+="_"; s+=".root";
+			TFile f(s, "RECREATE") ;
+			for(int ch=0; ch<vv_pdfs.size(); ch++){
+				double xmin = v_pdfs_observables[ch]->getMin();
+				double xmax = v_pdfs_observables[ch]->getMax();
+				TString chnm = v_pdfs_channelname[ch];	
+				TH1F hs(chnm+"_s","s", 100, xmin, xmax);
+				TH1F hb(chnm+"_b","b", 100,  xmin, xmax);
+				TH1F hsb(chnm+"_sb","sb", 100,  xmin, xmax);
+				RooArgSet vars(*v_pdfs_observables[ch]);
+				for(int x = 1; x<=100; x++){
+					v_pdfs_observables[ch]->setVal((xmax-xmin)/100.*(x-1)+xmin); 
+					hs.SetBinContent(x, v_pdfs_s[ch]->getVal(&vars));
+					hb.SetBinContent(x, v_pdfs_b[ch]->getVal(&vars));
+					hsb.SetBinContent(x, v_pdfs_sb[ch]->getVal(&vars));
+				}
+
+				hs.Write();
+				hb.Write();
+				hsb.Write();
+			}
+			f.Close();
 		}
 
 		//if allow signal strength to be non-positive, then please make sure sig+bkgs >=0 in each channel 
@@ -1072,5 +1397,488 @@ namespace lands{
 		if(king==0 || king==2)	cout<<"\t * "<<skippedchannels_b<<" bins have been removed because of no backgrounds  in those bins *"<<endl;	
 		if(king==2)	cout<<"\t * "<<skippedchannels_sb<<" bins have been removed because of no backgrounds and no signal in those bins *"<<endl;	
 		cout<<"\t * "<<skippedchannels<<" bins in total were removed *"<<endl;
+	}
+
+
+	// for parametric shapes
+	void CountingModel::AddChannel(string channel_name, RooRealVar* observable, vector<RooAbsPdf*> sigPdfs, vector<double> sigNorms, vector<RooAbsPdf*> bkgPdfs, vector<double> bkgNorms, RooWorkspace *w ){
+		int signal_processes = sigPdfs.size();
+		int bkg_processes = bkgPdfs.size();
+		if(signal_processes<=0)  {cout<<"ERROR: you add a channel with number of signal_processes <=0 "<<endl; exit(0);}
+		if(bkg_processes<=0)  {cout<<"ERROR: you add a channel with number of bkg_processes <=0 "<<endl; exit(0);}
+		v_pdfs_sigproc.push_back(signal_processes);
+
+		if(channel_name==""){
+			char tmp[256];
+			sprintf(tmp, "channel_%d", v_pdfs_channelname.size());
+			channel_name==tmp;
+			v_pdfs_channelname.push_back(channel_name);
+
+		}
+		else v_pdfs_channelname.push_back(channel_name);
+
+		vector<string> vproc; vproc.clear();
+		for(int i=0; i<sigPdfs.size(); i++) {
+			vproc.push_back(sigPdfs[i]->GetName());
+		}
+		for(int i=0; i<bkgPdfs.size(); i++) {
+			vproc.push_back(bkgPdfs[i]->GetName());
+		}
+		vv_pdfs_procname.push_back(vproc);
+
+		double tmp_totbkg = 0;
+
+		//RooArgSet* ras = new RooArgSet(*observable);
+		//v_pdfs_observables.push_back(ras);
+
+		_workspace->import(*observable);
+		_workspace_varied->import(*observable);
+		v_pdfs_observables.push_back(_workspace->var(observable->GetName()));
+
+
+		vector<RooAbsPdf*> vsigbkgs; vsigbkgs.clear();
+		vector< vector< vector<double> > > vvvuncpar; vvvuncpar.clear();
+		vector< vector<int> > vvpdftype; vvpdftype.clear();
+		vector< vector<int> > vvidcorrl; vvidcorrl.clear();
+		vector<double> vnorms; vnorms.clear();
+
+		vector< vector<double> > vvunc; vvunc.clear();
+		vector<int> vpdftype; vpdftype.clear();
+		vector<int> vidcorrl; vidcorrl.clear();
+
+		vector<TString> vrrvnorm; vrrvnorm.clear();
+
+		vector<RooRealVar*> vrrvparams; vrrvparams.clear();
+		vector< vector<RooRealVar*> > vvrrvparams; vvrrvparams.clear();
+		for(int i=0; i<sigPdfs.size(); i++){
+			vsigbkgs.push_back(sigPdfs[i]);
+			vvvuncpar.push_back(vvunc);
+			vvpdftype.push_back(vpdftype);
+			vvidcorrl.push_back(vidcorrl);
+			vnorms.push_back(sigNorms[i]);
+			TString sn = channel_name; sn+=vproc[i]; sn+="_norm";
+			RooRealVar *rrv = new RooRealVar(sn, "", sigNorms[i]);
+			vrrvnorm.push_back(sn);
+			_workspace->import(*rrv);
+			_workspace->import(*sigPdfs[i]);
+			_workspace_varied->import(*rrv);
+			_workspace_varied->import(*sigPdfs[i]);
+
+			RooArgSet *rds	= sigPdfs[i]->getParameters(*observable);
+			// need to store the list of parameters and for future modification, fluctuation 
+		}
+
+		for(int i=0; i<bkgPdfs.size(); i++){
+			vsigbkgs.push_back(bkgPdfs[i]);
+			vvvuncpar.push_back(vvunc);
+			vvpdftype.push_back(vpdftype);
+			vvidcorrl.push_back(vidcorrl);
+			tmp_totbkg+=bkgNorms[i];
+			vnorms.push_back(bkgNorms[i]);
+
+			TString sn = channel_name; sn+=vproc[i+sigNorms.size()]; sn+="_norm";
+			RooRealVar *rrv = new RooRealVar(sn, "", bkgNorms[i]);
+			vrrvnorm.push_back(sn);
+			_workspace->import(*rrv);
+			_workspace->import(*bkgPdfs[i]);
+			_workspace_varied->import(*rrv);
+			_workspace_varied->import(*bkgPdfs[i]);
+		}
+
+		vv_pdfs.push_back(vsigbkgs);
+		//vv_exp_sigbkgs_scaled.push_back(vsigbkgs);
+		vvv_pdfs_normvariation.push_back(vvvuncpar);
+		vvv_pdfs_pdftype.push_back(vvpdftype);
+		vvv_pdfs_idcorrl.push_back(vvidcorrl);
+		vv_pdfs_normNAME.push_back(vrrvnorm);
+		vv_pdfs_norm.push_back(vnorms);
+		vv_pdfs_norm_scaled.push_back(vnorms);
+		vv_pdfs_norm_varied.push_back(vnorms);
+		if(_debug>=100)cout<<"channel "<<channel_name<<": tot.size="<<signal_processes+bkg_processes<<" bkg.size="<<bkg_processes<<endl;
+
+
+		// construct  model_sb,  model_s,  model_b
+		TString s = "SUM::"; s+=channel_name; s+="_sb(";
+		for(int i=0; i<vsigbkgs.size(); i++){
+			if(i!=0) s+=",";
+			s+=vrrvnorm[i]; s+="*"; s+=vsigbkgs[i]->GetName(); 			
+		}
+		s+=")";
+		_workspace->factory(s);
+		_workspace_varied->factory(s);
+		s = channel_name; s+="_sb";
+		v_pdfs_sb.push_back(_workspace->pdf(s));	
+
+		if(_debug) _workspace->pdf(s)->Print("V");
+
+		s = "SUM::"; s+=channel_name; s+="_s(";
+		for(int i=0; i<signal_processes; i++){
+			if(i!=0) s+=",";
+			s+=vrrvnorm[i]; s+="*"; s+=vsigbkgs[i]->GetName(); 			
+		}
+		s+=")";
+		_workspace->factory(s);
+		_workspace_varied->factory(s);
+		s = channel_name; s+="_s";
+		v_pdfs_s.push_back(_workspace->pdf(s));	
+		if(_debug) _workspace->pdf(s)->Print("V");
+
+		s = "SUM::"; s+=channel_name; s+="_b(";
+		for(int i=signal_processes; i<vsigbkgs.size(); i++){
+			if(i!=signal_processes) s+=",";
+			s+=vrrvnorm[i]; s+="*"; s+=vsigbkgs[i]->GetName(); 			
+		}
+		s+=")";
+		_workspace->factory(s);
+		_workspace_varied->factory(s);
+		s = channel_name; s+="_b";
+		v_pdfs_b.push_back(_workspace->pdf(s));	
+		if(_debug) _workspace->pdf(s)->Print("V");
+
+		RooDataSet * rds = v_pdfs_b.back() -> generate(*observable, Extended());
+		v_pdfs_roodataset.push_back(rds);
+		//v_pdfs_roodataset_toy.push_back(rds);
+		//cout<<"H0, number of events generated for channel "<<ch<<": "<<v_pdfs_roodataset_toy[ch]->sumEntries()<<endl;
+		if(_debug) 	rds->Print("V");
+		vector<double> vdata;
+		for(int i=0; i<rds->sumEntries(); i++){
+			RooRealVar *r = dynamic_cast<RooRealVar*>(rds->get(i)->first());
+			vdata.push_back( r->getVal() );
+		}
+		vv_pdfs_data.push_back(vdata);
+
+
+		bHasParametricShape = true;
+
+		if(_debug>=10){
+			TString s = "pdf_"; s+= channel_name; s+=".root";
+			TFile f(s, "RECREATE") ;
+			double xmin = v_pdfs_observables.back()->getMin();
+			double xmax = v_pdfs_observables.back()->getMax();
+			TH1F hs("s","s", 100, xmin, xmax);
+			TH1F hb("b","b", 100,  xmin, xmax);
+			TH1F hsb("sb","sb", 100,  xmin, xmax);
+			RooArgSet vars(*v_pdfs_observables.back());
+			for(int x = 1; x<=100; x++){
+				v_pdfs_observables.back()->setVal((xmax-xmin)/100.*(x-1)+xmin); 
+				hs.SetBinContent(x, v_pdfs_s.back()->getVal(&vars));
+				hb.SetBinContent(x, v_pdfs_b.back()->getVal(&vars));
+				hsb.SetBinContent(x, v_pdfs_sb.back()->getVal(&vars));
+			}
+
+			cout<<"\n model_s"<<endl;
+			v_pdfs_s.back()->getParameters(*v_pdfs_observables.back())->Print("V");
+			cout<<"\n model_b"<<endl;
+			v_pdfs_b.back()->getParameters(*v_pdfs_observables.back())->Print("V");
+			cout<<"\n model_sb"<<endl;
+			v_pdfs_sb.back()->getParameters(*v_pdfs_observables.back())->Print("V");
+
+			hs.Write();
+			hb.Write();
+			hsb.Write();
+			f.Close();
+		}
+
+		if(_debug>=10)_workspace->Print("V");
+		if(_debug>=10)_workspace_varied->Print("V");
+	}
+
+	double CountingModel::EvaluateLnQ(int ch, int dataOrToy ){ // 0 for data, 1 for toy
+		double ret=0;
+
+		double btot = 0, stot=0;
+		for(int i=0; i<vv_pdfs_norm_scaled[ch].size(); i++){
+			if(i>=v_pdfs_sigproc[ch]) btot+=vv_pdfs_norm_scaled[ch][i];
+			else stot+=vv_pdfs_norm_scaled[ch][i];
+		}
+		RooArgSet vars(*v_pdfs_observables[ch]);
+		if(dataOrToy == 0){
+			int ntot = int(v_pdfs_roodataset_toy[ch]->sumEntries());
+			for(int i=0; i<v_pdfs_roodataset[ch]->sumEntries(); i++){
+				v_pdfs_observables[ch]->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal());
+
+				if(_debug>=100){
+					if(i==0 or i==ntot-1 or i==ntot/2){
+						cout<<"* event "<<i<<":  m= "<<( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal()<<endl;
+						cout<<" pdfs= "<<v_pdfs_s[ch]->getVal(&vars)<<endl;
+						cout<<" pdfb= "<<v_pdfs_b[ch]->getVal(&vars)<<endl;
+						cout<<"stot = "<<stot<<" btot="<<btot<<endl;
+					}
+				}
+				ret+= log(1+ stot/btot*v_pdfs_s[ch]->getVal(&vars)/v_pdfs_b[ch]->getVal(&vars));
+			}
+		}else if(dataOrToy==1){
+			int ntot = int(v_pdfs_roodataset_toy[ch]->sumEntries());
+			for(int i=0; i<v_pdfs_roodataset_toy[ch]->sumEntries(); i++){
+				v_pdfs_observables[ch]->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset_toy[ch]->get(i)->first()))->getVal());
+				if(_debug>=100){
+					if(i==0 or i==ntot-1 or i==ntot/2){
+						cout<<"* event "<<i<<":  m= "<<( dynamic_cast<RooRealVar*>(v_pdfs_roodataset_toy[ch]->get(i)->first()))->getVal()<<endl;
+						cout<<" pdfs= "<<v_pdfs_s[ch]->getVal(&vars)<<endl;
+						cout<<" pdfb= "<<v_pdfs_b[ch]->getVal(&vars)<<endl;
+						cout<<"stot = "<<stot<<" btot="<<btot<<endl;
+					}
+				}
+				ret+= log(1+ stot/btot*v_pdfs_s[ch]->getVal(&vars)/v_pdfs_b[ch]->getVal(&vars));
+			}
+		}
+
+		ret-=stot;
+		if(_debug>=10)cout<<"EvaluateLnQ of "<<(dataOrToy==0?"data":"toy")<<" in channel ["<<v_pdfs_channelname[ch]<<"]: lnQ= "<<ret<<endl;
+		return ret;
+	}
+
+	void CountingModel::AddObservedDataSet(int index_channel, RooDataSet* rds){
+		//if(v_pdfs_roodataset[index_channel]) delete v_pdfs_roodataset[index_channel];
+		int ch = index_channel;
+
+		RooDataSet *tmp = v_pdfs_roodataset[ch];
+		v_pdfs_roodataset[ch]=rds;
+		delete tmp;
+
+		if(_debug>=10){
+			TString s = "data_"; s+= v_pdfs_channelname[ch]; s+=".root";
+			TFile f(s, "RECREATE") ;
+			TH1F h("data","data", 100, v_pdfs_observables[ch]->getMin(), v_pdfs_observables[ch]->getMax() );
+			//v_pdfs_roodataset[ch]->fillHistogram(&h, RooArgList(*v_pdfs_observables[ch]));
+
+			for(int i=0; i<v_pdfs_roodataset[ch]->sumEntries(); i++){
+				v_pdfs_observables[ch]->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal());
+				h.Fill(v_pdfs_observables[ch]->getVal());
+			}
+			f.WriteTObject(&h);
+			f.Close();
+		}
+		if(_debug>=10){
+			v_pdfs_observables[ch]->setVal(6);
+			RooArgSet vars(*v_pdfs_observables[ch]);
+			cout<<" Norm pdfs= "<<v_pdfs_s[ch]->getNorm(&vars)<<" val : "<<v_pdfs_s[ch]->getVal(&vars)<<endl;
+			cout<<" Norm pdfb= "<<v_pdfs_b[ch]->getNorm(&vars)<<" val : "<<v_pdfs_b[ch]->getVal(&vars)<<endl;
+			cout<<" Norm pdfsb= "<<v_pdfs_sb[ch]->getNorm(&vars)<<" val : "<<v_pdfs_sb[ch]->getVal(&vars)<<endl;
+		}
+	}
+	double CountingModel::EvaluateChi2(double *par){ 
+		double ret=0;
+
+		FluctuatedNumbers(par);
+
+		for(int ch=0; ch<vv_pdfs.size(); ch++){
+			double btot = 0, stot=0;
+			int ntot = int(v_pdfs_roodataset[ch]->sumEntries());
+			double tmp=0, retch=0;
+			for(int i=0; i<vv_pdfs_norm_varied[ch].size(); i++){
+				if(i>=v_pdfs_sigproc[ch]) btot+=vv_pdfs_norm_varied[ch][i];
+				else stot+=vv_pdfs_norm_varied[ch][i];
+			}
+			RooArgSet vars(*v_pdfs_observables[ch]);
+			for(int i=0; i<ntot; i++){
+				_workspace_varied->var(v_pdfs_observables[ch]->GetName())->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal());
+				if(_debug>=100){
+					if(i==0 or i==ntot-1 or i==ntot/2){
+						cout<<"* event "<<i<<":  m= "<<( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal()<<endl;
+						cout<<" pdfs= "<<_workspace_varied->pdf(v_pdfs_s[ch]->GetName())->getVal(&vars)<<endl;
+						cout<<" pdfb= "<<_workspace_varied->pdf(v_pdfs_b[ch]->GetName())->getVal(&vars)<<endl;
+						cout<<" stot = "<<stot<<" btot="<<btot<<endl;
+						cout<<" log(event) = "<<log(stot*_workspace_varied->pdf(v_pdfs_s[ch]->GetName())->getVal(&vars)
+								+btot*_workspace_varied->pdf(v_pdfs_b[ch]->GetName())->getVal(&vars))<<endl;
+					}
+				}
+				//ret+= log(stot*v_pdfs_s[ch]->getVal(&vars)+btot*v_pdfs_b[ch]->getVal(&vars));
+				tmp = (stot+btot)*_workspace_varied->pdf(v_pdfs_sb[ch]->GetName())->getVal(&vars);	
+				retch -= log(tmp);
+			}
+
+			retch+=stot;
+			retch+=btot;
+			retch-=ntot;
+			if(_debug>=10){
+				cout<<"EvaluateChi2 in channel ["<<v_pdfs_channelname[ch]<<"]: lnQ= "<<retch<<endl;
+				cout<<"\n model_sb"<<endl;
+				_workspace_varied->pdf(v_pdfs_sb[ch]->GetName())->getParameters(*v_pdfs_observables[ch])->Print("V");
+			}
+			ret+=retch;
+		}
+		return ret;
+	}
+
+	double CountingModel::EvaluateGL(int ch, double xr){ 
+		double ret=0;
+
+		double btot = 0, stot=0;
+		int ntot = int(v_pdfs_roodataset[ch]->sumEntries());
+		double tmp;
+		for(int i=0; i<vv_pdfs_norm_scaled[ch].size(); i++){
+			if(i>=v_pdfs_sigproc[ch]) btot+=vv_pdfs_norm_scaled[ch][i];
+			else stot+=vv_pdfs_norm_scaled[ch][i];
+		}
+		RooArgSet vars(*v_pdfs_observables[ch]);
+		for(int i=0; i<ntot; i++){
+			v_pdfs_observables[ch]->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal());
+			if(_debug>=100){
+				if(i==0 or i==ntot-1 or i==ntot/2){
+					cout<<"* event "<<i<<":  m= "<<( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal()<<endl;
+					cout<<" pdfs= "<<v_pdfs_s[ch]->getVal(&vars)<<endl;
+					cout<<" pdfb= "<<v_pdfs_b[ch]->getVal(&vars)<<endl;
+					cout<<" stot= "<<stot<<" btot="<<btot<<endl;
+					cout<<" log(event) = "<<log(stot*v_pdfs_s[ch]->getVal(&vars)+btot*v_pdfs_b[ch]->getVal(&vars))<<endl;
+				}
+			}
+			ret+= log( xr*stot*v_pdfs_s[ch]->getVal(&vars)+btot*v_pdfs_b[ch]->getVal(&vars));
+		}
+
+		if(_debug>=100){
+			cout<<"EvaluateGL in channel ["<<v_pdfs_channelname[ch]<<"]: gl = "<<ret<<endl;
+			cout<<"\n model_sb"<<endl;
+			v_pdfs_sb[ch]->getParameters(*v_pdfs_observables[ch])->Print("V");
+		}
+		return ret;
+	}
+	void CountingModel::SetDataForUnbinned(vector< RooDataSet* > data){
+		for(int ch=0; ch<vv_pdfs.size(); ch++){
+			delete v_pdfs_roodataset[ch];
+		}
+		v_pdfs_roodataset.clear();
+		for(int ch=0; ch<vv_pdfs.size(); ch++){
+			vector<double> vtmp;vtmp.clear();
+			v_pdfs_roodataset.push_back(data[ch]);
+
+			for(int i=0; i<v_pdfs_roodataset[ch]->sumEntries(); i++){
+				RooRealVar *r = dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first());
+				vtmp.push_back( r->getVal() );
+			}
+			vv_pdfs_data.push_back(vtmp);
+		}
+	}
+
+	vector< RooDataSet > CountingModel::Get_v_pdfs_roodataset_toy(){
+		vector< RooDataSet > vrds; vrds.clear();
+		for(int i=0; i<v_pdfs_roodataset_toy.size(); i++){
+			vrds.push_back(*(v_pdfs_roodataset_toy[i]));
+		}
+		return vrds;
+	}
+
+	void CountingModel::AddUncertaintyOnShapeNorm(int index_channel, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, int index_correlation ){
+		// to deal with asymetric uncertainties
+		if( uncertainty_in_relative_fraction_down < 0 or uncertainty_in_relative_fraction_up < 0 ) {
+			if(pdf_type==typeTruncatedGaussian) {}; //fine
+			if( (uncertainty_in_relative_fraction_down <-1 or uncertainty_in_relative_fraction_up <-1) && pdf_type==typeLogNormal) { cout<<"logNormal type uncertainties can't have kappa < 0, exit"<<endl; exit(0);}; //fine
+		} 
+		if(pdf_type!=typeLogNormal && pdf_type!= typeTruncatedGaussian && pdf_type!=typeGamma ) {
+			cout<<"Error: Currently only implemented LogNormal, Gamma and TruncatedGaussian. Your input "<<pdf_type<<" haven't been implemented, exit"<<endl;
+			exit(0);
+		}
+		if(index_correlation <= 0) { 
+			cout<<"Error: index_correlation < 0 "<<endl;
+			exit(0);
+		}
+		vector<double> vunc; vunc.clear(); 
+		vunc.push_back(uncertainty_in_relative_fraction_down);
+		vunc.push_back(uncertainty_in_relative_fraction_up);
+		vvv_pdfs_normvariation.at(index_channel).at(index_sample).push_back(vunc);
+		vvv_pdfs_pdftype.at(index_channel).at(index_sample).push_back(pdf_type);
+		vvv_pdfs_idcorrl.at(index_channel).at(index_sample).push_back(index_correlation);
+		//ConfigUncertaintyPdfs();
+	}
+	void CountingModel::AddUncertaintyOnShapeNorm(int index_channel, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, string uncname ){
+		int index_correlation = -1; // numeration starts from 1
+		for(int i=0; i<v_uncname.size(); i++){
+			if(v_uncname[i]==uncname){
+				index_correlation = i+1;	
+				break;
+			}
+		}
+		if(index_correlation<0)  {
+			index_correlation = v_uncname.size()+1;
+			v_uncname.push_back(uncname);
+		}
+		AddUncertaintyOnShapeNorm(index_channel, index_sample, uncertainty_in_relative_fraction_down, uncertainty_in_relative_fraction_up, pdf_type, index_correlation );
+
+	}
+
+	double CountingModel::EvaluateGL(vector< vector<double> > vnorms, vector<double> vparams, double xr){ 
+		double ret=0;
+
+		for(int i=0; i<v_pdfs_floatParamsName.size(); i++){
+			if(_debug>=100) cout<<" EvaluateGL: setting value of parameter ["<<v_pdfs_floatParamsName[i]<<"] = "<<vparams[i]<<endl;
+			_workspace_varied->var(v_pdfs_floatParamsName[i].c_str())->setVal(vparams[i]);
+		}
+		for(int ch=0; ch<vv_pdfs.size(); ch++){
+			double btot = 0, stot=0;
+			int ntot = int(v_pdfs_roodataset[ch]->sumEntries());
+			double tmp=0;
+			for(int i=0; i<vnorms[ch].size(); i++){
+				if(i>=v_pdfs_sigproc[ch]) btot+=vnorms[ch][i];
+				else stot+=vnorms[ch][i];
+
+				_workspace_varied->var(vv_pdfs_normNAME[ch][i])->setVal(vnorms[ch][i]);
+				if(_debug>=10)cout<<vv_pdfs_normNAME[ch][i]<<" "<<vnorms[ch][i]<<endl;
+			}
+			RooArgSet vars(*v_pdfs_observables[ch]);
+			for(int i=0; i<ntot; i++){
+				_workspace_varied->var(v_pdfs_observables[ch]->GetName())->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal());
+				if(_debug>=100){
+					if(i==0 or i==ntot-1 or i==ntot/2){
+						cout<<"* event "<<i<<":  m= "<<( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal()<<endl;
+						cout<<" varied_pdfs= "<<_workspace_varied->pdf(v_pdfs_s[ch]->GetName())->getVal(&vars)<<endl;
+						cout<<" varied_pdfb= "<<_workspace_varied->pdf(v_pdfs_b[ch]->GetName())->getVal(&vars)<<endl;
+						cout<<" stot= "<<stot<<" btot="<<btot<<endl;
+						cout<<" log(event) = "<<log(stot*_workspace_varied->pdf(v_pdfs_s[ch]->GetName())->getVal(&vars)
+								+btot*_workspace_varied->pdf(v_pdfs_b[ch]->GetName())->getVal(&vars))<<endl;
+					}
+				}
+				tmp+= log( xr*stot*_workspace_varied->pdf(v_pdfs_s[ch]->GetName())->getVal(&vars)
+						+btot*_workspace_varied->pdf(v_pdfs_b[ch]->GetName())->getVal(&vars));
+			}
+
+			if(_debug>=10){
+				cout<<"EvaluateGL in channel ["<<v_pdfs_channelname[ch]<<"]: gl = "<<tmp<<endl;
+				cout<<"\n model_sb"<<endl;
+				_workspace_varied->pdf(v_pdfs_sb[ch]->GetName())->getParameters(*v_pdfs_observables[ch])->Print("V");
+			}
+			ret+=tmp;
+		}
+		return ret;
+	}
+
+	void CountingModel::AddUncertaintyOnShapeParam(string pname, double mean, double sigmaL, double sigmaR, double rangeMin, double rangeMax ){
+		int index_correlation = -1; // numeration starts from 1
+		sigmaL = fabs(sigmaL);
+		sigmaR = fabs(sigmaR);
+		for(int i=0; i<v_uncname.size(); i++){
+			if(v_uncname[i]==pname){
+				index_correlation = i+1;	
+				break;
+			}
+		}
+		if(index_correlation<0)  {
+			index_correlation = v_uncname.size()+1;
+			v_uncname.push_back(pname);
+		}
+
+		if(rangeMax==rangeMin){
+			rangeMin = mean - 4*sigmaL;
+			rangeMax = mean + 4*sigmaR;
+		}
+		
+		vector<double> vunc; vunc.clear(); 
+		vunc.push_back(mean);
+		vunc.push_back(sigmaL);
+		vunc.push_back(sigmaR);
+		vunc.push_back(rangeMin);
+		vunc.push_back(rangeMax);
+		for(int i = v_pdfs_floatParamsUnc.size(); i<=index_correlation; i++){
+			v_pdfs_floatParamsUnc.push_back(vunc);
+		}
+
+		TString s = pname;
+		cout<<" * Adding floating parameter: "<<pname<<endl;
+		_workspace_varied->factory(TString::Format("%s_x[%f,%f]", pname.c_str(), rangeMin, rangeMax));
+		cout<<pname<<"_x added"<<endl;
+		_workspace_varied->factory(TString::Format("BifurGauss::%s_bfg(%s_x, %f, %f, %f )", pname.c_str(), pname.c_str(), mean, sigmaL, sigmaR));
+		cout<<pname<<"_bfg added"<<endl;
+
+		v_pdfs_floatParamsName.push_back(pname);
+		v_pdfs_floatParamsIndcorr.push_back(index_correlation);
 	}
 };

@@ -7,7 +7,8 @@ EXEC = test/Significance_dataCard.exe \
 	test/Bayesian_dataCard.exe \
 	test/Bayesian_2dataCards.exe \
 	test/ProfileLikelihoodApproxLimit.exe \
-	test/lands.exe
+	test/lands.exe\
+	test/unbinned.exe
 
 SOURCES = $(wildcard src/*.cc)
 COMPONENTS = $(patsubst src%.cc,bin%.o,$(SOURCES))
@@ -16,7 +17,7 @@ CC = g++
 CFLAGS = -fPIC $(shell root-config --cflags)  -I ./include -I ${ROOTSYS}/include 
 
 LINKER = g++
-LINKERFLAGS = $(shell root-config --libs --ldflags) -lMinuit 
+LINKERFLAGS = $(shell root-config --libs --ldflags) -lMinuit -lRooFit -lRooFitCore
 
 ifeq ($(shell root-config --platform),macosx)
 	MACOSXFLAGS = -dynamiclib -undefined dynamic_lookup -Wl,-x -O -Xlinker -bind_at_load -flat_namespace

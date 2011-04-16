@@ -46,6 +46,7 @@ namespace lands{
 		VChannelVSample vv_sigbks = cms_global -> Get_vv_exp_sigbkgs(); 
 		vector<int> v_pdftype = cms_global->Get_v_pdftype();
 		vector<double> v_GammaN = cms_global->Get_v_GammaN();
+		vector< vector<double> > v_paramsUnc = cms_global->Get_v_pdfs_floatParamsUnc();
 
 		Double_t chisq = 0;
 		int nchs = cms_global->NumOfChannels();
@@ -182,7 +183,12 @@ namespace lands{
 				chisq +=( tc - vdata_global[c]);
 				//			chisq +=( tc ); //- vdata_global[c]); // to be identical with ATLAS TDR description, for limit only
 			}else chisq += (tc-vdata_global[c] - vdata_global[c]*log(tc/vdata_global[c]));
-			//		}else chisq += (tc - vdata_global[c]*log(tc));   // to be identical with ATLAS TDR description, for limit only
+			//		else chisq += (tc - vdata_global[c]*log(tc));   // to be identical with ATLAS TDR description, for limit only
+		}
+		if(cms_global->hasParametricShape()){
+			//for(int ch=0; ch<cms_global->Get_vv_pdfs().size(); ch++)
+			//	chisq+=	cms_global->EvaluateChi2(ch);		
+			chisq+=	cms_global->EvaluateChi2(par);		
 		}
 		// to be identical with ATLAS TDR description, for limit only
 		//http://cdsweb.cern.ch/record/1159618/files/Higgs%20Boson%20%28p1197%29.pdf
@@ -207,6 +213,27 @@ namespace lands{
 						tmp = (k-1)*log(par[u]) - par[u];
 						chisq-=tmp*2; // we are evaluating chisq = -2 * ( ln(Q_H1) - ln(Q_H0) )
 						break;
+					case typeBifurcatedGaussian:
+						{
+							Double_t arg = par[u] - v_paramsUnc[u][0]; // x-mean
+
+							Double_t coef(0.0);
+
+							if (arg < 0.0){
+								double sigmaL = v_paramsUnc[u][1];
+								if (TMath::Abs(sigmaL) > 1e-30) {
+									coef = 1./(sigmaL*sigmaL);
+								}
+							} else {
+								double sigmaR = v_paramsUnc[u][2];
+								if (TMath::Abs(sigmaR) > 1e-30) {
+									coef = 1./(sigmaR*sigmaR);
+								}
+							}
+
+							chisq+= arg*arg*coef;
+							break;
+						}
 					default:
 						break;
 				}
@@ -254,10 +281,11 @@ namespace lands{
 			vector<int> v_pdftype = cms_global->Get_v_pdftype();
 			vector<double> v_TG_maxUnc = cms_global->Get_v_TruncatedGaussian_maxUnc();
 			vector<double> v_GammaN = cms_global->Get_v_GammaN();
+			vector< vector<double> > v_paramsUnc = cms_global->Get_v_pdfs_floatParamsUnc();
+			vector<string> v_uncname = cms_global->Get_v_uncname();
 			double maxunc;
 			for(int i=1; i<=npars; i++){
-				TString sname; 
-				sname.Form("p%d",i);
+				TString sname=v_uncname[i-1]; 
 				switch (v_pdftype[i]){
 					case typeShapeGaussianLinearMorph:
 					case typeShapeGaussianQuadraticMorph:
@@ -272,6 +300,9 @@ namespace lands{
 						break;
 					case typeGamma:
 						myMinuit->mnparm(i, sname, v_GammaN[i], 0.5, 0, 100000, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
+						break;
+					case typeBifurcatedGaussian:
+						myMinuit->mnparm(i, sname, v_paramsUnc[i][0], 0.1, v_paramsUnc[i][3], v_paramsUnc[i][4], ierflg  );
 						break;
 					default:
 						cout<<"pdftype not yet defined:  "<<v_pdftype[i]<<", npars="<<npars<<", i="<<i<<endl;
@@ -313,7 +344,7 @@ namespace lands{
 				par = new double[npars+1];
 				par[0]=mu;
 				for(int i=1; i<=npars; i++){
-					par[i] = 1.;
+					par[i] = 1.;  // FIXME  why 1 ?    not 0 ?
 				}
 
 				Chisquare(tmp, 0, l, par, 0);
@@ -488,7 +519,9 @@ namespace lands{
 				}
 
 				if(_debug>=10)cout<<" \t channel "<<i<<" s="<<vs[i]<<" b="<<vb[i]<<" d="<<vd[i]<<" lognoverb="<<lognoverb[i]<<endl;	
-
+			}
+			for(int i=0; i<_model->Get_vv_pdfs().size(); i++){
+				Q_b_data+= _model->EvaluateLnQ(i, 0);// evaluate lnQ in channel i,  on the data (0) ,   1 for toy 
 			}
 		}else if(test_statistics==2){
 			// here Q =  2ln(L_sb/L_b),  will correct in later stage to -2lnQ
@@ -636,22 +669,23 @@ namespace lands{
 
 
 			if(test_statistics==1){
-				vector< vector<double> > vv = _model->FluctuatedNumbers();
-				for(int ch=0; ch<_nchannels; ch++){	
-					double totbkg = 0, totsig=0; 
-					for(int isamp=0; isamp<vv[ch].size(); isamp++){
-						if(isamp<_model->GetNSigprocInChannel(ch)) totsig+=vv[ch][isamp];
-						else totbkg+=vv[ch][isamp];
+				// change to " flutuate rates before throw H0 and then flutuate again to throw H1 ",  was "flutuate once and throw both H0 and H1"
+				if( sbANDb_bOnly_sbOnly != 1 ){
+					vdata_global =  _model->GetToyData_H1();
+					for(int ch=0; ch<_nchannels; ch++){
+						Q_sb[i] += (vdata_global[ch]*lognoverb[ch]) ;
 					}
-					if( (_model->AllowNegativeSignalStrength()==true || totsig > 0) && totbkg > 0 ) {
-						if( sbANDb_bOnly_sbOnly != 1 ){
-							nsbi = _rdm->Poisson( totsig + totbkg );	
-							Q_sb[i] += (nsbi*lognoverb[ch]) ;
-						}
-						if( sbANDb_bOnly_sbOnly != 2 ){
-							nbi  = _rdm->Poisson(totbkg);
-							Q_b[i]  += (nbi *lognoverb[ch]) ;
-						}
+					for(int ch=0; ch<_model->Get_vv_pdfs().size(); ch++){
+						Q_sb[i] += _model->EvaluateLnQ(ch, 1);// evaluate lnQ in channel i,  on the data (0) ,   1 for toy 
+					}
+				}
+				if( sbANDb_bOnly_sbOnly != 2 ){
+					vdata_global = (VDChannel)_model->GetToyData_H0();
+					for(int ch=0; ch<_nchannels; ch++){
+						Q_b[i] += (vdata_global[ch]*lognoverb[ch]) ;
+					}
+					for(int ch=0; ch<_model->Get_vv_pdfs().size(); ch++){
+						Q_b[i]+= _model->EvaluateLnQ(ch, 1);// evaluate lnQ in channel i,  on the data (0) ,   1 for toy 
 					}
 				}
 			}else if(test_statistics==2){
@@ -778,7 +812,6 @@ namespace lands{
 		delete [] n; delete [] noverb; delete [] lognoverb;
 		return true;
 	}
-
 	void CLsBase::ProcessM2lnQ(){
 		Sort(_nexps, Q_b, iq_b, 0); // rank from small to large
 		Sort(_nexps, Q_sb, iq_sb, 0);
@@ -1003,6 +1036,9 @@ namespace lands{
 				if(vs[i] > 0 && vb[i] > 0) {
 					Q_b_data    +=(vd[i]*log((vs[i]+vb[i])/vb[i]));
 				}
+			}
+			for(int i=0; i<_model->Get_vv_pdfs().size(); i++){
+				Q_b_data+= _model->EvaluateLnQ(i, 0);// evaluate lnQ in channel i,  on the data (0) ,   1 for toy 
 			}
 			return -2*(Q_b_data-_nsig);
 		}else if(test_statistics==2){

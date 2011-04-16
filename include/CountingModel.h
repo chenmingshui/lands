@@ -21,7 +21,12 @@
 #include <string>
 #include "CRandom.h"
 #include "Utilities.h"
+#include "RooAbsPdf.h"
+#include "RooRealVar.h"
+#include "RooBifurGauss.h"
+#include "RooWorkspace.h"
 
+using namespace std;
 namespace lands{
 	typedef vector<double> VDChannel;
 	//typedef vector<int> VIChannel;
@@ -30,7 +35,8 @@ namespace lands{
 	typedef vector< vector< vector<int> > > VChannelVSampleVUncertainty;
 	typedef vector< vector< vector< vector<double> > > > VChannelVSampleVUncertaintyVParameter;
 
-	enum enumPdfType {typeLogNormal=1, typeTruncatedGaussian=2, typeGamma=3, typeShapeGaussianLinearMorph=4, typeShapeGaussianQuadraticMorph=5, typeControlSampleInferredLogNormal=11 };
+	enum enumPdfType {typeLogNormal=1, typeTruncatedGaussian=2, typeGamma=3, typeShapeGaussianLinearMorph=4, typeShapeGaussianQuadraticMorph=5, 
+		typeBifurcatedGaussian=6, typeControlSampleInferredLogNormal=11 };
 	// for uncertainties only affecting Shape, we can choose different morphing algorithm.  in commom, user must provide three templates:  norminal,  shift_1sigma_up, shift_1sigma_down
 	// i.e. 3 parameters for each shape uncertainty in each bin .... ,  the interface alway do normalization (to unity) for all three templates.
 	
@@ -81,7 +87,7 @@ namespace lands{
 			void Print(int printLevel=0);
 			bool Check();
 
-			VChannelVSample FluctuatedNumbers();	
+			VChannelVSample FluctuatedNumbers(double *par = 0);	
 			VIChannel GetToyData_H0();// background only hypothesis
 			VIChannel GetToyData_H1();// alternative hypothesis
 			
@@ -125,6 +131,47 @@ namespace lands{
 			vector<int> GetListOfShapeUncertainties(int c, int p){ return vvv_shapeuncindex[c][p]; }; // need make check
 			void SetMoveUpShapeUncertainties(bool b){bMoveUpShapeUncertainties=b;};
 			bool GetMoveUpShapeUncertainties(){return bMoveUpShapeUncertainties;};
+
+
+			// start to add parametric shape into model
+			bool hasParametricShape(){return bHasParametricShape;};
+			vector< vector<RooAbsPdf*> > Get_vv_pdfs(){return vv_pdfs;};
+			vector< vector<double *> > Get_vv_pdfs_params(){return vv_pdfs_params;}; //nominal parameters for each pdf
+			vector< vector<double> > Get_vv_pdfs_norm(){return vv_pdfs_norm;}; //normalization of each pdf, i.e. expected number of events in each process 
+			vector< vector<int> > Get_vv_pdfs_npar(){return vv_pdfs_npar;}; // number of parameters for each pdf
+			vector< int > Get_v_pdfs_nbin(){return v_pdfs_nbin;}; // need for throwing random numbers,  should consistent for all pdfs in a channel, by default 100 
+			vector< double > Get_v_pdfs_xmin(){return v_pdfs_xmin;};
+			vector< double > Get_v_pdfs_xmax(){return v_pdfs_xmax;};
+			vector< vector<double> > Get_vv_pdfs_data(){return vv_pdfs_data;}; // in each channel, it has a list of events
+			// uncertainties ....   each source affects parameters  -->  two additional sets of parameters
+			vector< vector< vector<int> > > Get_vvv_pdfs_idcorrl(){return vvv_pdfs_idcorrl;};
+			vector< vector< vector<int> > > Get_vvv_pdfs_pdftype(){return vvv_pdfs_pdftype;};
+			// three types of uncertainties: 1. only affect shape;  2. only affect normalization; 3. affect both 
+			vector< vector< vector<int> > > Get_vvv_pdfs_unctype(){return vvv_pdfs_unctype;};
+			vector< vector< vector<double*> > > Get_vvv_pdfs_params_up(){return vvv_pdfs_params_up;}; // correponding to up shift of the uncertainty source, e.g. jet energy scale
+			vector< vector< vector<double*> > > Get_vvv_pdfs_params_down(){return vvv_pdfs_params_down;}; //  correponding to down shift of the uncertainty source, e.g. jet energy scale
+			vector< vector< vector< vector<double> > > > Get_vvv_pdfs_normvariation(){return vvv_pdfs_normvariation;}; // correponding to normalization changes of the uncertainty source
+			vector< vector<double *> > Get_vv_pdfs_params_varied(){return vv_pdfs_params_varied;}; //nominal parameters for each pdf
+			vector< vector<double> > Get_vv_pdfs_norm_varied(){return vv_pdfs_norm_varied;}; //normalization of each pdf, i.e. expected number of events in each process 
+			vector< vector<double> > Get_vv_pdfs_data_toy(){return vv_pdfs_data_toy;}; // in each channel, it has a list of events
+			vector<int> Get_v_pdfs_sigproc(){return v_pdfs_sigproc;};
+			vector< RooDataSet > Get_v_pdfs_roodataset_toy(); // in each channel, it has a list of events
+			vector< double > Get_v_pdfs_floatParamsVaried(){return v_pdfs_floatParamsVaried;};
+			vector< vector< double > >Get_v_pdfs_floatParamsUnc(){return v_pdfs_floatParamsUnc;};
+
+
+			void AddChannel(string channel_name, RooRealVar* observable, vector<RooAbsPdf*> sigPdfs, vector<double> sigNorms, vector<RooAbsPdf*> bkgPdfs, vector<double> bkgNorms, RooWorkspace *w );
+			// need to add names of each parameter .... 
+			double EvaluateLnQ(int ch, int dataOrToy); // for Likelihood ratio
+			double EvaluateChi2(double *par);          // for Chi2
+			double EvaluateGL(int ch, double xr); // for bayesian 
+			double EvaluateGL(vector< vector<double> > vvnorms, vector<double> vparams, double xr); // for bayesian 
+			void AddObservedDataSet(int index_channel, RooDataSet* rds);
+			void SetDataForUnbinned(vector< RooDataSet*> data);
+			void AddUncertaintyOnShapeNorm(int index_channel, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, int index_correlation );
+			void AddUncertaintyOnShapeNorm(int index_channel, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, string uncname);
+			void AddUncertaintyOnShapeParam(string pname, double mean, double sigmaL, double sigmaR, double rangeMin=0, double rangeMax=0 );
+
 		private:
 			VDChannel v_data;
 			VChannelVSample vv_exp_sigbkgs;
@@ -133,22 +180,22 @@ namespace lands{
 			VChannelVSampleVUncertainty vvv_pdftype;
 			VChannelVSampleVUncertainty vvv_idcorrl;
 
-			vector<std::string> v_channelname;
+			vector<std::string> v_channelname; // start from 0 
 
 			CRandom *_rdm;
 			bool b_systematics;
 
 			vector<double> v_TruncatedGaussian_maxUnc;// record the maximum uncertainty for each uncorrelated source
-			vector<int> v_pdftype;
+			vector<int> v_pdftype; // 0th = -1,  if take a pdftype for idcorrl, then the indice is idcorrl
 			double _common_signal_strength;
-			int max_uncorrelation;
+			int max_uncorrelation; // 
 			void ConfigUncertaintyPdfs();
 
 			bool b_AllowNegativeSignalStrength;
 
 			vector<double> v_GammaN; // record the number of sideband(or MC raw) events for each uncorrelated source
 
-			vector<std::string> v_uncname; 
+			vector<std::string> v_uncname; // start from 0,   if take a name for idcorrl, then the indice is idcorrl-1; 
 			int _debug;
 
 			vector<int> v_sigproc; // number of signal processes in each channel
@@ -160,6 +207,54 @@ namespace lands{
 
 			bool bMoveUpShapeUncertainties;
 
+
+			//// start to add unbinned parametric shape into model,  for only 1-dimention 
+			bool bHasParametricShape;// for both binned and unbinned 
+			vector< vector<RooAbsPdf*> > vv_pdfs; // every process has its own pdf, in each parametric channel
+			vector< vector<double *> > vv_pdfs_params; //nominal parameters for each pdf
+			vector< vector<double> > vv_pdfs_norm; //normalization of each pdf, i.e. expected number of events in each process 
+			vector< vector<double> > vv_pdfs_norm_scaled; //normalization of each pdf, i.e. expected number of events in each process 
+			vector< vector<int> > vv_pdfs_npar; // number of parameters for each pdf
+			vector< int > v_pdfs_nbin; // need for throwing random numbers,  should consistent for all pdfs in a channel, by default 100 
+			vector< double > v_pdfs_xmin;
+			vector< double > v_pdfs_xmax;
+			vector< vector<double> > vv_pdfs_data; // in each channel, it has a list of events
+			// uncertainties ....   each source affects parameters  -->  two additional sets of parameters
+			vector< vector< vector<int> > > vvv_pdfs_idcorrl;
+			vector< vector< vector<int> > > vvv_pdfs_pdftype;
+			// three types of uncertainties: 1. only affect shape;  2. only affect normalization; 3. affect both 
+			vector< vector< vector<int> > > vvv_pdfs_unctype;
+			vector< vector< vector<double*> > > vvv_pdfs_params_up; // correponding to up shift of the uncertainty source, e.g. jet energy scale
+			vector< vector< vector<double*> > > vvv_pdfs_params_down; //  correponding to down shift of the uncertainty source, e.g. jet energy scale
+			vector< vector< vector< vector<double> > > > vvv_pdfs_normvariation; // correponding to normalization changes of the uncertainty source
+			vector< vector<double *> > vv_pdfs_params_varied; //nominal parameters for each pdf
+			vector< vector<double> > vv_pdfs_norm_varied; //normalization of each pdf, i.e. expected number of events in each process 
+			vector< vector<double> > vv_pdfs_data_toy; // in each channel, it has a list of events
+			vector<int> v_pdfs_sigproc;// number of signal processes in each channel
+			vector<std::string> v_pdfs_channelname;
+			vector< vector<std::string> > vv_pdfs_procname;
+
+			vector< RooAbsPdf* > v_pdfs_sb; // tot pdf for s+b model    in each channel 
+			vector< RooAbsPdf* > v_pdfs_b; //  tot pdf for b-only model  in each channel
+			vector< RooAbsPdf* > v_pdfs_s; //  tot pdf for s-only model  in each channel
+
+			vector< vector< vector<double*> > > vvv_pdfs_params_min; // correponding to max shift of down side of the uncertainty source, e.g. jet energy scale
+			vector< vector< vector<double*> > > vvv_pdfs_params_max; //  correponding to max shift of up side of the uncertainty source, e.g. jet energy scale
+
+			vector<RooRealVar*> v_pdfs_observables; // observable in each channel
+			vector<RooDataSet*>  v_pdfs_roodataset_toy;
+			vector<RooDataSet*>  v_pdfs_roodataset; //
+
+			vector< vector<TString> > vv_pdfs_normNAME;
+			vector< vector< vector<RooRealVar*> > > vvv_pdfs_paramsRRV; //nominal parameters for each pdf
+
+			RooWorkspace * _workspace;
+			RooWorkspace * _workspace_varied;
+
+			vector<int> v_pdfs_floatParamsIndcorr;      // only for params
+			vector<string> v_pdfs_floatParamsName;     // only for params
+			vector<double> v_pdfs_floatParamsVaried;  // only for params
+			vector< vector<double> > v_pdfs_floatParamsUnc; // from 0 to max_uncorl
 	};
 	CountingModel CombineModels(CountingModel *cms1, CountingModel *cms2);
 };
