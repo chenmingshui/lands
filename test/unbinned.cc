@@ -65,6 +65,7 @@ int main(int argc, const char*argv[]){
 	/*
 	 * combining at most 100 datacards
 	 */
+	/*
 	CountingModel tmp1[100];
 	CountingModel *tmp[100];// = new CountingModel(); 
 	if(datacards.size()>100) {cout<<"too many datacards "<<datacards.size()<<endl; exit(0);}
@@ -87,27 +88,88 @@ int main(int argc, const char*argv[]){
 		cms = &tmp1[datacards.size()-1];
 	}else{exit(0);}
 	cout<<"totally "<<datacards.size()<<" data cards combined"<<endl;
+	*/
 
-	TFile *f = new TFile("/data/Projects/cvs/HiggsAnalysis/CombinedLimit/data/benchmarks/shapes/simple-shapes-UnbinnedParam.root");	
-	RooWorkspace *w = (RooWorkspace*)f->Get("w");
-	RooAbsPdf *sigpdf = w->pdf("signal");
-	RooAbsPdf *bkgpdf = w->pdf("background");
-	RooRealVar *x = w->var("x");
-	x->setRange(0, 10);
-	sigpdf->setNormRange("x");
-	bkgpdf->setNormRange("x");
+	
+	TFile *f4e = new TFile("/data/Projects/cvs/HiggsAnalysis/CombinedLimit/data/lhc-hcg/cms-hzz-1fb/ws_140_4e.root");
+	RooWorkspace *w4e = (RooWorkspace*)f4e->Get("workspace");
+	RooAbsPdf *sigpdf4e = w4e->pdf("signal");
+	RooAbsPdf *bkgpdf4e = w4e->pdf("background");
+	RooRealVar *x4e = w4e->var("CMS_zz4l_mass"); 
+	vector<RooAbsPdf*> vs4e, vb4e;
+	vs4e.push_back(sigpdf4e);
+	vb4e.push_back(bkgpdf4e);
+	vector<double> vsnorm4e, vbnorm4e;
+	vsnorm4e.push_back(0.36);
+	vbnorm4e.push_back(2.8);
+	cms->AddChannel("fourE", x4e, vs4e, vsnorm4e, vb4e, vbnorm4e, w4e );
+	cms->AddObservedDataSet(0, (RooDataSet*)w4e->data("backgroundData"));
+	cms->AddUncertaintyOnShapeNorm(0, 0, 0.04, 0.04, 1, "lumi" );// in relative fraction
+	cms->AddUncertaintyOnShapeNorm(0, 0, 0.08, 0.08, 1, "pdf_gg" );
+	cms->AddUncertaintyOnShapeNorm(0, 0, 0.10, 0.10, 1, "QCDscale_ggH" );
+	cms->AddUncertaintyOnShapeNorm(0, 0, 0.01, 0.01, 1, "CMS_eff_b" );
+	cms->AddUncertaintyOnShapeNorm(0, 1, 0.04, 0.04, 1, "lumi" );// in relative fraction
+	cms->AddUncertaintyOnShapeNorm(0, 1, 0.02, 0.02, 1, "pdf_qqbar" );
+	cms->AddUncertaintyOnShapeNorm(0, 1, 0.03, 0.03, 1, "QCDscale_qqVV" );
+	cms->AddUncertaintyOnShapeNorm(0, 1, 0.01, 0.01, 1, "CMS_eff_b" );
+	cms->AddUncertaintyOnShapeParam("CMS_zz4e_alpha", 0.96, 0.2, 0.2);//parameter name,  mean,  bifurcated gaussian L, R,  range Min, Max
+	cms->AddUncertaintyOnShapeParam("CMS_zz4e_sigma_sig", 3.0, 0.3, 0.3);//parameter name,  mean,  bifurcated gaussian L, R,  range Min, Max
 
-	vector<RooAbsPdf*> vs, vb;
-	vs.push_back(sigpdf);
-	vb.push_back(bkgpdf);
-	vector<double> vsnorm, vbnorm;
-	vsnorm.push_back(10);
-	vbnorm.push_back(85);
-	cms->AddChannel("testHiggs", x, vs, vsnorm, vb, vbnorm, w );
-	cms->AddObservedDataSet(0, (RooDataSet*)w->data("data_obs"));
-	//cms->AddUncertaintyOnShapeNorm(0, 0, 0.6, 0.6, 1, "hello" );// in relative fraction
-	//cms->AddUncertaintyOnShapeNorm(0, 1, 0.6, 0.6, 1, "hello" );
-	cms->AddUncertaintyOnShapeParam("sigma", 1, 2, 2, 0.4, 4  );//parameter name,  mean,  bifurcated gaussian L, R,  range Min, Max
+	TFile *f4mu = new TFile("/data/Projects/cvs/HiggsAnalysis/CombinedLimit/data/lhc-hcg/cms-hzz-1fb/ws_140_4mu.root");
+	RooWorkspace *w4mu = (RooWorkspace*)f4mu->Get("workspace");
+	RooAbsPdf *sigpdf4mu = w4mu->pdf("signal"); sigpdf4mu->SetName("fourMu_signal");
+	RooAbsPdf *bkgpdf4mu = w4mu->pdf("background");bkgpdf4mu->SetName("fourMu_background");
+	RooRealVar *x4mu = w4mu->var("CMS_zz4l_mass");  x4mu->SetName("fourMu_CMS_zz4l_mass");
+	vector<RooAbsPdf*> vs4mu, vb4mu;
+	vs4mu.push_back(sigpdf4mu);
+	vb4mu.push_back(bkgpdf4mu);
+	vector<double> vsnorm4mu, vbnorm4mu;
+	vsnorm4mu.push_back(0.49);
+	vbnorm4mu.push_back(1.7);
+	cms->AddChannel("fourMU", x4mu, vs4mu, vsnorm4mu, vb4mu, vbnorm4mu, w4mu );
+	cms->AddObservedDataSet(1, (RooDataSet*)w4mu->data("backgroundData"));
+	cms->AddUncertaintyOnShapeNorm(1, 0, 0.04, 0.04, 1, "lumi" );// in relative fraction
+	cms->AddUncertaintyOnShapeNorm(1, 0, 0.08, 0.08, 1, "pdf_gg" );
+	cms->AddUncertaintyOnShapeNorm(1, 0, 0.10, 0.10, 1, "QCDscale_ggH" );
+	cms->AddUncertaintyOnShapeNorm(1, 0, 0.01, 0.01, 1, "CMS_eff_b" );
+	cms->AddUncertaintyOnShapeNorm(1, 1, 0.04, 0.04, 1, "lumi" );// in relative fraction
+	cms->AddUncertaintyOnShapeNorm(1, 1, 0.02, 0.02, 1, "pdf_qqbar" );
+	cms->AddUncertaintyOnShapeNorm(1, 1, 0.03, 0.03, 1, "QCDscale_qqVV" );
+	cms->AddUncertaintyOnShapeNorm(1, 1, 0.01, 0.01, 1, "CMS_eff_b" );
+	cms->AddUncertaintyOnShapeParam("CMS_zz4mu_alpha", 1.23, 0.4, 0.4);//parameter name,  mean,  bifurcated gaussian L, R,  range Min, Max
+	cms->AddUncertaintyOnShapeParam("CMS_zz4mu_sigma_sig", 1.44, 0.14, 0.14);//parameter name,  mean,  bifurcated gaussian L, R,  range Min, Max
+
+	
+	TFile *f2mu2e = new TFile("/data/Projects/cvs/HiggsAnalysis/CombinedLimit/data/lhc-hcg/cms-hzz-1fb/ws_140_2mu2e.root");
+	RooWorkspace *w2mu2e = (RooWorkspace*)f2mu2e->Get("workspace");
+	RooAbsPdf *sigpdf2mu2e = w2mu2e->pdf("signal"); sigpdf2mu2e->SetName("twoMuE_signal");
+	RooAbsPdf *bkgpdf2mu2e = w2mu2e->pdf("background");bkgpdf2mu2e->SetName("twoMuE_background");
+	RooRealVar *x2mu2e = w2mu2e->var("CMS_zz4l_mass");  x2mu2e->SetName("twoMuE_CMS_zz4l_mass");
+	vector<RooAbsPdf*> vs2mu2e, vb2mu2e;
+	vs2mu2e.push_back(sigpdf2mu2e);
+	vb2mu2e.push_back(bkgpdf2mu2e);
+	vector<double> vsnorm2mu2e, vbnorm2mu2e;
+	vsnorm2mu2e.push_back(0.83);
+	vbnorm2mu2e.push_back(3.9);
+	cms->AddChannel("twoMuE", x2mu2e, vs2mu2e, vsnorm2mu2e, vb2mu2e, vbnorm2mu2e, w2mu2e );
+	cms->AddObservedDataSet(2, (RooDataSet*)w2mu2e->data("backgroundData"));
+
+	cms->AddUncertaintyOnShapeNorm(2, 0, 0.04, 0.04, 1, "lumi" );// in relative fraction
+	cms->AddUncertaintyOnShapeNorm(2, 0, 0.08, 0.08, 1, "pdf_gg" );
+	cms->AddUncertaintyOnShapeNorm(2, 0, 0.10, 0.10, 1, "QCDscale_ggH" );
+	cms->AddUncertaintyOnShapeNorm(2, 0, 0.01, 0.01, 1, "CMS_eff_b" );
+	cms->AddUncertaintyOnShapeNorm(2, 1, 0.04, 0.04, 1, "lumi" );// in relative fraction
+	cms->AddUncertaintyOnShapeNorm(2, 1, 0.02, 0.02, 1, "pdf_qqbar" );
+	cms->AddUncertaintyOnShapeNorm(2, 1, 0.03, 0.03, 1, "QCDscale_qqVV" );
+	cms->AddUncertaintyOnShapeNorm(2, 1, 0.01, 0.01, 1, "CMS_eff_b" );
+	cms->AddUncertaintyOnShapeParam("CMS_zz2mu2e_alpha", 0.75, 0.2, 0.2);//parameter name,  mean,  bifurcated gaussian L, R,  range Min, Max
+	cms->AddUncertaintyOnShapeParam("CMS_zz2mu2e_sigma_sig", 1.79, 0.2, 0.2);//parameter name,  mean,  bifurcated gaussian L, R,  range Min, Max
+	
+
+
+
+
+
 
 	cms->SetUseSystematicErrors(systematics);
 	// done combination

@@ -249,6 +249,7 @@ namespace lands{
 		bool UseMinos = 0;
 
 		int npars = cms_global->Get_max_uncorrelation();
+		cout<<" MinuitFit npars =  "<<npars<<endl;
 		if( !(cms_global->IsUsingSystematicsErrors())) npars=0;
 		if( (cms_global->IsUsingSystematicsErrors() && npars>0 )  || model ==2 ){
 
@@ -285,7 +286,10 @@ namespace lands{
 			vector<string> v_uncname = cms_global->Get_v_uncname();
 			double maxunc;
 			for(int i=1; i<=npars; i++){
+				cout<<i-1<<endl;
+				cout<<"debug 1: "<<" "<<v_uncname[i-1]<<endl;
 				TString sname=v_uncname[i-1]; 
+				cout<<"debug 2"<<endl;
 				switch (v_pdftype[i]){
 					case typeShapeGaussianLinearMorph:
 					case typeShapeGaussianQuadraticMorph:

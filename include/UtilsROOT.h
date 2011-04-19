@@ -34,7 +34,12 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped, int debug=
 bool ConfigureModel(CountingModel *cms, const char* fileName, int debug=0);
 bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped, int debug=0);
 vector<TString> SplitIntoLines(TString ifileContentStripped, bool debug=false);
+TString GetWordFromLine(TString line, int index, string delim = " ");
 
 TH1F* GetHisto(string filename, string histoname);
+TObject* GetTObject(string filename, string objname);
+bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vector< vector<string> > parametricShapeLines,  int debug=0);
+RooDataSet* GetRooDataSet(string c, string p, vector< vector<string> > lines);
+RooAbsPdf* GetPdf(string c, string p, vector< vector<string> > lines);
 #endif   /* ----- #ifndef UTILSROOT_INC  ----- */
 

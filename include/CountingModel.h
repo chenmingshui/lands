@@ -167,6 +167,7 @@ namespace lands{
 			double EvaluateGL(int ch, double xr); // for bayesian 
 			double EvaluateGL(vector< vector<double> > vvnorms, vector<double> vparams, double xr); // for bayesian 
 			void AddObservedDataSet(int index_channel, RooDataSet* rds);
+			void AddObservedDataSet(string channelname, RooDataSet* rds);
 			void SetDataForUnbinned(vector< RooDataSet*> data);
 			void AddUncertaintyOnShapeNorm(int index_channel, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, int index_correlation );
 			void AddUncertaintyOnShapeNorm(int index_channel, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, string uncname);
