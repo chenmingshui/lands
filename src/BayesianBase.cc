@@ -10,6 +10,8 @@
 #include "BayesianBase.h"
 #include "Utilities.h"
 
+#include "RooDataSet.h"
+
 //----------------need implementing a super good technique to do integration
 
 
@@ -27,6 +29,8 @@ namespace lands{
 		_ngl=0;
 		_norm=0; _stot=0; _btot=0;
 		_prior=flat;
+		_NormReduction = 0;
+		_preToys = 100;
 	}
 	BayesianBase::BayesianBase(double alpha, double precision){
 		_cms=0;
@@ -40,6 +44,8 @@ namespace lands{
 		_ngl=0;
 		_norm=0; _stot=0; _btot=0;
 		_prior=flat;
+		_NormReduction = 0;
+		_preToys = 100;
 	}
 	BayesianBase::BayesianBase(CountingModel* cms, double alpha, double precision){
 		_cms=cms;
@@ -54,6 +60,8 @@ namespace lands{
 		_ngl=0;
 		_norm=0; _stot=0; _btot=0;
 		_prior=flat;
+		_NormReduction = 0;
+		_preToys = 100;
 	}
 	void BayesianBase::SetModel(CountingModel *cms){
 		//if(cms==_cms){cout<<" You are setting the same model ... "<<endl; return; }
@@ -95,9 +103,13 @@ namespace lands{
 
 		// quick calc with 100 toys 
 		if(!bsys) _nexps_to_averageout_sys=1;	
-		else _nexps_to_averageout_sys=100;	
+		else _nexps_to_averageout_sys=_preToys;	
 
 		GenToys();
+
+		_NormReduction = EvaluateNormReduction();
+		if(_debug) cout<<"  _NormReduction = "<<_NormReduction<<endl;
+
 		_norm = AverageIntegral(0);
 		if(_debug) cout<<(bsys?"w/ sys, ":"w/o sys,")<<" norm  = "<<_norm<<" , with my own approach to converge"<<endl;
 
@@ -142,6 +154,10 @@ namespace lands{
 		// resume the memory
 		_cms->SetUseSystematicErrors(bsys);
 		_nexps_to_averageout_sys=ntoys;
+
+		
+		if(_nexps_to_averageout_sys<=_preToys) { _limit=ret; return ret;}
+
 		GenToys();
 
 		// try to get p<fAlpha 
@@ -268,7 +284,7 @@ namespace lands{
 			_logscale-=lgamma(_d[ch]+1);
 		}
 		for(int ch=0; ch<_cms->Get_vv_pdfs().size(); ch++){
-			dtot+=(_cms->Get_vv_pdfs_data()[ch]).size();
+			dtot+=(_cms->Get_v_pdfs_roodataset()[ch])->sumEntries();
 		}
 		if(dtot!=_dtot) _ngl=0;
 		_dtot=dtot;
@@ -318,13 +334,13 @@ namespace lands{
 			for(int ch=0; ch<_cms->Get_vv_pdfs().size(); ch++){
 				for(int isamp=0; isamp<_cms->Get_vv_pdfs()[ch].size(); isamp++){
 					if(isamp<(_cms->Get_v_pdfs_sigproc())[ch])
-						_stot[i]=(_cms->Get_vv_pdfs_norm_varied())[ch][isamp];
-					else _btot[i]= (_cms->Get_vv_pdfs_norm_varied())[ch][isamp];
+						_stot[i]+=(_cms->Get_vv_pdfs_norm_varied())[ch][isamp];
+					else _btot[i]+= (_cms->Get_vv_pdfs_norm_varied())[ch][isamp];
 				}
 			}
-				if(_debug>=100 && i<100 ){
-					cout<<" toy  "<<i<<" stot="<<_stot[i]<<" btot="<<_btot[i]<<endl;
-				}
+			if(_debug>=100 && i<100 ){
+				cout<<" toy  "<<i<<" stot="<<_stot[i]<<" btot="<<_btot[i]<<endl;
+			}
 			_vs.push_back(s);
 			_vb.push_back(b);
 		}
@@ -357,7 +373,10 @@ namespace lands{
 			//	t+=_cms->EvaluateGL(i, xr);
 			//}
 			if(_prior == prior_1overSqrtS)t -= 0.5*log(_xgl[k] + rlow * _stot[iexps] );
-			sum += v = exp(_lwgl[k]+t);
+
+			//cout<< " _lwgl["<<k<<"]="<< _lwgl[k] <<" + t="<<t <<" = "<<_lwgl[k]+t<<endl;
+			sum += v = exp(_lwgl[k]+t - _NormReduction);
+			//cout<< " exp of above = "<<v<<endl;
 			if(v<DBL_EPSILON*sum) break;
 		}
 		if(_prior==flat )// PRIOR flat
@@ -383,7 +402,7 @@ namespace lands{
 			//}
 
 			if(_prior==flat)
-				ret += exp(t);
+				ret += exp(t - _NormReduction);
 			if(_prior==corr){
 				ret += _stot[i] * exp(t);
 				//ret +=  exp(t)/_stot[i];
@@ -439,5 +458,35 @@ namespace lands{
 		mean = meantmp;
 		return sqrt(v/(double)ntrials);
 	}
+	int BayesianBase::EvaluateNormReduction(){
+		double ret = 0 ;
+
+		int iexps=0; double rlow = 0;
+		int i,k;
+		double sum=0, rstot;
+		if(_stot[iexps]<=0){ cout<<"total signal <= 0 ,exit "<<endl; exit(0); }
+		rstot=1./_stot[iexps];
+
+		for(k=0;k<_ngl;++k) {
+			const double xr = _xgl[k]*rstot + rlow;
+			double t = -rlow * _stot[iexps]  - _btot[iexps] + _logscale , v;
+			for(i=0;i<_nchannels;++i)
+				if(_d[i]>0)
+					t += _d[i] * log( xr*_vs[iexps][i] + _vb[iexps][i] );
+			t+=_cms->EvaluateGL(_vNorms_forShapeChannels[iexps], _vParams_forShapeChannels[iexps], xr);
+			if(_prior == prior_1overSqrtS)t -= 0.5*log(_xgl[k] + rlow * _stot[iexps] );
+			
+			double tmp =  _lwgl[k]+t; 
+			if(tmp>ret) ret = tmp;
+
+			tmp -= 500*(int)(tmp/500);
+			sum += v = exp( tmp );
+			if(v<DBL_EPSILON*sum) break;
+		}
+		
+		ret = 500*(int)(ret/500);
+		return int(ret);
+	}
 };
+
 

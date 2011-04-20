@@ -34,6 +34,7 @@ bool doExpectation; // default false;
 int toys; // number of toys to do expectation, e.g. bands and mean/median limits.   default 1000,  you must also turn on doExpectation
 int toysHybrid; // number of toys used to build CLsb, CLb, CLs, as well as number of toys per point in FeldmanCousins construction
 int toysBayesian; // number of toys used to average out nuisance paramereters in Bayesian method 
+int toysPreBayesian; // number of toys used to average out nuisance paramereters in Bayesian method, for pre estimation 
 int seed;  // default 1234;   seed of random number generator engine
 int systematics; // default 1, will determin if use systematics according to data card; if 0, then will not use systematics 
 float CL;  // default 0.95;  Confidence Level...
@@ -64,7 +65,7 @@ int main(int argc, const char*argv[]){
 	/*
 	 * combining at most 100 datacards
 	 */
-	CountingModel tmp1[100];
+	CountingModel *tmp1[100];
 	CountingModel *tmp[100];// = new CountingModel(); 
 	if(datacards.size()>100) {cout<<"too many datacards "<<datacards.size()<<endl; exit(0);}
 	for(int i=0; i<datacards.size(); i++){
@@ -77,13 +78,13 @@ int main(int argc, const char*argv[]){
 	if(datacards.size()==1) cms=tmp[0];
 	else if(datacards.size()>=2){
 		tmp1[1] = CombineModels(tmp[0], tmp[1]);
-		tmp1[1].SetUseSystematicErrors(true);
+		tmp1[1]->SetUseSystematicErrors(true);
 		if(debug)cout<<"2 data cards have been combined"<<endl;
 		for(int i=2; i<datacards.size(); i++){
-			tmp1[i] = CombineModels(&tmp1[i-1], tmp[i]);
-			tmp1[i].SetUseSystematicErrors(true);
+			tmp1[i] = CombineModels(tmp1[i-1], tmp[i]);
+			tmp1[i]->SetUseSystematicErrors(true);
 		}	
-		cms = &tmp1[datacards.size()-1];
+		cms = tmp1[datacards.size()-1];
 	}else{exit(0);}
 	cout<<"totally "<<datacards.size()<<" data cards combined"<<endl;
 	cms->SetUseSystematicErrors(systematics);
@@ -114,6 +115,7 @@ int main(int argc, const char*argv[]){
 			BayesianBase bys(cms, 1-CL, 1.e-3);
 			bys.SetDebug(debug);
 			bys.SetNumToys(toysBayesian);
+			bys.SetPreToys(toysPreBayesian);
 			bys.SetCrossSectionPrior(prior);
 			double rtmp;
 			rtmp = bys.Limit();
@@ -387,7 +389,7 @@ int main(int argc, const char*argv[]){
 			if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
 			double tmpr = 0;
 			double y0_2 =  MinuitFit(2, tmpr, tmperr) ;
-			if(debug)	cout<<y0_2<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
+			if(debug)	cout<<y0_2<<" fitter u="<<tmpr<<" +/- "<<tmperr<<endl;
 
 			double x1 =0, x2 =1;
 			double y0 = y0_1;  
@@ -740,6 +742,13 @@ void processParameters(int argc, const char* argv[]){
 		if(toysBayesian<0) toysBayesian = 1;
 	}
 
+	tmpv = options["-tPB"]; if(tmpv.size()!=1) tmpv = options["--toysPreBayesian"];
+	if( tmpv.size()!=1 ) { toysPreBayesian = 100; }
+	else {
+		toysPreBayesian = tmpv[0].Atoi();
+		if(toysPreBayesian<0) toysPreBayesian = 1;
+	}
+
 
 	// FeldmanCousins specific options
 	tmpv = options["--lowerLimit"]; 
@@ -848,6 +857,7 @@ void processParameters(int argc, const char* argv[]){
 		else if(prior==prior_1overSqrtS) cout<<"1/sqrt(r)"<<endl;
 		else cout<<"Unknow"<<endl;
 
+		cout<<"  toysPreBayesian = "<<toysPreBayesian<<endl;
 		cout<<"  toysBayesian = "<<toysBayesian<<endl;
 	}else if(method=="ProfiledLikelihood"){
 		if(!calcsignificance)cout<<(oneside==1?"  one sided":"  two sided")<<endl;
@@ -898,6 +908,7 @@ void PrintHelpMessage(){
 	printf("Bayesian specific options: \n"); 
 	printf("--prior arg (=flat)            	      Prior to use: \'flat\' (default), \'1/sqrt(r)\', \'corr\' \n"); 
 	printf("-tB [ --toysBayesian ] arg (=10000)   number of toys used to average out nuisance paramereters in Bayesian method     \n"); 
+	printf("-tPB [ --toysPreBayesian ] arg (=100)   number of toys used to average out nuisance paramereters in Bayesian pre-estimation \n"); 
 	printf(" \n"); 
 	printf("FeldmanCousins specific options: \n"); 
 	printf("--lowerLimit arg (=0)                 Compute the lower limit instead of the upper limit \n"); 

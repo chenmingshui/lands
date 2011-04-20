@@ -5,7 +5,6 @@ EXEC = test/Significance_dataCard.exe \
 	test/Bayesian.exe \
 	test/CLs_dataCard.exe \
 	test/Bayesian_dataCard.exe \
-	test/Bayesian_2dataCards.exe \
 	test/ProfileLikelihoodApproxLimit.exe \
 	test/lands.exe\
 	test/unbinned.exe

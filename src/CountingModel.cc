@@ -92,10 +92,11 @@ namespace lands{
 
 		v_pdfs_floatParamsName.clear();
 		v_pdfs_floatParamsIndcorr.clear();
+		v_pdfs_floatParamsUnc.clear();
 
 
-		_workspace = new RooWorkspace();
-		_workspace_varied = new RooWorkspace();
+		_w = new RooWorkspace();
+		_w_varied = new RooWorkspace();
 	}
 	CountingModel::~CountingModel(){
 		v_data.clear();
@@ -117,16 +118,8 @@ namespace lands{
 
 		//pdfs shapes
 		for(int i=0; i<vv_pdfs.size(); i++){
-			for(int j=0; j<vv_pdfs[i].size(); j++){
-				if(vv_pdfs[i][j]) delete vv_pdfs[i][j];
-				//if(vv_pdfs_params[i][j]) delete vv_pdfs_params[i][j];
-			}
-			if(v_pdfs_sb[i]) delete v_pdfs_sb[i];
-			if(v_pdfs_b[i]) delete v_pdfs_b[i];
-			if(v_pdfs_s[i]) delete v_pdfs_s[i];
-			if(v_pdfs_observables[i]) delete v_pdfs_observables[i];
-			if(v_pdfs_roodataset[i]) delete v_pdfs_roodataset[i];
-			if(v_pdfs_roodataset_toy[i]) delete v_pdfs_roodataset_toy[i];
+		//	if(v_pdfs_roodataset[i]) delete v_pdfs_roodataset[i];
+		//	if(v_pdfs_roodataset_toy[i]) delete v_pdfs_roodataset_toy[i];
 		}
 		vv_pdfs.clear();	
 		vv_pdfs_params.clear();	
@@ -161,10 +154,11 @@ namespace lands{
 		vvv_pdfs_paramsRRV.clear();
 		v_pdfs_floatParamsName.clear();
 		v_pdfs_floatParamsIndcorr.clear();
+		v_pdfs_floatParamsUnc.clear();
 
 
-		delete _workspace;
-		delete _workspace_varied;
+	//	delete _w;
+	//	delete _w_varied;
 	}
 	void CountingModel::AddChannel(std::string channel_name, double num_expected_signal, double num_expected_bkg_1, double num_expected_bkg_2, 
 			double num_expected_bkg_3, double num_expected_bkg_4, double num_expected_bkg_5, double num_expected_bkg_6 ){
@@ -364,6 +358,13 @@ namespace lands{
 	void CountingModel::AddUncertainty(int index_channel, int index_sample, double uncertainty_in_relative_fraction, int pdf_type, string uncname ){
 		AddUncertainty(index_channel, index_sample, uncertainty_in_relative_fraction, uncertainty_in_relative_fraction, pdf_type, uncname);
 	}
+	void CountingModel::AddUncertainty(string c, int index_sample, double uncertainty_in_relative_fraction, int pdf_type, string uncname ){
+		int index_channel = -1;
+		for(int i=0; i<v_channelname.size(); i++){
+			if(v_channelname[i]==c) index_channel=i;
+		}
+		AddUncertainty(index_channel, index_sample, uncertainty_in_relative_fraction, uncertainty_in_relative_fraction, pdf_type, uncname);
+	}
 	void CountingModel::AddUncertainty(int index_channel, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, string uncname ){
 		int index_correlation = -1; // numeration starts from 1
 		for(int i=0; i<v_uncname.size(); i++){
@@ -378,6 +379,13 @@ namespace lands{
 		}
 		AddUncertainty(index_channel, index_sample, uncertainty_in_relative_fraction_down, uncertainty_in_relative_fraction_up, pdf_type, index_correlation );
 
+	}
+	void CountingModel::AddUncertainty(string c, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, string uncname ){
+		int index_channel = -1;
+		for(int i=0; i<v_channelname.size(); i++){
+			if(v_channelname[i]==c) index_channel=i;
+		}
+		AddUncertainty(index_channel, index_sample, uncertainty_in_relative_fraction_down, uncertainty_in_relative_fraction_up, pdf_type, uncname);
 	}
 	void CountingModel::AddUncertainty(int index_channel, int index_sample, int npar, double *par, int pdf_type, string uncname ){
 		int index_correlation = -1; // numeration starts from 1
@@ -394,6 +402,13 @@ namespace lands{
 		AddUncertainty(index_channel, index_sample, npar, par, pdf_type, index_correlation );
 
 	}
+	void CountingModel::AddUncertainty(string c, int index_sample, int npar, double *par, int pdf_type, string uncname ){
+		int index_channel = -1;
+		for(int i=0; i<v_channelname.size(); i++){
+			if(v_channelname[i]==c) index_channel=i;
+		}
+		AddUncertainty(index_channel, index_sample, npar, par, pdf_type, uncname);
+	}
 	void CountingModel::AddUncertainty(int index_channel, int index_sample, double rho, double rho_err, double B, int pdf_type, string uncname ){
 		int index_correlation = -1; // numeration starts from 1
 		for(int i=0; i<v_uncname.size(); i++){
@@ -407,6 +422,13 @@ namespace lands{
 			v_uncname.push_back(uncname);
 		}
 		AddUncertainty(index_channel, index_sample, rho, rho_err, B, pdf_type, index_correlation );
+	}
+	void CountingModel::AddUncertainty(string c, int index_sample, double rho, double rho_err, double B, int pdf_type, string uncname ){
+		int index_channel = -1;
+		for(int i=0; i<v_channelname.size(); i++){
+			if(v_channelname[i]==c) index_channel=i;
+		}
+		AddUncertainty(index_channel, index_sample, rho, rho_err, B, pdf_type, uncname);
 	}
 
 	// LogNormal and TruncatedGaussian 
@@ -481,8 +503,22 @@ namespace lands{
 	void CountingModel::AddObservedData(int index_channel, double num_data){
 		v_data.at(index_channel)=num_data;
 	}
+	void CountingModel::AddObservedData(string c, double num_data){
+		int index_channel = -1;
+		for(int i=0; i<v_channelname.size(); i++){
+			if(v_channelname[i]==c) index_channel=i;
+		}
+		v_data.at(index_channel)=num_data;
+	}
 
 	void CountingModel::SetProcessNames(int index_channel, vector<string> vproc){
+		vv_procname.at(index_channel)=vproc;
+	}
+	void CountingModel::SetProcessNames(string c, vector<string> vproc){
+		int index_channel = -1;
+		for(int i=0; i<v_channelname.size(); i++){
+			if(v_channelname[i]==c) index_channel=i;
+		}
 		vv_procname.at(index_channel)=vproc;
 	}
 	void CountingModel::ConfigUncertaintyPdfs(){
@@ -601,7 +637,7 @@ If we need to change it later, it will be easy to do.
 								cout<<" Error:  two uncertainties with 100% correlation must be with same pdftype, exit "<<endl;
 								cout<<" Independant unc "<<indexcorrl<<"th, name "<<v_uncname[indexcorrl];
 								cout<<" should be "<<v_pdftype.back()<<", but "<<vvv_pdfs_pdftype.at(ch).at(isam).at(iunc)<<" for shape ch"<<ch<<"("<<v_pdfs_channelname[ch]<<")"
-									<<" isam"<<isam<<"("<<vv_pdfs_procname[ch][isam]<<")"
+									<<" isam"<<isam<<"("<<vv_pdfs[ch][isam]<<")"
 									<<" iunc"<<iunc<<"("<<v_uncname[indexcorrl]<<")"<<endl;
 								cout<<" The conflict unc at above process is for "<<vvv_pdfs_idcorrl[ch][isam][iunc]
 									<<"th source, name "<<v_uncname[vvv_idcorrl[ch][isam][iunc]]<<endl;
@@ -646,7 +682,7 @@ If we need to change it later, it will be easy to do.
 				for(int ch=0; ch<vv_pdfs.size(); ch++){
 					int nsigproc = v_pdfs_sigproc[ch];
 					for(int isam=0; isam<vv_pdfs[ch].size(); isam++){
-						_workspace_varied->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_varied[ch][isam]);
+						_w_varied->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_varied[ch][isam]);
 					}
 				}
 			}
@@ -694,8 +730,8 @@ If we need to change it later, it will be easy to do.
 					case typeBifurcatedGaussian:
 						{
 							if(_debug>=100) cout<<" generating new value for parameter "<<v_uncname[i-1]<<endl;
-							RooDataSet *tmpRDS =  _workspace_varied->pdf(TString::Format("%s_bfg",v_uncname[i-1].c_str()))
-								->generate(RooArgSet(*_workspace_varied->var(TString::Format("%s_x", v_uncname[i-1].c_str()))), 1);
+							RooDataSet *tmpRDS =  _w_varied->pdf(TString::Format("%s_bfg",v_uncname[i-1].c_str()))
+								->generate(RooArgSet(*_w_varied->var(TString::Format("%s_x", v_uncname[i-1].c_str()))), 1);
 							vrdm.back()= dynamic_cast<RooRealVar*> ( tmpRDS->get(0)->first() )->getVal();
 							delete tmpRDS;
 							if(_debug>=100) cout<<"  "<<vrdm.back()<<endl;
@@ -914,16 +950,16 @@ If we need to change it later, it will be easy to do.
 						}
 					}
 					if(_debug>=100) cout<<" norm varied after all unc = "<<vv_pdfs_norm_varied[ch][isam]<<endl;
-					_workspace_varied->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_varied[ch][isam]);
+					_w_varied->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_varied[ch][isam]);
 				}
 			}
 			for(int i=0; i<v_pdfs_floatParamsName.size(); i++){
 				if(_debug>=100) cout<<" setting new value for parameter "<<v_pdfs_floatParamsName[i]<<": "<<vrdm[v_pdfs_floatParamsIndcorr[i]]<<endl;
-				_workspace_varied->var(v_pdfs_floatParamsName[i].c_str())->setVal(vrdm[v_pdfs_floatParamsIndcorr[i]]);
+				_w_varied->var(v_pdfs_floatParamsName[i].c_str())->setVal(vrdm[v_pdfs_floatParamsIndcorr[i]]);
 			}
 			if(_debug>=100) {
 				cout<<"FluctuatedNumbers, varied workspace: "<<endl;
-				//_workspace_varied->Print("V"); // cause crash   ..... at some point
+				//_w_varied->Print("V"); // cause crash   ..... at some point
 			}
 		}
 
@@ -952,15 +988,15 @@ If we need to change it later, it will be easy to do.
 			for(int ch=0; ch<vv_pdfs.size(); ch++){
 				vector<double> vtmp;vtmp.clear();
 				if(_debug>=100)cout<<" in GetToyData_H0, bHasParametricShape: ch = "<<ch<<endl;
-				v_pdfs_roodataset_toy.push_back( _workspace_varied->pdf(v_pdfs_b[ch]->GetName())->generate(RooArgSet(*v_pdfs_observables[ch]), Extended()));
+				v_pdfs_roodataset_toy.push_back( _w_varied->pdf(v_pdfs_b[ch])->generate(RooArgSet(*_w->var(v_pdfs_observables[ch])), Extended()));
 
 				if(_debug>=1000)v_pdfs_roodataset_toy[ch]->Print("V");
 
 				if(_debug>=1000){
 					TString s = "H0_"; s+= (int)(10000000*_rdm->Rndm()); s+=".root";
 					TFile f(s, "RECREATE") ;
-					TH1F h("H0","H0", 100, v_pdfs_observables[ch]->getMin(), v_pdfs_observables[ch]->getMax() );
-					v_pdfs_roodataset_toy[ch]->fillHistogram(&h, RooArgList(*v_pdfs_observables[ch]));
+					TH1F h("H0","H0", 100, _w->var(v_pdfs_observables[ch])->getMin(), _w->var(v_pdfs_observables[ch])->getMax() );
+					v_pdfs_roodataset_toy[ch]->fillHistogram(&h, RooArgList(*_w->var(v_pdfs_observables[ch])));
 					f.WriteTObject(&h);
 					f.Close();
 				}
@@ -1008,17 +1044,16 @@ If we need to change it later, it will be easy to do.
 				//if(!v_pdfs_roodataset_toy[ch]->IsZombie()) delete v_pdfs_roodataset_toy[ch];
 				//v_pdfs_roodataset_toy[ch]->Delete();
 
-				//v_pdfs_roodataset_toy[ch] =(RooDataSet*) v_pdfs_sb[ch]->generate(RooArgSet(*(v_pdfs_observables[ch])), Extended());
 				if(_debug>=100)cout<<" in GetToyData_H1, bHasParametricShape: ch = "<<ch<<endl;
-				v_pdfs_roodataset_toy.push_back(_workspace_varied->pdf(v_pdfs_sb[ch]->GetName())->generate(RooArgSet(*v_pdfs_observables[ch]), Extended()));
+				v_pdfs_roodataset_toy.push_back(_w_varied->pdf(v_pdfs_sb[ch])->generate(RooArgSet(*_w->var(v_pdfs_observables[ch])), Extended()));
 
 				if(_debug>=100)v_pdfs_roodataset_toy[ch]->Print("V");
 
 				if(_debug>=1000){
 					TString s = "H1_"; s+= (int)(10000000*_rdm->Rndm()); s+=".root";
 					TFile f(s, "RECREATE") ;
-					TH1F h("H1","H1", 100, v_pdfs_observables[ch]->getMin(), v_pdfs_observables[ch]->getMax() );
-					v_pdfs_roodataset_toy[ch]->fillHistogram(&h, RooArgList(*v_pdfs_observables[ch]));
+					TH1F h("H1","H1", 100, _w->var(v_pdfs_observables[ch])->getMin(), _w->var(v_pdfs_observables[ch])->getMax() );
+					v_pdfs_roodataset_toy[ch]->fillHistogram(&h, RooArgList(*_w->var(v_pdfs_observables[ch])));
 					h.Write();
 					f.Write();
 					f.Close();
@@ -1195,8 +1230,8 @@ If we need to change it later, it will be easy to do.
 		for(int ch=0; ch<vv_pdfs_norm_scaled.size(); ch++){
 			for(int isam=0; isam<v_pdfs_sigproc[ch]; isam++){
 				vv_pdfs_norm_scaled[ch][isam]*=_common_signal_strength;
-				_workspace->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_scaled[ch][isam]);
-				_workspace_varied->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_scaled[ch][isam]);
+				_w->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_scaled[ch][isam]);
+				_w_varied->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_scaled[ch][isam]);
 			}
 		}
 
@@ -1204,18 +1239,18 @@ If we need to change it later, it will be easy to do.
 			TString s = "pdf_r"; s+=r; s+="_"; s+=".root";
 			TFile f(s, "RECREATE") ;
 			for(int ch=0; ch<vv_pdfs.size(); ch++){
-				double xmin = v_pdfs_observables[ch]->getMin();
-				double xmax = v_pdfs_observables[ch]->getMax();
+				double xmin = _w->var(v_pdfs_observables[ch])->getMin();
+				double xmax = _w->var(v_pdfs_observables[ch])->getMax();
 				TString chnm = v_pdfs_channelname[ch];	
 				TH1F hs(chnm+"_s","s", 100, xmin, xmax);
 				TH1F hb(chnm+"_b","b", 100,  xmin, xmax);
 				TH1F hsb(chnm+"_sb","sb", 100,  xmin, xmax);
-				RooArgSet vars(*v_pdfs_observables[ch]);
+				RooArgSet vars(*_w->var(v_pdfs_observables[ch]));
 				for(int x = 1; x<=100; x++){
-					v_pdfs_observables[ch]->setVal((xmax-xmin)/100.*(x-1)+xmin); 
-					hs.SetBinContent(x, v_pdfs_s[ch]->getVal(&vars));
-					hb.SetBinContent(x, v_pdfs_b[ch]->getVal(&vars));
-					hsb.SetBinContent(x, v_pdfs_sb[ch]->getVal(&vars));
+					_w->var(v_pdfs_observables[ch])->setVal((xmax-xmin)/100.*(x-1)+xmin); 
+					hs.SetBinContent(x, _w->pdf(v_pdfs_s[ch])->getVal(&vars));
+					hb.SetBinContent(x, _w->pdf(v_pdfs_b[ch])->getVal(&vars));
+					hsb.SetBinContent(x, _w->pdf(v_pdfs_sb[ch])->getVal(&vars));
 				}
 
 				hs.Write();
@@ -1259,8 +1294,8 @@ If we need to change it later, it will be easy to do.
 			}
 		}
 	}
-	CountingModel CombineModels(CountingModel *cms1, CountingModel *cms2){
-		CountingModel cms;
+	CountingModel* CombineModels(CountingModel *cms1, CountingModel *cms2){
+		CountingModel *cms = new CountingModel();
 
 		VChannelVSampleVUncertaintyVParameter tmp_vvvv_uncpar = cms1->Get_vvvv_uncpar();
 		VChannelVSampleVUncertainty tmp_vvv_pdftype=cms1->Get_vvv_pdftype();	
@@ -1269,11 +1304,11 @@ If we need to change it later, it will be easy to do.
 		for(int ch=0; ch<cms1->NumOfChannels(); ch++){
 			//cms.AddChannel(cms1->GetExpectedNumber(ch,0),cms1->GetExpectedNumber(ch,1), cms1->GetExpectedNumber(ch,2), cms1->GetExpectedNumber(ch,3),
 			//		cms1->GetExpectedNumber(ch,4), cms1->GetExpectedNumber(ch, 5), cms1->GetExpectedNumber(ch, 6));	
-			cms.AddChannel(cms1->GetChannelName(ch), cms1->Get_v_exp_sigbkgs(ch), cms1->GetNSigprocInChannel(ch));
+			cms->AddChannel(cms1->GetChannelName(ch), cms1->Get_v_exp_sigbkgs(ch), cms1->GetNSigprocInChannel(ch));
 			for(int isamp=0; isamp<tmp_vvv_pdftype.at(ch).size(); isamp++){
 				for(int iunc=0; iunc<tmp_vvv_pdftype.at(ch).at(isamp).size(); iunc++){
 					if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeLogNormal || tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeTruncatedGaussian){
-						cms.AddUncertainty(ch, isamp, 
+						cms->AddUncertainty(ch, isamp, 
 								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(0), 
 								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(1), 
 								tmp_vvv_pdftype.at(ch).at(isamp).at(iunc),
@@ -1281,7 +1316,7 @@ If we need to change it later, it will be easy to do.
 								);
 					}else if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeControlSampleInferredLogNormal
 							|| tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeGamma){
-						cms.AddUncertainty(ch, isamp, 
+						cms->AddUncertainty(ch, isamp, 
 								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(0), 
 								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(1), 
 								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(2), 
@@ -1291,7 +1326,7 @@ If we need to change it later, it will be easy to do.
 					}else if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeShapeGaussianQuadraticMorph
 							|| tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeShapeGaussianLinearMorph){
 						int npar = tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).size();
-						cms.AddUncertainty(ch, isamp, 
+						cms->AddUncertainty(ch, isamp, 
 								npar, &(tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc)[0]), 
 								tmp_vvv_pdftype.at(ch).at(isamp).at(iunc),
 								tmp_v_uncname[tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)-1]
@@ -1302,8 +1337,8 @@ If we need to change it later, it will be easy to do.
 					}
 				}
 			}	
-			cms.AddObservedData(ch, cms1->Get_v_data()[ch]);
-			cms.SetProcessNames(ch, cms1->GetProcessNames(ch));
+			cms->AddObservedData(ch, cms1->Get_v_data()[ch]);
+			cms->SetProcessNames(ch, cms1->GetProcessNames(ch));
 		}	
 
 		tmp_vvvv_uncpar = cms2->Get_vvvv_uncpar();
@@ -1311,14 +1346,14 @@ If we need to change it later, it will be easy to do.
 		tmp_vvv_idcorrl=cms2->Get_vvv_idcorrl();	
 		tmp_v_uncname = cms2->Get_v_uncname();
 		for(int ch=0; ch<cms2->NumOfChannels(); ch++){
-			int newch = cms.NumOfChannels(); // like ++
+			int newch = cms->NumOfChannels(); // like ++
 			if(cms2->GetDebug()) cout<<"Adding ch = "<<newch<<"th channel from "<<cms2->GetModelName()<<endl;
-			cms.AddChannel(cms2->GetChannelName(ch), cms2->Get_v_exp_sigbkgs(ch), cms2->GetNSigprocInChannel(ch));
-			if(cms2->GetDebug()) cout<<"now has total "<<cms.NumOfChannels()<<endl;
+			cms->AddChannel(cms2->GetChannelName(ch), cms2->Get_v_exp_sigbkgs(ch), cms2->GetNSigprocInChannel(ch));
+			if(cms2->GetDebug()) cout<<"now has total "<<cms->NumOfChannels()<<endl;
 			for(int isamp=0; isamp<tmp_vvv_pdftype.at(ch).size(); isamp++){
 				for(int iunc=0; iunc<tmp_vvv_pdftype.at(ch).at(isamp).size(); iunc++){
 					if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeLogNormal || tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeTruncatedGaussian){
-						cms.AddUncertainty(newch, isamp, 
+						cms->AddUncertainty(newch, isamp, 
 								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(0), 
 								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(1), 
 								tmp_vvv_pdftype.at(ch).at(isamp).at(iunc),
@@ -1327,7 +1362,7 @@ If we need to change it later, it will be easy to do.
 					}
 					else if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeControlSampleInferredLogNormal
 							|| tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeGamma){
-						cms.AddUncertainty(newch, isamp, 
+						cms->AddUncertainty(newch, isamp, 
 								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(0), 
 								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(1), 
 								tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(2), 
@@ -1337,7 +1372,7 @@ If we need to change it later, it will be easy to do.
 					}else if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeShapeGaussianQuadraticMorph
 							|| tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeShapeGaussianLinearMorph){
 						int npar = tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).size();
-						cms.AddUncertainty(newch, isamp, 
+						cms->AddUncertainty(newch, isamp, 
 								npar, &(tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc)[0]), 
 								tmp_vvv_pdftype.at(ch).at(isamp).at(iunc),
 								tmp_v_uncname[tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)-1]
@@ -1348,9 +1383,82 @@ If we need to change it later, it will be easy to do.
 					}
 				}
 			}	
-			cms.AddObservedData(newch, cms2->Get_v_data()[ch]);
-			cms.SetProcessNames(newch, cms2->GetProcessNames(ch));
+			cms->AddObservedData(newch, cms2->Get_v_data()[ch]);
+			cms->SetProcessNames(newch, cms2->GetProcessNames(ch));
 		}	
+
+		vector<CountingModel*> ms; ms.push_back(cms1); ms.push_back(cms2);
+		for(int m=0; m<ms.size(); m++){
+			if(ms[m]->hasParametricShape()){
+				RooWorkspace * w = ms[m]->GetWorkSpace();
+				vector<int> vsigproc = ms[m]->Get_v_pdfs_sigproc();
+				vector< vector<string> > vvpdfs = ms[m]->Get_vv_pdfs();
+				vector<TString> vobs = ms[m]->Get_v_pdfs_observables();
+				vector< vector<double> > vnorm = ms[m]->Get_vv_pdfs_norm(); 
+				vector<string> vchnames = ms[m]->Get_v_pdfs_channelname();
+				vector< RooDataSet* > vrds = ms[m]->Get_v_pdfs_roodataset();
+				tmp_vvvv_uncpar = ms[m]->Get_vvv_pdfs_normvariation();
+				tmp_vvv_pdftype=ms[m]->Get_vvv_pdfs_pdftype();	
+				tmp_vvv_idcorrl=ms[m]->Get_vvv_pdfs_idcorrl();	
+				tmp_v_uncname = ms[m]->Get_v_uncname();
+				vector< vector<double> > vparamunc = ms[m]->Get_v_pdfs_floatParamsUnc(); // from 0 to max_uncorl
+				vector<int> vparamIndcorr = ms[m]->Get_v_pdfs_floatParamsIndcorr();      // only for params
+				for(int ch=0; ch<vsigproc.size(); ch++){
+					int newch = cms->Get_vv_pdfs().size();
+					if(ms[m]->GetDebug()) cout<<"Adding ch = "<<newch<<"th channel from "<<ms[m]->GetModelName()<<endl;
+					vector<RooAbsPdf*> vs, vb;
+					vector<double> vsnorm, vbnorm;
+					for(int p =0 ; p<vvpdfs[ch].size(); p++){
+						if(p<vsigproc[ch]){
+							vs.push_back(w->pdf(vvpdfs[ch][p].c_str()));
+							vsnorm.push_back(vnorm[ch][p]);
+						}
+						else{
+							vb.push_back(w->pdf(vvpdfs[ch][p].c_str()));
+							vbnorm.push_back(vnorm[ch][p]);
+						}
+					}
+					RooRealVar*x=w->var(vobs[ch]);
+					cms->AddChannel(vchnames[ch], x, vs, vsnorm, vb, vbnorm, w);
+					if(ms[m]->GetDebug()) cout<<"  AddChannel "<<endl;
+					cms->AddObservedDataSet(vchnames[ch], vrds[ch]);
+					if(ms[m]->GetDebug()) cout<<"  AddObservedDataSet"<<endl;
+
+					// add uncertainties on norm 
+					for(int isamp=0; isamp<vvpdfs[ch].size(); isamp++){
+						for(int iunc=0; iunc<tmp_vvv_pdftype.at(ch).at(isamp).size(); iunc++){
+							if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeLogNormal || tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeTruncatedGaussian){
+								cms->AddUncertaintyOnShapeNorm(vchnames[ch], isamp, 
+										tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(0), 
+										tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(1), 
+										tmp_vvv_pdftype.at(ch).at(isamp).at(iunc),
+										tmp_v_uncname[tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)-1]
+										);
+							}
+						}
+					}
+					if(ms[m]->GetDebug()) cout<<"  AddUncertaintyOnShapeNorm"<<endl;
+					if(ms[m]->GetDebug()) cout<<"Added ch = "<<newch<<"th channel from "<<ms[m]->GetModelName()<<endl;
+				}
+
+				// add uncertainties on shape parameters
+				if(ms[m]->GetDebug()) cout<<" uncname.size="<<tmp_v_uncname.size()<<" vparamunc.size="<<vparamunc.size()<<endl;
+				if(ms[m]->GetDebug()) cout<<" "<<vparamIndcorr.size()<<" floating parameters "<<endl;
+				for(int ii=0; ii<vparamIndcorr.size(); ii++){
+					int id= vparamIndcorr[ii];
+					cms->AddUncertaintyOnShapeParam(tmp_v_uncname[id-1], vparamunc[id][0], vparamunc[id][1], vparamunc[id][2], vparamunc[id][3], vparamunc[id][4] );
+					if(ms[m]->GetDebug()) cout<<"  AddUncertaintyOnShapeParam "<<tmp_v_uncname[id-1]<<" "
+						<<vparamunc[id][0] <<" "
+							<<vparamunc[id][1] <<" "
+							<<vparamunc[id][2] <<" "
+							<<vparamunc[id][3] <<" "
+							<<vparamunc[id][4] <<" "
+							<<endl;
+				}
+			}
+		}
+
+
 
 		return cms;
 
@@ -1435,15 +1543,15 @@ If we need to change it later, it will be easy to do.
 		//RooArgSet* ras = new RooArgSet(*observable);
 		//v_pdfs_observables.push_back(ras);
 
-		//observable->SetName(TString::Format("%s_%s", channel_name.c_str(), observable->GetName()));
-		//_workspace->import(*observable, Rename(TString::Format("%s_%s", channel_name.c_str(), observable->GetName())));
-		//_workspace_varied->import(*observable, Rename(TString::Format("%s_%s", channel_name.c_str(), observable->GetName())));
-		_workspace->import(*observable);
-		_workspace_varied->import(*observable);
-		v_pdfs_observables.push_back(_workspace->var(observable->GetName()));
+		//observable->SetName(TString(channel_name)+observable->GetName());
+		//_w->import(*observable, Rename(TString::Format("%s_%s", channel_name.c_str(), observable->GetName())));
+		//_w_varied->import(*observable, Rename(TString::Format("%s_%s", channel_name.c_str(), observable->GetName())));
+		_w->import(*observable);
+		_w_varied->import(*observable);
+		v_pdfs_observables.push_back(observable->GetName());
 
 
-		vector<RooAbsPdf*> vsigbkgs; vsigbkgs.clear();
+		vector<string> vsigbkgs; vsigbkgs.clear();
 		vector< vector< vector<double> > > vvvuncpar; vvvuncpar.clear();
 		vector< vector<int> > vvpdftype; vvpdftype.clear();
 		vector< vector<int> > vvidcorrl; vvidcorrl.clear();
@@ -1458,7 +1566,7 @@ If we need to change it later, it will be easy to do.
 		vector<RooRealVar*> vrrvparams; vrrvparams.clear();
 		vector< vector<RooRealVar*> > vvrrvparams; vvrrvparams.clear();
 		for(int i=0; i<sigPdfs.size(); i++){
-			vsigbkgs.push_back(sigPdfs[i]);
+			vsigbkgs.push_back(sigPdfs[i]->GetName());
 			vvvuncpar.push_back(vvunc);
 			vvpdftype.push_back(vpdftype);
 			vvidcorrl.push_back(vidcorrl);
@@ -1468,21 +1576,21 @@ If we need to change it later, it will be easy to do.
 			vrrvnorm.push_back(sn);
 			//rrv->SetName(TString::Format("%s_%s", channel_name.c_str(), rrv->GetName()));
 			//sigPdfs[i]->SetName(TString::Format("%s_%s", channel_name.c_str(), sigPdfs[i]->GetName()));
-			//_workspace->import(*rrv, Rename(TString::Format("%s_%s", channel_name.c_str(), rrv->GetName())));
-			//_workspace->import(*sigPdfs[i], Rename(TString::Format("%s_%s", channel_name.c_str(), sigPdfs[i]->GetName())));
-			//_workspace_varied->import(*rrv, Rename(TString::Format("%s_%s", channel_name.c_str(), rrv->GetName())));
-			//_workspace_varied->import(*sigPdfs[i], Rename(TString::Format("%s_%s", channel_name.c_str(), sigPdfs[i]->GetName())));
+			//_w->import(*rrv, Rename(TString::Format("%s_%s", channel_name.c_str(), rrv->GetName())));
+			//_w->import(*sigPdfs[i], Rename(TString::Format("%s_%s", channel_name.c_str(), sigPdfs[i]->GetName())));
+			//_w_varied->import(*rrv, Rename(TString::Format("%s_%s", channel_name.c_str(), rrv->GetName())));
+			//_w_varied->import(*sigPdfs[i], Rename(TString::Format("%s_%s", channel_name.c_str(), sigPdfs[i]->GetName())));
 
-			_workspace->import(*rrv);
-			_workspace->import(*sigPdfs[i]);
-			_workspace_varied->import(*rrv);
-			_workspace_varied->import(*sigPdfs[i]);
+			_w->import(*rrv);
+			_w->import(*sigPdfs[i]);
+			_w_varied->import(*rrv);
+			_w_varied->import(*sigPdfs[i]);
 			RooArgSet *rds	= sigPdfs[i]->getParameters(*observable);
 			// need to store the list of parameters and for future modification, fluctuation 
 		}
 
 		for(int i=0; i<bkgPdfs.size(); i++){
-			vsigbkgs.push_back(bkgPdfs[i]);
+			vsigbkgs.push_back(bkgPdfs[i]->GetName());
 			vvvuncpar.push_back(vvunc);
 			vvpdftype.push_back(vpdftype);
 			vvidcorrl.push_back(vidcorrl);
@@ -1494,14 +1602,14 @@ If we need to change it later, it will be easy to do.
 			vrrvnorm.push_back(sn);
 			//rrv->SetName(TString::Format("%s_%s", channel_name.c_str(), rrv->GetName()));
 			//bkgPdfs[i]->SetName(TString::Format("%s_%s", channel_name.c_str(), bkgPdfs[i]->GetName()));
-			//_workspace->import(*rrv, Rename(TString::Format("%s_%s", channel_name.c_str(), rrv->GetName())));
-			//_workspace->import(*bkgPdfs[i], Rename(TString::Format("%s_%s", channel_name.c_str(), bkgPdfs[i]->GetName())));
-			//_workspace_varied->import(*rrv, Rename(TString::Format("%s_%s", channel_name.c_str(), rrv->GetName())));
-			//_workspace_varied->import(*bkgPdfs[i], Rename(TString::Format("%s_%s", channel_name.c_str(), bkgPdfs[i]->GetName())));
-			_workspace->import(*rrv);
-			_workspace->import(*bkgPdfs[i]);
-			_workspace_varied->import(*rrv);
-			_workspace_varied->import(*bkgPdfs[i]);
+			//_w->import(*rrv, Rename(TString::Format("%s_%s", channel_name.c_str(), rrv->GetName())));
+			//_w->import(*bkgPdfs[i], Rename(TString::Format("%s_%s", channel_name.c_str(), bkgPdfs[i]->GetName())));
+			//_w_varied->import(*rrv, Rename(TString::Format("%s_%s", channel_name.c_str(), rrv->GetName())));
+			//_w_varied->import(*bkgPdfs[i], Rename(TString::Format("%s_%s", channel_name.c_str(), bkgPdfs[i]->GetName())));
+			_w->import(*rrv);
+			_w->import(*bkgPdfs[i]);
+			_w_varied->import(*rrv);
+			_w_varied->import(*bkgPdfs[i]);
 		}
 
 		vv_pdfs.push_back(vsigbkgs);
@@ -1520,41 +1628,41 @@ If we need to change it later, it will be easy to do.
 		TString s = "SUM::"; s+=channel_name; s+="_sb(";
 		for(int i=0; i<vsigbkgs.size(); i++){
 			if(i!=0) s+=",";
-			s+=vrrvnorm[i]; s+="*"; s+=vsigbkgs[i]->GetName(); 			
+			s+=vrrvnorm[i]; s+="*"; s+=vsigbkgs[i]; 			
 		}
 		s+=")";
-		_workspace->factory(s);
-		_workspace_varied->factory(s);
+		_w->factory(s);
+		_w_varied->factory(s);
 		s = channel_name; s+="_sb";
-		v_pdfs_sb.push_back(_workspace->pdf(s));	
+		v_pdfs_sb.push_back(s);	
 
-		//if(_debug) _workspace->pdf(s)->Print("V");
+		//if(_debug) _w->pdf(s)->Print("V");
 
 		s = "SUM::"; s+=channel_name; s+="_s(";
 		for(int i=0; i<signal_processes; i++){
 			if(i!=0) s+=",";
-			s+=vrrvnorm[i]; s+="*"; s+=vsigbkgs[i]->GetName(); 			
+			s+=vrrvnorm[i]; s+="*"; s+=vsigbkgs[i]; 			
 		}
 		s+=")";
-		_workspace->factory(s);
-		_workspace_varied->factory(s);
+		_w->factory(s);
+		_w_varied->factory(s);
 		s = channel_name; s+="_s";
-		v_pdfs_s.push_back(_workspace->pdf(s));	
-		//if(_debug) _workspace->pdf(s)->Print("V");
+		v_pdfs_s.push_back(s);	
+		//if(_debug) _w->pdf(s)->Print("V");
 
 		s = "SUM::"; s+=channel_name; s+="_b(";
 		for(int i=signal_processes; i<vsigbkgs.size(); i++){
 			if(i!=signal_processes) s+=",";
-			s+=vrrvnorm[i]; s+="*"; s+=vsigbkgs[i]->GetName(); 			
+			s+=vrrvnorm[i]; s+="*"; s+=vsigbkgs[i]; 			
 		}
 		s+=")";
-		_workspace->factory(s);
-		_workspace_varied->factory(s);
+		_w->factory(s);
+		_w_varied->factory(s);
 		s = channel_name; s+="_b";
-		v_pdfs_b.push_back(_workspace->pdf(s));	
-		//if(_debug) _workspace->pdf(s)->Print("V");
+		v_pdfs_b.push_back(s);	
+		//if(_debug) _w->pdf(s)->Print("V");
 
-		RooDataSet * rds = v_pdfs_b.back() -> generate(*observable, Extended());
+		RooDataSet * rds = _w->pdf(v_pdfs_b.back()) -> generate(*observable, Extended());
 		v_pdfs_roodataset.push_back(rds);
 		//v_pdfs_roodataset_toy.push_back(rds);
 		//cout<<"H0, number of events generated for channel "<<ch<<": "<<v_pdfs_roodataset_toy[ch]->sumEntries()<<endl;
@@ -1572,25 +1680,25 @@ If we need to change it later, it will be easy to do.
 		if(_debug>=10){
 			TString s = "pdf_"; s+= channel_name; s+=".root";
 			TFile f(s, "RECREATE") ;
-			double xmin = v_pdfs_observables.back()->getMin();
-			double xmax = v_pdfs_observables.back()->getMax();
+			double xmin = _w->var(v_pdfs_observables.back())->getMin();
+			double xmax = _w->var(v_pdfs_observables.back())->getMax();
 			TH1F hs("s","s", 100, xmin, xmax);
 			TH1F hb("b","b", 100,  xmin, xmax);
 			TH1F hsb("sb","sb", 100,  xmin, xmax);
-			RooArgSet vars(*v_pdfs_observables.back());
+			RooArgSet vars(*(_w->var(v_pdfs_observables.back() ) ) );
 			for(int x = 1; x<=100; x++){
-				v_pdfs_observables.back()->setVal((xmax-xmin)/100.*(x-1)+xmin); 
-				hs.SetBinContent(x, v_pdfs_s.back()->getVal(&vars));
-				hb.SetBinContent(x, v_pdfs_b.back()->getVal(&vars));
-				hsb.SetBinContent(x, v_pdfs_sb.back()->getVal(&vars));
+				_w->var(v_pdfs_observables.back())->setVal((xmax-xmin)/100.*(x-1)+xmin); 
+				hs.SetBinContent(x, _w->pdf(v_pdfs_s.back())->getVal(&vars));
+				hb.SetBinContent(x, _w->pdf(v_pdfs_b.back())->getVal(&vars));
+				hsb.SetBinContent(x, _w->pdf(v_pdfs_sb.back())->getVal(&vars));
 			}
 
 			cout<<"\n model_s"<<endl;
-			v_pdfs_s.back()->getParameters(*v_pdfs_observables.back())->Print("V");
+			_w->pdf(v_pdfs_s.back())->getParameters(*(_w->var(v_pdfs_observables.back())))->Print("V");
 			cout<<"\n model_b"<<endl;
-			v_pdfs_b.back()->getParameters(*v_pdfs_observables.back())->Print("V");
+			_w->pdf(v_pdfs_b.back())->getParameters(*(_w->var(v_pdfs_observables.back())))->Print("V");
 			cout<<"\n model_sb"<<endl;
-			v_pdfs_sb.back()->getParameters(*v_pdfs_observables.back())->Print("V");
+			_w->pdf(v_pdfs_sb.back())->getParameters(*(_w->var(v_pdfs_observables.back())))->Print("V");
 
 			hs.Write();
 			hb.Write();
@@ -1598,8 +1706,8 @@ If we need to change it later, it will be easy to do.
 			f.Close();
 		}
 
-	//	if(_debug>=10)_workspace->Print("V");
-	//	if(_debug>=10)_workspace_varied->Print("V");
+		//	if(_debug>=10)_w->Print("V");
+		if(_debug>=10)_w_varied->Print("V");
 	}
 
 	double CountingModel::EvaluateLnQ(int ch, int dataOrToy ){ // 0 for data, 1 for toy
@@ -1610,35 +1718,35 @@ If we need to change it later, it will be easy to do.
 			if(i>=v_pdfs_sigproc[ch]) btot+=vv_pdfs_norm_scaled[ch][i];
 			else stot+=vv_pdfs_norm_scaled[ch][i];
 		}
-		RooArgSet vars(*v_pdfs_observables[ch]);
+		RooArgSet vars(*(_w->var(v_pdfs_observables[ch])));
 		if(dataOrToy == 0){
 			int ntot = int(v_pdfs_roodataset_toy[ch]->sumEntries());
 			for(int i=0; i<v_pdfs_roodataset[ch]->sumEntries(); i++){
-				v_pdfs_observables[ch]->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal());
+				_w->var(v_pdfs_observables[ch])->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal());
 
 				if(_debug>=100){
 					if(i==0 or i==ntot-1 or i==ntot/2){
 						cout<<"* event "<<i<<":  m= "<<( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal()<<endl;
-						cout<<" pdfs= "<<v_pdfs_s[ch]->getVal(&vars)<<endl;
-						cout<<" pdfb= "<<v_pdfs_b[ch]->getVal(&vars)<<endl;
+						cout<<" pdfs= "<<_w->pdf(v_pdfs_s[ch])->getVal(&vars)<<endl;
+						cout<<" pdfb= "<<_w->pdf(v_pdfs_b[ch])->getVal(&vars)<<endl;
 						cout<<"stot = "<<stot<<" btot="<<btot<<endl;
 					}
 				}
-				ret+= log(1+ stot/btot*v_pdfs_s[ch]->getVal(&vars)/v_pdfs_b[ch]->getVal(&vars));
+				ret+= log(1+ stot/btot*_w->pdf(v_pdfs_s[ch])->getVal(&vars)/_w->pdf(v_pdfs_b[ch])->getVal(&vars));
 			}
 		}else if(dataOrToy==1){
 			int ntot = int(v_pdfs_roodataset_toy[ch]->sumEntries());
 			for(int i=0; i<v_pdfs_roodataset_toy[ch]->sumEntries(); i++){
-				v_pdfs_observables[ch]->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset_toy[ch]->get(i)->first()))->getVal());
+				_w->var(v_pdfs_observables[ch])->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset_toy[ch]->get(i)->first()))->getVal());
 				if(_debug>=100){
 					if(i==0 or i==ntot-1 or i==ntot/2){
 						cout<<"* event "<<i<<":  m= "<<( dynamic_cast<RooRealVar*>(v_pdfs_roodataset_toy[ch]->get(i)->first()))->getVal()<<endl;
-						cout<<" pdfs= "<<v_pdfs_s[ch]->getVal(&vars)<<endl;
-						cout<<" pdfb= "<<v_pdfs_b[ch]->getVal(&vars)<<endl;
+						cout<<" pdfs= "<<_w->pdf(v_pdfs_s[ch])->getVal(&vars)<<endl;
+						cout<<" pdfb= "<<_w->pdf(v_pdfs_b[ch])->getVal(&vars)<<endl;
 						cout<<"stot = "<<stot<<" btot="<<btot<<endl;
 					}
 				}
-				ret+= log(1+ stot/btot*v_pdfs_s[ch]->getVal(&vars)/v_pdfs_b[ch]->getVal(&vars));
+				ret+= log(1+ stot/btot*_w->pdf(v_pdfs_s[ch])->getVal(&vars)/_w->pdf(v_pdfs_b[ch])->getVal(&vars));
 			}
 		}
 
@@ -1658,22 +1766,21 @@ If we need to change it later, it will be easy to do.
 		if(_debug>=10){
 			TString s = "data_"; s+= v_pdfs_channelname[ch]; s+=".root";
 			TFile f(s, "RECREATE") ;
-			TH1F h("data","data", 100, v_pdfs_observables[ch]->getMin(), v_pdfs_observables[ch]->getMax() );
-			//v_pdfs_roodataset[ch]->fillHistogram(&h, RooArgList(*v_pdfs_observables[ch]));
+			TH1F h("data","data", 100, _w->var(v_pdfs_observables[ch])->getMin(), _w->var(v_pdfs_observables[ch])->getMax() );
 
 			for(int i=0; i<v_pdfs_roodataset[ch]->sumEntries(); i++){
-				v_pdfs_observables[ch]->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal());
-				h.Fill(v_pdfs_observables[ch]->getVal());
+				_w->var(v_pdfs_observables[ch])->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal());
+				h.Fill(_w->var(v_pdfs_observables[ch])->getVal());
 			}
 			f.WriteTObject(&h);
 			f.Close();
 		}
 		if(_debug>=10){
-			v_pdfs_observables[ch]->setVal(6);
-			RooArgSet vars(*v_pdfs_observables[ch]);
-			cout<<" Norm pdfs= "<<v_pdfs_s[ch]->getNorm(&vars)<<" val : "<<v_pdfs_s[ch]->getVal(&vars)<<endl;
-			cout<<" Norm pdfb= "<<v_pdfs_b[ch]->getNorm(&vars)<<" val : "<<v_pdfs_b[ch]->getVal(&vars)<<endl;
-			cout<<" Norm pdfsb= "<<v_pdfs_sb[ch]->getNorm(&vars)<<" val : "<<v_pdfs_sb[ch]->getVal(&vars)<<endl;
+			_w->var(v_pdfs_observables[ch])->setVal(6);
+			RooArgSet vars(*(_w->var(v_pdfs_observables[ch])));
+			cout<<" Norm pdfs= "<<_w->pdf(v_pdfs_s[ch])->getNorm(&vars)<<" val : "<<_w->pdf(v_pdfs_s[ch])->getVal(&vars)<<endl;
+			cout<<" Norm pdfb= "<<_w->pdf(v_pdfs_b[ch])->getNorm(&vars)<<" val : "<<_w->pdf(v_pdfs_b[ch])->getVal(&vars)<<endl;
+			cout<<" Norm pdfsb= "<<_w->pdf(v_pdfs_sb[ch])->getNorm(&vars)<<" val : "<<_w->pdf(v_pdfs_sb[ch])->getVal(&vars)<<endl;
 		}
 	}
 
@@ -1697,25 +1804,27 @@ If we need to change it later, it will be easy to do.
 				if(i>=v_pdfs_sigproc[ch]) btot+=vv_pdfs_norm_varied[ch][i];
 				else stot+=vv_pdfs_norm_varied[ch][i];
 			}
-			RooArgSet vars(*v_pdfs_observables[ch]);
+			RooArgSet vars(*(_w_varied->var(v_pdfs_observables[ch])));
 			for(int i=0; i<ntot; i++){
-				_workspace_varied->var(v_pdfs_observables[ch]->GetName())->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal());
+				_w_varied->var(v_pdfs_observables[ch])->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal());
 				if(_debug>=100){
 					if(i==0 or i==ntot-1 or i==ntot/2){
 						cout<<"* event "<<i<<":  m= "<<( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal()<<endl;
-						cout<<" pdfs= "<<(par[0]==0?0:_workspace_varied->pdf(v_pdfs_s[ch]->GetName())->getVal(&vars))<<endl;
-						cout<<" pdfb= "<<_workspace_varied->pdf(v_pdfs_b[ch]->GetName())->getVal(&vars)<<endl;
+						cout<<" pdfs= "<<(par[0]==0?0:_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars))<<endl;
+						cout<<" pdfb= "<<_w_varied->pdf(v_pdfs_b[ch])->getVal(&vars)<<endl;
 						cout<<" stot = "<<stot<<" btot="<<btot<<endl;
-						//tmp = (stot+btot)*_workspace_varied->pdf(v_pdfs_sb[ch]->GetName())->getVal(&vars);	
-						//cout<<" log(event) = "<<log(stot*_workspace_varied->pdf(v_pdfs_s[ch]->GetName())->getVal(&vars)
-						//		+btot*_workspace_varied->pdf(v_pdfs_b[ch]->GetName())->getVal(&vars))<<endl;
+						//tmp = (stot+btot)*_w_varied->pdf(v_pdfs_sb[ch]->GetName())->getVal(&vars);	
+						//cout<<" log(event) = "<<log(stot*_w_varied->pdf(v_pdfs_s[ch]->GetName())->getVal(&vars)
+						//		+btot*_w_varied->pdf(v_pdfs_b[ch]->GetName())->getVal(&vars))<<endl;
 						//cout<<" log(event) ="<<(tmp>0?log(tmp):0)<<endl;
 					}
 				}
-				//tmp = (stot+btot)*_workspace_varied->pdf(v_pdfs_sb[ch]->GetName())->getVal(&vars);// give some error message ... when r<0
-				if(stot!=0) tmp += stot*_workspace_varied->pdf(v_pdfs_s[ch]->GetName())->getVal(&vars);  //give some warning message when r=0
-				tmp += btot*_workspace_varied->pdf(v_pdfs_b[ch]->GetName())->getVal(&vars);
+				//tmp = (stot+btot)*_w_varied->pdf(v_pdfs_sb[ch]->GetName())->getVal(&vars);// give some error message ... when r<0
+				tmp = 0;  ///////////////
+				if(stot!=0) tmp += stot*_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars);  //give some warning message when r=0
+				tmp += btot*_w_varied->pdf(v_pdfs_b[ch])->getVal(&vars);
 
+				if(_debug>=100)cout<<" log(event) = "<<log(tmp)<<endl;
 				retch -= (tmp>0?log(tmp):0);
 			}
 
@@ -1725,7 +1834,7 @@ If we need to change it later, it will be easy to do.
 			if(_debug>=10){
 				cout<<"EvaluateChi2 in channel ["<<v_pdfs_channelname[ch]<<"]: lnQ= "<<retch<<endl;
 				cout<<"\n model_sb"<<endl;
-				_workspace_varied->pdf(v_pdfs_sb[ch]->GetName())->getParameters(*v_pdfs_observables[ch])->Print("V");
+				_w_varied->pdf(v_pdfs_sb[ch])->getParameters(*(_w->var(v_pdfs_observables[ch])))->Print("V");
 			}
 			ret+=retch;
 		}
@@ -1742,25 +1851,25 @@ If we need to change it later, it will be easy to do.
 			if(i>=v_pdfs_sigproc[ch]) btot+=vv_pdfs_norm_scaled[ch][i];
 			else stot+=vv_pdfs_norm_scaled[ch][i];
 		}
-		RooArgSet vars(*v_pdfs_observables[ch]);
+		RooArgSet vars(*(_w->var(v_pdfs_observables[ch])));
 		for(int i=0; i<ntot; i++){
-			v_pdfs_observables[ch]->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal());
+			_w->var(v_pdfs_observables[ch])->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal());
 			if(_debug>=100){
 				if(i==0 or i==ntot-1 or i==ntot/2){
 					cout<<"* event "<<i<<":  m= "<<( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal()<<endl;
-					cout<<" pdfs= "<<v_pdfs_s[ch]->getVal(&vars)<<endl;
-					cout<<" pdfb= "<<v_pdfs_b[ch]->getVal(&vars)<<endl;
+					cout<<" pdfs= "<<_w->pdf(v_pdfs_s[ch])->getVal(&vars)<<endl;
+					cout<<" pdfb= "<<_w->pdf(v_pdfs_b[ch])->getVal(&vars)<<endl;
 					cout<<" stot= "<<stot<<" btot="<<btot<<endl;
-					cout<<" log(event) = "<<log(stot*v_pdfs_s[ch]->getVal(&vars)+btot*v_pdfs_b[ch]->getVal(&vars))<<endl;
+					cout<<" log(event) = "<<log(stot*_w->pdf(v_pdfs_s[ch])->getVal(&vars)+btot*_w->pdf(v_pdfs_b[ch])->getVal(&vars))<<endl;
 				}
 			}
-			ret+= log( xr*stot*v_pdfs_s[ch]->getVal(&vars)+btot*v_pdfs_b[ch]->getVal(&vars));
+			ret+= log( xr*stot*_w->pdf(v_pdfs_s[ch])->getVal(&vars)+btot*_w->pdf(v_pdfs_b[ch])->getVal(&vars));
 		}
 
 		if(_debug>=100){
 			cout<<"EvaluateGL in channel ["<<v_pdfs_channelname[ch]<<"]: gl = "<<ret<<endl;
 			cout<<"\n model_sb"<<endl;
-			v_pdfs_sb[ch]->getParameters(*v_pdfs_observables[ch])->Print("V");
+			_w->pdf(v_pdfs_sb[ch])->getParameters(*_w->var(v_pdfs_observables[ch]))->Print("V");
 		}
 		return ret;
 	}
@@ -1780,15 +1889,6 @@ If we need to change it later, it will be easy to do.
 			vv_pdfs_data.push_back(vtmp);
 		}
 	}
-
-	vector< RooDataSet > CountingModel::Get_v_pdfs_roodataset_toy(){
-		vector< RooDataSet > vrds; vrds.clear();
-		for(int i=0; i<v_pdfs_roodataset_toy.size(); i++){
-			vrds.push_back(*(v_pdfs_roodataset_toy[i]));
-		}
-		return vrds;
-	}
-
 	void CountingModel::AddUncertaintyOnShapeNorm(int index_channel, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, int index_correlation ){
 		// to deal with asymetric uncertainties
 		if( uncertainty_in_relative_fraction_down < 0 or uncertainty_in_relative_fraction_up < 0 ) {
@@ -1823,7 +1923,15 @@ If we need to change it later, it will be easy to do.
 			index_correlation = v_uncname.size()+1;
 			v_uncname.push_back(uncname);
 		}
+		if(_debug>=10) cout<<" AddUncertaintyOnShapeNorm for "<<index_sample<<"th channel, "<<index_sample<<"th proc,  unc ["<<uncname<<"]"<<endl;
 		AddUncertaintyOnShapeNorm(index_channel, index_sample, uncertainty_in_relative_fraction_down, uncertainty_in_relative_fraction_up, pdf_type, index_correlation );
+	}
+	void CountingModel::AddUncertaintyOnShapeNorm(string c, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, string uncname ){
+		int index_channel = -1;
+		for(int i=0; i<v_pdfs_channelname.size(); i++){
+			if(v_pdfs_channelname[i]==c) index_channel=i;
+		}
+		AddUncertaintyOnShapeNorm(index_channel, index_sample, uncertainty_in_relative_fraction_down, uncertainty_in_relative_fraction_up, pdf_type, uncname);
 
 	}
 
@@ -1832,7 +1940,7 @@ If we need to change it later, it will be easy to do.
 		if(_debug>=10){cout<<"In EvaluateGL:  xr ="<<xr<<endl;};
 		for(int i=0; i<v_pdfs_floatParamsName.size(); i++){
 			if(_debug>=100) cout<<" EvaluateGL: setting value of parameter ["<<v_pdfs_floatParamsName[i]<<"] = "<<vparams[i]<<endl;
-			_workspace_varied->var(v_pdfs_floatParamsName[i].c_str())->setVal(vparams[i]);
+			_w_varied->var(v_pdfs_floatParamsName[i].c_str())->setVal(vparams[i]);
 		}
 		for(int ch=0; ch<vv_pdfs.size(); ch++){
 			double btot = 0, stot=0;
@@ -1842,37 +1950,45 @@ If we need to change it later, it will be easy to do.
 				if(i>=v_pdfs_sigproc[ch]) btot+=vnorms[ch][i];
 				else stot+=vnorms[ch][i];
 
-				_workspace_varied->var(vv_pdfs_normNAME[ch][i])->setVal(vnorms[ch][i]);
+				_w_varied->var(vv_pdfs_normNAME[ch][i])->setVal(vnorms[ch][i]);
 				if(_debug>=10)cout<<vv_pdfs_normNAME[ch][i]<<" "<<vnorms[ch][i]<<endl;
 			}
-			RooArgSet vars(*v_pdfs_observables[ch]);
+			RooArgSet vars(*(_w->var(v_pdfs_observables[ch])));
 			for(int i=0; i<ntot; i++){
-				_workspace_varied->var(v_pdfs_observables[ch]->GetName())->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal());
+				_w_varied->var(v_pdfs_observables[ch])->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal());
 				if(_debug>=100){
 					if(i==0 or i==ntot-1 or i==ntot/2){
 						cout<<"* event "<<i<<":  m= "<<( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal()<<endl;
-						cout<<" varied_pdfs= "<<_workspace_varied->pdf(v_pdfs_s[ch]->GetName())->getVal(&vars)<<endl;
-						cout<<" varied_pdfb= "<<_workspace_varied->pdf(v_pdfs_b[ch]->GetName())->getVal(&vars)<<endl;
+						cout<<" varied_pdfs= "<<_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars)<<endl;
+						cout<<" varied_pdfb= "<<_w_varied->pdf(v_pdfs_b[ch])->getVal(&vars)<<endl;
 						cout<<" stot= "<<stot<<" btot="<<btot<<endl;
-						cout<<" log(event) = "<<log(stot*_workspace_varied->pdf(v_pdfs_s[ch]->GetName())->getVal(&vars)
-								+btot*_workspace_varied->pdf(v_pdfs_b[ch]->GetName())->getVal(&vars))<<endl;
+						cout<<" log(event) = "<<log(stot*_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars)
+								+btot*_w_varied->pdf(v_pdfs_b[ch])->getVal(&vars))<<endl;
 					}
 				}
-				tmp+= log( xr*stot*_workspace_varied->pdf(v_pdfs_s[ch]->GetName())->getVal(&vars)
-						+btot*_workspace_varied->pdf(v_pdfs_b[ch]->GetName())->getVal(&vars));
+				tmp+= log( xr*stot*_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars)
+						+btot*_w_varied->pdf(v_pdfs_b[ch])->getVal(&vars));
 			}
 
 			if(_debug>=10){
 				cout<<"EvaluateGL in channel ["<<v_pdfs_channelname[ch]<<"]: gl = "<<tmp<<endl;
 				cout<<"\n model_sb"<<endl;
-				_workspace_varied->pdf(v_pdfs_sb[ch]->GetName())->getParameters(*v_pdfs_observables[ch])->Print("V");
+				_w_varied->pdf(v_pdfs_sb[ch])->getParameters(*_w->var(v_pdfs_observables[ch]))->Print("V");
 			}
 			ret+=tmp;
+		}
+		if(_debug>=10) {
+			cout<<" Unbinned Model EvaluateGL all channels = " << ret <<endl;
 		}
 		return ret;
 	}
 
 	void CountingModel::AddUncertaintyOnShapeParam(string pname, double mean, double sigmaL, double sigmaR, double rangeMin, double rangeMax ){
+		if(_w_varied->var(pname.c_str())==NULL) {
+			cout<<" parameter "<<pname<<" not exist in the added channels,   skip it"<<endl;
+			return;
+		}
+
 		int index_correlation = -1; // numeration starts from 1
 		sigmaL = fabs(sigmaL);
 		sigmaR = fabs(sigmaR);
@@ -1898,15 +2014,18 @@ If we need to change it later, it will be easy to do.
 		vunc.push_back(sigmaR);
 		vunc.push_back(rangeMin);
 		vunc.push_back(rangeMax);
-		for(int i = v_pdfs_floatParamsUnc.size(); i<=index_correlation; i++){
-			v_pdfs_floatParamsUnc.push_back(vunc);
-		}
+		if(v_pdfs_floatParamsUnc.size() <= index_correlation){
+			for(int i = v_pdfs_floatParamsUnc.size(); i<=index_correlation; i++){
+				v_pdfs_floatParamsUnc.push_back(vunc);
+			}
+		}else v_pdfs_floatParamsUnc[index_correlation] = vunc;
+		if(_debug) cout<<" v_pdfs_floatParamsUnc.size() = "<<v_pdfs_floatParamsUnc.size()<<endl;
 
 		TString s = pname;
 		cout<<" * Adding floating parameter: "<<pname<<endl;
-		_workspace_varied->factory(TString::Format("%s_x[%f,%f]", pname.c_str(), rangeMin, rangeMax));
+		_w_varied->factory(TString::Format("%s_x[%f,%f]", pname.c_str(), rangeMin, rangeMax));
 		cout<<pname<<"_x added"<<endl;
-		_workspace_varied->factory(TString::Format("BifurGauss::%s_bfg(%s_x, %f, %f, %f )", pname.c_str(), pname.c_str(), mean, sigmaL, sigmaR));
+		_w_varied->factory(TString::Format("BifurGauss::%s_bfg(%s_x, %f, %f, %f )", pname.c_str(), pname.c_str(), mean, sigmaL, sigmaR));
 		cout<<pname<<"_bfg added"<<endl;
 
 		v_pdfs_floatParamsName.push_back(pname);

@@ -1834,13 +1834,15 @@ bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vecto
 
 		bool isParametricChannel = false;
 		for(int i=0; i<parametricShapeLines.size(); i++){
-			if(parametricShapeLines[i][1]==channelnames[c]);
-			isParametricChannel = true;
+			if(parametricShapeLines[i][2]==channelnames[c]){
+				isParametricChannel = true;
+			}
 		}
+		if(debug)cout<<" channel ["<<channelnames[c]<<"] isParametricChannel? "<<isParametricChannel<<endl;
 		if(!isParametricChannel){
 			cms->AddChannel(channelnames[c], sigbkgs, nsigproc[c]);
-			cms->SetProcessNames(c, tmpprocn);
-			cms->AddObservedData(c, observeddata[c]);
+			cms->SetProcessNames(channelnames[c], tmpprocn);
+			cms->AddObservedData(channelnames[c], observeddata[c]);
 		}else{
 			vector<RooAbsPdf*> vspdf, vbpdf; vspdf.clear(); vbpdf.clear();
 			for(int i=0; i<sigbkgs.size(); i++){
@@ -1856,7 +1858,7 @@ bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vecto
 			}
 			RooDataSet *data = (RooDataSet*)GetRooDataSet(channelnames[c], "data_obs", parametricShapeLines);
 			RooRealVar* x = dynamic_cast<RooRealVar*> (data->get()->first());
-			x->SetName(TString(channelnames[c])+x->GetName());
+			//x->SetName(TString(channelnames[c])+x->GetName());
 			RooWorkspace *w;
 			cms->AddChannel(channelnames[c], x, vspdf, vsnorm, vbpdf, vbnorm, w);
 			cms->AddObservedDataSet(channelnames[c], data);
@@ -1915,12 +1917,24 @@ bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vecto
 
 		tmps+= TString::Format("%8s ", ss[1].c_str());
 		if(pdf==typeGamma && ss[1]!="gmM") tmps+= TString::Format("%8s ", ss[2].c_str());
+		else if(pdf==typeBifurcatedGaussian) {
+			for(int ii=2; ii<ss.size(); ii++) {tmps+=ss[2]; tmps+=" ";}
+		}
 		else		   tmps+= "         ";
 
 		bool filledThisSource = false;
 		for(int p=0; p<ntotprocesses; p++){
 			double err, errup, rho;  // to allow asymetric uncertainties
 			double shape[8];
+
+			string channelName = channelnames[binnumber[p]-1];
+			bool isParametricChannel = false;
+			for(int i=0; i<parametricShapeLines.size(); i++){
+				if(parametricShapeLines[i][2]==channelName){
+					isParametricChannel = true;
+				}
+			}
+
 			if(pdf==typeLogNormal){
 				if(ss[p+2]=="-") {
 					tmps+= "    -   ";
@@ -2020,9 +2034,9 @@ bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vecto
 					exit(0);
 				}
 			}
-			//cout<<"delete me: c="<<binnumber[p]-1<<" s="<< subprocess[p]<<endl;
 			if(pdf==typeLogNormal||pdf==typeTruncatedGaussian){
-				cms->AddUncertaintyOnShapeNorm(binnumber[p]-1, subprocess[p], err, errup, pdf, indexcorrelation );
+				if(isParametricChannel)cms->AddUncertaintyOnShapeNorm(channelName, subprocess[p], err, errup, pdf, indexcorrelation );
+				else cms->AddUncertainty(channelName, subprocess[p], err, errup, pdf, indexcorrelation );
 			}
 			if(pdf==typeGamma){
 				if(ss[1]=="gmA" or ss[1]=="gmN"){
@@ -2031,20 +2045,20 @@ bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vecto
 						cout<<"Yield in control Region in gamma can't be negative, please check your input card at "<<s+1<<"th source, "<<2<<"th entry"<<endl;
 						exit(0);
 					}
-					cms->AddUncertainty(binnumber[p]-1, subprocess[p], rho, 0, N, pdf, indexcorrelation );
-					//FIXME  here need to check:  rho*N == cms->GetExpectedNumber(binnumber[p]-1, subprocess[p]);
+					cms->AddUncertainty(channelName, subprocess[p], rho, 0, N, pdf, indexcorrelation );
+					//FIXME  here need to check:  rho*N == cms->GetExpectedNumber(channelName, subprocess[p]);
 				}
 				else if(ss[1]=="gmM"){
 					double N = 1./err/err-1; // we use convention: mean of events is 1./err/err,  so we do "-1" here, and then add back "1"  in src/CountingModel.cc
 					//double N = (int) (1./err/err);
-					cms->AddUncertainty(binnumber[p]-1, subprocess[p], -1, 0, N, pdf, indexcorrelation ); // use "rho = -1" here to imply that this gamma term is not for control sample inferred uncertainties, but multiplicative gamma function ....
+					cms->AddUncertainty(channelName, subprocess[p], -1, 0, N, pdf, indexcorrelation ); // use "rho = -1" here to imply that this gamma term is not for control sample inferred uncertainties, but multiplicative gamma function ....
 					//FIXME  here need to check:  all uncertainties with same indexcorrelation are the same,   can't be different currently ... 
 					//  e.g.   check   N == cms->Get_v_Gamma(indexcorrelation); // can't do here before ConfigUncertaintyPdfs()
 					//we might allow them different and do rescaling 
 				}
 			}
 			if(pdf==typeShapeGaussianLinearMorph or pdf==typeShapeGaussianQuadraticMorph){
-				cms->AddUncertainty(binnumber[p]-1, subprocess[p], 8, shape, pdf, indexcorrelation );
+				cms->AddUncertainty(channelName, subprocess[p], 8, shape, pdf, indexcorrelation );
 			}
 
 			// because when err < 0, AddUncertainty do nothing,  but filledThisSource has been changed to be true

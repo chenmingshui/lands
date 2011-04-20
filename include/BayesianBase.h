@@ -40,6 +40,8 @@ namespace lands{
 			vector<double> GetVP(){return _vp;};
 			void SetCrossSectionPrior(PRIOR prior){_prior=prior;};			
 			PRIOR GetCrossSectionPrior(){return _prior;};			
+			int EvaluateNormReduction();
+			void SetPreToys(int n){_preToys = n;};
 		private:
 			double fPrecision;
 			double fAlpha;
@@ -66,6 +68,9 @@ namespace lands{
 
 			vector< vector< vector<double> > > _vNorms_forShapeChannels;
 			vector< vector<double>  > _vParams_forShapeChannels;
+
+			int _NormReduction; // during evaluating exp(k), when k>700, the result is "inf".  NEED to avoid that ...
+			int _preToys;
 	};
 };
 

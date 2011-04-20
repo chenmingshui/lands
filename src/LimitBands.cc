@@ -96,7 +96,7 @@ namespace lands{
 				vEntries.push_back(1);	
 				vector<RooDataSet*> vrds; vrds.clear();
 				for(int c=0; c<_cms->Get_vv_pdfs().size(); c++){
-					RooDataSet *rds = new RooDataSet(_cms->Get_v_pdfs_roodataset_toy()[c]);
+					RooDataSet *rds = new RooDataSet(*(_cms->Get_v_pdfs_roodataset_toy()[c]));
 					vrds.push_back(rds);
 				}
 				vvPossibleOutcomes_forUnbinnedChannels.push_back(vrds);
