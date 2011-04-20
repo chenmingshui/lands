@@ -13,6 +13,7 @@
 #include "CLsLimit.h"
 #include "SignificanceBands.h"
 #include "RooRandom.h"
+#include "TStopwatch.h"
 
 using namespace std;
 using namespace lands;
@@ -56,6 +57,8 @@ double initialRmin = 1., initialRmax = 21;// only when bQuickEstimateInitialLimi
 int oneside = 1; //for PLR limit
 
 int main(int argc, const char*argv[]){
+	TStopwatch watch;  
+	watch.Start();
 	processParameters(argc, argv);
 
 	CountingModel *cms; // this instance will be the one combining all sub cards
@@ -376,6 +379,7 @@ int main(int argc, const char*argv[]){
 				delete q_data;
 			}
 
+	watch.Print();
 			return 1;
 		}else if(method=="ProfiledLikelihood"){
 
@@ -481,6 +485,7 @@ int main(int argc, const char*argv[]){
 				profiledL.draw();
 			}
 
+	watch.Print();
 			return 1;
 
 		}
@@ -618,6 +623,7 @@ int main(int argc, const char*argv[]){
 
 		}
 	}
+	watch.Print();
 	return 1;
 }
 

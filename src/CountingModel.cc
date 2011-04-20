@@ -1720,7 +1720,7 @@ If we need to change it later, it will be easy to do.
 		}
 		RooArgSet vars(*(_w->var(v_pdfs_observables[ch])));
 		if(dataOrToy == 0){
-			int ntot = int(v_pdfs_roodataset_toy[ch]->sumEntries());
+			int ntot = int(v_pdfs_roodataset[ch]->sumEntries());
 			for(int i=0; i<v_pdfs_roodataset[ch]->sumEntries(); i++){
 				_w->var(v_pdfs_observables[ch])->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal());
 
