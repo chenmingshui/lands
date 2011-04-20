@@ -6,8 +6,7 @@ EXEC = test/Significance_dataCard.exe \
 	test/CLs_dataCard.exe \
 	test/Bayesian_dataCard.exe \
 	test/ProfileLikelihoodApproxLimit.exe \
-	test/lands.exe\
-	test/unbinned.exe
+	test/lands.exe
 
 SOURCES = $(wildcard src/*.cc)
 COMPONENTS = $(patsubst src%.cc,bin%.o,$(SOURCES))
