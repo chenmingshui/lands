@@ -626,10 +626,23 @@ namespace lands{
 			cout<<"\t gonna generate "<<ntemp*2<<" poisson numbers "<<endl;
 		}
 
+		clock_t toytime_start = clock(); int ntoysFor10sec = _nexps;
 		for(int i=0; i<_nexps; i++){
-			if( ntemp>=10000000 ) {
+			if(i==1) {
+				clock_t toytime_stop = clock(); int timeForOneToy = toytime_stop - toytime_start; 
+				if(_debug) cout<<" time per toy = "<<timeForOneToy<<" microsec"<<endl;
+				if(timeForOneToy>0) ntoysFor10sec = 10*1000000/timeForOneToy+1; 
+			}
+			if( ntemp>=10000000 or _debug) {
 				if( (i+1)%tenth == 0 ){
 					printf("... Building -2lnQ,  %4.1f \%\n", i/(double)_nexps*100);
+					fflush(stdout);
+				}
+			}
+			if(_debug){
+				if( (i+1)%ntoysFor10sec== 0 ){
+					clock_t toytime_stop = clock();
+					cout<< " from_1st toy to "<<i+1<<" toy takes "<< (toytime_stop - toytime_start)/1000000. <<" secs "<<endl;; 
 					fflush(stdout);
 				}
 			}
