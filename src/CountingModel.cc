@@ -1805,6 +1805,7 @@ If we need to change it later, it will be easy to do.
 				else stot+=vv_pdfs_norm_varied[ch][i];
 			}
 			RooArgSet vars(*(_w_varied->var(v_pdfs_observables[ch])));
+			
 			for(int i=0; i<ntot; i++){
 				_w_varied->var(v_pdfs_observables[ch])->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal());
 				if(_debug>=100){
@@ -1819,14 +1820,18 @@ If we need to change it later, it will be easy to do.
 						//cout<<" log(event) ="<<(tmp>0?log(tmp):0)<<endl;
 					}
 				}
-				//tmp = (stot+btot)*_w_varied->pdf(v_pdfs_sb[ch]->GetName())->getVal(&vars);// give some error message ... when r<0
-				tmp = 0;  ///////////////
-				if(stot!=0) tmp += stot*_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars);  //give some warning message when r=0
-				tmp += btot*_w_varied->pdf(v_pdfs_b[ch])->getVal(&vars);
+				if(stot>=0){
+				tmp = (stot+btot)*_w_varied->pdf(v_pdfs_sb[ch])->getVal(&vars);// give some error message ... when r<0
+				}else {
+					tmp = 0;  ///////////////
+					if(stot!=0) tmp += stot*_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars);  //give some warning message when r=0
+					tmp += btot*_w_varied->pdf(v_pdfs_b[ch])->getVal(&vars);
+				}
 
 				if(_debug>=100)cout<<" log(event) = "<<log(tmp)<<endl;
 				retch -= (tmp>0?log(tmp):0);
 			}
+			
 
 			retch+=stot;
 			retch+=btot;
