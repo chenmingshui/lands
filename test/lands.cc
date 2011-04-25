@@ -49,6 +49,10 @@ int rule; //default CLs.  other options: CLsb
 float clsAcc; // 0.001; Absolute accuracy on CLs to reach to terminate the scan
 double rAbsAcc;// 0.01; Absolute accuracy on r to reach to terminate the scan
 double rRelAcc;// 0.01; Relative accuracy on r to reach to terminate the scan
+bool singlePoint;
+double testR;
+bool scanRs;
+int nSteps;
 
 // for FeldmanCousins
 bool bQuickEstimateInitialLimit = true; 
@@ -163,17 +167,18 @@ int main(int argc, const char*argv[]){
 			double tmp;
 			vdata_global=cms->Get_v_data();
 
-
+			if(singlePoint){ cms->SetSignalScaleFactor(testR); }
 			frequentist.BuildM2lnQ(cms, toysHybrid);
 			double errs, errb, errsb;
 			double cls = frequentist.CLs(errs);
 			double clsb = frequentist.CLsb(errsb);
 			double clb = frequentist.CLb(errb);
-			cout<<"------------------------------------------------------------"<<endl;
+			cout<<"---------------testing at signal strength r = "<<cms->GetSignalScaleFactor()<<"-------------------------"<<endl;
 			cout<<"Observed CLs = "<<cls<<" +/- "<<errs<<endl;
 			cout<<"Observed CLsb = "<<clsb<<" +/- "<<errsb<<endl;
 			cout<<"Observed CLb = "<<clb<<" +/- "<<errb<<endl;
 			cout<<"------------------------------------------------------------"<<endl;
+
 
 			if(debug){
 				DrawPdfM2logQ pdfM2logQ(frequentist.Get_m2logQ_sb(),frequentist.Get_m2logQ_b(), frequentist.Get_m2lnQ_data(), 
@@ -199,6 +204,33 @@ int main(int argc, const char*argv[]){
 				for(int i=0; i<qb.size(); i++) cout<<qb[i]<<endl;
 			}
 
+			if(singlePoint){ 
+				watch.Print();
+				return 1;
+			}
+
+			if(scanRs){
+				vector<double> vr, vc; vr.clear(); vc.clear();
+				if(nSteps<=0) { cout<<"ERROR: nSteps must be > 0"<<endl; return 0; }
+				for(int i=0; i<nSteps+1; i++){
+					double testr = initialRmin + i*(initialRmax - initialRmin)/(float)nSteps;
+					cms->SetSignalScaleFactor(testr);
+					frequentist.BuildM2lnQ(cms, toysHybrid);
+					cls = frequentist.CLs(errs);
+					vr.push_back(testr);
+					vc.push_back(cls);
+				}
+				printf("\n results of scanned r vs. CLs: \n");
+				for(int i=0; i<vr.size(); i++){
+					printf("   r=%10.3f  CLs=%7.5f\n", vr[i], vc[i]);
+				}
+				DrawEvolution2D d2d(vr, vc, "; r ; CLs", (jobname+"_scanned_r_vs_cl").Data(), pt);
+				d2d.draw();
+				d2d.save();
+
+				watch.Print();
+				return 1;
+			}
 
 
 			CLsLimit clsr95;
@@ -380,7 +412,7 @@ int main(int argc, const char*argv[]){
 				delete q_data;
 			}
 
-	watch.Print();
+			watch.Print();
 			return 1;
 		}else if(method=="ProfiledLikelihood"){
 
@@ -439,9 +471,9 @@ int main(int argc, const char*argv[]){
 				//double CI = 1.64*1.64/2.;
 				double CI = ErrorDef/2.;
 				/*
-				if (oneside==2) CI= 1.921;  // = 1.96**2/2 , two sided 95% CL --->  one sided 97.5%
-				else CI = 1.64*1.64/2.; // two sided 90% CL
-				*/
+				   if (oneside==2) CI= 1.921;  // = 1.96**2/2 , two sided 95% CL --->  one sided 97.5%
+				   else CI = 1.64*1.64/2.; // two sided 90% CL
+				   */
 				double precision = 0.001;
 				int nsearched = 3;
 				//1.925 for 95% CL,   ....   
@@ -832,6 +864,14 @@ void processParameters(int argc, const char* argv[]){
 		if(toysHybrid<0) toysHybrid = 100;
 	}
 
+	tmpv = options["--singlePoint"]; 
+	if( tmpv.size()!=1 ) { singlePoint = false; }
+	else { singlePoint = true; testR = tmpv[0].Atof(); }
+
+	tmpv = options["--scanRs"]; 
+	if( tmpv.size()!=1 ) { scanRs= false; }
+	else { scanRs= true; nSteps = tmpv[0].Atoi(); }
+
 	tmpv = options["--testStat"]; 
 	if( tmpv.size()!=1 ) { testStat = 1; }
 	else {
@@ -916,6 +956,9 @@ void processParameters(int argc, const char* argv[]){
 			cout<<endl;
 		}
 		cout<<"  number of toys to build Q distribution = "<<toysHybrid<<endl;
+		if(singlePoint){
+			cout<<" testing single point with r = "<<testR<<endl;
+		}
 	}
 
 	cout<<"  random number generator seed: "<<seed<<endl;
@@ -962,6 +1005,7 @@ void PrintHelpMessage(){
 	printf("--rRelAcc arg (=0.01)                 Relative accuracy on r to reach to terminate the scan \n"); 
 	printf("--rule arg (=CLs)                     Rule to use: CLs, CLsb \n"); 
 	printf("--testStat arg (=LEP)                 Test statistics: LEP, TEV, Atlas, AtlasAllowMuHatNeg. \n"); 
+	printf("--singlePoint arg (=float)            Just compute CLsb/CLb/CLs values for a given value of r \n"); 
 	printf(" \n"); 
 	printf("ProfiledLikelihood specific options: \n"); 
 	printf("--OneOrTwoSided arg (=2)              1 sided limit -lnL = 1.345;  2 sided limit -lnL = 1.921 \n"); 
