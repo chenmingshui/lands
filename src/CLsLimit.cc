@@ -244,13 +244,23 @@ namespace lands{
 	}
 
 
-	double MinuitFit(int model, double &r , double &er, double mu  ){
-		bool debugMinuit = 0;
-		bool UseMinos = 0;
+	double MinuitFit(int model, double &r , double &er, double mu /* or ErrorDef for Minos*/, double *pars, bool hasBestFitted, int debug  ){
+
+		int UseMinos = 0;
+		if(model == 102) UseMinos = 2; // PL approximation method using Minos ....  with migrad 
+		if(model == 101) UseMinos = 1; // PL approximation method using Minos ....  without migrad
+
+		double minuitStep = 0.1;
 
 		int npars = cms_global->Get_max_uncorrelation();
-		//cout<<" MinuitFit npars =  "<<npars<<endl;
+		if(debug>=10)cout<<" MinuitFit npars =  "<<npars<<endl;
 		if( !(cms_global->IsUsingSystematicsErrors())) npars=0;
+		if(model == 10 && pars){ // fixing  all parameters and get the chi2 
+			int tmp;
+			double l;
+			Chisquare(tmp, 0, l, pars, 0);
+			return l;
+		}
 		if( (cms_global->IsUsingSystematicsErrors() && npars>0 )  || model ==2 ){
 
 			//FIXME temporarily solution:  when reading a source with all error = 0,  then assign it to be logNormal, error =0,  in UtilsROOT.cc 
@@ -265,17 +275,18 @@ namespace lands{
 			Int_t ierflg = 0;
 
 
-			if(!debugMinuit){
+			if(debug<100){
 				arglist[0]=-1;
 				myMinuit -> mnexcm("SET PRINT", arglist, 1, ierflg);
 				myMinuit -> mnexcm("SET NOW", arglist, 1, ierflg);
 
 			}
 
-			arglist[0] = 2;
-			//myMinuit->mnexcm("SET STRATEGY", arglist ,1,ierflg);
-			//myMinuit -> mnexcm("SET NOG", arglist, 1, ierflg);
+			arglist[0] = 0; // set to be 0 (was default 1), reduce lots of function calls, ---> speed up by a factor of 6 
+			myMinuit->mnexcm("SET STRATEGY", arglist ,1,ierflg);
+			//myMinuit -> mnexcm("SET NOG", arglist, 1, ierflg); // no gradiants required of FCN
 
+			//myMinuit->SetMaxIterations(500); // doesn't seem to do anything in TMinuit
 
 			// Set starting values and step sizes for parameters
 			// myMinuit->mnparm(par_index, "par_name", start_value, step_size, lower, higher, ierflg);
@@ -286,28 +297,25 @@ namespace lands{
 			vector<string> v_uncname = cms_global->Get_v_uncname();
 			double maxunc;
 			for(int i=1; i<=npars; i++){
-				//cout<<i-1<<endl;
-				//cout<<"debug 1: "<<" ";
-				//cout<<v_uncname[i-1]<<endl;
 				TString sname=v_uncname[i-1]; 
-				//cout<<"debug 2"<<endl;
 				switch (v_pdftype[i]){
 					case typeShapeGaussianLinearMorph:
 					case typeShapeGaussianQuadraticMorph:
 					case typeLogNormal:
-						myMinuit->mnparm(i, sname, 0., 0.1, -20, 20,ierflg); // was 5,  causing problem with significance larger than > 7 
+						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:0., minuitStep, -20, 20,ierflg); // was 5,  causing problem with significance larger than > 7 
 						break;
 					case typeTruncatedGaussian :
 						maxunc = v_TG_maxUnc[i];	
 						if(maxunc>0.2) maxunc = -1./maxunc;
 						else maxunc = -5;   // FIXME is hear also need to be extended to -20  ?
-						myMinuit->mnparm(i, sname, 0., 0.1, maxunc, 20,ierflg); // was 5
+						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:0., minuitStep, maxunc, 20,ierflg); // was 5
 						break;
 					case typeGamma:
-						myMinuit->mnparm(i, sname, v_GammaN[i], 0.5, 0, 100000, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
+						//myMinuit->mnparm(i, sname, v_GammaN[i], 0.5, 0, 100000, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
+						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:v_GammaN[i], minuitStep, 0, (v_GammaN[i]+1)*5, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
 						break;
 					case typeBifurcatedGaussian:
-						myMinuit->mnparm(i, sname, v_paramsUnc[i][0], 0.1, v_paramsUnc[i][3], v_paramsUnc[i][4], ierflg  );
+						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:v_paramsUnc[i][0], minuitStep, v_paramsUnc[i][3], v_paramsUnc[i][4], ierflg  );
 						break;
 					default:
 						cout<<"pdftype not yet defined:  "<<v_pdftype[i]<<", npars="<<npars<<", i="<<i<<endl;
@@ -320,23 +328,26 @@ namespace lands{
 			// through fixing the ratio to determine whether fit for S+B(r=1) or B-only (r=0)   Q_tevatron
 			// let the ratio float, then it's Q_atlas
 			if(model==1){ // S+B, fix r
-				myMinuit->mnparm(0, "ratio", 1, 0.1, 0, 100, ierflg);
+				myMinuit->mnparm(0, "ratio", 1, minuitStep, 0, 100, ierflg);
 				myMinuit->FixParameter(0);
 			}
 			else if(model==0){ // B-only, fix r
-				myMinuit->mnparm(0, "ratio", 0.0, 0.1, -1, 100, ierflg);
+				myMinuit->mnparm(0, "ratio", 0.0, minuitStep, -1, 100, ierflg);
 				myMinuit->FixParameter(0);
 			}
 			else if(model==2){ // S+B,  float r
-				myMinuit->mnparm(0, "ratio", 1, 0.1, -100, 100, ierflg); // andrey's suggestion, alow mu hat < 0
+				myMinuit->mnparm(0, "ratio", 1, minuitStep, -100, 100, ierflg); // andrey's suggestion, alow mu hat < 0
 				//myMinuit->mnparm(0, "ratio", 1, 0.1, 0, 100, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
 			}
+			else if(model==21 or model==101 or model==102){ // S+B,  float r
+				myMinuit->mnparm(0, "ratio", 0, minuitStep, 0, 100, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
+			}
 			else if(model==3){ // profile mu
-				myMinuit->mnparm(0, "ratio", mu, 0.1, -100, 100, ierflg);
+				myMinuit->mnparm(0, "ratio", mu, minuitStep, -100, 100, ierflg);
 				myMinuit->FixParameter(0);
 			}
 			else if(model==4){ // only floating mu,  not fit for systematics
-				myMinuit->mnparm(0, "ratio", mu, 0.1, -100, 100, ierflg);
+				myMinuit->mnparm(0, "ratio", mu, minuitStep, -100, 100, ierflg);
 				for(int i=1; i<=npars; i++) myMinuit->FixParameter(i);
 			}
 			else if(model==5){ // no profiling at all, i.e. fix all parameters including strength 
@@ -362,40 +373,58 @@ namespace lands{
 			}
 
 			arglist[0] = 1;
+			if(model==101 or model==102)arglist[0] = mu; // ErrorDef for Minos,  just temporaliry using mu ...
 			myMinuit->mnexcm("SET ERR", arglist ,1,ierflg);
 			// Now ready for minimization step
-			arglist[0] = 500;
+			arglist[0] = 5000;
 			arglist[1] = 1.;
-			myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
+			if(!UseMinos)myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
+			if(UseMinos==2)myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
+			if(debug)cout <<" MIGRAD Number of function calls in Minuit: " << myMinuit->fNfcn << endl;
+			if(debug || ierflg)cout <<" MIGRAD return errflg = "<<ierflg<<endl;
+
 			//	myMinuit->mnexcm("MINI", arglist ,2,ierflg);
 			//	myMinuit->mnexcm("IMPROVE", arglist ,2,ierflg);
 
 
 			if(UseMinos){
-				arglist[0] = 500;
-				myMinuit->mnexcm("MINOS", arglist ,1,ierflg);
-
+				arglist[0] = 5000;
+				arglist[1] = 1;
+				myMinuit->mnexcm("MINOS", arglist , 2, ierflg);
+				if(debug)cout << " MINOS Number of function calls in Minuit: " << myMinuit->fNfcn << endl;
+				if(debug || ierflg )cout << " MINOS return errflg = "<<ierflg<<endl;
+				if(ierflg){
+					cout<<"WARNING: Minos fit fails, try other options"<<endl;
+				}
 			}
 
 			// Print results
 			Double_t amin,edm,errdef;
 			Int_t nvpar,nparx,icstat;
 			myMinuit->mnstat(amin,edm,errdef,nvpar,nparx,icstat);
-			//cout<<"Minimized L = "<<myMinuit->fAmin<<endl;
+			Double_t errUp, errLow, errParab=0, gcor=0; 
+			myMinuit->mnerrs(0, errUp, errLow, errParab, gcor);
+
+
 			double l = myMinuit->fAmin;
 			myMinuit->GetParameter(0, r, er);
 
-			//cout<<"Eval(r=1) : "<< myMinuit->Eval()<<endl;
-			//myMinuit->mnhelp("*");
-			if(debugMinuit){
+			if(debug and UseMinos) cout<<" signal_strength :  [ "<<r+errLow<<"  "<<r+errUp<<" ] "<<endl;
+			if(model==101 or model==102) {
+				er=r;
+				r+=errUp;   // for upper limit
+				er+=errLow; // for lower limit
+			}
+
+			if(debug || pars){
 				for(int i=0; i<=npars; i++){
 					double tmp, tmpe;
 					myMinuit->GetParameter(i, tmp, tmpe);
-					cout<<"par "<<i<<" "<<tmp<<" +/- "<<tmpe<<endl;
+					if(debug) printf("  par %30s      %.6f +/- %.6f\n", i>0?v_uncname[i-1].c_str():"signal_strength", tmp, tmpe);
+					if(pars && !hasBestFitted)pars[i] = tmp;
 				}
 			}
 
-			//delete myMinuit;
 			return l;
 		}else{
 			double par[1];

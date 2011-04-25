@@ -54,7 +54,8 @@ double rRelAcc;// 0.01; Relative accuracy on r to reach to terminate the scan
 bool bQuickEstimateInitialLimit = true; 
 double initialRmin = 1., initialRmax = 21;// only when bQuickEstimateInitialLimit==false
 
-int oneside = 1; //for PLR limit
+int oneside = 2; //for PLR limit     for default
+TString PLalgorithm; // algorithm for PL approximation method (    Minos,    Migrad )
 
 int main(int argc, const char*argv[]){
 	TStopwatch watch;  
@@ -383,82 +384,105 @@ int main(int argc, const char*argv[]){
 			return 1;
 		}else if(method=="ProfiledLikelihood"){
 
+			// change to use parabora approximation ....
+
 			cms_global= cms;
 			vdata_global=cms->Get_v_data();
 
 			double r95;
 			double tmp;
 			double tmperr;
-			double y0_1 =  MinuitFit(3, tmp, tmperr, 0);
-			if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
-			double tmpr = 0;
-			double y0_2 =  MinuitFit(2, tmpr, tmperr) ;
-			if(debug)	cout<<y0_2<<" fitter u="<<tmpr<<" +/- "<<tmperr<<endl;
+			double *pars = new double[cms->Get_max_uncorrelation()+1]; // nsys + r
 
-			double x1 =0, x2 =1;
-			double y0 = y0_1;  
-			if ( (y0_1 > y0_2) && tmpr>0) {
-				y0 = y0_2;
-				x1 = tmpr; x2=2*tmpr;
-			}
+			double ErrorDef = TMath::ChisquareQuantile(CL , 1);// (confidenceLevel, ndf)
+			if(PLalgorithm == "Minos"){
+				double upperL=0, lowerL=0; 
+				double y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, false, debug) ;
+				r95 = upperL;
+			}else if(PLalgorithm == "Migrad"){
+				double y0_1 =  MinuitFit(3, tmp, tmperr, 0);
+				if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
+				double tmpr = 0;
+				double y0_2 =  MinuitFit(2, tmpr, tmperr, 0) ;
+				if(debug)	cout<<y0_2<<" fitter u="<<tmpr<<" +/- "<<tmperr<<endl;
 
-
-			double y =  MinuitFit(3, tmp, tmp, x2 );
-
-			//------------
-			//If we have a background as a Gaussian distribution G(x|b) with mean b,
-			//sigma sqrt(b), and observe x = b, then the upper limit on signal is
-			//mu = 1.64*sqrt(b), which gives a 5% chance for P(obs < b).
-			//
-			//Therefore:
-			//
-			//1) muhat = 0, given the observation x=b
-			//
-			//2) -2 * ln (lambda(mu)) = -2 * ln( G(x|b+mu) / G(x|b+muhat) ) = 1.64^2
-			//
-			//If we use the 1.96-rule, it may *artificially* improve, but not cure,
-			//the coverage for low statistics case, but would now give wrong coverage
-			//in asymptotic.
-
-			//http://en.wikipedia.org/wiki/Chi-square_distribution
-			//double CI = 1.921;  // = 1.96**2/2 ,  probably for two sided 
-			//double CI = 1.64*1.64/2.;
-			double CI ;
-			if (oneside==2) CI= 1.921;  // = 1.96**2/2 , two sided 95% CL --->  one sided 97.5%
-			else CI = 1.64*1.64/2.; // two sided 90% CL
-			double precision = 0.001;
-			int nsearched = 2;
-			//1.925 for 95% CL,   ....   
-			//              assume the profile likelihood function to be an increasing function
-			//              bisection search ...
-			//              y1 always > y0
-
-			if(fabs((y-y0)/2. - CI) > precision ){
-				//first, got a number > 1.921,  otherwise increase it by a factor of 10 ...
-				while( (y-y0)/2. < CI ){
-					x1 =  x2;
-					x2 *=10.;
-					y =  MinuitFit(3, tmp, tmp, x2 );
-					nsearched++;
+				double x1 =0, x2 =1;
+				double y0 = y0_1;  
+				if ( (y0_1 > y0_2) && tmpr>0) {
+					y0 = y0_2;
+					x1 = tmpr; x2=2*tmpr;
 				}
-				y = MinuitFit(3, tmp, tmp, (x1+x2)/2. );
-				while( fabs((y-y0)/2. - CI)/CI > precision ){
-					double  tmpx = (x1+x2)/2.;
-					if( (y-y0)/2. < CI ){
-						x1 = tmpx; 
-					}else{
-						x2 = tmpx;
-					}	
+
+
+				//y0 = y0_2;  x1 = tmpr; x2=2*tmpr;
+				//if(x2<1) x2 = 1.;
+				if(debug) cout<<" y0="<<y0<<" x1="<<x1<<" x2="<<x2<<endl;
+
+
+				//------------
+				//If we have a background as a Gaussian distribution G(x|b) with mean b,
+				//sigma sqrt(b), and observe x = b, then the upper limit on signal is
+				//mu = 1.64*sqrt(b), which gives a 5% chance for P(obs < b).
+				//
+				//Therefore:
+				//
+				//1) muhat = 0, given the observation x=b
+				//
+				//2) -2 * ln (lambda(mu)) = -2 * ln( G(x|b+mu) / G(x|b+muhat) ) = 1.64^2
+				//
+				//If we use the 1.96-rule, it may *artificially* improve, but not cure,
+				//the coverage for low statistics case, but would now give wrong coverage
+				//in asymptotic.
+
+				//http://en.wikipedia.org/wiki/Chi-square_distribution
+				//double CI = 1.921;  // = 1.96**2/2 ,  probably for two sided 
+				//double CI = 1.64*1.64/2.;
+				double CI = ErrorDef/2.;
+				/*
+				if (oneside==2) CI= 1.921;  // = 1.96**2/2 , two sided 95% CL --->  one sided 97.5%
+				else CI = 1.64*1.64/2.; // two sided 90% CL
+				*/
+				double precision = 0.001;
+				int nsearched = 3;
+				//1.925 for 95% CL,   ....   
+				//              assume the profile likelihood function to be an increasing function
+				//              bisection search ...
+				//              y1 always > y0
+
+				double y =  MinuitFit(3, tmp, tmp, x2 );
+				if(fabs((y-y0)/2. - CI) > precision ){
+					//first, got a number > 1.921,  otherwise increase it by a factor of 10 ...
+					while( (y-y0)/2. < CI ){
+						x1 =  x2;
+						x2 *=10.;
+						y =  MinuitFit(3, tmp, tmp, x2 );
+						if(debug) cout<<" NLL = "<<y<<" r="<<pars[0]<<endl;
+						nsearched++;
+					}
 					y = MinuitFit(3, tmp, tmp, (x1+x2)/2. );
-					nsearched++;
+					if(debug) cout<<" NLL = "<<y<<" r="<<pars[0]<<endl;
+					if(debug) cout<< " r="<<(x1+x2)/2.<<" NLL = "<<y<<endl;
+					while( fabs((y-y0)/2. - CI)/CI > precision ){
+						double  tmpx = (x1+x2)/2.;
+						if( (y-y0)/2. < CI ){
+							x1 = tmpx; 
+						}else{
+							x2 = tmpx;
+						}	
+						y = MinuitFit(3, tmp, tmp, (x1+x2)/2., pars );
+						if(debug) cout<<" NLL = "<<y<<" r="<<pars[0]<<endl;
+						if(debug) printf(" r=%.6f,  NLL=%.10f\n", (x1+x2)/2., y);
+						nsearched++;
+					}
+					r95 = (x2+x1)/2.;
+				}else{
+					r95 = x2;
 				}
-				r95 = (x2+x1)/2.;
-			}else{
-				r95 = x2;
+
+
+				if(debug)cout<<"r95 = "<<r95<<",  "<<nsearched<<" steps"<<endl;
+
 			}
-
-			if(debug)cout<<"r95 = "<<r95<<",  "<<nsearched<<" steps"<<endl;
-
 
 			cout<<"------------------------------------------------------------"<<endl;
 			cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<r95<<endl;
@@ -466,9 +490,9 @@ int main(int argc, const char*argv[]){
 
 
 			if(debug>=10){ // show a plot for  -log(Lambda(mu)) vs. mu 
-				//double x0 =  MinuitFit(3, tmp, tmp, 0 );
-				double x0 = y0;
-				cout<<"x0 = "<<x0<<endl;
+				double x0 =  MinuitFit(3, tmp, tmp, 0 );
+				//double x0 = y0;
+				cout<<" x0 = "<<x0<<endl;
 				vector<double> vrxsec, vmlnq; 
 				vrxsec.clear(); vmlnq.clear();
 				for(double r=0; r<=2*r95; r+=r95/10.){
@@ -485,7 +509,7 @@ int main(int argc, const char*argv[]){
 				profiledL.draw();
 			}
 
-	watch.Print();
+			watch.Print();
 			return 1;
 
 		}
@@ -845,6 +869,12 @@ void processParameters(int argc, const char* argv[]){
 		oneside = tmpv[0].Atoi();
 		if(oneside!=1 and oneside!=2)  {cout<<"ERROR --OneOrTwoSided can only have 1 or 2 as arg"<<endl; exit(0);}
 	}
+	tmpv = options["--PLalgorithm"];
+	if( tmpv.size()!=1 ) { PLalgorithm = "Minos"; }
+	else {
+		PLalgorithm = tmpv[0];
+		if(PLalgorithm !="Minos" and PLalgorithm!="Migrad")  {cout<<"ERROR --PLalgorithm can only be Minos or Migrad as arg"<<endl; exit(0);}
+	}
 
 
 
@@ -867,6 +897,7 @@ void processParameters(int argc, const char* argv[]){
 		cout<<"  toysBayesian = "<<toysBayesian<<endl;
 	}else if(method=="ProfiledLikelihood"){
 		if(!calcsignificance)cout<<(oneside==1?"  one sided":"  two sided")<<endl;
+		cout<<"  algorithm to extract limit: "<<PLalgorithm<<endl;
 	}else if(method=="FeldmanCousins"){
 		cout<<"  calc "<<(lowerLimit?"lower limit":"upper limit")<<endl;
 		cout<<"  "<<(adaptiveSampling?"use adaptiveSampling":"do not use adaptiveSampling")<<endl;
@@ -933,6 +964,7 @@ void PrintHelpMessage(){
 	printf("--testStat arg (=LEP)                 Test statistics: LEP, TEV, Atlas, AtlasAllowMuHatNeg. \n"); 
 	printf(" \n"); 
 	printf("ProfiledLikelihood specific options: \n"); 
-	printf("--OneOrTwoSided arg (=1)              1 sided limit -lnL = 1.345;  2 sided limit -lnL = 1.921 \n"); 
+	printf("--OneOrTwoSided arg (=2)              1 sided limit -lnL = 1.345;  2 sided limit -lnL = 1.921 \n"); 
+	printf("--PLalgorithm arg (=Minos)            algorithms for ProfileLikelihood approximation: Minos, Migrad \n"); 
 	exit(0);
 }
