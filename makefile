@@ -15,7 +15,7 @@ CC = g++
 CFLAGS = -fPIC $(shell root-config --cflags)  -I ./include -I ${ROOTSYS}/include 
 
 LINKER = g++
-LINKERFLAGS = $(shell root-config --libs --ldflags) -lMinuit -lRooFit -lRooFitCore
+LINKERFLAGS = $(shell root-config --libs --ldflags) -lMinuit -lRooFit -lRooFitCore -lFoam
 
 ifeq ($(shell root-config --platform),macosx)
 	MACOSXFLAGS = -dynamiclib -undefined dynamic_lookup -Wl,-x -O -Xlinker -bind_at_load -flat_namespace
