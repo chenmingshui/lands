@@ -376,7 +376,7 @@ namespace lands{
 			if(model==101 or model==102)arglist[0] = mu; // ErrorDef for Minos,  just temporaliry using mu ...
 			myMinuit->mnexcm("SET ERR", arglist ,1,ierflg);
 			// Now ready for minimization step
-			arglist[0] = 5000;
+			arglist[0] = 500; // to be good at minization, need set this number to be 5000 (from experience of hgg+hww+hzz combination)
 			arglist[1] = 1.;
 			if(!UseMinos)myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
 			if(UseMinos==2)myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
