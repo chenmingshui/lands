@@ -94,6 +94,21 @@ void FillSigmas(TString sfile, double m2s, double m1s, double mean, double p1s, 
 	f.Close();
 }
 
+bool isWordInMap(TString s, std::map<TString, vector<TString> > tMap){
+	std::map<TString, vector<TString> >::iterator p;
+	bool bFound=false;
+	// Show key
+	for(p = tMap.begin(); p!=tMap.end(); ++p)
+	{
+		TString strKey = p->first;
+		if( s == strKey)
+		{
+			bFound = true;
+		}
+	}
+	return bFound;
+}
+
 void StringStrip( std::string & str ) {
 	//-------------------------------------------------------------------------------
 	// Strip spaces and tab at the beginning and the end from a string.

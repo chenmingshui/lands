@@ -25,6 +25,7 @@ void FillTree(TString sfile, vector<int> array);
 void FillTree(TString sfile, double * array, int nsize=100000);
 void FillTree(TString sfile, int* array, int nsize=100000);
 
+bool isWordInMap(TString s, std::map<TString, vector<TString> > tMap);
 void StringStrip( std::string & str ) ;
 void StringSplit( std::vector < std::string > & splitValues, 
 		const std::string & str,
