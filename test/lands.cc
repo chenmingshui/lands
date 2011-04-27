@@ -53,6 +53,7 @@ bool singlePoint;
 double testR;
 bool scanRs;
 int nSteps;
+bool bPlots = false;
 
 // for FeldmanCousins
 bool bQuickEstimateInitialLimit = true; 
@@ -133,7 +134,7 @@ int main(int argc, const char*argv[]){
 
 			// draw 
 
-			if(debug)	{
+			if(bPlots)	{
 				bys.PosteriorPdf();
 				//start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_BayesianLimit ppdf: "<< (cur_time - start_time)/1000. << " millisec\n";
 				DrawEvolution2D pdfr(bys.GetVR(), bys.GetVP(), ";r;Likelihood", (jobname+"_postpdf").Data(), pt);	
@@ -180,7 +181,7 @@ int main(int argc, const char*argv[]){
 			cout<<"------------------------------------------------------------"<<endl;
 
 
-			if(debug){
+			if(bPlots){
 				DrawPdfM2logQ pdfM2logQ(frequentist.Get_m2logQ_sb(),frequentist.Get_m2logQ_b(), frequentist.Get_m2lnQ_data(), 
 						"-2lnQ on data", "; -2lnQ; entries", "lnq", pt);
 				pdfM2logQ.draw();
@@ -192,7 +193,7 @@ int main(int argc, const char*argv[]){
 				}
 			}
 
-			if(debug>=10) {
+			if(bPlots) {
 				cout<<"-2lnQ on data = "<<frequentist.Get_m2lnQ_data()<<endl;
 				FillTree("m2lnQ_b.root", frequentist.Get_m2logQ_b());
 				FillTree("m2lnQ_sb.root", frequentist.Get_m2logQ_sb());
@@ -224,9 +225,11 @@ int main(int argc, const char*argv[]){
 				for(int i=0; i<vr.size(); i++){
 					printf("   r=%10.3f  CLs=%7.5f\n", vr[i], vc[i]);
 				}
-				DrawEvolution2D d2d(vr, vc, "; r ; CLs", (jobname+"_scanned_r_vs_cl").Data(), pt);
-				d2d.draw();
-				d2d.save();
+				if(bPlots){
+					DrawEvolution2D d2d(vr, vc, "; r ; CLs", (jobname+"_scanned_r_vs_cl").Data(), pt);
+					d2d.draw();
+					d2d.save();
+				}
 
 				watch.Print();
 				return 1;
@@ -242,7 +245,7 @@ int main(int argc, const char*argv[]){
 			if(bQuickEstimateInitialLimit) rtmp = clsr95.LimitOnSignalScaleFactor(cms, &frequentist, toysHybrid);
 			else rtmp = clsr95.LimitOnSignalScaleFactor(cms, initialRmin, initialRmax, &frequentist, toysHybrid, 3);
 
-			if(debug){
+			if(bPlots){
 				DrawEvolution2D d2d(clsr95.GetvTestedScaleFactors(), clsr95.GetvTestedCLs(), "; r ; CLs", (jobname+"_r_vs_cl").Data(), pt);
 				d2d.draw();
 				d2d.save();
@@ -362,7 +365,7 @@ int main(int argc, const char*argv[]){
 			cout<<"------------------------------------------------------------"<<endl;
 
 
-			if(debug){
+			if(bPlots){
 				// for plots...
 				TCanvas *can = new TCanvas("c","c");	
 				TString ssave = "fc";
@@ -432,10 +435,10 @@ int main(int argc, const char*argv[]){
 				double y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, false, debug) ;
 				r95 = upperL;
 			}else if(PLalgorithm == "Migrad"){
-				double y0_1 =  MinuitFit(3, tmp, tmperr, 0);
+				double y0_1 =  MinuitFit(3, tmp, tmperr, 0, 0, false, debug);
 				if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
 				double tmpr = 0;
-				double y0_2 =  MinuitFit(2, tmpr, tmperr, 0) ;
+				double y0_2 =  MinuitFit(2, tmpr, tmperr, 0, pars, false, debug) ;
 				if(debug)	cout<<y0_2<<" fitter u="<<tmpr<<" +/- "<<tmperr<<endl;
 
 				double x1 =0, x2 =1;
@@ -481,17 +484,17 @@ int main(int argc, const char*argv[]){
 				//              bisection search ...
 				//              y1 always > y0
 
-				double y =  MinuitFit(3, tmp, tmp, x2 );
+				double y =  MinuitFit(3, tmp, tmp, x2, 0, false, debug );
 				if(fabs((y-y0)/2. - CI) > precision ){
 					//first, got a number > 1.921,  otherwise increase it by a factor of 10 ...
 					while( (y-y0)/2. < CI ){
 						x1 =  x2;
 						x2 *=10.;
-						y =  MinuitFit(3, tmp, tmp, x2 );
+						y =  MinuitFit(3, tmp, tmp, x2, 0, false, debug );
 						if(debug) cout<<" NLL = "<<y<<" r="<<pars[0]<<endl;
 						nsearched++;
 					}
-					y = MinuitFit(3, tmp, tmp, (x1+x2)/2. );
+					y = MinuitFit(3, tmp, tmp, (x1+x2)/2., 0, false, debug );
 					if(debug) cout<<" NLL = "<<y<<" r="<<pars[0]<<endl;
 					if(debug) cout<< " r="<<(x1+x2)/2.<<" NLL = "<<y<<endl;
 					while( fabs((y-y0)/2. - CI)/CI > precision ){
@@ -501,7 +504,7 @@ int main(int argc, const char*argv[]){
 						}else{
 							x2 = tmpx;
 						}	
-						y = MinuitFit(3, tmp, tmp, (x1+x2)/2., pars );
+						y = MinuitFit(3, tmp, tmp, (x1+x2)/2., pars, false, debug );
 						if(debug) cout<<" NLL = "<<y<<" r="<<pars[0]<<endl;
 						if(debug) printf(" r=%.6f,  NLL=%.10f\n", (x1+x2)/2., y);
 						nsearched++;
@@ -521,15 +524,15 @@ int main(int argc, const char*argv[]){
 			cout<<"------------------------------------------------------------"<<endl;
 
 
-			if(debug>=10){ // show a plot for  -log(Lambda(mu)) vs. mu 
-				double x0 =  MinuitFit(3, tmp, tmp, 0 );
+			if(bPlots){ // show a plot for  -log(Lambda(mu)) vs. mu 
+				double x0 =  MinuitFit(21, tmp, tmperr, 0, 0, false, debug);
 				//double x0 = y0;
-				cout<<" x0 = "<<x0<<endl;
+				cout<<" x0 = "<<x0<<" optimized r="<<tmp<<endl;
 				vector<double> vrxsec, vmlnq; 
 				vrxsec.clear(); vmlnq.clear();
 				for(double r=0; r<=2*r95; r+=r95/10.){
 					vrxsec.push_back(r);
-					double x3 = MinuitFit(3,tmp, tmp, r) ;
+					double x3 = MinuitFit(3,tmp, tmp, r, 0, false, debug) ;
 					cout<<"r= "<<r<<", x3 = "<<x3<<endl;
 					double m2lnQ = x3 - x0;
 					cout<<"Profiled:  r ="<<r<<"	m2lnQ="<<m2lnQ<<endl;
@@ -574,22 +577,24 @@ int main(int argc, const char*argv[]){
 			printf("BANDS %10.5f %10.5f %10.5f %10.5f %10.5f %10.5f\n", rm2s2, rm1s2, rmean, rp1s2, rp2s2, rmedian2);
 			cout<<"------------------------------------------------------------"<<endl;
 
-			TCanvas *c=new TCanvas("cme","cme");
-			c->SetLogy(1);
-			TH1F *h=new TH1F("h",";r=#frac{#sigma_{95%CL}}{#sigma_{SM}}; entries", 200, 0, 15);	
-			for(int i=0; i<difflimits.size(); i++) h->Fill(difflimits[i]);
-			h->Draw();
-			Save(c, (jobname+"_differential_limits").Data());
+			if(bPlots){
+				TCanvas *c=new TCanvas("cme","cme");
+				c->SetLogy(1);
+				TH1F *h=new TH1F("h",";r=#frac{#sigma_{95%CL}}{#sigma_{SM}}; entries", 200, 0, 15);	
+				for(int i=0; i<difflimits.size(); i++) h->Fill(difflimits[i]);
+				h->Draw();
+				Save(c, (jobname+"_differential_limits").Data());
 
-			pt = SetTPaveText(0.67, 0.4, 0.8, 0.7);
-			//pt->AddText("statistical bands");
-			string ssave= (jobname+"_cummulativeR").Data();
-			string stitle="; r = #sigma_{95%}/#sigma_{SM}; cumulative probability;";
-			PlotXvsCummulativeProb plotRvsP(all_calculated_R95s, cummulativeProbabilities,
-					rm1s2, rp1s2, rm2s2, rp2s2, ssave, stitle, pt);
-			plotRvsP.draw();
-			plotRvsP.getGraph()->SetMarkerSize(1);
-			plotRvsP.save();
+				pt = SetTPaveText(0.67, 0.4, 0.8, 0.7);
+				//pt->AddText("statistical bands");
+				string ssave= (jobname+"_cummulativeR").Data();
+				string stitle="; r = #sigma_{95%}/#sigma_{SM}; cumulative probability;";
+				PlotXvsCummulativeProb plotRvsP(all_calculated_R95s, cummulativeProbabilities,
+						rm1s2, rp1s2, rm2s2, rp2s2, ssave, stitle, pt);
+				plotRvsP.draw();
+				plotRvsP.getGraph()->SetMarkerSize(1);
+				plotRvsP.save();
+			}
 
 		}
 
@@ -636,7 +641,7 @@ int main(int argc, const char*argv[]){
 			frequentist.SetModel(cms);
 			cout<<"\n Running "<<ntoysToDoSignificance<<" toys to evaluate significance for data "<<endl;
 			double signi = frequentist.SignificanceForData(ntoysToDoSignificance);
-			if(debug){
+			if(bPlots){
 				cout<<"Q_b_data = "<<frequentist.Get_m2lnQ_data()<<endl;	
 				vector<double> vclb = frequentist.Get_m2logQ_b();
 				TString  s = jobname; 
@@ -730,6 +735,8 @@ void processParameters(int argc, const char* argv[]){
 		cout<<" .... valid data cards = "<<datacards.size()<<endl;
 		if(datacards.size()<=0){ cout<< " please provide valid data cards "<<endl; exit(0); }
 	}
+
+	if(isWordInMap("--plot", options)) bPlots = true;
 
 	vector<TString> tmpv;
 	// limit or significance
@@ -974,6 +981,7 @@ void PrintHelpMessage(){
 	printf("Allowed options: \n");                                                                                                                 
 	printf("-h [ --help ]                         Produce help message \n"); 
 	printf("-v [ --verbose ] arg (=0)             Verbosity level \n"); 
+	printf("--plot 	                              make plots when appropriate \n");
 	printf("-n [ --name ] arg                     Name of the job,  default is \"datacard\"+\"method\" \n"); 
 	printf("-d [ --datacards ] args               Datacard files,  can contain \"*, ?\" \n"); 
 	printf("-D [ --dataset ] arg (=data_obs)      Dataset for observed limit,  data_obs,  asimov_b, asimov_sb \n"); 
@@ -1006,6 +1014,7 @@ void PrintHelpMessage(){
 	printf("--rule arg (=CLs)                     Rule to use: CLs, CLsb \n"); 
 	printf("--testStat arg (=LEP)                 Test statistics: LEP, TEV, Atlas, AtlasAllowMuHatNeg. \n"); 
 	printf("--singlePoint arg (=float)            Just compute CLsb/CLb/CLs values for a given value of r \n"); 
+	printf("--scanRs arg (=numSteps)              scanning CLs vs. r,  r from initialRmin to initialRmax with numSteps \n"); 
 	printf(" \n"); 
 	printf("ProfiledLikelihood specific options: \n"); 
 	printf("--OneOrTwoSided arg (=2)              1 sided limit -lnL = 1.345;  2 sided limit -lnL = 1.921 \n"); 
