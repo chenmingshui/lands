@@ -169,6 +169,7 @@ int main(int argc, const char*argv[]){
 			vdata_global=cms->Get_v_data();
 
 			if(singlePoint){ cms->SetSignalScaleFactor(testR); }
+			else { cms->SetSignalScaleFactor(1.); }
 			frequentist.BuildM2lnQ(cms, toysHybrid);
 			double errs, errb, errsb;
 			double cls = frequentist.CLs(errs);
@@ -193,7 +194,7 @@ int main(int argc, const char*argv[]){
 				}
 			}
 
-			if(bPlots) {
+			if(debug>=100) {
 				cout<<"-2lnQ on data = "<<frequentist.Get_m2lnQ_data()<<endl;
 				FillTree("m2lnQ_b.root", frequentist.Get_m2logQ_b());
 				FillTree("m2lnQ_sb.root", frequentist.Get_m2logQ_sb());

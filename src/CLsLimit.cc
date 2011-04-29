@@ -109,7 +109,7 @@ namespace lands{
 						}
 
 						if(added){
-							if(h<=0) h=10e-9;
+							if(h<=0) { h=10e-9;} // cout<<" *h<0* "<<endl; 
 							bs = h*normalization*(s<nsigproc?par[0]:1);
 						}
 					}
@@ -245,6 +245,7 @@ namespace lands{
 
 
 	double MinuitFit(int model, double &r , double &er, double mu /* or ErrorDef for Minos*/, double *pars, bool hasBestFitted, int debug  ){
+		double signalScale = cms_global->GetSignalScaleFactor();
 
 		int UseMinos = 0;
 		if(model == 102) UseMinos = 2; // PL approximation method using Minos ....  with migrad 
@@ -259,6 +260,7 @@ namespace lands{
 			int tmp;
 			double l;
 			Chisquare(tmp, 0, l, pars, 0);
+			cms_global->SetSignalScaleFactor(signalScale);
 			return l;
 		}
 		if( (cms_global->IsUsingSystematicsErrors() && npars>0 )  || model ==2 ){
@@ -365,6 +367,7 @@ namespace lands{
 
 				Chisquare(tmp, 0, l, par, 0);
 				delete []  par;
+				cms_global->SetSignalScaleFactor(signalScale);
 				return l;
 
 			}else {
@@ -425,6 +428,7 @@ namespace lands{
 				}
 			}
 
+			cms_global->SetSignalScaleFactor(signalScale);
 			return l;
 		}else{
 			double par[1];
@@ -435,8 +439,10 @@ namespace lands{
 			else if (model == 3) par[0]=mu;
 			else {cout<<"model is 2, but going to fix "<<endl; exit(0);}
 			Chisquare(tmp, 0, l, par, 0);
+			cms_global->SetSignalScaleFactor(signalScale);
 			return l;
 		}
+		cms_global->SetSignalScaleFactor(signalScale);
 		return 0.0;
 	}	
 
@@ -1006,16 +1012,16 @@ namespace lands{
 				cout<<"\t lnQ,p= "<<Q_b[iq_b[_nexps-1]]<<" 1"<<endl;
 			}
 		}
-		if(ret*_nexps <= 20) cout<<"CLsBase::CLb  CLb*nexps="<<ret*_nexps<<", statistic may not enough"<<endl;
-		if( (1-ret)*_nexps <= 20) cout<<"CLsBase::CLb  (1-CLb)*nexps="<<(1-ret)*_nexps<<", statistic may not enough"<<endl;
+		if(ret*_nexps <= 20 && _debug ) cout<<"CLsBase::CLb  CLb*nexps="<<ret*_nexps<<", statistic may not enough"<<endl;
+		if( (1-ret)*_nexps <= 20 && _debug ) cout<<"CLsBase::CLb  (1-CLb)*nexps="<<(1-ret)*_nexps<<", statistic may not enough"<<endl;
 		if(ret == 0 || ret==1){
-			cout<<"CLsBase::CLb CLb="<<ret<<", it means number of pseudo experiments is not enough"<<endl;
+			if(_debug) cout<<"CLsBase::CLb CLb="<<ret<<", it means number of pseudo experiments is not enough"<<endl;
 			if(ret==0) {
-				cout<<"              Currently, we put CLb=1./"<<_nexps<<endl;
+				if(_debug)cout<<"              Currently, we put CLb=1./"<<_nexps<<endl;
 				ret = 1./(double)_nexps;
 			}
 			if(ret==1) {
-				cout<<"              Currently, we put CLb= 1 - 1./"<<_nexps<<endl;
+				if(_debug)cout<<"              Currently, we put CLb= 1 - 1./"<<_nexps<<endl;
 				ret = 1 - 1./(double)_nexps;
 			}
 		}

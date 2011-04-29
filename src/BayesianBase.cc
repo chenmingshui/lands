@@ -369,9 +369,6 @@ namespace lands{
 				if(_d[i]>0)
 					t += _d[i] * log( xr*_vs[iexps][i] + _vb[iexps][i] );
 			t+=_cms->EvaluateGL(_vNorms_forShapeChannels[iexps], _vParams_forShapeChannels[iexps], xr);
-			//for(i=0; i<_cms->Get_vv_pdfs().size(); i++){
-			//	t+=_cms->EvaluateGL(i, xr);
-			//}
 			if(_prior == prior_1overSqrtS)t -= 0.5*log(_xgl[k] + rlow * _stot[iexps] );
 
 			//cout<< " _lwgl["<<k<<"]="<< _lwgl[k] <<" + t="<<t <<" = "<<_lwgl[k]+t<<endl;
@@ -387,7 +384,7 @@ namespace lands{
 	}
 	double BayesianBase::Likelihood(double r){
 		if (r<0) {cout<< " r <0, exit" <<endl; exit(0);}
-		if (_norm<=0)  {cout<< " _norm <=0, exit  " << _norm <<endl; exit(0);}
+		if (_norm<=0)  {cout<< " _norm <=0, i.e. likelihood norm of posterior pdf is very unlikeli. exit  " << _norm <<endl; exit(0);}
 		double ret=0;
 		int i, c;
 		double t;

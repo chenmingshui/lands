@@ -1,11 +1,6 @@
 LIB = lands.so
-EXEC = test/Significance_dataCard.exe \
-	test/MultipleChannels.exe \
-	test/CLs.exe \
+EXEC = 	test/CLs.exe \
 	test/Bayesian.exe \
-	test/CLs_dataCard.exe \
-	test/Bayesian_dataCard.exe \
-	test/ProfileLikelihoodApproxLimit.exe \
 	test/lands.exe
 
 SOURCES = $(wildcard src/*.cc)
