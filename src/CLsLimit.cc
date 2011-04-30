@@ -1408,6 +1408,7 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 		bys.SetNumToys(100);
 		bys.SetDebug(_debug);
 		r0= bys.Limit();
+		if(r0==0){r0=1;};
 		if(_debug){
 			start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_BayesianLimitEsitmate: "<< (cur_time - start_time) << " microsec\n";
 		}

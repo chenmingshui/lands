@@ -192,12 +192,12 @@ int main(int argc, const char*argv[]){
 				for(int i=0; i<vsb.size(); i++){
 					//	if(vsb[i]>=m2lnqdata)cout<<i<<" "<<vsb[i]<<endl;
 				}
+				FillTree("m2lnQ_b.root", frequentist.Get_m2logQ_b());
+				FillTree("m2lnQ_sb.root", frequentist.Get_m2logQ_sb());
 			}
 
 			if(debug>=100) {
 				cout<<"-2lnQ on data = "<<frequentist.Get_m2lnQ_data()<<endl;
-				FillTree("m2lnQ_b.root", frequentist.Get_m2logQ_b());
-				FillTree("m2lnQ_sb.root", frequentist.Get_m2logQ_sb());
 				vector<double> qsb = frequentist.Get_m2logQ_sb();
 				vector<double> qb = frequentist.Get_m2logQ_b();
 				cout<<"-2lnQ for SB"<<endl;

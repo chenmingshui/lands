@@ -112,6 +112,12 @@ namespace lands{
 
 		_norm = AverageIntegral(0);
 		if(_debug) cout<<(bsys?"w/ sys, ":"w/o sys,")<<" norm  = "<<_norm<<" , with my own approach to converge"<<endl;
+		if(_norm ==0 || _norm>8.2e307) {
+			cout<<"ERROR: the normalization of likelihood is very unlikely  = "<<(_norm==0?0:_norm)<<endl;
+			cout<<"ERROR: we set the limit to 0"<<endl;
+			_limit = 0;
+			return 0;
+		}
 
 		// first try  ---to get p<fAlpha
 		double rlo= 0;
@@ -163,6 +169,12 @@ namespace lands{
 		// try to get p<fAlpha 
 		_norm = AverageIntegral(0);
 		if(_debug) cout<<"\t ** norm "<<(bsys?"w/ sys = ":"w/o sys =")<<_norm<<" ** with Joel Hinrich's approach"<<endl;
+		if(_norm ==0 || _norm>8.2e307) {
+			cout<<"WARNING: the normalization of likelihood is very unlikely  = "<<(_norm==0?0:_norm)<<endl;
+			cout<<"WARNING: we set the limit to pre-calculated "<<ret<<endl;
+			_limit = ret;
+			return ret;
+		}
 
 /*
 		rmid = 2*ret;	
