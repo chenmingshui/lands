@@ -30,7 +30,7 @@ namespace lands{
 		Bands();
 	}
 	void LimitBands::BysLimitBands(double alpha, int noutcome, int ntoysBys){
-		fAlpha=alpha; fConfidenceLevel=1-fAlpha; _noutcomes=noutcome;
+		fAlpha=alpha; fConfidenceLevel=1-fAlpha; _noutcomes=noutcome; _actualOutComesForBys = _noutcomes;
 		_doBys=true; _ntoysBys=ntoysBys; 
 		if(_byslimit){_byslimit->SetAlpha(fAlpha); _byslimit->SetNumToys(_ntoysBys); }
 		Bands();
@@ -39,7 +39,7 @@ namespace lands{
 		fAlpha=alpha; fConfidenceLevel=1-fAlpha; _noutcomes=noutcome;
 		_doCLs=doCLs; _doBys=doBys; _ntoysM2lnQ=ntoysM2lnQ; _ntoysBys=ntoysBys; 
 		if(_clslimit){ _clslimit->SetAlpha(fAlpha); }
-		if(_byslimit){_byslimit->SetAlpha(fAlpha); _byslimit->SetNumToys(_ntoysBys); }
+		if(_byslimit){_byslimit->SetAlpha(fAlpha); _byslimit->SetNumToys(_ntoysBys);  _noutcomes = _noutcomes;}
 		Bands();
 	}
 	void LimitBands::Bands(){
@@ -184,11 +184,15 @@ namespace lands{
 			if(_doBys){
 				_cms->SetSignalScaleFactor(1.);
 				r=_byslimit->Limit(_cms);
-				vrbys.push_back(r);
-				vpbys.push_back(p);
-				rmeanbys+=r*p;
-				for(int ntmp=0; ntmp<nentries_for_thisR; ntmp++){
-					_difrbys.push_back(r);
+				if(r>0){
+					vrbys.push_back(r);
+					vpbys.push_back(p);
+					rmeanbys+=r*p;
+					for(int ntmp=0; ntmp<nentries_for_thisR; ntmp++){
+						_difrbys.push_back(r);
+					}
+				}else{
+					_actualOutComesForBys -= (int)(_noutcomes*p);
 				}
 				if(_debug)cout<<"n="<<n<<" bys_r= "<<r<<" p= "<<p<<" repeated "<<nentries_for_thisR<<endl;
 				if(_debug) { start_time=cur_time; cur_time=clock(); cout << "\t\t\t TIME_in_BAND, doBys "<< n << " took " <<(cur_time - start_time)/1000000. << " sec\n"; }
@@ -201,6 +205,11 @@ namespace lands{
 				}
 			}
 			fflush(stdout);
+		}
+		// correct weight of each r for bys 
+		if(_actualOutComesForBys<=0) {cout<<"ERROR: LimitBands bys _actualOutComesForBys="<<_actualOutComesForBys<<endl; exit(0);};
+		for(int ii=0; ii<vrbys.size(); ii++){
+			vpbys[ii] = (vpbys[ii]*_noutcomes/(double)_actualOutComesForBys);
 		}
 
 		if(Entries_v) delete [] Entries_v;
@@ -229,7 +238,7 @@ namespace lands{
 			GetBandsByFermiCurveInterpolation(_vrcls,_vpcls, _rcls[1], _rcls[3], _rcls[0], _rcls[4]);
 			_rcls[5]=rmeancls; _rcls[2]=GetBandByFermiCurveInterpolation(_vrcls, _vpcls, 0.5);
 			if(_debug) {
-				cout<<"\t ProjectingLimits projecting cls r at "<<endl; 
+				cout<<"\t ProjectingLimits projecting cls r at (these are interpolated by Fermi fuction, now should be deprecated)"<<endl; 
 				cout<<"    -2 sigma ="<<_rcls[0]<<endl;
 				cout<<"    -1 sigma ="<<_rcls[1]<<endl;
 				cout<<"    median   ="<<_rcls[2]<<endl;
@@ -255,7 +264,7 @@ namespace lands{
 			GetBandsByFermiCurveInterpolation(_vrbys,_vpbys, _rbys[1], _rbys[3], _rbys[0], _rbys[4]);
 			_rbys[5]=rmeanbys; _rbys[2]=GetBandByFermiCurveInterpolation(_vrbys, _vpbys, 0.5);
 			if(_debug) {
-				cout<<"\t ProjectingLimits projecting bys r at "<<endl; 
+				cout<<"\t ProjectingLimits projecting bys r at (these are interpolated by Fermi fuction, now should be deprecated)"<<endl; 
 				cout<<"    -2 sigma ="<<_rbys[0]<<endl;
 				cout<<"    -1 sigma ="<<_rbys[1]<<endl;
 				cout<<"    median   ="<<_rbys[2]<<endl;
@@ -279,7 +288,7 @@ namespace lands{
 
 		for(int i=0; i<vvPossibleOutcomes_forUnbinnedChannels.size(); i++){
 			for(int j=0; j<vvPossibleOutcomes_forUnbinnedChannels[i].size(); j++){
-		//		delete (vvPossibleOutcomes_forUnbinnedChannels[i][j]);
+				//		delete (vvPossibleOutcomes_forUnbinnedChannels[i][j]);
 			}
 		}
 	}	

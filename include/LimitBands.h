@@ -32,6 +32,7 @@ namespace lands{
 			double fAlpha;
 			double fConfidenceLevel;
 			int _noutcomes;
+			int _actualOutComesForBys;
 			int _ntoysM2lnQ;
 			int _ntoysBys;
 			vector<double> _difrcls, _vrcls, _vpcls; 
