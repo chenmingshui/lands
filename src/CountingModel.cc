@@ -1468,7 +1468,7 @@ If we need to change it later, it will be easy to do.
 		if(index_sample>= vv_exp_sigbkgs_scaled.at(index_channel).size()) return -1;
 		return vv_exp_sigbkgs_scaled.at(index_channel).at(index_sample);
 	}
-	void CountingModel::RemoveChannelsWithExpectedSignal0orBkg0(int king){
+	int CountingModel::RemoveChannelsWithExpectedSignal0orBkg0(int king){
 		// should be advoked at the end of model construction, otherwise you will get into trouble ....
 		// either before or after "ConfigUncertaintyPdfs"
 		std::vector< vector<double> >::iterator iter=vv_exp_sigbkgs.begin(); 
@@ -1477,10 +1477,10 @@ If we need to change it later, it will be easy to do.
 		for(; iter!=vv_exp_sigbkgs.end();){
 			int position=iter-vv_exp_sigbkgs.begin();
 			double bkg = 0, sig=0;
-			for(int p=1; p<(*iter).size(); p++){
-				bkg += (*iter)[p];
+			for(int p=0; p<(*iter).size(); p++){
+				if( p>=v_sigproc[position] )bkg += (*iter)[p];
+				else sig += (*iter)[p];
 			}
-			sig = (*iter)[0];
 			if( 
 					( (king==1 || king==2) && sig<=0 ) ||
 					( (king==0 || king==2) && bkg<=0        ) 
@@ -1494,6 +1494,7 @@ If we need to change it later, it will be easy to do.
 				vvv_pdftype.erase( vvv_pdftype.begin()+position );
 				vvv_idcorrl.erase( vvv_idcorrl.begin()+position );
 				vv_procname.erase( vv_procname.begin()+position );
+				vvv_shapeuncindex.erase(vvv_shapeuncindex.begin()+position );
 
 				if( (king==1||king==2) && sig<=0 )skippedchannels_s++;
 				if( (king==0||king==2) && bkg<=0 )skippedchannels_b++;
@@ -1507,6 +1508,7 @@ If we need to change it later, it will be easy to do.
 		if(king==0 || king==2)	cout<<"\t * "<<skippedchannels_b<<" bins have been removed because of no backgrounds  in those bins *"<<endl;	
 		if(king==2)	cout<<"\t * "<<skippedchannels_sb<<" bins have been removed because of no backgrounds and no signal in those bins *"<<endl;	
 		cout<<"\t * "<<skippedchannels<<" bins in total were removed *"<<endl;
+		return skippedchannels;
 	}
 
 
@@ -2000,7 +2002,8 @@ If we need to change it later, it will be easy to do.
 		for(int i=0; i<v_uncname.size(); i++){
 			if(v_uncname[i]==pname){
 				index_correlation = i+1;	
-				break;
+				cout<<" There are two shape parameters with same name = "<<pname<<", skip it"<<endl;
+				return;
 			}
 		}
 		if(index_correlation<0)  {
@@ -2012,6 +2015,76 @@ If we need to change it later, it will be easy to do.
 			rangeMin = mean - 4*sigmaL;
 			rangeMax = mean + 4*sigmaR;
 		}
+
+		vector<double> vunc; vunc.clear(); 
+		vunc.push_back(mean);
+		vunc.push_back(sigmaL);
+		vunc.push_back(sigmaR);
+		vunc.push_back(rangeMin);
+		vunc.push_back(rangeMax);
+		if(v_pdfs_floatParamsUnc.size() <= index_correlation){
+			for(int i = v_pdfs_floatParamsUnc.size(); i<=index_correlation; i++){
+				v_pdfs_floatParamsUnc.push_back(vunc);
+			}
+		}else v_pdfs_floatParamsUnc[index_correlation] = vunc;
+		if(_debug) cout<<" v_pdfs_floatParamsUnc.size() = "<<v_pdfs_floatParamsUnc.size()<<endl;
+
+		TString s = pname;
+		cout<<" * Adding floating parameter: "<<pname<<endl;
+		_w_varied->factory(TString::Format("%s_x[%f,%f]", pname.c_str(), rangeMin, rangeMax));
+		cout<<pname<<"_x added"<<endl;
+		_w_varied->factory(TString::Format("BifurGauss::%s_bfg(%s_x, %f, %f, %f )", pname.c_str(), pname.c_str(), mean, sigmaL, sigmaR));
+		cout<<pname<<"_bfg added"<<endl;
+
+		v_pdfs_floatParamsName.push_back(pname);
+		v_pdfs_floatParamsIndcorr.push_back(index_correlation);
+	}
+
+	void CountingModel::AddUncertaintyAffectingShapeParam(string uname, string pname, double mean, double sigmaL, double sigmaR, double rangeMin, double rangeMax ){
+
+		// for the uncertainty uname,  assign it a range for truncation ....     sigmaL sigmaR are absolute values, need to translate to  gaussian unit
+		//
+		// type should be gaussain ,  truncated
+		//
+		// check if the parameter name is in the uncname list, if yes,  then  mean should be same,  also rangeMin, rangeMax
+		//
+		//
+		// for each uncertainty source:  need a range,  and a list of parameters which it affects 
+		
+
+		if(_w_varied->var(pname.c_str())==NULL) {
+			cout<<" parameter "<<pname<<" not exist in the added channels,   skip it"<<endl;
+			return;
+		}
+
+		int index_correlation = -1; // numeration starts from 1
+		sigmaL = fabs(sigmaL);
+		sigmaR = fabs(sigmaR);
+		for(int i=0; i<v_uncname.size(); i++){
+			if(v_uncname[i]==uname){
+				index_correlation = i+1;	
+				return;
+			}
+		}
+		if(index_correlation<0)  {
+			index_correlation = v_uncname.size()+1;
+			v_uncname.push_back(uname);
+		}
+
+		if(rangeMax==rangeMin){
+			rangeMin = mean - 4*sigmaL;
+			rangeMax = mean + 4*sigmaR;
+		}
+
+		// implementation needed:
+		//
+		// * first check the range and translate to constraint on the normal random number 
+		// * if this uncname is already exist, then check and compare the constraint range , pick correct one,  update it if needed
+		// * note that the asymetric error here ... 
+		// * associate this pname to this uncname 
+		// * this uncertainty pdf should become truncated Gaussian ...  but can operate differently 
+
+		
 
 		vector<double> vunc; vunc.clear(); 
 		vunc.push_back(mean);

@@ -107,7 +107,8 @@ int main(int argc, const char*argv[]){
 	cms->SetRdm(rdm);
 	cms->SetUseSystematicErrors(systematics);
 	//cms->RemoveChannelsWithExpectedSignal0orBkg0();
-	cms->RemoveChannelsWithExpectedSignal0orBkg0(-1);
+	int nch_removed = cms->RemoveChannelsWithExpectedSignal0orBkg0(0); // 0: remove only bins with total bkg<=0,  1: remove bins with total sig<=0,  2: both
+	if(debug and nch_removed )cms->Print();
 	//cms->SetAllowNegativeSignalStrength(false);
 	if(dataset == "asimov_b")cms->UseAsimovData(0);
 	else if(dataset == "asimov_sb")cms->UseAsimovData(1);

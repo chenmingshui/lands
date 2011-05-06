@@ -220,6 +220,19 @@ int GetTotProc(int c, int p, vector< vector<string> >vv_procnames){
 	}
 	return stop+p;
 }
+double GetRate(string c, vector<string> channelnames, string p, vector< vector<string> >vv_procnames, vector<string>ss1){
+	int stop = 0;
+	for(int i=0; i<channelnames.size(); i++){
+		for(int j=0; j< vv_procnames[i].size(); j++){
+			if(channelnames[i]==c && vv_procnames[i][j]==p) break;
+			stop ++; 
+		}
+		if(channelnames[i]==c) break;
+	}
+	TString s = ss1[stop+1];
+	if(s == "-") return -9999;
+	else return s.Atof();
+}
 string GetUncertainy(string c, vector<string> channelnames, string p, vector< vector<string> >vv_procnames, vector<string>ss1){
 	int stop = 0;
 	for(int i=0; i<channelnames.size(); i++){
@@ -350,6 +363,22 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 				if(TString(vss_processes[l][i]).Atoi()<=0) nsigproc[nsigproc.size()-1]++;
 				if(TString(vss_processes[l][i]).Atoi()==0) tmpn++; // as each channel has "0" standing for one of signal processes
 				processnames.push_back(vss_processes[l][i]); // we temporarily assign process name as the "number", if another "process" line found,  we'll make change later
+
+				// check that processes number follow   " -2 -1  0  1  2 " ordering 
+				int currproc = TString(vss_processes[l][i]).Atoi();
+				if(currproc<=0){
+					bool procOrderingIsFine = true;
+					if(vss_processes[l].size()<=i+1){procOrderingIsFine = false;} 
+					else {
+						int nextproc = TString(vss_processes[l][i+1]).Atoi();
+						if(nextproc!= currproc+1) procOrderingIsFine = false;
+					}
+					if(procOrderingIsFine == false) {
+						cout<<"ERROR: in \"process\" line, the ordering is wrong,  you have to follow the following ordering in each bin: "<<endl;
+						cout<<"       .... -2 -1 0 1 2 ....."<<endl;
+						exit(0);
+					}
+				}
 			}
 			// debug
 			for(int i=0; i<nsigproc.size(); i++){
@@ -505,6 +534,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 		vector<string> uncernames; uncernames.clear();
 		vector<string> uncertypes; uncertypes.clear();
 		vector< vector<string> >uncerlines; uncerlines.clear();
+		vector< vector<string> >uncerlinesAffectingShapes; uncerlinesAffectingShapes.clear();
 		for(int j=lines.size()-1; j>=0; j--){
 			if(lines[j].BeginsWith("---") )	break;
 			if(lines[j].BeginsWith("rate"))	break;
@@ -521,6 +551,8 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 				cout<<"uncertainty configuration is not correct"<<endl; 
 				cout<<lines[j]<<endl;
 				exit(0);
+			}else if(ss[1]=="shape_param"){
+				uncerlinesAffectingShapes.push_back(ss);
 			}else{
 				nsyssources++;
 				uncernames.push_back(ss[0]);
@@ -843,6 +875,22 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 								<<"] is shape, but the norminal histogram->Integral = 0"<<endl;
 							exit(0);
 						}
+
+						// check if normalization consistent with the rate declared in the data card
+						double tmp_rate = GetRate(channelnames[c], channelnames, vv_procnames[c][t], vv_procnames, ss_old_rate);
+						if(tmp_rate<0) {} //don't check normalization of histogram,  users' responsibility 
+						else{ 
+							if(fabs(tmp_rate-hn[t]->Integral())/hn[t]->Integral() > 0.1){ // if difference > 10%, then put Error and exit
+								cout<<"ERROR: in channel ["<<channelnames[c]<<"] process ["<<vv_procnames[c][t]<<"], ";
+								cout<<" declared rate in data card = "<< tmp_rate<<", not consistent with the integral of input histogram,";
+							        cout<<" which is "<<hn[t]->Integral()<<endl;
+								cout<<" NOTE: if you don't want to check the consistency, you can put \"-\" in the datacard for the rate. "<<endl;
+								cout<<"       In that case, you have the responsibility to make sure the integral (normalization) of histogram makes sense."<<endl;
+								exit(0);
+							}
+						}
+							
+
 						hnorm[t]=(TH1F*)hn[t]->Clone("del_clone"+t);
 						hnorm[t]->Scale(1./hn[t]->Integral());
 					}
@@ -1019,7 +1067,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 			cout<<cardExpanded<<endl<<endl<<endl;
 		}
 		//exit(1);
-		if(hasParametricShape) ConfigureShapeModel(cms, cardExpanded, parametricShapeLines,  debug);
+		if(hasParametricShape) ConfigureShapeModel(cms, cardExpanded, parametricShapeLines, uncerlinesAffectingShapes, debug);
 		else ConfigureModel(cms, cardExpanded, debug);
 	}// line begin with "shape"
 }
@@ -1576,7 +1624,7 @@ vector<TString> SplitIntoLines(TString ifileContentStripped, bool debug){
 
 	return lines;
 }
-bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vector< vector<string> > parametricShapeLines, int debug){
+bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vector< vector<string> > parametricShapeLines, vector< vector<string> > uncerlinesAffectingShapes, int debug){
 	// channel index starts from 1
 	// systematics source index also starts from 1
 	if(debug)for(int i=0; i<parametricShapeLines.size(); i++){
@@ -2119,6 +2167,41 @@ bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vecto
 		}
 
 		duplicatingLines.push_back(tmps);
+	}
+	for(int i=0; i<uncerlinesAffectingShapes.size(); i++){
+		vector<string>	ss = uncerlinesAffectingShapes[i]; 
+		if(ss.size()<5) {
+			cout<<"ERROR uncertainty line on parameter: "<<ss[0]<<" "<<ss[1]<<" don't have enough parameters, need at least mean and sigma"<<endl;
+			for(int ii=0; ii<ss.size(); ii++){
+				cout<<ss[ii]<<" ";
+			}
+			cout<<endl;
+			exit(0);
+		}
+		double mean = TString(ss[3]).Atof();
+		double sigmaL, sigmaR;
+		double rangeMin=0, rangeMax=0;
+		if(TString(ss[4]).Contains("/")){
+			vector<string> asymetricerrors; asymetricerrors.clear();
+			StringSplit(asymetricerrors, ss[4], "/");
+			sigmaL = (TString(asymetricerrors[0])).Atof(); // downside 
+			sigmaR = (TString(asymetricerrors[1])).Atof();  // upside
+		}else {
+			sigmaL = (TString(ss[4])).Atof();
+			sigmaR = sigmaL;
+		}
+		if(ss.size()>5){
+			TString sr = ss[5];
+			if(sr.BeginsWith("[") and sr.EndsWith("]") and sr.Contains(",") ){
+				sr.ReplaceAll("[", "");
+				sr.ReplaceAll("]", "");
+				vector<string> asymetricerrors; asymetricerrors.clear();
+				StringSplit(asymetricerrors, sr.Data(), ",");
+				rangeMin= (TString(asymetricerrors[0])).Atof(); // downside 
+				rangeMax= (TString(asymetricerrors[1])).Atof();  // upside
+			}
+		}
+		cms->AddUncertaintyAffectingShapeParam(ss[0], ss[2], mean, sigmaL, sigmaR, rangeMin, rangeMax );
 	}
 
 	if(debug) cout<<"filled systematics"<<endl;

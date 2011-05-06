@@ -112,7 +112,7 @@ namespace lands{
 			VChannelVSampleVUncertainty Get_vvv_pdftype(){return vvv_pdftype;};
 			VChannelVSampleVUncertainty Get_vvv_idcorrl(){return vvv_idcorrl;};
 
-			void RemoveChannelsWithExpectedSignal0orBkg0(int king = 2); // king=0 for removing a bin with bkg=0, 1 for sig=0, 2 for bkg=0||sig=0  
+			int RemoveChannelsWithExpectedSignal0orBkg0(int king = 2); // king=0 for removing a bin with bkg=0, 1 for sig=0, 2 for bkg=0||sig=0  
 
 			int Get_max_uncorrelation() {return max_uncorrelation;};
 			VDChannel Get_v_TruncatedGaussian_maxUnc() {return v_TruncatedGaussian_maxUnc;};
@@ -189,6 +189,7 @@ namespace lands{
 			void AddUncertaintyOnShapeNorm(string chname, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, string uncname);
 			void AddUncertaintyOnShapeParam(string pname, double mean, double sigmaL, double sigmaR, double rangeMin=0, double rangeMax=0 );
 
+			void AddUncertaintyAffectingShapeParam(string uname, string pname, double mean, double sigmaL, double sigmaR, double rangeMin, double rangeMax );
 		private:
 			VDChannel v_data;
 			VChannelVSample vv_exp_sigbkgs;

@@ -244,7 +244,7 @@ namespace lands{
 	}
 
 
-	double MinuitFit(int model, double &r , double &er, double mu /* or ErrorDef for Minos*/, double *pars, bool hasBestFitted, int debug  ){
+	double MinuitFit(int model, double &r , double &er, double mu /* or ErrorDef for Minos*/, double *pars, bool hasBestFitted, int debug, int *success ){
 		double signalScale = cms_global->GetSignalScaleFactor();
 
 		int UseMinos = 0;
@@ -263,7 +263,7 @@ namespace lands{
 			cms_global->SetSignalScaleFactor(signalScale);
 			return l;
 		}
-		if( (cms_global->IsUsingSystematicsErrors() && npars>0 )  || model ==2 ){
+		if( (cms_global->IsUsingSystematicsErrors() && npars>0 )  || model ==2 or model==101 or model==102 ){
 
 			//FIXME temporarily solution:  when reading a source with all error = 0,  then assign it to be logNormal, error =0,  in UtilsROOT.cc 
 			//good solution: redefine npars here, count only sources with definded pdf. 
@@ -389,6 +389,7 @@ namespace lands{
 			//	myMinuit->mnexcm("MINI", arglist ,2,ierflg);
 			//	myMinuit->mnexcm("IMPROVE", arglist ,2,ierflg);
 
+			if(success) success[0]=ierflg;
 
 			if(UseMinos){
 				arglist[0] = 5000;
@@ -399,6 +400,7 @@ namespace lands{
 				if(ierflg){
 					cout<<"WARNING: Minos fit fails, try other options"<<endl;
 				}
+				if(success) success[0]=ierflg;
 			}
 
 			// Print results
@@ -574,6 +576,7 @@ namespace lands{
 			//Q_b_data = MinuitFit(0, tmp1, tmp1) - MinuitFit(1, tmp1, tmp1);
 			Q_b_data = MinuitFit(0, tmp1, tmp1) - MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor());
 		}else if(test_statistics==3 || test_statistics==31){
+			double fitted_r ;
 			// here Q =  2ln(L_sb/L_b),  will correct in later stage to -2lnQ
 			/*		
 					vdata_global = vb;
@@ -585,9 +588,10 @@ namespace lands{
 					if(tmp1<0) Q_b_data= 0;
 					else Q_b_data = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
 					*/
+			/*
 			vdata_global = vb;
 			minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
-			double fitted_r = tmp1;
+			fitted_r = tmp1;
 			if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(0, tmp1, tmp2);  // MinuitFit(mode, r, err_r),  want r to be >=0
 			if(test_statistics==3){
 				if(fitted_r>=_model->GetSignalScaleFactor()) Q_b_exp = 0;
@@ -597,9 +601,37 @@ namespace lands{
 				// in Feldman Cousins paper,  it allows fitted_r > the r being tested
 				Q_b_exp = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor() ) - minchi2tmp);
 			}
+			*/
 
 			vdata_global = vd;
-			minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
+			if(_debug>=100){
+				cout<<" * data in fit: ";
+				for(int i=0; i<vd.size(); i++){
+					cout<<vd[i]<<" ";
+				}
+				cout<<endl;
+			}
+			int *success;
+			minchi2tmp = MinuitFit(2, tmp1, tmp2, 0, 0, false, _debug, success);  // MinuitFit(mode, r, err_r)
+			if(success[0]!=0) { 
+				cout<<"ERROR WARNING data fit failed, try to dump info:  this failure sometimes related to ROOT versions, potential bugs in TMinuit. "<<endl;
+				cout<<"ERROR WARNING I had experienced that 5.28.00b gave failure while 5.26 didn't on the following data card (V2011-04-21): "<<endl;
+				cout<<"\n";
+				cout<<"	observation 11  13 \n";
+				cout<<"	bin 1 1  2  2 \n";
+				cout<<"	process 0 1  0  1 \n";
+				cout<<"	rate 10   50     0   50 \n";
+				cout<<"	unc lnN -  2.     -   2. \n";
+				cout<<endl;
+
+				cout<<" * data in fit: ";
+				for(int i=0; i<vd.size(); i++){
+					cout<<vd[i]<<" ";
+				}
+				cout<<endl;
+				minchi2tmp = MinuitFit(2, tmp1, tmp2, 0, 0, false, 100);  // MinuitFit(mode, r, err_r)
+			}
+
 			fitted_r = tmp1;
 			if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(0, tmp1, tmp2);  // MinuitFit(mode, r, err_r),  want r to be >=0
 			if(test_statistics==3){
@@ -616,7 +648,9 @@ namespace lands{
 			if(fitted_r<0){
 				if(_debug)cout<<"data UnderFlow:  fitted_r= "<<fitted_r<<",  the probe r ="<<_model->GetSignalScaleFactor()<<endl;
 			}
+			if(_debug>=100) cout<<" end of data fit"<<endl;
 		}else if(test_statistics==4){ // only fit for signal strength, not for systematics 
+			double fitted_r;
 			// here Q =  2ln(L_sb/L_b),  will correct in later stage to -2lnQ
 			/*		
 					vdata_global = vb;
@@ -628,13 +662,14 @@ namespace lands{
 					if(tmp1<0) Q_b_data= 0;
 					else Q_b_data = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
 					*/
-			vdata_global = vb;
-			minchi2tmp = MinuitFit(4, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
-			double fitted_r = tmp1;
-			if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(5, tmp1, tmp2, 0);  // MinuitFit(mode, r, err_r),  want r to be >=0
-			if(fitted_r>=_model->GetSignalScaleFactor()) Q_b_exp = 0;
-			else Q_b_exp = -(MinuitFit(5, tmp1, tmp1, _model->GetSignalScaleFactor() ) - minchi2tmp);
-
+			/*
+			   vdata_global = vb;
+			   minchi2tmp = MinuitFit(4, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
+			   fitted_r = tmp1;
+			   if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(5, tmp1, tmp2, 0);  // MinuitFit(mode, r, err_r),  want r to be >=0
+			   if(fitted_r>=_model->GetSignalScaleFactor()) Q_b_exp = 0;
+			   else Q_b_exp = -(MinuitFit(5, tmp1, tmp1, _model->GetSignalScaleFactor() ) - minchi2tmp);
+			   */
 			vdata_global = vd;
 			minchi2tmp = MinuitFit(4, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
 			fitted_r = tmp1;
@@ -1012,17 +1047,17 @@ namespace lands{
 				cout<<"\t lnQ,p= "<<Q_b[iq_b[_nexps-1]]<<" 1"<<endl;
 			}
 		}
-		if(ret*_nexps <= 20 && _debug ) cout<<"CLsBase::CLb  CLb*nexps="<<ret*_nexps<<", statistic may not enough"<<endl;
+		if(ret*_nexps <= 20 && _debug ) cout<<"CLsBase::CLb CLb*nexps="<<ret*_nexps<<", statistic may not enough,  because of data undershoot w.r.t bkg-only hypothesis"<<endl;
 		if( (1-ret)*_nexps <= 20 && _debug ) cout<<"CLsBase::CLb  (1-CLb)*nexps="<<(1-ret)*_nexps<<", statistic may not enough"<<endl;
 		if(ret == 0 || ret==1){
-			if(_debug) cout<<"CLsBase::CLb CLb="<<ret<<", it means number of pseudo experiments is not enough"<<endl;
+			if(_debug && ret==0) cout<<"CLsBase::CLb CLb="<<ret<<", it means number of pseudo experiments is not enough"<<endl;
 			if(ret==0) {
-				if(_debug)cout<<"              Currently, we put CLb=1./"<<_nexps<<endl;
+				if(_debug)cout<<"             data undershoot w.r.t bkg-only hypothesis,   currently, we put CLb=1./"<<_nexps<<endl;
 				ret = 1./(double)_nexps;
 			}
 			if(ret==1) {
-				if(_debug)cout<<"              Currently, we put CLb= 1 - 1./"<<_nexps<<endl;
-				ret = 1 - 1./(double)_nexps;
+				if(_debug)cout<<"            CLb = 1.  --> data overshoot w.r.t bkg-only hypothesis"<<endl;
+				//ret = 1 - 1./(double)_nexps;
 			}
 		}
 		return ret;
@@ -1524,6 +1559,7 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 			if(_debug)cout<<"\t temply we found r="<<rmid<<" with CLs - alpha = "<<tmp_min_dist<<endl;
 
 			while( (!hasCLsLT05 || !hasCLsGT05) && nmax_tmp<30 ) {
+				// there is some improvement on converging in CVS http://cmssw.cvs.cern.ch/cgi-bin/cmssw.cgi/UserCode/mschen/LandS_diffWaysTossToys/?hideattic=0&sortby=date
 				for(int icls= 0; icls<_vR.size(); icls++){
 					if(_vCLs[icls]<=_alpha) hasCLsLT05=true;
 					if(_vCLs[icls]>=_alpha) hasCLsGT05=true;
