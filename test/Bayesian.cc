@@ -50,9 +50,11 @@ int main(int argc, const char* argv[]){
 	cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<rtmp<<endl;
 	cout<<"------------------------------------------------------------"<<endl;
 
+	/*
 	cms->UseAsimovData();
 	double r_asimov = bys.Limit();
 	cout<<"Asimov Upper Limit on the ratio R at 95\% CL = "<<r_asimov<<" , "<<endl;
+	*/
 	if(debug){
 		// draw 
 		bys.PosteriorPdf();
