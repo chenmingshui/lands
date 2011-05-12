@@ -6,11 +6,19 @@ EXEC = 	test/CLs.exe \
 SOURCES = $(wildcard src/*.cc)
 COMPONENTS = $(patsubst src%.cc,bin%.o,$(SOURCES))
 
+ifdef ROOFITSYS
+    RF_CFLAGS = -I ${ROOFITSYS}/include
+    RF_LINKERFLAGS = -L ${ROOFITSYS}/lib
+endif
+
+
+
 CC = g++
-CFLAGS = -fPIC $(shell root-config --cflags)  -I ./include -I ${ROOTSYS}/include 
+CFLAGS = -fPIC $(shell root-config --cflags)  -I ./include -I ${ROOTSYS}/include ${RF_CFLAGS}
 
 LINKER = g++
-LINKERFLAGS = $(shell root-config --libs --ldflags) -lMinuit -lRooFit -lRooFitCore -lFoam
+LINKERFLAGS = $(shell root-config --libs --ldflags) -lMinuit -lRooFit -lRooFitCore -lFoam ${RF_LINKERFLAGS}
+
 
 ifeq ($(shell root-config --platform),macosx)
 	MACOSXFLAGS = -dynamiclib -undefined dynamic_lookup -Wl,-x -O -Xlinker -bind_at_load -flat_namespace
