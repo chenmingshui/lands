@@ -874,7 +874,7 @@ namespace lands{
 						Q_sb[i] = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor()) - minchi2tmp);
 					}
 
-					if(_debug>=100)cout<<" data="<<vdata_global[0]<<" q_sb="<<Q_sb[i]<<" fitted_r="<<fitted_r<<" minchi2tmp="<<minchi2tmp<<" tmp1="<<tmp1<<endl;
+					if(_debug>=100)cout<<" testStat["<<test_statistics<<"]:   q_sb="<<Q_sb[i]<<" fitted_r="<<fitted_r<<" minchi2tmp="<<minchi2tmp<<" tmp1="<<tmp1<<endl;
 				}
 				if( sbANDb_bOnly_sbOnly != 2 ){
 					vdata_global = (VDChannel)_model->GetToyData_H0();
@@ -909,7 +909,7 @@ namespace lands{
 						Q_sb[i] = -(minchi2tmp2 - minchi2tmp);
 					}
 
-					if(_debug>=100)cout<<" data="<<vdata_global[0]<<" q_sb="<<Q_sb[i]<<" fitted_r="<<fitted_r<<" minchi2tmp="<<minchi2tmp<<" tmp1="<<tmp1<<" minchi2tmp2="<<minchi2tmp2<<endl;
+					if(_debug>=100)cout<<" testStat["<<test_statistics<<"]: q_sb="<<Q_sb[i]<<" fitted_r="<<fitted_r<<" minchi2tmp="<<minchi2tmp<<" tmp1="<<tmp1<<" minchi2tmp2="<<minchi2tmp2<<endl;
 				}
 				if( sbANDb_bOnly_sbOnly != 2 ){
 					vdata_global = (VDChannel)_model->GetToyData_H0();
@@ -950,7 +950,7 @@ namespace lands{
 					if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(0, tmp1, tmp2);  // MinuitFit(mode, r, err_r),  want r to be >=0
 					if(fitted_r>=_model->GetSignalScaleFactor()) Q_sb[i]=0;
 					else Q_sb[i] = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor()) - minchi2tmp);
-					if(_debug>=100)cout<<" data="<<vdata_global[0]<<" q_sb="<<Q_sb[i]<<" fitted_r="<<fitted_r<<" minchi2tmp="<<minchi2tmp<<" tmp1="<<tmp1<<endl;
+					if(_debug>=100)cout<<" testStat["<<test_statistics<<"]: q_sb="<<Q_sb[i]<<" fitted_r="<<fitted_r<<" minchi2tmp="<<minchi2tmp<<" tmp1="<<tmp1<<endl;
 				}
 				if( sbANDb_bOnly_sbOnly != 2 ){
 					vdata_global = (VDChannel)_model->GetToyData_H0(_model->Get_fittedParsInData_b());
