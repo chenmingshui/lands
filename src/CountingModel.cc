@@ -35,8 +35,11 @@ using namespace RooStats;
 namespace lands{
 	CountingModel::CountingModel(){
 		v_data.clear();
+		v_data_real.clear();
 		vv_exp_sigbkgs.clear();
 		vv_exp_sigbkgs_scaled.clear();
+		vv_randomized_sigbkgs.clear();
+		vv_randomized_sigbkgs_scaled.clear();
 		vvvv_uncpar.clear();
 		vvv_pdftype.clear();
 		vvv_idcorrl.clear();
@@ -62,6 +65,8 @@ namespace lands{
 		vv_pdfs_params.clear();	
 		vv_pdfs_norm.clear();	
 		vv_pdfs_norm_scaled.clear();	
+		vv_pdfs_norm_randomized.clear();	
+		vv_pdfs_norm_randomized_scaled.clear();	
 		vv_pdfs_npar.clear();	
 		v_pdfs_nbin.clear();	
 		v_pdfs_xmin.clear();	
@@ -87,6 +92,8 @@ namespace lands{
 		v_pdfs_observables.clear();
 		v_pdfs_roodataset_toy.clear();
 		v_pdfs_roodataset.clear();
+		v_pdfs_roodataset_real.clear();
+		v_pdfs_roodataset_tmp.clear();
 		vv_pdfs_normNAME.clear();
 		vvv_pdfs_paramsRRV.clear();
 
@@ -97,11 +104,23 @@ namespace lands{
 
 		_w = new RooWorkspace();
 		_w_varied = new RooWorkspace();
+
+
+		_fittedParsInData_bonly = 0;
+		_fittedParsInData_sb= 0;
+		_fittedParsInData_global= 0;
+		_fittedParsInPseudoData_bonly = 0;
+		_fittedParsInPseudoData_sb= 0;
+		_fittedParsInPseudoData_global= 0;
+		_tossToyConvention = 0;
 	}
 	CountingModel::~CountingModel(){
 		v_data.clear();
+		v_data_real.clear();
 		vv_exp_sigbkgs.clear();
 		vv_exp_sigbkgs_scaled.clear();
+		vv_randomized_sigbkgs.clear();
+		vv_randomized_sigbkgs_scaled.clear();
 		vvvv_uncpar.clear();
 		vvv_pdftype.clear();
 		vvv_idcorrl.clear();
@@ -125,6 +144,8 @@ namespace lands{
 		vv_pdfs_params.clear();	
 		vv_pdfs_norm.clear();	
 		vv_pdfs_norm_scaled.clear();	
+		vv_pdfs_norm_randomized.clear();	
+		vv_pdfs_norm_randomized_scaled.clear();	
 		vv_pdfs_npar.clear();	
 		v_pdfs_nbin.clear();	
 		v_pdfs_xmin.clear();	
@@ -150,12 +171,20 @@ namespace lands{
 		v_pdfs_observables.clear();
 		v_pdfs_roodataset_toy.clear();
 		v_pdfs_roodataset.clear();
+		v_pdfs_roodataset_real.clear();
+		v_pdfs_roodataset_tmp.clear();
 		vv_pdfs_normNAME.clear();
 		vvv_pdfs_paramsRRV.clear();
 		v_pdfs_floatParamsName.clear();
 		v_pdfs_floatParamsIndcorr.clear();
 		v_pdfs_floatParamsUnc.clear();
 
+		if(_fittedParsInData_bonly) delete [] _fittedParsInData_bonly;
+		if(_fittedParsInData_sb) delete [] _fittedParsInData_sb;
+		if(_fittedParsInData_global) delete [] _fittedParsInData_global;
+		if(_fittedParsInPseudoData_bonly) delete [] _fittedParsInPseudoData_bonly;
+		if(_fittedParsInPseudoData_sb) delete [] _fittedParsInPseudoData_sb;
+		if(_fittedParsInPseudoData_global) delete [] _fittedParsInPseudoData_global;
 
 	//	delete _w;
 	//	delete _w_varied;
@@ -255,6 +284,7 @@ namespace lands{
 		vv_exp_sigbkgs.push_back(vsigbkgs);
 		vv_exp_sigbkgs_scaled.push_back(vsigbkgs);
 		v_data.push_back(tmp_totbkg);	
+		v_data_real.push_back(tmp_totbkg);	
 		vvvv_uncpar.push_back(vvvuncpar);
 		vvv_pdftype.push_back(vvpdftype);
 		vvv_idcorrl.push_back(vvidcorrl);
@@ -333,6 +363,7 @@ namespace lands{
 		vv_exp_sigbkgs.push_back(vsigbkgs);
 		vv_exp_sigbkgs_scaled.push_back(vsigbkgs);
 		v_data.push_back(tmp_totbkg);	
+		v_data_real.push_back(tmp_totbkg);	
 		vvvv_uncpar.push_back(vvvuncpar);
 		vvv_pdftype.push_back(vvpdftype);
 		vvv_idcorrl.push_back(vvidcorrl);
@@ -502,6 +533,7 @@ namespace lands{
 	}
 	void CountingModel::AddObservedData(int index_channel, double num_data){
 		v_data.at(index_channel)=num_data;
+		v_data_real.at(index_channel)=num_data;
 	}
 	void CountingModel::AddObservedData(string c, double num_data){
 		int index_channel = -1;
@@ -509,6 +541,7 @@ namespace lands{
 			if(v_channelname[i]==c) index_channel=i;
 		}
 		v_data.at(index_channel)=num_data;
+		v_data_real.at(index_channel)=num_data;
 	}
 
 	void CountingModel::SetProcessNames(int index_channel, vector<string> vproc){
@@ -673,12 +706,14 @@ If we need to change it later, it will be easy to do.
 		}
 
 	}
-	VChannelVSample CountingModel::FluctuatedNumbers(double *par){
+	VChannelVSample CountingModel::FluctuatedNumbers(double *par, bool scaled, bool bUseBestEstimateToCalcQ){
+		// FIXME  need to think about what's vv_pdfs_norm_varied,  where it's changed,  and whether to replace it with vv_pdfs_norm_randomized_scaled .... ? 
 		if(_rdm==NULL) {cout<<"Model random gen engine not set yet, exit "<<endl; exit(0);}
 		if(!b_systematics) {
 			if(bHasParametricShape){
-				vv_pdfs_params_varied = vv_pdfs_params;
-				vv_pdfs_norm_varied = vv_pdfs_norm_scaled;
+				//vv_pdfs_params_varied = bUseBestEstimateToCalcQ?vv_pdfs_params:vv_pdfs_params_randomized;
+				if(bUseBestEstimateToCalcQ)vv_pdfs_norm_varied = scaled?vv_pdfs_norm_scaled:vv_pdfs_norm;
+				else vv_pdfs_norm_varied = scaled?vv_pdfs_norm_randomized_scaled:vv_pdfs_norm_randomized;
 				for(int ch=0; ch<vv_pdfs.size(); ch++){
 					int nsigproc = v_pdfs_sigproc[ch];
 					for(int isam=0; isam<vv_pdfs[ch].size(); isam++){
@@ -686,7 +721,8 @@ If we need to change it later, it will be easy to do.
 					}
 				}
 			}
-			return vv_exp_sigbkgs_scaled;
+			if(bUseBestEstimateToCalcQ)return scaled?vv_exp_sigbkgs_scaled:vv_exp_sigbkgs;
+			else return scaled?vv_randomized_sigbkgs_scaled:vv_randomized_sigbkgs;
 		}
 
 		double tmp ; 
@@ -760,7 +796,9 @@ If we need to change it later, it will be easy to do.
 		}		
 		//if(_debug) cout<<"done for random gen"<<endl;
 
-		VChannelVSample vv = vv_exp_sigbkgs_scaled;
+		VChannelVSample vv;
+		if(bUseBestEstimateToCalcQ)vv= scaled?vv_exp_sigbkgs_scaled:vv_exp_sigbkgs;
+		else vv= scaled?vv_randomized_sigbkgs_scaled:vv_randomized_sigbkgs;
 		int indexcorrl, pdftype, isam, iunc;
 		vector<int> shapeuncs;
 		double ran = 0, h;
@@ -853,7 +891,7 @@ If we need to change it later, it will be easy to do.
 
 						case typeGamma :
 							if(vvvv_uncpar[ch][isam][iunc][0]>0){
-								tmp = vv_exp_sigbkgs_scaled[ch][isam];
+								tmp = scaled?vv_exp_sigbkgs_scaled[ch][isam]:vv_exp_sigbkgs[ch][isam];
 								if(isam<nsigproc){
 									if(tmp!=0) {vv[ch][isam] /=tmp; vv[ch][isam]*=(ran * vvvv_uncpar[ch][isam][iunc][0] * _common_signal_strength );}
 									else vv[ch][isam] = ran * vvvv_uncpar[ch][isam][iunc][0] * _common_signal_strength ; // Gamma
@@ -924,8 +962,9 @@ If we need to change it later, it will be easy to do.
 		}
 
 		if(bHasParametricShape){
-			vv_pdfs_params_varied = vv_pdfs_params;
-			vv_pdfs_norm_varied = vv_pdfs_norm_scaled;
+			//vv_pdfs_params_varied = bUseBestEstimateToCalcQ?vv_pdfs_params:vv_pdfs_params_randomized;
+			if(bUseBestEstimateToCalcQ)vv_pdfs_norm_varied = scaled?vv_pdfs_norm_scaled:vv_pdfs_norm;
+			else vv_pdfs_norm_varied = scaled?vv_pdfs_norm_randomized_scaled:vv_pdfs_norm_randomized;
 			for(int ch=0; ch<vv_pdfs.size(); ch++){
 				nsigproc = v_pdfs_sigproc[ch];
 				for(isam=0; isam<vv_pdfs[ch].size(); isam++){
@@ -965,9 +1004,9 @@ If we need to change it later, it will be easy to do.
 
 		return vv;
 	}	
-	VIChannel CountingModel::GetToyData_H0(){
+	VIChannel CountingModel::GetToyData_H0(double *pars){
 		// background only hypothesis
-		VChannelVSample vv = FluctuatedNumbers();
+		VChannelVSample vv = FluctuatedNumbers(pars);
 
 		VIChannel v; v.clear();
 		double tmp;
@@ -1012,9 +1051,9 @@ If we need to change it later, it will be easy to do.
 
 		return v;
 	}
-	VIChannel CountingModel::GetToyData_H1(){
+	VIChannel CountingModel::GetToyData_H1(double* pars){
 		// alternative hypothesis
-		VChannelVSample vv = FluctuatedNumbers();
+		VChannelVSample vv = FluctuatedNumbers(pars);
 
 		if(_debug>=100)cout<<" in GetToyData_H1 ......"<<endl;
 
@@ -1212,7 +1251,7 @@ If we need to change it later, it will be easy to do.
 		// need more check
 		return true;
 	}
-	void CountingModel::SetSignalScaleFactor(double r){
+	void CountingModel::SetSignalScaleFactor(double r, bool bScaleBestEstimate){
 		if(_debug>=10) cout<<"\n  *** SetSignalScaleFactor r= "<<r<<endl;
 		if(!b_AllowNegativeSignalStrength && r<=0 ){
 			cout<<"Error: signal strength r <=0"<<endl;
@@ -1220,20 +1259,46 @@ If we need to change it later, it will be easy to do.
 			return;
 		}
 		_common_signal_strength=r;
-		vv_exp_sigbkgs_scaled = vv_exp_sigbkgs;
-		for(int ch=0; ch<vv_exp_sigbkgs_scaled.size(); ch++){
-			for(int isam=0; isam<v_sigproc[ch]; isam++){
-				vv_exp_sigbkgs_scaled[ch][isam]*=_common_signal_strength;
+
+		if(bScaleBestEstimate==true){
+			vv_exp_sigbkgs_scaled = vv_exp_sigbkgs;
+			for(int ch=0; ch<vv_exp_sigbkgs_scaled.size(); ch++){
+				for(int isam=0; isam<v_sigproc[ch]; isam++){
+					vv_exp_sigbkgs_scaled[ch][isam]*=_common_signal_strength;
+				}
+			}
+			if(bHasParametricShape){
+				vv_pdfs_norm_scaled = vv_pdfs_norm;
+				for(int ch=0; ch<vv_pdfs_norm_scaled.size(); ch++){
+					for(int isam=0; isam<v_pdfs_sigproc[ch]; isam++){
+						vv_pdfs_norm_scaled[ch][isam]*=_common_signal_strength;
+						_w->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_scaled[ch][isam]);
+						_w_varied->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_scaled[ch][isam]);
+					}
+				}
+			}
+		}else{
+			if(vv_exp_sigbkgs.size()>0 && vv_randomized_sigbkgs.size()<=0) {cout<<" vv_randomized_sigbkgs not yet set, please check code where invokes SetSignalScaleFactor"<<endl; exit(0);};
+			vv_randomized_sigbkgs_scaled = vv_randomized_sigbkgs;
+			for(int ch=0; ch<vv_randomized_sigbkgs_scaled.size(); ch++){
+				for(int isam=0; isam<v_sigproc[ch]; isam++){
+					vv_randomized_sigbkgs_scaled[ch][isam]*=_common_signal_strength;
+				}
+			}
+			if(bHasParametricShape){
+				if(vv_pdfs_norm_randomized.size()<=0) {cout<<" vv_pdfs_norm_randomized not yet set, please check code where invokes SetSignalScaleFactor"<<endl; exit(0);};
+				vv_pdfs_norm_randomized_scaled = vv_pdfs_norm_randomized;
+				for(int ch=0; ch<vv_pdfs_norm_randomized_scaled.size(); ch++){
+					for(int isam=0; isam<v_pdfs_sigproc[ch]; isam++){
+						vv_pdfs_norm_randomized_scaled[ch][isam]*=_common_signal_strength;
+						_w->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_randomized_scaled[ch][isam]);
+						_w_varied->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_randomized_scaled[ch][isam]);
+					}
+				}
 			}
 		}
-		vv_pdfs_norm_scaled = vv_pdfs_norm;
-		for(int ch=0; ch<vv_pdfs_norm_scaled.size(); ch++){
-			for(int isam=0; isam<v_pdfs_sigproc[ch]; isam++){
-				vv_pdfs_norm_scaled[ch][isam]*=_common_signal_strength;
-				_w->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_scaled[ch][isam]);
-				_w_varied->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_scaled[ch][isam]);
-			}
-		}
+
+		//if(bHasParametricShape)SetTmpDataForUnbinned(v_pdfs_roodataset);// reset to data , need refit for mu=r  //FIXME  need move to somewhere else needed
 
 		if(_debug>=1000 and bHasParametricShape){
 			TString s = "pdf_r"; s+=r; s+="_"; s+=".root";
@@ -1280,16 +1345,20 @@ If we need to change it later, it will be easy to do.
 			cout<<"		Using Asimov dataset: background only hypothesis"<<endl;
 			for(int i=0; i<v_data.size(); i++){
 				v_data[i]=0;
+				v_data_real[i]=0;
 				for(int b=v_sigproc[i]; b<vv_exp_sigbkgs.at(i).size(); b++){
 					v_data[i]+= vv_exp_sigbkgs.at(i).at(b);
+					v_data_real[i]+= vv_exp_sigbkgs.at(i).at(b);
 				}
 			}
 		}else if(b==1){
 			cout<<"		Using Asimov dataset: sig+bkg hypothesis"<<endl;
 			for(int i=0; i<v_data.size(); i++){
 				v_data[i]=0;
+				v_data_real[i]=0;
 				for(int b=0; b<vv_exp_sigbkgs.at(i).size(); b++){
 					v_data[i]+= vv_exp_sigbkgs.at(i).at(b);
+					v_data_real[i]+= vv_exp_sigbkgs.at(i).at(b);
 				}
 			}
 		}
@@ -1394,7 +1463,7 @@ If we need to change it later, it will be easy to do.
 				vector<int> vsigproc = ms[m]->Get_v_pdfs_sigproc();
 				vector< vector<string> > vvpdfs = ms[m]->Get_vv_pdfs();
 				vector<TString> vobs = ms[m]->Get_v_pdfs_observables();
-				vector< vector<double> > vnorm = ms[m]->Get_vv_pdfs_norm(); 
+				vector< vector<double> > vnorm = ms[m]->Get_vv_pdfs_norm_nonscaled(); 
 				vector<string> vchnames = ms[m]->Get_v_pdfs_channelname();
 				vector< RooDataSet* > vrds = ms[m]->Get_v_pdfs_roodataset();
 				tmp_vvvv_uncpar = ms[m]->Get_vvv_pdfs_normvariation();
@@ -1487,6 +1556,7 @@ If we need to change it later, it will be easy to do.
 			  ) {
 				iter=vv_exp_sigbkgs.erase( iter );
 				v_data.erase( v_data.begin()+position );
+				v_data_real.erase( v_data_real.begin()+position );
 				v_sigproc.erase( v_sigproc.begin()+position );
 				v_channelname.erase(v_channelname.begin()+position);
 				vv_exp_sigbkgs_scaled.erase( vv_exp_sigbkgs_scaled.begin()+position );
@@ -1666,6 +1736,8 @@ If we need to change it later, it will be easy to do.
 
 		RooDataSet * rds = _w->pdf(v_pdfs_b.back()) -> generate(*observable, Extended());
 		v_pdfs_roodataset.push_back(rds);
+		v_pdfs_roodataset_tmp.push_back(rds);
+		v_pdfs_roodataset_real.push_back(rds);
 		//v_pdfs_roodataset_toy.push_back(rds);
 		//cout<<"H0, number of events generated for channel "<<ch<<": "<<v_pdfs_roodataset_toy[ch]->sumEntries()<<endl;
 		if(_debug) 	rds->Print("V");
@@ -1763,6 +1835,8 @@ If we need to change it later, it will be easy to do.
 
 		RooDataSet *tmp = v_pdfs_roodataset[ch];
 		v_pdfs_roodataset[ch]=rds;
+		v_pdfs_roodataset_tmp[ch]=rds;
+		v_pdfs_roodataset_real[ch]=rds;
 		delete tmp;
 
 		if(_debug>=10){
@@ -1793,14 +1867,14 @@ If we need to change it later, it will be easy to do.
 		}
 		AddObservedDataSet(ch, rds);
 	}
-	double CountingModel::EvaluateChi2(double *par){ 
+	double CountingModel::EvaluateChi2(double *par, bool bUseBestEstimateToCalcQ){ 
 		double ret=0;
 
-		FluctuatedNumbers(par);
+		FluctuatedNumbers(par, true, bUseBestEstimateToCalcQ);
 
 		for(int ch=0; ch<vv_pdfs.size(); ch++){
 			double btot = 0, stot=0;
-			int ntot = int(v_pdfs_roodataset[ch]->sumEntries());
+			int ntot = int(v_pdfs_roodataset_tmp[ch]->sumEntries());
 			double tmp=0, retch=0;
 			for(int i=0; i<vv_pdfs_norm_varied[ch].size(); i++){
 				if(i>=v_pdfs_sigproc[ch]) btot+=vv_pdfs_norm_varied[ch][i];
@@ -1809,10 +1883,10 @@ If we need to change it later, it will be easy to do.
 			RooArgSet vars(*(_w_varied->var(v_pdfs_observables[ch])));
 			
 			for(int i=0; i<ntot; i++){
-				_w_varied->var(v_pdfs_observables[ch])->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal());
+				_w_varied->var(v_pdfs_observables[ch])->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset_tmp[ch]->get(i)->first()))->getVal());
 				if(_debug>=100){
 					if(i==0 or i==ntot-1 or i==ntot/2){
-						cout<<"* event "<<i<<":  m= "<<( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal()<<endl;
+						cout<<"* event "<<i<<":  m= "<<( dynamic_cast<RooRealVar*>(v_pdfs_roodataset_tmp[ch]->get(i)->first()))->getVal()<<endl;
 						cout<<" pdfs= "<<(par[0]==0?0:_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars))<<endl;
 						cout<<" pdfb= "<<_w_varied->pdf(v_pdfs_b[ch])->getVal(&vars)<<endl;
 						cout<<" stot = "<<stot<<" btot="<<btot<<endl;
@@ -1880,20 +1954,37 @@ If we need to change it later, it will be easy to do.
 		}
 		return ret;
 	}
-	void CountingModel::SetDataForUnbinned(vector< RooDataSet* > data){
+	void CountingModel::SetDataForUnbinned(vector< RooDataSet* > data, bool bRealData){
+		/*
 		for(int ch=0; ch<vv_pdfs.size(); ch++){
-			delete v_pdfs_roodataset[ch];
+			if(v_pdfs_roodataset[ch])delete v_pdfs_roodataset[ch];
+			if(bRealData){
+				if(v_pdfs_roodataset_real[ch])delete v_pdfs_roodataset[ch];
+			}
 		}
+		*/
 		v_pdfs_roodataset.clear();
+		v_pdfs_roodataset_tmp.clear();
+		if(bRealData){
+			v_pdfs_roodataset_real.clear();
+		}
 		for(int ch=0; ch<vv_pdfs.size(); ch++){
 			vector<double> vtmp;vtmp.clear();
 			v_pdfs_roodataset.push_back(data[ch]);
+			v_pdfs_roodataset_tmp.push_back(data[ch]);
+			if(bRealData) v_pdfs_roodataset_real.push_back(data[ch]);
 
 			for(int i=0; i<v_pdfs_roodataset[ch]->sumEntries(); i++){
 				RooRealVar *r = dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first());
 				vtmp.push_back( r->getVal() );
 			}
 			vv_pdfs_data.push_back(vtmp);
+		}
+	}
+	void CountingModel::SetTmpDataForUnbinned(vector< RooDataSet* > data){
+		v_pdfs_roodataset_tmp.clear();
+		for(int ch=0; ch<vv_pdfs.size(); ch++){
+			v_pdfs_roodataset_tmp.push_back(data[ch]);
 		}
 	}
 	void CountingModel::AddUncertaintyOnShapeNorm(int index_channel, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, int index_correlation ){

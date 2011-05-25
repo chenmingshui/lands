@@ -23,6 +23,7 @@ namespace lands{
 			void SetCLs(CLsLimit* clslimit, CLsBase* frequentist) {_clslimit=clslimit; _frequentist=frequentist;};
 			void SetBys(BayesianBase * bys ){_byslimit=bys;};
 			void SetModel(CountingModel* cms){_cms=cms;};
+			void SetTossPseudoDataConvention(int i){_tossPseudoDataConvention=i;};
 
 			vector<double> GetDifferentialLimitsCLs(){return _difrcls;};
 			vector<double> GetDifferentialLimitsBys(){return _difrbys;};
@@ -43,6 +44,7 @@ namespace lands{
 			BayesianBase *_byslimit;
 			CountingModel *_cms;
 			double _rcls[6], _rbys[6];
+			int _tossPseudoDataConvention;
 			
 	};
 };

@@ -17,6 +17,7 @@ namespace lands{
 	extern vector<double>  vdata_global;
 	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag); 
 	double MinuitFit(int model, double &r, double &er, double mu=0, double *pars=0, bool hasBestFitted = false, int debug=0, int *success=0);
+	bool DoAfit(double mu, vector<double> vdata, vector<RooDataSet*> vrds, double* pars);
 	class CLsBase
 	{
 		public:
@@ -58,6 +59,7 @@ namespace lands{
 
 			int GetNexps(){return _nexps;};
 
+
 		private:
 			void ProcessM2lnQ();
 			double *Q_b; double *Q_sb;
@@ -71,7 +73,7 @@ namespace lands{
 			int _debug;
 			CountingModel *_model;
 
-			int test_statistics;  // 1 for Q_LEP,  2 for Q_TEV, 3 for Q_ATLAS
+			int test_statistics;  // 1 for Q_LEP,  2 for Q_TEV, 3 for Q_ATLAS,  5 for the LHC type
 
 	};
 	class CLsLimit

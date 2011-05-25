@@ -54,6 +54,9 @@ double testR;
 bool scanRs;
 int nSteps;
 bool bPlots = false;
+int tossToyConvention;
+int tossPseudoDataConvention;
+int UseBestEstimateToCalcQ;
 
 // for FeldmanCousins
 bool bQuickEstimateInitialLimit = true; 
@@ -115,6 +118,8 @@ int main(int argc, const char*argv[]){
 
 	cms->SetMoveUpShapeUncertainties(1);
 
+	cms->SetTossToyConvention(tossToyConvention);
+
 	// common results
 	double rmean;
 	vector<double> difflimits;
@@ -148,6 +153,7 @@ int main(int argc, const char*argv[]){
 			if(doExpectation){
 				cms->SetSignalScaleFactor(1.);
 				LimitBands lb(&bys, cms);	
+				lb.SetTossPseudoDataConvention(tossPseudoDataConvention);
 				lb.SetDebug(debug);
 				int noutcomes = toys;
 				lb.BysLimitBands(1-CL, noutcomes, toysBayesian);
@@ -157,6 +163,7 @@ int main(int argc, const char*argv[]){
 			}
 
 		}else if(method == "Hybrid"){
+			cms->SetUseBestEstimateToCalcQ(UseBestEstimateToCalcQ);
 
 			// initialize the calculator
 			CLsBase frequentist;
@@ -261,6 +268,7 @@ int main(int argc, const char*argv[]){
 			if(doExpectation){
 				cms->SetSignalScaleFactor(1.);
 				LimitBands lb(&clsr95, &frequentist, cms);	
+				lb.SetTossPseudoDataConvention(tossPseudoDataConvention);
 				lb.SetDebug(debug);
 				int noutcomes = toys;
 				lb.CLsLimitBands(1-CL, noutcomes, toysHybrid);
@@ -888,6 +896,7 @@ void processParameters(int argc, const char* argv[]){
 		else if(tmpv[0]=="TEV") testStat=2;
 		else if(tmpv[0]=="Atlas") testStat=3;
 		else if(tmpv[0]=="AtlasAllowMuHatNeg") testStat=32;
+		else if(tmpv[0]=="LHC") testStat=5;
 		else {cout<<"ERROR Unimplemented testStat: "<<tmpv[0]<<". Supported: LEP, TEV, Atlas, AtlasAllowMuHatNeg "<<endl; exit(0); }
 	}
 
@@ -926,6 +935,24 @@ void processParameters(int argc, const char* argv[]){
 	}
 
 
+	//  how to toss toys in building -2lnQ distribution
+	tmpv = options["--tossToyConvention"];
+	if( tmpv.size()!=1 ) { tossToyConvention = 0; }
+	else {
+		tossToyConvention = tmpv[0].Atoi();
+	}
+	// how to toss pseudo data for band
+	tmpv = options["--tossPseudoDataConvention"];
+	if( tmpv.size()!=1 ) { tossPseudoDataConvention = 0; }
+	else {
+		tossPseudoDataConvention = tmpv[0].Atoi();
+	}
+	// 
+	tmpv = options["--UseBestEstimateToCalcQ"];
+	if( tmpv.size()!=1 ) { UseBestEstimateToCalcQ= 1; }
+	else {
+		UseBestEstimateToCalcQ = tmpv[0].Atoi();
+	}
 
 	printf("\n\n[ Summary of configuration in this job: ]\n");
 	cout<<"  Calculating "<<(calcsignificance?"significance":"limit")<<" with "<<method<<" method "<<endl;
@@ -934,7 +961,12 @@ void processParameters(int argc, const char* argv[]){
 	cout<<"  dataset is "<<dataset<<endl;
 	if(!calcsignificance) cout<<"  target confidence level = "<<CL<<endl;
 	cout<<"  "<<(doExpectation?"also calc expectation bands":"do not calc expectation bands")<<endl;
-	if(doExpectation)cout<<"  number of outcomes to build expecation bands: "<<toys<<endl;
+	if(doExpectation){
+		cout<<"  number of outcomes to build expecation bands: "<<toys<<endl;
+		if(tossPseudoDataConvention){
+			cout<<"  tossPseudoDataConvention = "<<tossPseudoDataConvention<<endl;
+		}
+	}
 	if(method=="Bayesian") { 
 		cout<<"  prior = ";
 		if(prior==flat) cout<<"flat"<<endl;
@@ -959,15 +991,19 @@ void processParameters(int argc, const char* argv[]){
 		}
 	}else if(method=="Hybrid"){
 		if(calcsignificance==false){
-			cout<<"  testStat = "; if(testStat==1) cout<<"LEP"; if(testStat==2)cout<<"TEV"; if(testStat==3)cout<<"Atals"; if(testStat==32)cout<<"AtlasAllowMuHatNeg";
+			cout<<"  testStat = "; if(testStat==1) cout<<"LEP"; if(testStat==2)cout<<"TEV"; if(testStat==3)cout<<"Atals"; if(testStat==32)cout<<"AtlasAllowMuHatNeg"; if(testStat==5)cout<<"LHC";
 			cout<<endl;
 			cout<<"  rule     = "; if(rule==1) cout<<"CLs"; if(rule==2)cout<<"CLsb";
 			cout<<endl;
 		}
 		cout<<"  number of toys to build Q distribution = "<<toysHybrid<<endl;
+		if(tossToyConvention){
+			cout<<" tossToyConvention = "<<tossToyConvention<<endl;
+		}
 		if(singlePoint){
 			cout<<" testing single point with r = "<<testR<<endl;
 		}
+		cout<<"  UseBestEstimateToCalcQ: "<<(UseBestEstimateToCalcQ?"true":"false")<<endl;
 	}
 
 	cout<<"  random number generator seed: "<<seed<<endl;
@@ -990,6 +1026,7 @@ void PrintHelpMessage(){
 	printf("-M [ --method ] arg                   Method to extract upper limit. Supported methods are: Bayesian, FeldmanCousins, Hybrid, ProfiledLikelihood \n"); 
 	printf("--doExpectation arg (=0)              i.e calc expected bands and mean/median values     \n"); 
 	printf("-t [ --toys ] arg (=1000)             Number of Toy MC extractions for expectation \n"); 
+	printf("--tossPseudoDataConvention arg (=0)   choose convention for tossing toys to build -2lnQ distribution. 0 (LEP, TEVATRON) or 1 (LHC)\n");
 	printf("-s [ --seed ] arg (=1234)             Toy MC random seed \n"); 
 	printf("-S [ --systematics ] arg (=1)         if 0, then will not use systematics  \n"); 
 	printf("-C [ --cl ] arg (=0.95)               Confidence Level \n"); 
@@ -1014,9 +1051,11 @@ void PrintHelpMessage(){
 	printf("--rAbsAcc arg (=0.01)                 Absolute accuracy on r to reach to terminate the scan \n"); 
 	printf("--rRelAcc arg (=0.01)                 Relative accuracy on r to reach to terminate the scan \n"); 
 	printf("--rule arg (=CLs)                     Rule to use: CLs, CLsb \n"); 
-	printf("--testStat arg (=LEP)                 Test statistics: LEP, TEV, Atlas, AtlasAllowMuHatNeg. \n"); 
+	printf("--testStat arg (=LEP)                 Test statistics: LEP, TEV, Atlas, AtlasAllowMuHatNeg, LHC. \n"); 
 	printf("--singlePoint arg (=float)            Just compute CLsb/CLb/CLs values for a given value of r \n"); 
 	printf("--scanRs arg (=numSteps)              scanning CLs vs. r,  r from initialRmin to initialRmax with numSteps \n"); 
+	printf("--tossToyConvention arg (=0)          choose convention for tossing toys to build -2lnQ distribution. 0 (LEP, TEVATRON) or 1 (LHC)\n");
+	printf("--UseBestEstimateToCalcQ arg (=1)     0: randomized nuisances; 1: use best estimate of nuisances  --> to calc Q\n");
 	printf(" \n"); 
 	printf("ProfiledLikelihood specific options: \n"); 
 	printf("--OneOrTwoSided arg (=2)              1 sided limit -lnL = 1.345;  2 sided limit -lnL = 1.921 \n"); 

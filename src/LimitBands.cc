@@ -75,9 +75,15 @@ namespace lands{
 
 		if(_debug) cout<<" _noutcomes="<<_noutcomes<<endl;
 
+		double *pars = NULL;
+		if(_tossPseudoDataConvention==1){
+			pars = _cms->Get_fittedParsInData_b();
+			if(pars==NULL) DoAfit(0, _cms->Get_v_data(), _cms->Get_v_pdfs_roodataset(), pars);
+		}
+
 		for(int n=0; n<_noutcomes; n++){
 			vbkg_tmp.clear(); 
-			vbkg_tmp=_cms->GetToyData_H0();
+			vbkg_tmp=_cms->GetToyData_H0(pars);
 			if(!_cms->hasParametricShape()){
 				bool flag=true;
 				for(int t=0; t<vvPossibleOutcomes.size(); t++){
@@ -152,9 +158,9 @@ namespace lands{
 				}		
 				cout<<"\t p="<<p<<endl;
 			}
-			_cms->SetData( vvPossibleOutcomes.at(iEntries_v[n]) ); 
+			_cms->SetData( vvPossibleOutcomes.at(iEntries_v[n]), false ); //set the pseudo data
 			if(_cms->hasParametricShape()){
-				_cms->SetDataForUnbinned(vvPossibleOutcomes_forUnbinnedChannels[n]);
+				_cms->SetDataForUnbinned(vvPossibleOutcomes_forUnbinnedChannels[n], false); // set the pseudo data
 			}
 
 

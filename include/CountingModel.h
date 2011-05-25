@@ -78,12 +78,15 @@ namespace lands{
 
 			void AddObservedData(int index_channel, double num_data);
 			void AddObservedData(string c, double num_data);
-			void SetData(VDChannel data){v_data=data;};
+			void SetData(VDChannel data, bool bRealData=true){v_data=data; if(bRealData)v_data_real=data;};
 			void SetData(vector<int> data){for(int i=0; i<data.size(); i++) v_data[i]=data[i];};
 
 			VChannelVSample Get_vv_exp_sigbkgs_nonscaled(){return vv_exp_sigbkgs;};
 			VChannelVSample Get_vv_exp_sigbkgs(){return vv_exp_sigbkgs_scaled;};
+			void Set_vv_randomized_sigbkgs(VChannelVSample vv){vv_randomized_sigbkgs=vv;};
+			VChannelVSample Get_vv_randomized_sigbkgs(){return vv_randomized_sigbkgs_scaled;};
 			VDChannel Get_v_data(){return v_data;};
+			VDChannel Get_v_data_real(){return v_data_real;};
 
 			VDChannel Get_v_exp_sigbkgs(int channel){return vv_exp_sigbkgs_scaled[channel];};
 
@@ -92,15 +95,15 @@ namespace lands{
 			void Print(int printLevel=0);
 			bool Check();
 
-			VChannelVSample FluctuatedNumbers(double *par = 0);	
-			VIChannel GetToyData_H0();// background only hypothesis
-			VIChannel GetToyData_H1();// alternative hypothesis
+			VChannelVSample FluctuatedNumbers(double *pars = NULL, bool scaled=true, bool bUseBestEstimateToCalcQ=true);	
+			VIChannel GetToyData_H0(double *pars=NULL);// background only hypothesis
+			VIChannel GetToyData_H1(double *pars=NULL);// alternative hypothesis
 			
 			int NumOfChannels(){return vv_exp_sigbkgs.size();};
 			void SetUseSystematicErrors(bool b){b_systematics=b;ConfigUncertaintyPdfs();};
 			bool IsUsingSystematicsErrors(){return b_systematics;};
 
-			void SetSignalScaleFactor(double r);
+			void SetSignalScaleFactor(double r, bool bScaleBestEstimate=true);
 			double GetSignalScaleFactor(){return _common_signal_strength; };
 			void SetRdm(CRandom *rdm){_rdm=rdm;};
 			CRandom * GetRdm(){return _rdm;};
@@ -138,12 +141,21 @@ namespace lands{
 			void SetMoveUpShapeUncertainties(bool b){bMoveUpShapeUncertainties=b;};
 			bool GetMoveUpShapeUncertainties(){return bMoveUpShapeUncertainties;};
 
+			void SetTossToyConvention(int c){_tossToyConvention = c;};
+			int GetTossToyConvention(){return _tossToyConvention;};
+			double* Get_fittedParsInData_sb(){return _fittedParsInData_sb;};
+			double* Get_fittedParsInData_b(){return _fittedParsInData_bonly;};
+			void Set_fittedParsInData_sb(double *p){ _fittedParsInData_sb=p;};
+			void Set_fittedParsInData_b(double *p){_fittedParsInData_bonly=p;};
+
+			void SetUseBestEstimateToCalcQ(bool b=true){ _UseBestEstimateToCalcQ=b;};
+			bool UseBestEstimateToCalcQ(){ return _UseBestEstimateToCalcQ;};
 
 			// start to add parametric shape into model
 			bool hasParametricShape(){return bHasParametricShape;};
 			vector< vector<string> > Get_vv_pdfs(){return vv_pdfs;};
 			vector< vector<double *> > Get_vv_pdfs_params(){return vv_pdfs_params;}; //nominal parameters for each pdf
-			vector< vector<double> > Get_vv_pdfs_norm(){return vv_pdfs_norm;}; //normalization of each pdf, i.e. expected number of events in each process 
+			vector< vector<double> > Get_vv_pdfs_norm_nonscaled(){return vv_pdfs_norm;}; //normalization of each pdf, i.e. expected number of events in each process 
 			vector< vector<int> > Get_vv_pdfs_npar(){return vv_pdfs_npar;}; // number of parameters for each pdf
 			vector< int > Get_v_pdfs_nbin(){return v_pdfs_nbin;}; // need for throwing random numbers,  should consistent for all pdfs in a channel, by default 100 
 			vector< double > Get_v_pdfs_xmin(){return v_pdfs_xmin;};
@@ -159,10 +171,14 @@ namespace lands{
 			vector< vector< vector< vector<double> > > > Get_vvv_pdfs_normvariation(){return vvv_pdfs_normvariation;}; // correponding to normalization changes of the uncertainty source
 			vector< vector<double *> > Get_vv_pdfs_params_varied(){return vv_pdfs_params_varied;}; //nominal parameters for each pdf
 			vector< vector<double> > Get_vv_pdfs_norm_varied(){return vv_pdfs_norm_varied;}; //normalization of each pdf, i.e. expected number of events in each process 
+			vector< vector<double> > Get_vv_pdfs_norm_scaled(){return vv_pdfs_norm_scaled;}; //normalization of each pdf, i.e. expected number of events in each process 
 			vector< vector<double> > Get_vv_pdfs_data_toy(){return vv_pdfs_data_toy;}; // in each channel, it has a list of events
+			void Set_vv_pdfs_norm_randomized(VChannelVSample vv){vv_pdfs_norm_randomized=vv;};
+			VChannelVSample Get_vv_pdfs_norm_randomized(){return vv_pdfs_norm_randomized_scaled;};
 			vector<int> Get_v_pdfs_sigproc(){return v_pdfs_sigproc;};
 			vector< RooDataSet* > Get_v_pdfs_roodataset_toy(){return v_pdfs_roodataset_toy;}; // in each channel, it has a list of events
 			vector< RooDataSet* > Get_v_pdfs_roodataset(){return v_pdfs_roodataset;}; // in each channel, it has a list of events
+			vector< RooDataSet* > Get_v_pdfs_roodataset_real(){return v_pdfs_roodataset_real;}; // in each channel, it has a list of events
 			vector< double > Get_v_pdfs_floatParamsVaried(){return v_pdfs_floatParamsVaried;};
 			vector< vector< double > >Get_v_pdfs_floatParamsUnc(){ return v_pdfs_floatParamsUnc;};
 			vector<int> Get_v_pdfs_floatParamsIndcorr() {return v_pdfs_floatParamsIndcorr;};      // only for params
@@ -178,12 +194,13 @@ namespace lands{
 			void AddChannel(string channel_name, RooRealVar* observable, vector<RooAbsPdf*> sigPdfs, vector<double> sigNorms, vector<RooAbsPdf*> bkgPdfs, vector<double> bkgNorms, RooWorkspace *w );
 			// need to add names of each parameter .... 
 			double EvaluateLnQ(int ch, int dataOrToy); // for Likelihood ratio
-			double EvaluateChi2(double *par);          // for Chi2
+			double EvaluateChi2(double *par, bool bUseBestEstimateToCalcQ=true);          // for Chi2
 			double EvaluateGL(int ch, double xr); // for bayesian 
 			double EvaluateGL(vector< vector<double> > vvnorms, vector<double> vparams, double xr); // for bayesian 
 			void AddObservedDataSet(int index_channel, RooDataSet* rds);
 			void AddObservedDataSet(string channelname, RooDataSet* rds);
-			void SetDataForUnbinned(vector< RooDataSet*> data);
+			void SetDataForUnbinned(vector< RooDataSet*> data, bool bRealData=true);
+			void SetTmpDataForUnbinned(vector< RooDataSet*> data); // set it before doing fit
 			void AddUncertaintyOnShapeNorm(int index_channel, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, int index_correlation );
 			void AddUncertaintyOnShapeNorm(int index_channel, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, string uncname);
 			void AddUncertaintyOnShapeNorm(string chname, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, string uncname);
@@ -191,9 +208,12 @@ namespace lands{
 
 			void AddUncertaintyAffectingShapeParam(string uname, string pname, double mean, double sigmaL, double sigmaR, double rangeMin, double rangeMax );
 		private:
-			VDChannel v_data;
+			VDChannel v_data; // could be pseudo-data for bands
+			VDChannel v_data_real; // real data, not changed during entire run 
 			VChannelVSample vv_exp_sigbkgs;
 			VChannelVSample vv_exp_sigbkgs_scaled;
+			VChannelVSample vv_randomized_sigbkgs;
+			VChannelVSample vv_randomized_sigbkgs_scaled;
 			VChannelVSampleVUncertaintyVParameter  vvvv_uncpar;
 			VChannelVSampleVUncertainty vvv_pdftype;
 			VChannelVSampleVUncertainty vvv_idcorrl;
@@ -225,12 +245,24 @@ namespace lands{
 
 			bool bMoveUpShapeUncertainties;
 
+			double * _fittedParsInData_bonly; // perform a fit on real data  with mu=0	
+			double * _fittedParsInData_sb;	  // perform a fit on real data  with mu being tested
+			double * _fittedParsInData_global;	  // perform a fit on real data  with mu floating
+			double * _fittedParsInPseudoData_bonly;	// perform a fit on pseudo data with mu=0
+			double * _fittedParsInPseudoData_sb;	// perform a fit on pseudo data with mu being tested
+			double * _fittedParsInPseudoData_global;	// perform a fit on pseudo data with mu floating
+			int _tossToyConvention;
+		       	// convention 0 for the LEP type we used to do;
+		        // convention 1 for the LHC type agreed on LHC-HCG meeting https://indico.cern.ch/getFile.py/access?contribId=48&sessionId=5&resId=0&materialId=slides&confId=139132
+			bool _UseBestEstimateToCalcQ; // this should sit inside CLsBase....   however to avoid a global CLsBase, we put it inside CountingModel   FIXME  low priority 
 
 			//// start to add unbinned parametric shape into model,  for only 1-dimention 
 			bool bHasParametricShape;// for both binned and unbinned 
 			vector< vector<string> > vv_pdfs; // every process has its own pdf, in each parametric channel
 			vector< vector<double> > vv_pdfs_norm; //normalization of each pdf, i.e. expected number of events in each process 
 			vector< vector<double> > vv_pdfs_norm_scaled; //normalization of each pdf, i.e. expected number of events in each process 
+			vector< vector<double> > vv_pdfs_norm_randomized; //normalization of each pdf, i.e. expected number of events in each process 
+			vector< vector<double> > vv_pdfs_norm_randomized_scaled; //normalization of each pdf, i.e. expected number of events in each process 
 			// uncertainties ....   each source affects parameters  -->  two additional sets of parameters
 			vector< vector< vector<int> > > vvv_pdfs_idcorrl;
 			vector< vector< vector<int> > > vvv_pdfs_pdftype;
@@ -245,7 +277,10 @@ namespace lands{
 
 			vector<TString> v_pdfs_observables; // observable in each channel
 			vector<RooDataSet*>  v_pdfs_roodataset_toy;
-			vector<RooDataSet*>  v_pdfs_roodataset; //
+			vector<RooDataSet*>  v_pdfs_roodataset; // could be pseudo-data for bands
+			vector<RooDataSet*>  v_pdfs_roodataset_real; // real data, not changed during entire run 
+			vector<RooDataSet*>  v_pdfs_roodataset_tmp;
+
 
 			vector< vector<TString> > vv_pdfs_normNAME;
 
@@ -271,7 +306,7 @@ namespace lands{
 			vector< int > v_pdfs_nbin; // need for throwing random numbers,  should consistent for all pdfs in a channel, by default 100 
 			vector< double > v_pdfs_xmin;
 			vector< double > v_pdfs_xmax;
-			vector< vector<double> > vv_pdfs_data; // in each channel, it has a list of events
+			vector< vector<double> > vv_pdfs_data; // in each channel, it has a list of events 
 			vector< vector<double> > vv_pdfs_data_toy; // in each channel, it has a list of events
 			// three types of uncertainties: 1. only affect shape;  2. only affect normalization; 3. affect both 
 			vector< vector< vector<int> > > vvv_pdfs_unctype;
