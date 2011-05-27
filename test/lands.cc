@@ -204,14 +204,16 @@ int main(int argc, const char*argv[]){
 				FillTree("m2lnQ_sb.root", frequentist.Get_m2logQ_sb());
 			}
 
-			if(debug>=100) {
+			if(debug>=10) {
 				cout<<"-2lnQ on data = "<<frequentist.Get_m2lnQ_data()<<endl;
 				vector<double> qsb = frequentist.Get_m2logQ_sb();
 				vector<double> qb = frequentist.Get_m2logQ_b();
+				int n10 = int(qsb.size()/10); if(n10<=0) n10=1;
 				cout<<"-2lnQ for SB"<<endl;
-				for(int i=0; i<qsb.size(); i++) cout<<qsb[i]<<endl;
+				for(int i=0; i<qsb.size(); i+=n10) cout<<qsb[i]<<endl;
+				n10 = int(qb.size()/10); if(n10<=0) n10=1;
 				cout<<"-2lnQ for B"<<endl;
-				for(int i=0; i<qb.size(); i++) cout<<qb[i]<<endl;
+				for(int i=0; i<qb.size(); i+=n10) cout<<qb[i]<<endl;
 			}
 
 			if(singlePoint){ 

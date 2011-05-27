@@ -113,6 +113,7 @@ namespace lands{
 		_fittedParsInPseudoData_sb= 0;
 		_fittedParsInPseudoData_global= 0;
 		_tossToyConvention = 0;
+		_UseBestEstimateToCalcQ = true;
 	}
 	CountingModel::~CountingModel(){
 		v_data.clear();
@@ -1072,7 +1073,8 @@ If we need to change it later, it will be easy to do.
 		if(bHasParametricShape){
 			if(_debug>=100)cout<<" in GetToyData_H1 start to destroy old toy"<<endl;
 			for(int ch=0; ch<v_pdfs_roodataset_toy.size(); ch++){
-				if(v_pdfs_roodataset_toy[ch])	delete v_pdfs_roodataset_toy[ch];
+				//if(v_pdfs_roodataset_toy[ch])	delete v_pdfs_roodataset_toy[ch];
+				delete v_pdfs_roodataset_toy[ch];
 			}
 			v_pdfs_roodataset_toy.clear();
 			if(_debug>=100)cout<<" in GetToyData_H1 old toy destroyed"<<endl;

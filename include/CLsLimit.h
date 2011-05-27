@@ -25,6 +25,9 @@ namespace lands{
 			~CLsBase();
 			void SetModel(CountingModel *model){_model=model; cms_global = model;};
 			bool BuildM2lnQ(int ntoys=100000, int sbANDb_bOnly_sbOnly=0, bool reUsePreviousToys=false);
+			bool BuildM2lnQ_b(int ntoys=100000, bool reUsePreviousToys=false);
+			bool BuildM2lnQ_sb(int ntoys=100000, bool reUsePreviousToys=false);
+			bool BuildM2lnQ_data();
 			bool BuildM2lnQ(CountingModel *model, int ntoys=100000, int sbANDb_bOnly_sbOnly=0, bool reUsePreviousToys=false);// 0 for sbANDb, 1 for bOnly, 2 for sbOnly
 			void SetRdm(CRandom *rdm);
 			vector<double> Get_m2logQ_b();
@@ -59,6 +62,10 @@ namespace lands{
 
 			int GetNexps(){return _nexps;};
 
+			void printM2LnQInfo(int sbANDb_bOnly_sbOnly);
+			void checkFittedParsInData();
+			double M2lnQ(int checkFailure=0);
+			void prepareLogNoverB();
 
 		private:
 			void ProcessM2lnQ();
@@ -67,6 +74,7 @@ namespace lands{
 			int *iq_sb; // sort m2logQ_sb
 			double Q_b_exp; double Q_b_data;// double Q_b_median; double Q_b_mean;
 			double _nsig;	double _nbkg; 	double _ndat; 
+			double *_lognoverb;
 			int _nexps;
 			int _nchannels;
 			CRandom *_rdm;
