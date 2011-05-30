@@ -8,6 +8,7 @@
 #include <vector>
 #include <string>
 #include "TH1F.h"
+#include "TROOT.h"
 
 using namespace std;
 using namespace lands;
@@ -24,6 +25,7 @@ void FillTree(TString sfile, vector<double> array);
 void FillTree(TString sfile, vector<int> array);
 void FillTree(TString sfile, double * array, int nsize=100000);
 void FillTree(TString sfile, int* array, int nsize=100000);
+void FillTree(TString sfile, double d1, double d2, vector<double> array1,  vector<double> array2);
 
 bool isWordInMap(TString s, std::map<TString, vector<TString> > tMap);
 void StringStrip( std::string & str ) ;

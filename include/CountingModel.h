@@ -79,12 +79,17 @@ namespace lands{
 			void AddObservedData(int index_channel, double num_data);
 			void AddObservedData(string c, double num_data);
 			void SetData(VDChannel data, bool bRealData=true){v_data=data; if(bRealData)v_data_real=data;};
+			void SetData(TString filename, TString datahistname, bool bRealData=true);
 			void SetData(vector<int> data){for(int i=0; i<data.size(); i++) v_data[i]=data[i];};
 
 			VChannelVSample Get_vv_exp_sigbkgs_nonscaled(){return vv_exp_sigbkgs;};
 			VChannelVSample Get_vv_exp_sigbkgs(){return vv_exp_sigbkgs_scaled;};
 			void Set_vv_randomized_sigbkgs(VChannelVSample vv){vv_randomized_sigbkgs=vv;};
 			VChannelVSample Get_vv_randomized_sigbkgs(){return vv_randomized_sigbkgs_scaled;};
+			void Set_vv_fitted_sigbkgs(VChannelVSample vv){vv_fitted_sigbkgs=vv;};
+			VChannelVSample Get_vv_fitted_sigbkgs(){return vv_fitted_sigbkgs;};
+			void Set_vv_fitted_sigbkgs_scaled(VChannelVSample vv){vv_fitted_sigbkgs_scaled=vv;};
+			VChannelVSample Get_vv_fitted_sigbkgs_scaled(){return vv_fitted_sigbkgs_scaled;};
 			VDChannel Get_v_data(){return v_data;};
 			VDChannel Get_v_data_real(){return v_data_real;};
 
@@ -95,7 +100,9 @@ namespace lands{
 			void Print(int printLevel=0);
 			bool Check();
 
-			VChannelVSample FluctuatedNumbers(double *pars = NULL, bool scaled=true, bool bUseBestEstimateToCalcQ=true);	
+			VChannelVSample FluctuatedNumbers(double *pars = NULL, bool scaled=true, int bUseBestEstimateToCalcQ=1); 
+			// 0 use randomized set,  1 use best estimates a priori, 2 use fitted posterior (after looking at data)
+			
 			VIChannel GetToyData_H0(double *pars=NULL);// background only hypothesis
 			VIChannel GetToyData_H1(double *pars=NULL);// alternative hypothesis
 			
@@ -145,8 +152,16 @@ namespace lands{
 			int GetTossToyConvention(){return _tossToyConvention;};
 			double* Get_fittedParsInData_sb(){return _fittedParsInData_sb;};
 			double* Get_fittedParsInData_b(){return _fittedParsInData_bonly;};
-			void Set_fittedParsInData_sb(double *p){ _fittedParsInData_sb=p;};
-			void Set_fittedParsInData_b(double *p){_fittedParsInData_bonly=p;};
+			void Set_fittedParsInData_sb(double *p){
+			       	_fittedParsInData_sb=p;
+				vv_fitted_sigbkgs_scaled = FluctuatedNumbers(p);
+				vv_pdfs_norm_fitted_scaled = vv_pdfs_norm_varied;
+			};
+			void Set_fittedParsInData_b(double *p){
+				_fittedParsInData_bonly=p;
+				vv_fitted_sigbkgs= FluctuatedNumbers(p, 0);
+				vv_pdfs_norm_fitted = vv_pdfs_norm_varied;
+			};
 
 			void SetUseBestEstimateToCalcQ(bool b=true){ _UseBestEstimateToCalcQ=b;};
 			bool UseBestEstimateToCalcQ(){ return _UseBestEstimateToCalcQ;};
@@ -175,6 +190,10 @@ namespace lands{
 			vector< vector<double> > Get_vv_pdfs_data_toy(){return vv_pdfs_data_toy;}; // in each channel, it has a list of events
 			void Set_vv_pdfs_norm_randomized(VChannelVSample vv){vv_pdfs_norm_randomized=vv;};
 			VChannelVSample Get_vv_pdfs_norm_randomized(){return vv_pdfs_norm_randomized_scaled;};
+			void Set_vv_pdfs_norm_fitted(VChannelVSample vv){vv_pdfs_norm_fitted=vv;};
+			VChannelVSample Get_vv_pdfs_norm_fitted(){return vv_pdfs_norm_fitted;};
+			void Set_vv_pdfs_norm_fitted_scaled(VChannelVSample vv){vv_pdfs_norm_fitted_scaled=vv;};
+			VChannelVSample Get_vv_pdfs_norm_fitted_scaled(){return vv_pdfs_norm_fitted_scaled;};
 			vector<int> Get_v_pdfs_sigproc(){return v_pdfs_sigproc;};
 			vector< RooDataSet* > Get_v_pdfs_roodataset_toy(){return v_pdfs_roodataset_toy;}; // in each channel, it has a list of events
 			vector< RooDataSet* > Get_v_pdfs_roodataset(){return v_pdfs_roodataset;}; // in each channel, it has a list of events
@@ -200,6 +219,7 @@ namespace lands{
 			void AddObservedDataSet(int index_channel, RooDataSet* rds);
 			void AddObservedDataSet(string channelname, RooDataSet* rds);
 			void SetDataForUnbinned(vector< RooDataSet*> data, bool bRealData=true);
+			void SetDataForUnbinned(TString filename, bool bRealData=true);
 			void SetTmpDataForUnbinned(vector< RooDataSet*> data); // set it before doing fit
 			void AddUncertaintyOnShapeNorm(int index_channel, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, int index_correlation );
 			void AddUncertaintyOnShapeNorm(int index_channel, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, string uncname);
@@ -212,8 +232,10 @@ namespace lands{
 			VDChannel v_data_real; // real data, not changed during entire run 
 			VChannelVSample vv_exp_sigbkgs;
 			VChannelVSample vv_exp_sigbkgs_scaled;
-			VChannelVSample vv_randomized_sigbkgs;
+			VChannelVSample vv_randomized_sigbkgs;   
 			VChannelVSample vv_randomized_sigbkgs_scaled;
+			VChannelVSample vv_fitted_sigbkgs;    // fitted in data with mu=0
+			VChannelVSample vv_fitted_sigbkgs_scaled;   // fitted in data with mu being tested
 			VChannelVSampleVUncertaintyVParameter  vvvv_uncpar;
 			VChannelVSampleVUncertainty vvv_pdftype;
 			VChannelVSampleVUncertainty vvv_idcorrl;
@@ -263,6 +285,8 @@ namespace lands{
 			vector< vector<double> > vv_pdfs_norm_scaled; //normalization of each pdf, i.e. expected number of events in each process 
 			vector< vector<double> > vv_pdfs_norm_randomized; //normalization of each pdf, i.e. expected number of events in each process 
 			vector< vector<double> > vv_pdfs_norm_randomized_scaled; //normalization of each pdf, i.e. expected number of events in each process 
+			vector< vector<double> > vv_pdfs_norm_fitted; //normalization of each pdf, i.e. expected number of events in each process    fitted in data with mu=0
+			vector< vector<double> > vv_pdfs_norm_fitted_scaled; //normalization of each pdf, i.e. expected number of events in each process   fitted in data with mu being tested
 			// uncertainties ....   each source affects parameters  -->  two additional sets of parameters
 			vector< vector< vector<int> > > vvv_pdfs_idcorrl;
 			vector< vector< vector<int> > > vvv_pdfs_pdftype;

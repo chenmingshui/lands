@@ -14,14 +14,17 @@
 #include "SignificanceBands.h"
 #include "RooRandom.h"
 #include "TStopwatch.h"
+#include "RooDataSet.h"
+#include "TFile.h"
+#include "RooMsgService.h"
 
 using namespace std;
 using namespace lands;
 using namespace RooFit;
 
-typedef std::map<TString, vector<TString> > TMap;
-typedef std::pair<TString, vector<TString> > TPair;
-TMap options;
+typedef std::map<TString, vector<TString> > TStrMap;
+typedef std::pair<TString, vector<TString> > TStrPair;
+TStrMap options;
 void processParameters(int argc, const char* argv[]);
 void PrintHelpMessage();
 
@@ -65,10 +68,25 @@ double initialRmin = 1., initialRmax = 21;// only when bQuickEstimateInitialLimi
 int oneside = 2; //for PLR limit     for default
 TString PLalgorithm; // algorithm for PL approximation method (    Minos,    Migrad )
 
+bool bReadPars = false;
+bool bWritePars = false;
+TString fileFittedPars="";
+bool bNotCalcQdata = false;
+int nToysForCLb = -1;
+int nToysForCLsb = -1;
+bool bNotCalcCLssbb = false;
+bool bSaveM2lnQ = false;
+TString fileM2lnQ = "m2lnq.root";
+bool bSkipM2lnQ = false; 
+
+
 int main(int argc, const char*argv[]){
 	TStopwatch watch;  
 	watch.Start();
 	processParameters(argc, argv);
+
+
+	if(debug<10)RooMsgService::instance().getStream(1).removeTopic(ObjectHandling) ;
 
 	CountingModel *cms; // this instance will be the one combining all sub cards
 	cms = new CountingModel();
@@ -171,26 +189,132 @@ int main(int argc, const char*argv[]){
 			frequentist.SetRdm(rdm);
 			frequentist.SetTestStatistics(testStat);
 			cms_global= cms;
-			//vdata_global=cms->Get_v_data();
-
-			double tmp;
 			vdata_global=cms->Get_v_data();
 
 			if(singlePoint){ cms->SetSignalScaleFactor(testR); }
 			else { cms->SetSignalScaleFactor(1.); }
-			frequentist.BuildM2lnQ(cms, toysHybrid);
-			double errs, errb, errsb;
-			double cls = frequentist.CLs(errs);
-			double clsb = frequentist.CLsb(errsb);
-			double clb = frequentist.CLb(errb);
-			cout<<"---------------testing at signal strength r = "<<cms->GetSignalScaleFactor()<<"-------------------------"<<endl;
-			cout<<"Observed CLs = "<<cls<<" +/- "<<errs<<endl;
-			cout<<"Observed CLsb = "<<clsb<<" +/- "<<errsb<<endl;
-			cout<<"Observed CLb = "<<clb<<" +/- "<<errb<<endl;
-			cout<<"------------------------------------------------------------"<<endl;
+
+			frequentist.SetModel(cms);
+
+			//frequentist.checkFittedParsInData(true, false, "fittedPars.root");
+			if(tossToyConvention==1)frequentist.checkFittedParsInData(bReadPars, bWritePars, fileFittedPars);
+
+			//frequentist.BuildM2lnQ(toysHybrid);
+			vector<double> vb, vsb;
+			if(!bSkipM2lnQ){
+				if(testStat==1)frequentist.prepareLogNoverB();
+				if(!bNotCalcQdata)frequentist.BuildM2lnQ_data();
+				if(nToysForCLsb<=0) nToysForCLsb=toysHybrid;
+				if(nToysForCLb<=0) nToysForCLb=toysHybrid;
+				frequentist.BuildM2lnQ_b(nToysForCLb);
+				vb = frequentist.Get_m2logQ_b();
+				frequentist.BuildM2lnQ_sb(nToysForCLsb);
+				vsb = frequentist.Get_m2logQ_sb();
+			}
+
+			if(!bNotCalcCLssbb && !bSkipM2lnQ){
+				double errs, errb, errsb;
+				double cls = frequentist.CLs(errs);
+				double clsb = frequentist.CLsb(errsb);
+				double clb = frequentist.CLb(errb);
+				cout<<"---------------testing at signal strength r = "<<cms->GetSignalScaleFactor()<<"-------------------------"<<endl;
+				cout<<"Observed CLs = "<<cls<<" +/- "<<errs<<endl;
+				cout<<"Observed CLsb = "<<clsb<<" +/- "<<errsb<<endl;
+				cout<<"Observed CLb = "<<clb<<" +/- "<<errb<<endl;
+				cout<<"------------------------------------------------------------"<<endl;
+			}
+
+			if(bSaveM2lnQ && !bSkipM2lnQ){
+				double qdata = bNotCalcQdata?0:frequentist.Get_m2lnQ_data();
+				FillTree(fileM2lnQ, cms->GetSignalScaleFactor(), qdata, vsb, vb);
+			}
+
+			if(0){// throw pseudo data
+				double *pars = NULL;
+				if(tossPseudoDataConvention==1){
+					pars = cms->Get_fittedParsInData_b();
+					if(pars==NULL) DoAfit(0, cms->Get_v_data(), cms->Get_v_pdfs_roodataset(), pars);
+				}
+				VIChannel vpseudodata; 
+				vpseudodata=cms->GetToyData_H0(pars);
+				vector<RooDataSet*> vrds; vrds.clear();
+				for(int c=0; c<cms->Get_vv_pdfs().size(); c++){
+					RooDataSet *rds = new RooDataSet(*(cms->Get_v_pdfs_roodataset_toy()[c]));
+					vrds.push_back(rds);
+				}
+				TFile *f = new TFile("data.root", "RECREATE");
+				TH1D * hobs = new TH1D("hobs","hobs", vpseudodata.size(), 0, vpseudodata.size());
+				for(int i=0; i<vpseudodata.size(); i++) hobs->SetBinContent(i+1, vpseudodata[i]);
+				f->WriteTObject(hobs);
+				for(int c=0; c<cms->Get_vv_pdfs().size(); c++){
+					vrds[c]->SetName(cms->Get_v_pdfs_channelname()[c].c_str());
+					f->WriteTObject(vrds[c]);
+				}
+				f->Close();
+
+			}
+
+			//delete cms;
+			for(int hello=0; hello<-1; hello++){
+				RooRandom::randomGenerator()->SetSeed(seed);
+				CRandom *rdm1 = new CRandom(seed);  //initilize a random generator
+				CountingModel *cmsClone; // this instance will be the one combining all sub cards
+				cmsClone = new CountingModel();
+				CountingModel *tmpn1[100];
+				CountingModel *tmpn[100];// = new CountingModel(); 
+				if(datacards.size()>100) {cout<<"too many datacards "<<datacards.size()<<endl; exit(0);}
+				for(int i=0; i<datacards.size(); i++){
+					tmpn[i] = new CountingModel();
+					ConfigureModel(tmpn[i], datacards[i].Data());
+					tmpn[i]->SetUseSystematicErrors(true);
+				}
+				if(datacards.size()==1) cmsClone=tmpn[0];
+				else if(datacards.size()>=2){
+					tmpn1[1] = CombineModels(tmpn[0], tmpn[1]);
+					tmpn1[1]->SetUseSystematicErrors(true);
+					for(int i=2; i<datacards.size(); i++){
+						tmpn1[i] = CombineModels(tmpn1[i-1], tmpn[i]);
+						tmpn1[i]->SetUseSystematicErrors(true);
+					}	
+					cmsClone = tmpn1[datacards.size()-1];
+				}else{exit(0);}
+				cmsClone->SetUseSystematicErrors(systematics);
+				// done combination
+
+				cmsClone->SetRdm(rdm1);
+				cmsClone->SetUseSystematicErrors(systematics);
+				int nch_removed = cmsClone->RemoveChannelsWithExpectedSignal0orBkg0(0); // 0: remove only bins with total bkg<=0,  1: remove bins with total sig<=0,  2: both
+				cmsClone->SetMoveUpShapeUncertainties(1);
+				cmsClone->SetTossToyConvention(tossToyConvention);
+
+				cmsClone->SetDebug(debug);
+				cmsClone->SetUseBestEstimateToCalcQ(UseBestEstimateToCalcQ);
+				frequentist.SetModel(cmsClone);
+
+				frequentist.checkFittedParsInData(true, false, "fittedPars.root");
+
+				if(singlePoint){ cmsClone->SetSignalScaleFactor(testR); }
+				else { cmsClone->SetSignalScaleFactor(1.); }
+				frequentist.BuildM2lnQ(toysHybrid);
+				double errs, errb, errsb;
+				double cls = frequentist.CLs(errs);
+				double clsb = frequentist.CLsb(errsb);
+				double clb = frequentist.CLb(errb);
+				cout<<"---------------testing at signal strength r = "<<cmsClone->GetSignalScaleFactor()<<"-------------------------"<<endl;
+				cout<<"Observed CLs = "<<cls<<" +/- "<<errs<<endl;
+				cout<<"Observed CLsb = "<<clsb<<" +/- "<<errsb<<endl;
+				cout<<"Observed CLb = "<<clb<<" +/- "<<errb<<endl;
+				cout<<"------------------------------------------------------------"<<endl;
 
 
-			if(bPlots){
+				cmsClone->~CountingModel();
+				for(int i=0; i<datacards.size()-1; i++) {
+					if(tmpn[i]) tmpn[i]->~CountingModel();
+					if(tmpn1[i]) tmpn1[i]->~CountingModel();
+				}
+			}
+
+			if(bPlots && !bSkipM2lnQ){
 				DrawPdfM2logQ pdfM2logQ(frequentist.Get_m2logQ_sb(),frequentist.Get_m2logQ_b(), frequentist.Get_m2lnQ_data(), 
 						"-2lnQ on data", "; -2lnQ; entries", "lnq", pt);
 				pdfM2logQ.draw();
@@ -204,7 +328,7 @@ int main(int argc, const char*argv[]){
 				FillTree("m2lnQ_sb.root", frequentist.Get_m2logQ_sb());
 			}
 
-			if(debug>=10) {
+			if(debug>=10 && !bSkipM2lnQ) {
 				cout<<"-2lnQ on data = "<<frequentist.Get_m2lnQ_data()<<endl;
 				vector<double> qsb = frequentist.Get_m2logQ_sb();
 				vector<double> qb = frequentist.Get_m2logQ_b();
@@ -228,7 +352,8 @@ int main(int argc, const char*argv[]){
 					double testr = initialRmin + i*(initialRmax - initialRmin)/(float)nSteps;
 					cms->SetSignalScaleFactor(testr);
 					frequentist.BuildM2lnQ(cms, toysHybrid);
-					cls = frequentist.CLs(errs);
+					double errs;
+					double cls = frequentist.CLs(errs);
 					vr.push_back(testr);
 					vc.push_back(cls);
 				}
@@ -716,11 +841,11 @@ void processParameters(int argc, const char* argv[]){
 				if(allargs[j].BeginsWith("-") and !allargs[j].IsFloat()) break;
 				values.push_back(allargs[j]);
 			}
-			options.insert(TPair(key, values));
+			options.insert(TStrPair(key, values));
 		}
 	}
 
-	TMap::iterator p;
+	TStrMap::iterator p;
 
 	cout<<"Your arguments: "<<endl;
 	for(p=options.begin(); p!=options.end();++p){
@@ -956,6 +1081,29 @@ void processParameters(int argc, const char* argv[]){
 		UseBestEstimateToCalcQ = tmpv[0].Atoi();
 	}
 
+	if(isWordInMap("--bReadPars", options)) bReadPars = true;
+	if(isWordInMap("--bWritePars", options)) bWritePars = true;
+	if(isWordInMap("--bNotCalcQdata", options)) bNotCalcQdata = true;
+	if(isWordInMap("--bNotCalcCLssbb", options)) bNotCalcCLssbb = true;
+	if(isWordInMap("--bSaveM2lnQ", options)) bSaveM2lnQ = true;
+	if(isWordInMap("--bSkipM2lnQ", options)) bSkipM2lnQ = true;
+
+	tmpv = options["--nToysForCLsb"];
+	if( tmpv.size()!=1 ) { nToysForCLsb = -1; }
+	else nToysForCLsb = tmpv[0].Atoi();
+	tmpv = options["--nToysForCLb"];
+	if( tmpv.size()!=1 ) { nToysForCLb = -1; }
+	else nToysForCLb = tmpv[0].Atoi();
+
+	tmpv = options["--fileFittedPars"];
+	if( tmpv.size()!=1 ) { fileFittedPars = ""; }
+	else fileFittedPars = tmpv[0];
+	tmpv = options["--fileM2lnQ"];
+	if( tmpv.size()!=1 ) { fileM2lnQ= "m2lnq.root"; }
+	else fileM2lnQ= tmpv[0];
+
+
+
 	printf("\n\n[ Summary of configuration in this job: ]\n");
 	cout<<"  Calculating "<<(calcsignificance?"significance":"limit")<<" with "<<method<<" method "<<endl;
 	cout<<"  datacards: "; for(int i=0; i<datacards.size(); i++) cout<<datacards[i]<<" "; cout<<endl;
@@ -1058,6 +1206,18 @@ void PrintHelpMessage(){
 	printf("--scanRs arg (=numSteps)              scanning CLs vs. r,  r from initialRmin to initialRmax with numSteps \n"); 
 	printf("--tossToyConvention arg (=0)          choose convention for tossing toys to build -2lnQ distribution. 0 (LEP, TEVATRON) or 1 (LHC)\n");
 	printf("--UseBestEstimateToCalcQ arg (=1)     0: randomized nuisances; 1: use best estimate of nuisances  --> to calc Q\n");
+
+	printf("--bReadPars (=0)\n");
+	printf("--bWritePars (=0)\n");
+	printf("--bNotCalcQdata (=0)\n");
+	printf("--bNotCalcCLssbb (= 0)\n");
+	printf("--bSaveM2lnQ (= 0)\n");
+	printf("--bSkipM2lnQ (= 0)\n");
+	printf("--nToysForCLb (= -1)\n");
+	printf("--nToysForCLsb (= -1)\n");
+	printf("--String fileFittedPars (=\"\")\n");
+	printf("--fileM2lnQ (= \"m2lnq.root\")\n");
+
 	printf(" \n"); 
 	printf("ProfiledLikelihood specific options: \n"); 
 	printf("--OneOrTwoSided arg (=2)              1 sided limit -lnL = 1.345;  2 sided limit -lnL = 1.921 \n"); 

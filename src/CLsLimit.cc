@@ -12,12 +12,15 @@
 #include "CLsLimit.h"
 #include "CRandom.h"
 #include "Utilities.h"
+#include "UtilsROOT.h"
 #include "BayesianBase.h"
 
 
 #include "TMinuit.h"
 
 #include "TMath.h"
+#include "TH1D.h"
+#include "TFile.h"
 
 #include "RooDataSet.h"
 
@@ -947,7 +950,7 @@ namespace lands{
 					}
 
 					if(!_model->UseBestEstimateToCalcQ()){
-						VChannelVSample vv =  _model->FluctuatedNumbers(); // fluctuate nuisances .... to be used to build Q // FIXME toss nuisance around fitted b_hat in data ? 
+						VChannelVSample vv =  _model->FluctuatedNumbers(0, false, 2); // fluctuate nuisances .... to be used to build Q // FIXME toss nuisance around fitted b_hat in data ? 
 						_model -> Set_vv_randomized_sigbkgs(vv);
 						_model -> Set_vv_pdfs_norm_randomized(_model->Get_vv_pdfs_norm_varied());
 						// need to be delivered to Chisquare function 
@@ -969,7 +972,7 @@ namespace lands{
 					}
 
 					if(!_model->UseBestEstimateToCalcQ()){
-						VChannelVSample vv =  _model->FluctuatedNumbers(); // fluctuate nuisances .... to be used to build Q // FIXME toss nuisance around fitted b_hat in data ? 
+						VChannelVSample vv =  _model->FluctuatedNumbers(0, false, 2); // fluctuate nuisances .... to be used to build Q // FIXME toss nuisance around fitted b_hat in data ? 
 						_model -> Set_vv_randomized_sigbkgs(vv);
 						_model -> Set_vv_pdfs_norm_randomized(_model->Get_vv_pdfs_norm_varied());
 					}
@@ -1455,6 +1458,7 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 				cms->Set_vv_randomized_sigbkgs(cms->Get_vv_exp_sigbkgs_nonscaled());	
 				cms->Set_vv_pdfs_norm_randomized(cms->Get_vv_pdfs_norm_nonscaled());	
 				DoAfit(rmid, cms->Get_v_data_real(), cms->Get_v_pdfs_roodataset_real(), cms->Get_fittedParsInData_sb());
+				cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
 			}
 			frequentist->BuildM2lnQ(cms, nexps); 
 			if(_rule == 1)
@@ -1503,6 +1507,7 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 			cms->Set_vv_randomized_sigbkgs(cms->Get_vv_exp_sigbkgs_nonscaled());	
 			cms->Set_vv_pdfs_norm_randomized(cms->Get_vv_pdfs_norm_nonscaled());	
 			DoAfit(1, cms->Get_v_data_real(), cms->Get_v_pdfs_roodataset_real(), cms->Get_fittedParsInData_sb());
+				cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
 		}
 		//		if(_debug>=10)
 		//			r0=R_CL(cms, 1-_alpha, 1.e-30, 1.e-6, 1000., _debug );
@@ -1523,7 +1528,12 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 		if(cms->GetTossToyConvention()==1) {
 			cms->Set_vv_randomized_sigbkgs(cms->Get_vv_exp_sigbkgs_nonscaled());	
 			cms->Set_vv_pdfs_norm_randomized(cms->Get_vv_pdfs_norm_nonscaled());	
+			cout<<"Before refit: r=1"<<endl;
+			for(int i=0; i<cms->Get_max_uncorrelation(); i++) cout<<"par "<<i<<"     "<<cms->Get_fittedParsInData_sb()[i]<<endl;
 			DoAfit(r0, cms->Get_v_data_real(), cms->Get_v_pdfs_roodataset_real(), cms->Get_fittedParsInData_sb());
+				cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
+			cout<<"After refit: r="<<r0<<endl;
+			for(int i=0; i<cms->Get_max_uncorrelation(); i++) cout<<"par "<<i<<"     "<<cms->Get_fittedParsInData_sb()[i]<<endl;
 		}
 		frequentist->BuildM2lnQ(cms, nexps); 
 		if(_rule == 1)
@@ -1544,6 +1554,7 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 			cms->Set_vv_randomized_sigbkgs(cms->Get_vv_exp_sigbkgs_nonscaled());	
 			cms->Set_vv_pdfs_norm_randomized(cms->Get_vv_pdfs_norm_nonscaled());	
 			DoAfit(r1, cms->Get_v_data_real(), cms->Get_v_pdfs_roodataset_real(), cms->Get_fittedParsInData_sb());
+				cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
 		}
 		frequentist->BuildM2lnQ(cms, nexps); 
 		if(_rule == 1)
@@ -1586,6 +1597,7 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 			cms->Set_vv_randomized_sigbkgs(cms->Get_vv_exp_sigbkgs_nonscaled());	
 			cms->Set_vv_pdfs_norm_randomized(cms->Get_vv_pdfs_norm_nonscaled());	
 			DoAfit(rmid, cms->Get_v_data_real(), cms->Get_v_pdfs_roodataset_real(), cms->Get_fittedParsInData_sb());
+				cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
 		}
 		frequentist->BuildM2lnQ(cms, nexps); 
 		double clmid, errsmid;
@@ -1658,6 +1670,7 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 						cms->Set_vv_randomized_sigbkgs(cms->Get_vv_exp_sigbkgs_nonscaled());	
 						cms->Set_vv_pdfs_norm_randomized(cms->Get_vv_pdfs_norm_nonscaled());	
 						DoAfit(rmid, cms->Get_v_data_real(), cms->Get_v_pdfs_roodataset_real(), cms->Get_fittedParsInData_sb());
+				cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
 					}
 					frequentist->BuildM2lnQ(cms, nexps); 
 					double clmid;
@@ -1677,6 +1690,7 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 						cms->Set_vv_randomized_sigbkgs(cms->Get_vv_exp_sigbkgs_nonscaled());	
 						cms->Set_vv_pdfs_norm_randomized(cms->Get_vv_pdfs_norm_nonscaled());	
 						DoAfit(rmid, cms->Get_v_data_real(), cms->Get_v_pdfs_roodataset_real(), cms->Get_fittedParsInData_sb());
+				cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
 					}
 					frequentist->BuildM2lnQ(cms, nexps); 
 					double clmid;
@@ -2323,10 +2337,29 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys){  // 0 for sbANDb,
 					_model->SetTmpDataForUnbinned(_model->Get_v_pdfs_roodataset_toy());
 				}
 				if(!_model->UseBestEstimateToCalcQ()){
-					VChannelVSample vv =  _model->FluctuatedNumbers(); // fluctuate nuisances .... to be used to build Q // FIXME toss nuisance around fitted b_hat in data ? 
+					//generate nuisance around b^hat_0 
+					VChannelVSample vv =  _model->FluctuatedNumbers(0, false, 2); // fluctuate nuisances .... to be used to build Q // FIXME toss nuisance around fitted b_hat in data ? 
+					
+					//VChannelVSample vv =  _model->FluctuatedNumbers(); // fluctuate nuisances .... to be used to build Q // FIXME toss nuisance around fitted b_hat in data ? 
 					_model -> Set_vv_randomized_sigbkgs(vv);
 					_model -> Set_vv_pdfs_norm_randomized(_model->Get_vv_pdfs_norm_varied());
 					// need to be delivered to Chisquare function 
+
+					// since we will evaluate the Q at the mu point being tested, we need to scale the generated signal yields by mu
+					_model -> SetSignalScaleFactor(_model->GetSignalScaleFactor(), false);
+					vv = _model->Get_vv_pdfs_norm_randomized();
+					_model -> Set_vv_pdfs_norm_randomized(_model->Get_vv_pdfs_norm_randomized());
+					_model -> Set_vv_randomized_sigbkgs(_model->Get_vv_randomized_sigbkgs());
+
+					/*
+					cout<<" Nuisances: ";
+					for(int c=0; c<vv.size(); c++){
+						for(int s=0; s<vv[c].size(); s++){
+							cout<<" "<<vv[c][s];
+						}
+					}
+					cout<<endl;
+					*/
 				}
 
 				break;
@@ -2345,10 +2378,21 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys){  // 0 for sbANDb,
 
 	return true;
 }
-void CLsBase::printM2LnQInfo(int sbANDb_bOnly_sbOnly){
-	if (sbANDb_bOnly_sbOnly==0) 
-		if( ( Q_b_data < Q_b[iq_b[0]] || Q_b_data > Q_sb[iq_sb[_nexps-1]] ) && _debug ){ 
-			cout<<"\t probability of this -2lnQ_data is very very small, it's out of "<<_nexps<<" exps, you need more toys"<<endl;
+	void CLsBase::printM2LnQInfo(int sbANDb_bOnly_sbOnly){
+		if (sbANDb_bOnly_sbOnly==0) 
+			if( ( Q_b_data < Q_b[iq_b[0]] || Q_b_data > Q_sb[iq_sb[_nexps-1]] ) && _debug ){ 
+				cout<<"\t probability of this -2lnQ_data is very very small, it's out of "<<_nexps<<" exps, you need more toys"<<endl;
+				if(test_statistics==1){
+					cout<<"\t -2lnQ_data =   "<<-2*Q_b_data+2*_nsig<<endl;
+					cout<<"\t -2lnQ_b    = [ "<<-2*Q_b[iq_b[_nexps-1]]+2*_nsig<<" , "<<-2*Q_b[iq_b[0]]+2*_nsig<<" ]"<<endl;
+					cout<<"\t -2lnQ_sb   = [ "<<-2*Q_sb[iq_sb[_nexps-1]]+2*_nsig<<" , "<<-2*Q_sb[iq_sb[0]]+2*_nsig<<" ]"<<endl;
+				}else{
+					cout<<"\t -2lnQ_data =   "<<-2*Q_b_data<<endl;
+					cout<<"\t -2lnQ_b    = [ "<<-2*Q_b[iq_b[_nexps-1]]<<" , "<<-2*Q_b[iq_b[0]]<<" ]"<<endl;
+					cout<<"\t -2lnQ_sb   = [ "<<-2*Q_sb[iq_sb[_nexps-1]]<<" , "<<-2*Q_sb[iq_sb[0]]<<" ]"<<endl;
+				}
+			}
+		if(_debug>=1 && sbANDb_bOnly_sbOnly==0 ) {
 			if(test_statistics==1){
 				cout<<"\t -2lnQ_data =   "<<-2*Q_b_data+2*_nsig<<endl;
 				cout<<"\t -2lnQ_b    = [ "<<-2*Q_b[iq_b[_nexps-1]]+2*_nsig<<" , "<<-2*Q_b[iq_b[0]]+2*_nsig<<" ]"<<endl;
@@ -2359,45 +2403,86 @@ void CLsBase::printM2LnQInfo(int sbANDb_bOnly_sbOnly){
 				cout<<"\t -2lnQ_sb   = [ "<<-2*Q_sb[iq_sb[_nexps-1]]<<" , "<<-2*Q_sb[iq_sb[0]]<<" ]"<<endl;
 			}
 		}
-	if(_debug>=1 && sbANDb_bOnly_sbOnly==0 ) {
-		if(test_statistics==1){
-			cout<<"\t -2lnQ_data =   "<<-2*Q_b_data+2*_nsig<<endl;
-			cout<<"\t -2lnQ_b    = [ "<<-2*Q_b[iq_b[_nexps-1]]+2*_nsig<<" , "<<-2*Q_b[iq_b[0]]+2*_nsig<<" ]"<<endl;
-			cout<<"\t -2lnQ_sb   = [ "<<-2*Q_sb[iq_sb[_nexps-1]]+2*_nsig<<" , "<<-2*Q_sb[iq_sb[0]]+2*_nsig<<" ]"<<endl;
-		}else{
-			cout<<"\t -2lnQ_data =   "<<-2*Q_b_data<<endl;
-			cout<<"\t -2lnQ_b    = [ "<<-2*Q_b[iq_b[_nexps-1]]<<" , "<<-2*Q_b[iq_b[0]]<<" ]"<<endl;
-			cout<<"\t -2lnQ_sb   = [ "<<-2*Q_sb[iq_sb[_nexps-1]]<<" , "<<-2*Q_sb[iq_sb[0]]<<" ]"<<endl;
+		if(_debug>=100 && sbANDb_bOnly_sbOnly==0 ){
+			cout<<"\t\t CHECKING order ---index Q_b Q_sb-- "<<endl;
+			for(int i=0; i<_nexps; i++){
+				if(test_statistics==1)	cout<<"\t "<<i<<"     "<<-2*Q_b[iq_b[i]]+2*_nsig<<"  "<<-2*Q_sb[iq_sb[i]]+2*_nsig<<endl;
+				else 	cout<<"\t "<<i<<"     "<<-2*Q_b[iq_b[i]]<<"  "<<-2*Q_sb[iq_sb[i]]<<endl;
+			}
 		}
 	}
-	if(_debug>=100 && sbANDb_bOnly_sbOnly==0 ){
-		cout<<"\t\t CHECKING order ---index Q_b Q_sb-- "<<endl;
-		for(int i=0; i<_nexps; i++){
-			if(test_statistics==1)	cout<<"\t "<<i<<"     "<<-2*Q_b[iq_b[i]]+2*_nsig<<"  "<<-2*Q_sb[iq_sb[i]]+2*_nsig<<endl;
-			else 	cout<<"\t "<<i<<"     "<<-2*Q_b[iq_b[i]]<<"  "<<-2*Q_sb[iq_sb[i]]<<endl;
-		}
-	}
-}
 
-void CLsBase::checkFittedParsInData(){
+void CLsBase::checkFittedParsInData(bool bReadPars, bool bWritePars, TString sfilename){
+	TH1D *hParsB, *hParsSB; TFile *fToWrite;
+	if(bReadPars and bWritePars) { cout<<"ERROR: checkFittedParsInData():  bReadPars and bWritePars can't be both true "<<endl; exit(1); }
+	if(bReadPars){
+		hParsB = (TH1D*) GetTObject(sfilename.Data(),"hParsB");
+		hParsSB = (TH1D*) GetTObject(sfilename.Data(),"hParsSB");
+	}
+	if(bWritePars){ fToWrite = new TFile(sfilename, "RECREATE");}
 	// need move to a dedicated place 
+
 	if(_model->GetTossToyConvention()==1){
-		if( _model->Get_fittedParsInData_b() == 0) {
+		if( _model->Get_fittedParsInData_b() == 0 || bWritePars) {
 			double *pars1 =new double[_model->Get_max_uncorrelation()+1];// FIXME potential memory leak
-			_model->Set_vv_randomized_sigbkgs(_model->Get_vv_exp_sigbkgs_nonscaled());	
-			_model->Set_vv_pdfs_norm_randomized(_model->Get_vv_pdfs_norm_nonscaled());	
-			DoAfit(0, _model->Get_v_data_real(), _model->Get_v_pdfs_roodataset_real(), pars1);
-			_model->Set_fittedParsInData_b(pars1);
+			if(bReadPars){
+				for(int i=0; i<_model->Get_max_uncorrelation()+1; i++) pars1[i]=hParsB->GetBinContent(i+1); // pars1[0]: mu,  histogram starts with bin=1
+				if(pars1[0]!=0) {cout<<"ERROR: checkFittedParsInData(): read hParsB, mu!=0"<<endl; exit(1);}
+				if(hParsB->GetNbinsX()!=_model->Get_max_uncorrelation()+1) {
+					cout<<"ERROR: checkFittedParsInData(): read hParsB->Nbins="<<hParsB->GetNbinsX()<<" != "<<
+									       " model->Npars="<<_model->Get_max_uncorrelation()+1<<endl; exit(1);}
+				_model->Set_fittedParsInData_b(pars1);
+			}
+			else {
+				_model->Set_vv_randomized_sigbkgs(_model->Get_vv_exp_sigbkgs_nonscaled());	
+				_model->Set_vv_pdfs_norm_randomized(_model->Get_vv_pdfs_norm_nonscaled());	
+				DoAfit(0, _model->Get_v_data_real(), _model->Get_v_pdfs_roodataset_real(), pars1);
+				_model->Set_fittedParsInData_b(pars1);
+				if(bWritePars){
+					hParsB = new TH1D("hParsB", "hParsB", _model->Get_max_uncorrelation()+1, 0, _model->Get_max_uncorrelation()+1);
+					for(int i=0; i<_model->Get_max_uncorrelation()+1; i++) hParsB->SetBinContent(i+1, pars1[i]); // pars1[0]: mu,  histogram starts with bin=1
+					fToWrite->WriteTObject(hParsB);
+				}
+			}
+		}else{
+			if(bWritePars){
+				hParsB = new TH1D("hParsB", "hParsB", _model->Get_max_uncorrelation()+1, 0, _model->Get_max_uncorrelation()+1);
+				for(int i=0; i<_model->Get_max_uncorrelation()+1; i++) hParsB->SetBinContent(i+1, _model->Get_fittedParsInData_b()[i]); // pars1[0]: mu,  histogram starts with bin=1
+				fToWrite->WriteTObject(hParsB);
+			}
 		}
 
-		if( _model->Get_fittedParsInData_sb() == 0) {
+		if( _model->Get_fittedParsInData_sb() == 0 || bWritePars) {
 			double *pars2 =new double[_model->Get_max_uncorrelation()+1]; // FIXME potential memory leak
-			_model->Set_vv_randomized_sigbkgs(_model->Get_vv_exp_sigbkgs_nonscaled());	
-			_model->Set_vv_pdfs_norm_randomized(_model->Get_vv_pdfs_norm_nonscaled());	
-			DoAfit(_model->GetSignalScaleFactor(), _model->Get_v_data_real(), _model->Get_v_pdfs_roodataset_real(), pars2);
-			_model->Set_fittedParsInData_sb(pars2);
-			if(!pars2) cout<<"pars2=0"<<endl;
-			cout<<"r ="<<pars2[0]<<endl;
+			if(bReadPars){
+				for(int i=0; i<_model->Get_max_uncorrelation()+1; i++) pars2[i]=hParsSB->GetBinContent(i+1); // pars1[0]: mu,  histogram starts with bin=1
+				if(pars2[0]!=_model->GetSignalScaleFactor()) {cout<<"ERROR: checkFittedParsInData(): read hParsSB, mu="<<pars2[0]<<"!= signal strength being tested: "<<_model->GetSignalScaleFactor()<<endl; exit(1);}
+				if(hParsSB->GetNbinsX()!=_model->Get_max_uncorrelation()+1) {
+					cout<<"ERROR: checkFittedParsInData(): read hParsSB->Nbins="<<hParsSB->GetNbinsX()<<" != "<<
+									       " model->Npars="<<_model->Get_max_uncorrelation()+1<<endl; exit(1);}
+				_model->Set_fittedParsInData_sb(pars2);
+			}
+			else {
+				_model->Set_vv_randomized_sigbkgs(_model->Get_vv_exp_sigbkgs_nonscaled());	
+				_model->Set_vv_pdfs_norm_randomized(_model->Get_vv_pdfs_norm_nonscaled());	
+				DoAfit(_model->GetSignalScaleFactor(), _model->Get_v_data_real(), _model->Get_v_pdfs_roodataset_real(), pars2);
+				_model->Set_fittedParsInData_sb(pars2);
+				if(!pars2) cout<<"pars2=0"<<endl;
+				cout<<"r ="<<pars2[0]<<endl;
+				if(bWritePars){
+					if(_debug) cout<<" fitted sb done, saving it "<<endl;
+					hParsSB = new TH1D("hParsSB", "hParsSB", _model->Get_max_uncorrelation()+1, 0, _model->Get_max_uncorrelation()+1);
+					for(int i=0; i<_model->Get_max_uncorrelation()+1; i++) hParsSB->SetBinContent(i+1, pars2[i]); // pars1[0]: mu,  histogram starts with bin=1
+					fToWrite->WriteTObject(hParsSB);
+					if(_debug) cout<<" fitted sb done, end saving it "<<endl;
+				}
+			}
+		}else{
+			if(bWritePars){
+				hParsSB = new TH1D("hParsSB", "hParsSB", _model->Get_max_uncorrelation()+1, 0, _model->Get_max_uncorrelation()+1);
+				for(int i=0; i<_model->Get_max_uncorrelation()+1; i++) hParsSB->SetBinContent(i+1, _model->Get_fittedParsInData_sb()[i]); // pars1[0]: mu,  histogram starts with bin=1
+				fToWrite->WriteTObject(hParsSB);
+			}
 		}
 		if(_debug>=10){
 			cout<<"*** PreFit *******, "<<_model->Get_max_uncorrelation()+1<<" pars"<<endl;
@@ -2405,6 +2490,11 @@ void CLsBase::checkFittedParsInData(){
 				cout<<" par "<<i<<" : "<<(_model->Get_fittedParsInData_sb())[i]<<endl;
 			}
 		}
+	}
+	if(bWritePars){
+		fToWrite->Close();
+		//if(hParsB) delete hParsB;
+		//if(hParsSB) delete hParsSB;
 	}
 }
 
@@ -2523,7 +2613,8 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys){
 					_model->SetTmpDataForUnbinned(_model->Get_v_pdfs_roodataset_toy());
 				}
 				if(!_model->UseBestEstimateToCalcQ()){
-					VChannelVSample vv =  _model->FluctuatedNumbers(); // fluctuate nuisances .... to be used to build Q // FIXME toss nuisance around fitted b_hat in data ? 
+					VChannelVSample vv =  _model->FluctuatedNumbers(0, true, 2); // fluctuate nuisances .... to be used to build Q // FIXME toss nuisance around fitted b_hat in data ? 
+					//VChannelVSample vv =  _model->FluctuatedNumbers(); // fluctuate nuisances .... to be used to build Q // FIXME toss nuisance around fitted b_hat in data ? 
 					_model -> Set_vv_randomized_sigbkgs(vv);
 					_model -> Set_vv_pdfs_norm_randomized(_model->Get_vv_pdfs_norm_varied());
 					// need to be delivered to Chisquare function 

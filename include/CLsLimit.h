@@ -63,7 +63,7 @@ namespace lands{
 			int GetNexps(){return _nexps;};
 
 			void printM2LnQInfo(int sbANDb_bOnly_sbOnly);
-			void checkFittedParsInData();
+			void checkFittedParsInData(bool bReadPars=false, bool bWritePars=false, TString sfilename="");
 			double M2lnQ(int checkFailure=0);
 			void prepareLogNoverB();
 

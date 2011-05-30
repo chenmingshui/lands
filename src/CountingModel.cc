@@ -16,6 +16,7 @@
  * =====================================================================================
  */
 #include "CountingModel.h"
+#include "UtilsROOT.h"
 #include <iostream>
 #include <cstdio>
 #include <cmath>
@@ -40,6 +41,8 @@ namespace lands{
 		vv_exp_sigbkgs_scaled.clear();
 		vv_randomized_sigbkgs.clear();
 		vv_randomized_sigbkgs_scaled.clear();
+		vv_fitted_sigbkgs.clear();
+		vv_fitted_sigbkgs_scaled.clear();
 		vvvv_uncpar.clear();
 		vvv_pdftype.clear();
 		vvv_idcorrl.clear();
@@ -67,6 +70,8 @@ namespace lands{
 		vv_pdfs_norm_scaled.clear();	
 		vv_pdfs_norm_randomized.clear();	
 		vv_pdfs_norm_randomized_scaled.clear();	
+		vv_pdfs_norm_fitted.clear();	
+		vv_pdfs_norm_fitted_scaled.clear();	
 		vv_pdfs_npar.clear();	
 		v_pdfs_nbin.clear();	
 		v_pdfs_xmin.clear();	
@@ -122,6 +127,8 @@ namespace lands{
 		vv_exp_sigbkgs_scaled.clear();
 		vv_randomized_sigbkgs.clear();
 		vv_randomized_sigbkgs_scaled.clear();
+		vv_fitted_sigbkgs.clear();
+		vv_fitted_sigbkgs_scaled.clear();
 		vvvv_uncpar.clear();
 		vvv_pdftype.clear();
 		vvv_idcorrl.clear();
@@ -147,6 +154,8 @@ namespace lands{
 		vv_pdfs_norm_scaled.clear();	
 		vv_pdfs_norm_randomized.clear();	
 		vv_pdfs_norm_randomized_scaled.clear();	
+		vv_pdfs_norm_fitted.clear();	
+		vv_pdfs_norm_fitted_scaled.clear();	
 		vv_pdfs_npar.clear();	
 		v_pdfs_nbin.clear();	
 		v_pdfs_xmin.clear();	
@@ -180,15 +189,24 @@ namespace lands{
 		v_pdfs_floatParamsIndcorr.clear();
 		v_pdfs_floatParamsUnc.clear();
 
+		/*
 		if(_fittedParsInData_bonly) delete [] _fittedParsInData_bonly;
 		if(_fittedParsInData_sb) delete [] _fittedParsInData_sb;
 		if(_fittedParsInData_global) delete [] _fittedParsInData_global;
 		if(_fittedParsInPseudoData_bonly) delete [] _fittedParsInPseudoData_bonly;
 		if(_fittedParsInPseudoData_sb) delete [] _fittedParsInPseudoData_sb;
 		if(_fittedParsInPseudoData_global) delete [] _fittedParsInPseudoData_global;
+		*/
 
-	//	delete _w;
-	//	delete _w_varied;
+		_fittedParsInData_bonly=0;
+		_fittedParsInData_sb=0;
+		_fittedParsInData_global=0;
+		_fittedParsInPseudoData_bonly=0;
+		_fittedParsInPseudoData_sb=0;
+		_fittedParsInPseudoData_global=0;
+
+		delete _w;
+		delete _w_varied;
 	}
 	void CountingModel::AddChannel(std::string channel_name, double num_expected_signal, double num_expected_bkg_1, double num_expected_bkg_2, 
 			double num_expected_bkg_3, double num_expected_bkg_4, double num_expected_bkg_5, double num_expected_bkg_6 ){
@@ -707,14 +725,15 @@ If we need to change it later, it will be easy to do.
 		}
 
 	}
-	VChannelVSample CountingModel::FluctuatedNumbers(double *par, bool scaled, bool bUseBestEstimateToCalcQ){
+	VChannelVSample CountingModel::FluctuatedNumbers(double *par, bool scaled, int bUseBestEstimateToCalcQ){
 		// FIXME  need to think about what's vv_pdfs_norm_varied,  where it's changed,  and whether to replace it with vv_pdfs_norm_randomized_scaled .... ? 
 		if(_rdm==NULL) {cout<<"Model random gen engine not set yet, exit "<<endl; exit(0);}
 		if(!b_systematics) {
 			if(bHasParametricShape){
 				//vv_pdfs_params_varied = bUseBestEstimateToCalcQ?vv_pdfs_params:vv_pdfs_params_randomized;
-				if(bUseBestEstimateToCalcQ)vv_pdfs_norm_varied = scaled?vv_pdfs_norm_scaled:vv_pdfs_norm;
-				else vv_pdfs_norm_varied = scaled?vv_pdfs_norm_randomized_scaled:vv_pdfs_norm_randomized;
+				if(bUseBestEstimateToCalcQ==1)vv_pdfs_norm_varied = scaled?vv_pdfs_norm_scaled:vv_pdfs_norm;
+				else if(bUseBestEstimateToCalcQ==0) vv_pdfs_norm_varied = scaled?vv_pdfs_norm_randomized_scaled:vv_pdfs_norm_randomized;
+				else vv_pdfs_norm_varied = scaled?vv_pdfs_norm_fitted_scaled:vv_pdfs_norm_fitted;
 				for(int ch=0; ch<vv_pdfs.size(); ch++){
 					int nsigproc = v_pdfs_sigproc[ch];
 					for(int isam=0; isam<vv_pdfs[ch].size(); isam++){
@@ -722,8 +741,9 @@ If we need to change it later, it will be easy to do.
 					}
 				}
 			}
-			if(bUseBestEstimateToCalcQ)return scaled?vv_exp_sigbkgs_scaled:vv_exp_sigbkgs;
-			else return scaled?vv_randomized_sigbkgs_scaled:vv_randomized_sigbkgs;
+			if(bUseBestEstimateToCalcQ==1)return scaled?vv_exp_sigbkgs_scaled:vv_exp_sigbkgs;
+			else if(bUseBestEstimateToCalcQ==0) return scaled?vv_randomized_sigbkgs_scaled:vv_randomized_sigbkgs;
+			else  return scaled?vv_fitted_sigbkgs_scaled:vv_fitted_sigbkgs;
 		}
 
 		double tmp ; 
@@ -798,8 +818,9 @@ If we need to change it later, it will be easy to do.
 		//if(_debug) cout<<"done for random gen"<<endl;
 
 		VChannelVSample vv;
-		if(bUseBestEstimateToCalcQ)vv= scaled?vv_exp_sigbkgs_scaled:vv_exp_sigbkgs;
-		else vv= scaled?vv_randomized_sigbkgs_scaled:vv_randomized_sigbkgs;
+		if(bUseBestEstimateToCalcQ==1)vv= scaled?vv_exp_sigbkgs_scaled:vv_exp_sigbkgs;
+		else if(bUseBestEstimateToCalcQ==0)vv= scaled?vv_randomized_sigbkgs_scaled:vv_randomized_sigbkgs;
+		else vv= scaled?vv_fitted_sigbkgs_scaled:vv_fitted_sigbkgs;
 		int indexcorrl, pdftype, isam, iunc;
 		vector<int> shapeuncs;
 		double ran = 0, h;
@@ -964,8 +985,9 @@ If we need to change it later, it will be easy to do.
 
 		if(bHasParametricShape){
 			//vv_pdfs_params_varied = bUseBestEstimateToCalcQ?vv_pdfs_params:vv_pdfs_params_randomized;
-			if(bUseBestEstimateToCalcQ)vv_pdfs_norm_varied = scaled?vv_pdfs_norm_scaled:vv_pdfs_norm;
-			else vv_pdfs_norm_varied = scaled?vv_pdfs_norm_randomized_scaled:vv_pdfs_norm_randomized;
+			if(bUseBestEstimateToCalcQ==1)vv_pdfs_norm_varied = scaled?vv_pdfs_norm_scaled:vv_pdfs_norm;
+			else if(bUseBestEstimateToCalcQ==0)vv_pdfs_norm_varied = scaled?vv_pdfs_norm_randomized_scaled:vv_pdfs_norm_randomized;
+			else vv_pdfs_norm_varied = scaled?vv_pdfs_norm_fitted_scaled:vv_pdfs_norm_fitted;
 			for(int ch=0; ch<vv_pdfs.size(); ch++){
 				nsigproc = v_pdfs_sigproc[ch];
 				for(isam=0; isam<vv_pdfs[ch].size(); isam++){
@@ -1872,7 +1894,7 @@ If we need to change it later, it will be easy to do.
 	double CountingModel::EvaluateChi2(double *par, bool bUseBestEstimateToCalcQ){ 
 		double ret=0;
 
-		FluctuatedNumbers(par, true, bUseBestEstimateToCalcQ);
+		FluctuatedNumbers(par, true, bUseBestEstimateToCalcQ?1:0);
 
 		for(int ch=0; ch<vv_pdfs.size(); ch++){
 			double btot = 0, stot=0;
@@ -1955,6 +1977,23 @@ If we need to change it later, it will be easy to do.
 			_w->pdf(v_pdfs_sb[ch])->getParameters(*_w->var(v_pdfs_observables[ch]))->Print("V");
 		}
 		return ret;
+	}
+	void CountingModel::SetDataForUnbinned(TString filename, bool bRealData){
+		vector<RooDataSet*> data; data.clear();
+		for(int i=0; i<v_pdfs_channelname.size(); i++){
+			data.push_back((RooDataSet*)GetTObject(filename.Data(), v_pdfs_channelname[i]));
+		}
+		SetDataForUnbinned(data, bRealData);
+	}
+	void CountingModel::SetData(TString filename, TString datahistname, bool bRealData){
+		TH1D * h = (TH1D*)(GetTObject(filename.Data(), datahistname.Data()));
+		if(h->GetNbinsX()!=v_channelname.size()){cout<<"ERROR: file "<<filename<<" hist "<<datahistname<<" only has "<<h->GetNbinsX()
+			<<" != nchannels="<<v_channelname.size()<<endl; exit(1);}
+		vector<double> data; data.clear();
+		for(int i=0; i<v_data.size(); i++){
+			data.push_back(h->GetBinContent(i+1));
+		}
+		SetData(data, bRealData);
 	}
 	void CountingModel::SetDataForUnbinned(vector< RooDataSet* > data, bool bRealData){
 		/*
@@ -2123,11 +2162,11 @@ If we need to change it later, it will be easy to do.
 		if(_debug) cout<<" v_pdfs_floatParamsUnc.size() = "<<v_pdfs_floatParamsUnc.size()<<endl;
 
 		TString s = pname;
-		cout<<" * Adding floating parameter: "<<pname<<endl;
+		if(_debug)cout<<" * Adding floating parameter: "<<pname<<endl;
 		_w_varied->factory(TString::Format("%s_x[%f,%f]", pname.c_str(), rangeMin, rangeMax));
-		cout<<pname<<"_x added"<<endl;
+		if(_debug)cout<<pname<<"_x added"<<endl;
 		_w_varied->factory(TString::Format("BifurGauss::%s_bfg(%s_x, %f, %f, %f )", pname.c_str(), pname.c_str(), mean, sigmaL, sigmaR));
-		cout<<pname<<"_bfg added"<<endl;
+		if(_debug)cout<<pname<<"_bfg added"<<endl;
 
 		v_pdfs_floatParamsName.push_back(pname);
 		v_pdfs_floatParamsIndcorr.push_back(index_correlation);

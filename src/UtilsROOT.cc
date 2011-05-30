@@ -10,7 +10,9 @@ TH1F* GetHisto(string filename, string histoname){
 	//cout<<filename<<", "<<histoname<<endl;
 	// FIXME need to check if filename is exist, and histoname is exist 
 	if( gSystem->AccessPathName(filename.c_str())) {cout<<filename<<" couldn't be found"<<endl; exit(0);};
-	TFile *f =new TFile(filename.c_str());
+	TFile *f;
+	f = (TFile*)gROOT->GetListOfFiles()->FindObject(filename.c_str());
+	if(f==NULL) f=new TFile(filename.c_str());
 	TH1F *h = (TH1F*)f->Get(histoname.c_str());
 	if(!h) {cout<<"hist ["<<histoname<<"] in file ["<<filename<<"] couldn't be found"<<endl; exit(0);};
 	return h;
@@ -19,7 +21,9 @@ TObject* GetTObject(string filename, string objname){
 
 	// FIXME need to check if filename is exist, and histoname is exist 
 	if( gSystem->AccessPathName(filename.c_str())) {cout<<filename<<" couldn't be found"<<endl; exit(0);};
-	TFile *f =new TFile(filename.c_str());
+	TFile *f;
+	f = (TFile*)gROOT->GetListOfFiles()->FindObject(filename.c_str());
+	if(f==NULL) f=new TFile(filename.c_str());
 	TObject *h = (TObject*)f->Get(objname.c_str());
 	if(!h) {cout<<"object ["<<objname<<"] in file ["<<filename<<"] couldn't be found"<<endl; exit(0);};
 	return h;
@@ -37,6 +41,27 @@ void FillTree(TString sfile, vector<int> array){
 	fTrees.Close();
 	//	if(tree) delete tree;
 	//	cout<<"delete me here 6"<<endl;
+}
+void FillTree(TString sfile, double d1, double d2, vector<double> array1,  vector<double> array2){
+	TFile fTrees(sfile, "RECREATE");
+	Double_t brT;
+	TTree *tree1 = new TTree("T1","T1"); 
+	tree1->Branch("brT", &brT, "brT/D");
+	for(int i=0; i<array1.size(); i++){
+		brT= array1.at(i);
+		tree1->Fill();
+	}
+	TTree *tree2 = new TTree("T2","T2"); 
+	tree2->Branch("brT", &brT, "brT/D");
+	for(int i=0; i<array2.size(); i++){
+		brT= array2.at(i);
+		tree2->Fill();
+	}
+	TH1D *h = new TH1D("value","value", 2, 0, 2);
+	h->SetBinContent(1,d1);
+	h->SetBinContent(2,d2);
+	fTrees.Write();
+	fTrees.Close();
 }
 void FillTree(TString sfile, vector<double> array){
 	TFile fTrees(sfile+"_tree.root", "RECREATE");
@@ -1949,7 +1974,7 @@ bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vecto
 	if(kmax>=0 && kmax!=nsyssources) {cout<<"kmax !=  number of independant uncertainties"<<endl; exit(0);}
 
 	vector< vector<string> > vshape_params_unclines; vshape_params_unclines.clear();
-	cout<<" total "<<nsyssources<<" systs"<<endl;
+	if(debug)cout<<" total "<<nsyssources<<" systs"<<endl;
 	for(int s=0; s<nsyssources; s++){
 		vector<string>	ss; 
 
