@@ -226,7 +226,11 @@ int main(int argc, const char*argv[]){
 
 			if(bSaveM2lnQ && !bSkipM2lnQ){
 				double qdata = bNotCalcQdata?0:frequentist.Get_m2lnQ_data();
-				FillTree(fileM2lnQ, cms->GetSignalScaleFactor(), qdata, vsb, vb);
+				TString s_r; s_r.Form("TESTED_R%.5f", cms->GetSignalScaleFactor());
+				TString s_qdata; s_qdata.Form("DATA_R%.5f_Q%.5f", cms->GetSignalScaleFactor(), qdata);
+				TString s_sb = "SAMPLING_SB_"; s_sb+=s_r;
+				TString s_b = "SAMPLING_B_"; s_b+=s_r;
+				FillTree(fileM2lnQ, cms->GetSignalScaleFactor(), qdata, vsb, vb, s_r, s_qdata, s_sb, s_b);
 			}
 
 			if(0){// throw pseudo data

@@ -42,24 +42,25 @@ void FillTree(TString sfile, vector<int> array){
 	//	if(tree) delete tree;
 	//	cout<<"delete me here 6"<<endl;
 }
-void FillTree(TString sfile, double d1, double d2, vector<double> array1,  vector<double> array2){
+void FillTree(TString sfile, double d1, double d2, vector<double> array1,  vector<double> array2, TString d1Name, TString d2Name, TString array1Name, TString array2Name){
 	TFile fTrees(sfile, "RECREATE");
 	Double_t brT;
-	TTree *tree1 = new TTree("T1","T1"); 
+	TTree *tree1 = new TTree(array1Name, array1Name); 
 	tree1->Branch("brT", &brT, "brT/D");
 	for(int i=0; i<array1.size(); i++){
 		brT= array1.at(i);
 		tree1->Fill();
 	}
-	TTree *tree2 = new TTree("T2","T2"); 
+	TTree *tree2 = new TTree(array2Name, array2Name); 
 	tree2->Branch("brT", &brT, "brT/D");
 	for(int i=0; i<array2.size(); i++){
 		brT= array2.at(i);
 		tree2->Fill();
 	}
-	TH1D *h = new TH1D("value","value", 2, 0, 2);
-	h->SetBinContent(1,d1);
-	h->SetBinContent(2,d2);
+	TH1D *h1 = new TH1D(d1Name, d1Name, 1, 0, 1);
+	h1->SetBinContent(1,d1);
+	TH1D *h2 = new TH1D(d2Name, d2Name, 1, 0, 1);
+	h2->SetBinContent(1,d2);
 	fTrees.Write();
 	fTrees.Close();
 }
