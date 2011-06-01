@@ -221,6 +221,7 @@ namespace lands{
 			void SetDataForUnbinned(vector< RooDataSet*> data, bool bRealData=true);
 			void SetDataForUnbinned(TString filename, bool bRealData=true);
 			void SetTmpDataForUnbinned(vector< RooDataSet*> data); // set it before doing fit
+			void SetToyForUnbinned(vector< RooDataSet*> data); // set it before doing fit
 			void AddUncertaintyOnShapeNorm(int index_channel, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, int index_correlation );
 			void AddUncertaintyOnShapeNorm(int index_channel, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, string uncname);
 			void AddUncertaintyOnShapeNorm(string chname, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, string uncname);

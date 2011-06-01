@@ -2507,6 +2507,10 @@ bool CLsBase::BuildM2lnQ_data(){
 
 	vdata_global = _model->Get_v_data();
 
+	if(test_statistics==1){  // otherwise it need to specify in the arguments of EvaluateLnQ() to do evaluation for data
+		_model->SetToyForUnbinned(_model->Get_v_pdfs_roodataset());
+	}
+
 	int checkFailure = 1;
 	Q_b_data = M2lnQ(checkFailure);
 	if(_debug)cout<<"* BuildM2lnQ_data: end"<<endl;

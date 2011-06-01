@@ -2028,6 +2028,12 @@ If we need to change it later, it will be easy to do.
 			v_pdfs_roodataset_tmp.push_back(data[ch]);
 		}
 	}
+	void CountingModel::SetToyForUnbinned(vector< RooDataSet* > data){
+		v_pdfs_roodataset_toy.clear();
+		for(int ch=0; ch<vv_pdfs.size(); ch++){
+			v_pdfs_roodataset_toy.push_back(data[ch]);
+		}
+	}
 	void CountingModel::AddUncertaintyOnShapeNorm(int index_channel, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, int index_correlation ){
 		// to deal with asymetric uncertainties
 		if( uncertainty_in_relative_fraction_down < 0 or uncertainty_in_relative_fraction_up < 0 ) {
