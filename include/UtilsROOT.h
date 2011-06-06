@@ -9,6 +9,7 @@
 #include <string>
 #include "TH1F.h"
 #include "TROOT.h"
+#include "TGraphErrors.h"
 
 using namespace std;
 using namespace lands;
@@ -44,5 +45,11 @@ TObject* GetTObject(string filename, string objname);
 bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vector< vector<string> > parametricShapeLines,  vector< vector<string> > uncerlinesAffectingShapes,  int debug=0);
 RooDataSet* GetRooDataSet(string c, string p, vector< vector<string> > lines);
 RooAbsPdf* GetPdf(string c, string p, vector< vector<string> > lines);
+
+void ReadLimitVsCLsFromFile(TGraphErrors*tge, TFile*f, int debug=0); 
+bool GetCLs(double qdata, TTree* tsb, TTree*tb,  double &cls, double &err, int debug=0);
+bool GetM2lnQ(TTree* tsb, TTree*tb, vector<double> &vclsb, vector<double>&vclb, int debug=0);
+bool GetPValue(vector<double> vclsb, double qdata, double &ret, double &err, int debug=0);
+void ReadM2lnQGridFromFile(TString filename, std::map<double, TTree*>&gridCLsb, std::map<double, TTree*>&gridCLb, int _debug=0); 
 #endif   /* ----- #ifndef UTILSROOT_INC  ----- */
 

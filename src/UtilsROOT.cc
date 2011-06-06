@@ -4,6 +4,8 @@
 #include <iostream>
 #include <fstream>
 #include "TSystem.h"
+#include "TDirectory.h"
+#include "TKey.h"
 #include "RooDataSet.h"
 TH1F* GetHisto(string filename, string histoname){
 
@@ -2282,4 +2284,133 @@ RooDataSet* GetRooDataSet(string c, string p, vector< vector<string> > lines){
 		exit(0);
 	}
 	return pdf;
+}
+void ReadLimitVsCLsFromFile(TGraphErrors*tge, TFile*f, int _debug) {
+	tge->Set(0);	
+	if (!f) {cout<<"Input file: "<<f->GetName()<<" error!  either not exist or empty,  exit"<<endl; exit(1);}
+	TDirectory *toyDir = f->GetDirectory("");
+	TIter next(toyDir->GetListOfKeys()); TKey *k;
+	std::map<double, TTree*> gridCLsb; //r, <clsb, clserr>
+	std::map<double, TTree*> gridCLb; //r, <clsb, clserr>
+	std::map<double, double> gridQdata; //r, q_data
+	while ((k = (TKey *) next()) != 0) {
+		double rVal;
+		TString name(k->GetName());
+		if(name.BeginsWith("SAMPLING_SB_TESTED_R")){
+			rVal = name.ReplaceAll("SAMPLING_SB_TESTED_R","").Atof();
+			TTree *t = dynamic_cast<TTree *>(toyDir->Get(k->GetName()));
+			gridCLsb[rVal]=t;
+			if (_debug > 2) std::cout << "  Do " << k->GetName() << " -> " << name << " --> " << rVal << " tsb->entries= "<<t->GetEntries()<< std::endl;
+		}else if(name.BeginsWith("SAMPLING_B_TESTED_R")){
+			rVal = name.ReplaceAll("SAMPLING_B_TESTED_R","").Atof();
+			TTree *t = dynamic_cast<TTree *>(toyDir->Get(k->GetName()));
+			gridCLb[rVal]=t;
+			if (_debug > 2) std::cout << "  Do " << k->GetName() << " -> " << name << " --> " << rVal << " tb->entries= "<<t->GetEntries()<< std::endl;
+		}else if(name.BeginsWith("DATA_R")){
+			name.ReplaceAll("DATA_R","");
+			TString tmp = name;
+			rVal = tmp.Remove(tmp.Index("_"), tmp.Length()).Atof();
+			name.Remove(0,name.Index("_Q")+2);
+			gridQdata[rVal]=name.Atof();
+			if (_debug > 2) std::cout << "  Do " << k->GetName() << " -> " << tmp << " --> " << rVal << " Q_data ="<<name<<" --> "<<name.Atof()<< std::endl;
+		}
+
+	}
+
+	int i = 0, n = gridCLsb.size();
+	if(_debug)cout<<" grid size = "<<n<<endl;
+	for (std::map<double, TTree *>::iterator itg = gridCLsb.begin(), edg = gridCLsb.end(); itg != edg; ++itg) {
+		double cls, clserr;
+		GetCLs(gridQdata[itg->first], itg->second, gridCLb[itg->first], cls, clserr);
+		tge->SetPoint(     i, itg->first, cls   ); 
+		tge->SetPointError(i, 0,          clserr);
+		if(_debug>=10)cout<<" input grid:  r="<<itg->first<<" cls="<<cls<<"+/-"<<clserr<<endl;
+		i++;
+	}
+	if(_debug)cout<<"tge->N = "<<tge->GetN()<<endl;
+}
+bool GetCLs(double qdata, TTree* tsb, TTree*tb,  double &cls, double &err, int _debug){
+	vector<double> vclsb, vclb; vclsb.clear(); vclb.clear();
+	GetM2lnQ(tsb, tb, vclsb, vclb);
+
+	double clsb, clb, errsb, errb;
+	GetPValue(vclsb, qdata, clsb, errsb);
+	GetPValue(vclb, qdata, clb, errb);
+
+	if(clb==0){if(_debug)	cout<<"CLsBase::CLs  Warning clb_b==0 !!!!"<<endl; err = 1; cls=1; return true;}
+	err = sqrt( errb/clb*errb/clb + errsb/clsb*errsb/clsb) * clsb/clb;
+	if(_debug>=10) cout<<"CLsBase::CLs  CLs=CLsb/CLb="<<clsb/clb<<"+/-"<<err<<endl;
+	cls = clsb/clb;
+
+	return true;
+}
+bool GetM2lnQ(TTree* tsb, TTree*tb, vector<double> &vclsb, vector<double>&vclb, int _debug){
+	double clsb, clb;
+	TBranch *brCLsb ;
+	tsb->SetBranchAddress("brT", &clsb, &brCLsb);
+	Long64_t nentries = tsb->GetEntries();
+	for(int i=0; i<nentries; i++){
+		tsb->GetEntry(i);
+		vclsb.push_back(clsb);
+	}
+	//for(int i=0; i<vclsb.size(); i++) cout<<" "<<vclsb[i]<<" "<<endl;
+	TBranch *brCLb ;
+	tb->SetBranchAddress("brT", &clb, &brCLb);
+	nentries = tb->GetEntries();
+	for(int i=0; i<nentries; i++){
+		tb->GetEntry(i);
+		vclb.push_back(clb);
+	}
+	//for(int i=0; i<vclb.size(); i++) cout<<" "<<vclb[i]<<" "<<endl;
+	return true;		
+}
+bool GetPValue(vector<double> vclsb, double qdata, double &ret, double &err, int _debug){
+	double tmp = qdata;
+	int _nexps = vclsb.size();
+	for(int i=0; i<_nexps; i++){
+		if(vclsb[i]>=tmp)
+			ret ++ ;	
+	}		
+	ret/=_nexps;
+
+	err= sqrt(ret*(1-ret)/_nexps);
+	if(ret==0||ret==1) err= 1./_nexps;
+
+	if(_debug>=10){
+		cout<<"p ="<<ret<<" +/- "<<err<<" and total exps="<<_nexps<<endl;
+		if(ret*_nexps <= 20) cout<<"p*nexps="<<ret*_nexps<<", statistic may not enough"<<endl;
+	}
+/*	if(ret == 0){
+		if(_debug)	cout<<"p=0, it means number of pseudo experiments is not enough"<<endl;
+		if(_debug)	cout<<"              Currently, we put p=1./"<<_nexps<<endl;
+		ret = 1./(double)_nexps;
+	}
+*/
+	return true;
+}
+void ReadM2lnQGridFromFile(TString filename, std::map<double, TTree*>&gridCLsb, std::map<double, TTree*>&gridCLb, int _debug) {
+	if( gSystem->AccessPathName(filename)) {cout<<filename<<" couldn't be found"<<endl; exit(0);};
+	TFile *f;
+	f = (TFile*)gROOT->GetListOfFiles()->FindObject(filename);
+	if(f==NULL) f=new TFile(filename);
+	if (!f) {cout<<"Input file: "<<f->GetName()<<" error!  either not exist or empty,  exit"<<endl; exit(1);}
+	TDirectory *toyDir = f->GetDirectory("");
+	TIter next(toyDir->GetListOfKeys()); TKey *k;
+	while ((k = (TKey *) next()) != 0) {
+		double rVal;
+		TString name(k->GetName());
+		if(name.BeginsWith("SAMPLING_SB_TESTED_R")){
+			rVal = name.ReplaceAll("SAMPLING_SB_TESTED_R","").Atof();
+			TTree *t = dynamic_cast<TTree *>(toyDir->Get(k->GetName()));
+			gridCLsb[rVal]=t;
+			if (_debug > 2) std::cout << "  Do " << k->GetName() << " -> " << name << " --> " << rVal << " tsb->entries= "<<t->GetEntries()<< std::endl;
+		}else if(name.BeginsWith("SAMPLING_B_TESTED_R")){
+			rVal = name.ReplaceAll("SAMPLING_B_TESTED_R","").Atof();
+			TTree *t = dynamic_cast<TTree *>(toyDir->Get(k->GetName()));
+			gridCLb[rVal]=t;
+			if (_debug > 2) std::cout << "  Do " << k->GetName() << " -> " << name << " --> " << rVal << " tb->entries= "<<t->GetEntries()<< std::endl;
+		}
+	}
+	if(_debug) cout<<"M2lnQGrid size = "<<gridCLsb.size()<<endl;
+	if(gridCLsb.size()!=gridCLb.size()) cout<<"Error: gridCLsb size="<<gridCLsb.size()<<" *** != *** "<<"gridCLb ="<<gridCLb.size()<<endl;
 }

@@ -743,7 +743,7 @@ If we need to change it later, it will be easy to do.
 			}
 			if(bUseBestEstimateToCalcQ==1)return scaled?vv_exp_sigbkgs_scaled:vv_exp_sigbkgs;
 			else if(bUseBestEstimateToCalcQ==0) return scaled?vv_randomized_sigbkgs_scaled:vv_randomized_sigbkgs;
-			else  return scaled?vv_fitted_sigbkgs_scaled:vv_fitted_sigbkgs;
+			else  return scaled?vv_fitted_sigbkgs_scaled:vv_fitted_sigbkgs; // scaled?fittedNusancesInSB:fittedNusancesInBonly
 		}
 
 		double tmp ; 
@@ -1678,9 +1678,9 @@ If we need to change it later, it will be easy to do.
 			//_w_varied->import(*sigPdfs[i], Rename(TString::Format("%s_%s", channel_name.c_str(), sigPdfs[i]->GetName())));
 
 			_w->import(*rrv);
-			_w->import(*sigPdfs[i]);
+			_w->import(*sigPdfs[i], RenameConflictNodes(channel_name.c_str()));
 			_w_varied->import(*rrv);
-			_w_varied->import(*sigPdfs[i]);
+			_w_varied->import(*sigPdfs[i], RenameConflictNodes(channel_name.c_str()));
 			RooArgSet *rds	= sigPdfs[i]->getParameters(*observable);
 			// need to store the list of parameters and for future modification, fluctuation 
 		}
@@ -1703,9 +1703,9 @@ If we need to change it later, it will be easy to do.
 			//_w_varied->import(*rrv, Rename(TString::Format("%s_%s", channel_name.c_str(), rrv->GetName())));
 			//_w_varied->import(*bkgPdfs[i], Rename(TString::Format("%s_%s", channel_name.c_str(), bkgPdfs[i]->GetName())));
 			_w->import(*rrv);
-			_w->import(*bkgPdfs[i]);
+			_w->import(*bkgPdfs[i], RenameConflictNodes(channel_name.c_str()));
 			_w_varied->import(*rrv);
-			_w_varied->import(*bkgPdfs[i]);
+			_w_varied->import(*bkgPdfs[i], RenameConflictNodes(channel_name.c_str()));
 		}
 
 		vv_pdfs.push_back(vsigbkgs);
@@ -2082,7 +2082,7 @@ If we need to change it later, it will be easy to do.
 
 	double CountingModel::EvaluateGL(vector< vector<double> > vnorms, vector<double> vparams, double xr){ 
 		double ret=0;
-		if(_debug>=10){cout<<"In EvaluateGL:  xr ="<<xr<<endl;};
+		if(_debug>=100){cout<<"In EvaluateGL:  xr ="<<xr<<endl;};
 		for(int i=0; i<v_pdfs_floatParamsName.size(); i++){
 			if(_debug>=100) cout<<" EvaluateGL: setting value of parameter ["<<v_pdfs_floatParamsName[i]<<"] = "<<vparams[i]<<endl;
 			_w_varied->var(v_pdfs_floatParamsName[i].c_str())->setVal(vparams[i]);
@@ -2096,7 +2096,7 @@ If we need to change it later, it will be easy to do.
 				else stot+=vnorms[ch][i];
 
 				_w_varied->var(vv_pdfs_normNAME[ch][i])->setVal(vnorms[ch][i]);
-				if(_debug>=10)cout<<vv_pdfs_normNAME[ch][i]<<" "<<vnorms[ch][i]<<endl;
+				if(_debug>=100)cout<<vv_pdfs_normNAME[ch][i]<<" "<<vnorms[ch][i]<<endl;
 			}
 			RooArgSet vars(*(_w->var(v_pdfs_observables[ch])));
 			for(int i=0; i<ntot; i++){
@@ -2115,14 +2115,14 @@ If we need to change it later, it will be easy to do.
 						+btot*_w_varied->pdf(v_pdfs_b[ch])->getVal(&vars));
 			}
 
-			if(_debug>=10){
+			if(_debug>=100){
 				cout<<"EvaluateGL in channel ["<<v_pdfs_channelname[ch]<<"]: gl = "<<tmp<<endl;
 				cout<<"\n model_sb"<<endl;
 				_w_varied->pdf(v_pdfs_sb[ch])->getParameters(*_w->var(v_pdfs_observables[ch]))->Print("V");
 			}
 			ret+=tmp;
 		}
-		if(_debug>=10) {
+		if(_debug>=100) {
 			cout<<" Unbinned Model EvaluateGL all channels = " << ret <<endl;
 		}
 		return ret;

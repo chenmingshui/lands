@@ -79,6 +79,11 @@ bool bSaveM2lnQ = false;
 TString fileM2lnQ = "m2lnq.root";
 bool bSkipM2lnQ = false; 
 
+bool bM2lnQGridPreComputed = false;
+TString sFileM2lnQGrid = "";
+
+
+bool bCalcObservedLimit = true;
 
 int main(int argc, const char*argv[]){
 	TStopwatch watch;  
@@ -86,7 +91,7 @@ int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
 
 
-	if(debug<10)RooMsgService::instance().getStream(1).removeTopic(ObjectHandling) ;
+	if(debug<2)RooMsgService::instance().getStream(1).removeTopic(ObjectHandling) ;
 
 	CountingModel *cms; // this instance will be the one combining all sub cards
 	cms = new CountingModel();
@@ -151,21 +156,23 @@ int main(int argc, const char*argv[]){
 			bys.SetPreToys(toysPreBayesian);
 			bys.SetCrossSectionPrior(prior);
 			double rtmp;
-			rtmp = bys.Limit();
-			cout<<"------------------------------------------------------------"<<endl;
-			cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<rtmp<<endl;
-			cout<<"------------------------------------------------------------"<<endl;
+			if(bCalcObservedLimit){
+				rtmp = bys.Limit();
+				cout<<"------------------------------------------------------------"<<endl;
+				cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<rtmp<<endl;
+				cout<<"------------------------------------------------------------"<<endl;
 
-			// draw 
+				// draw 
 
-			if(bPlots)	{
-				bys.PosteriorPdf();
-				//start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_BayesianLimit ppdf: "<< (cur_time - start_time)/1000. << " millisec\n";
-				DrawEvolution2D pdfr(bys.GetVR(), bys.GetVP(), ";r;Likelihood", (jobname+"_postpdf").Data(), pt);	
-				pdfr.setDrawPosteriorPdf(rtmp);
-				pdfr.draw();
-				pdfr.getGraph()->SetMarkerSize(0.01);
-				pdfr.save();
+				if(bPlots)	{
+					bys.PosteriorPdf();
+					//start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_BayesianLimit ppdf: "<< (cur_time - start_time)/1000. << " millisec\n";
+					DrawEvolution2D pdfr(bys.GetVR(), bys.GetVP(), ";r;Likelihood", (jobname+"_postpdf").Data(), pt);	
+					pdfr.setDrawPosteriorPdf(rtmp);
+					pdfr.draw();
+					pdfr.getGraph()->SetMarkerSize(0.01);
+					pdfr.save();
+				}
 			}
 
 			if(doExpectation){
@@ -382,25 +389,28 @@ int main(int argc, const char*argv[]){
 			double rtmp;
 			clsr95.SetAlpha(1-CL);
 
-			if(bQuickEstimateInitialLimit) rtmp = clsr95.LimitOnSignalScaleFactor(cms, &frequentist, toysHybrid);
-			else rtmp = clsr95.LimitOnSignalScaleFactor(cms, initialRmin, initialRmax, &frequentist, toysHybrid, 3);
+			if(bCalcObservedLimit){
+				if(bQuickEstimateInitialLimit) rtmp = clsr95.LimitOnSignalScaleFactor(cms, &frequentist, toysHybrid);
+				else rtmp = clsr95.LimitOnSignalScaleFactor(cms, initialRmin, initialRmax, &frequentist, toysHybrid, 3);
 
-			if(bPlots){
-				DrawEvolution2D d2d(clsr95.GetvTestedScaleFactors(), clsr95.GetvTestedCLs(), "; r ; CLs", (jobname+"_r_vs_cl").Data(), pt);
-				d2d.draw();
-				d2d.save();
+				if(bPlots){
+					DrawEvolution2D d2d(clsr95.GetvTestedScaleFactors(), clsr95.GetvTestedCLs(), "; r ; CLs", (jobname+"_r_vs_cl").Data(), pt);
+					d2d.draw();
+					d2d.save();
+
+				}
+				cout<<"------------------------------------------------------------"<<endl;
+				cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<rtmp<<" +/- "<<clsr95.LimitErr()<<endl;
+				cout<<"------------------------------------------------------------"<<endl;
 
 			}
-
-			cout<<"------------------------------------------------------------"<<endl;
-			cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<rtmp<<" +/- "<<clsr95.LimitErr()<<endl;
-			cout<<"------------------------------------------------------------"<<endl;
 
 			if(doExpectation){
 				cms->SetSignalScaleFactor(1.);
 				LimitBands lb(&clsr95, &frequentist, cms);	
 				lb.SetTossPseudoDataConvention(tossPseudoDataConvention);
 				lb.SetDebug(debug);
+				lb.IsM2lnQGridPreComputed(bM2lnQGridPreComputed, sFileM2lnQGrid);
 				int noutcomes = toys;
 				lb.CLsLimitBands(1-CL, noutcomes, toysHybrid);
 				rmean=lb.GetCLsLimitMean();
@@ -1106,10 +1116,23 @@ void processParameters(int argc, const char* argv[]){
 	if( tmpv.size()!=1 ) { fileM2lnQ= "m2lnq.root"; }
 	else fileM2lnQ= tmpv[0];
 
+	tmpv = options["--M2lnQGridFile"];
+	if( tmpv.size()!=1 ) { bM2lnQGridPreComputed=false; }
+	else {
+		bM2lnQGridPreComputed = true;
+		sFileM2lnQGrid= tmpv[0];
+	}
 
+	tmpv = options["--bCalcObservedLimit"];
+	if( tmpv.size()!=1 ) { bCalcObservedLimit = true; }
+	else {
+		if(tmpv[0].Atoi()==0) bCalcObservedLimit = false;
+		else bCalcObservedLimit = true;
+	}
 
 	printf("\n\n[ Summary of configuration in this job: ]\n");
 	cout<<"  Calculating "<<(calcsignificance?"significance":"limit")<<" with "<<method<<" method "<<endl;
+	if(!bCalcObservedLimit) cout<<" not calc observed one"<<endl;
 	cout<<"  datacards: "; for(int i=0; i<datacards.size(); i++) cout<<datacards[i]<<" "; cout<<endl;
 	cout<<"  "<<(systematics?"use systematics":"not use systematics")<<endl;
 	cout<<"  dataset is "<<dataset<<endl;
@@ -1158,6 +1181,10 @@ void processParameters(int argc, const char* argv[]){
 			cout<<" testing single point with r = "<<testR<<endl;
 		}
 		cout<<"  UseBestEstimateToCalcQ: "<<(UseBestEstimateToCalcQ?"true":"false")<<endl;
+
+		if(bM2lnQGridPreComputed){
+			cout<<" Use pre-computed grid (-2lnQ) from file : "<<sFileM2lnQGrid<<endl;
+		}
 	}
 
 	cout<<"  random number generator seed: "<<seed<<endl;
@@ -1179,6 +1206,7 @@ void PrintHelpMessage(){
 	printf("-D [ --dataset ] arg (=data_obs)      Dataset for observed limit,  data_obs,  asimov_b, asimov_sb \n"); 
 	printf("-M [ --method ] arg                   Method to extract upper limit. Supported methods are: Bayesian, FeldmanCousins, Hybrid, ProfiledLikelihood \n"); 
 	printf("--doExpectation arg (=0)              i.e calc expected bands and mean/median values     \n"); 
+	printf("--bCalcObservedLimit arg (=1)         i.e calc observed limit values     \n"); 
 	printf("-t [ --toys ] arg (=1000)             Number of Toy MC extractions for expectation \n"); 
 	printf("--tossPseudoDataConvention arg (=0)   choose convention for tossing toys to build -2lnQ distribution. 0 (LEP, TEVATRON) or 1 (LHC)\n");
 	printf("-s [ --seed ] arg (=1234)             Toy MC random seed \n"); 
@@ -1221,6 +1249,7 @@ void PrintHelpMessage(){
 	printf("--nToysForCLsb (= -1)\n");
 	printf("--String fileFittedPars (=\"\")\n");
 	printf("--fileM2lnQ (= \"m2lnq.root\")\n");
+	printf("--M2lnQGridFile (= \"filename\")\n");
 
 	printf(" \n"); 
 	printf("ProfiledLikelihood specific options: \n"); 

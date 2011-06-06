@@ -8,6 +8,7 @@
 #include <math.h>
 #include <ctime> // upto second
 #include <time.h> // upto micro second
+#include <utility>
 
 #include "CLsLimit.h"
 #include "CRandom.h"
@@ -21,6 +22,11 @@
 #include "TMath.h"
 #include "TH1D.h"
 #include "TFile.h"
+#include "TF1.h"
+#include "TCanvas.h"
+#include "TLine.h"
+#include "TGraphErrors.h"
+
 
 #include "RooDataSet.h"
 
@@ -31,7 +37,7 @@ namespace lands{
 	CountingModel *cms_global = 0;
 	vector<double> vdata_global;
 	TMinuit *myMinuit = 0;
-
+	TF1 * fitToRvsCL_expo = new TF1("fitToRvsCL_expo","[0]*exp([1]*(x-[2]))", 0, 0);
 	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag){
 		// par[0] for the ratio of cross section, common signal strength ....
 		if(!cms_global)  {
@@ -408,7 +414,7 @@ namespace lands{
 			arglist[1] = 1.;
 			if(!UseMinos)myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
 			if(UseMinos==2)myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
-			if(debug)cout <<" MIGRAD Number of function calls in Minuit: " << myMinuit->fNfcn << endl;
+			if(debug || ierflg)cout <<" MIGRAD Number of function calls in Minuit: " << myMinuit->fNfcn << endl;
 			if(debug || ierflg)cout <<" MIGRAD return errflg = "<<ierflg<<endl;
 
 			//	myMinuit->mnexcm("MINI", arglist ,2,ierflg);
@@ -522,6 +528,9 @@ namespace lands{
 		printM2LnQInfo(sbANDb_bOnly_sbOnly);	
 		
 		return true;
+
+
+		// below are deprecated 
 
 		// effort for adaptive sampling
 		int oldNexps = _nexps;
@@ -2346,7 +2355,7 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys){  // 0 for sbANDb,
 					// need to be delivered to Chisquare function 
 
 					// since we will evaluate the Q at the mu point being tested, we need to scale the generated signal yields by mu
-					_model -> SetSignalScaleFactor(_model->GetSignalScaleFactor(), false);
+					_model -> SetSignalScaleFactor(_model->GetSignalScaleFactor(), false);//scale the random set
 					vv = _model->Get_vv_pdfs_norm_randomized();
 					_model -> Set_vv_pdfs_norm_randomized(_model->Get_vv_pdfs_norm_randomized());
 					_model -> Set_vv_randomized_sigbkgs(_model->Get_vv_randomized_sigbkgs());
@@ -2607,13 +2616,16 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys){
 			case 31:
 			case 4:
 				vdata_global =  _model->GetToyData_H1();
+				if(_model->hasParametricShape()){
+					_model->SetTmpDataForUnbinned(_model->Get_v_pdfs_roodataset_toy());
+				}
 				break;
 			case 5:
 				vdata_global = (VDChannel)_model->GetToyData_H1(_model->Get_fittedParsInData_sb());
 				if(_model->hasParametricShape()){
-					for(int c=0; c<-1; c++){
+					//for(int c=0; c<-1; c++){
 						//FIXME   if no this loop, then it crashes,   veryyyyyyy weird
-					}
+					//}
 					_model->SetTmpDataForUnbinned(_model->Get_v_pdfs_roodataset_toy());
 				}
 				if(!_model->UseBestEstimateToCalcQ()){
@@ -2766,5 +2778,91 @@ void CLsBase::prepareLogNoverB(){ // only necessary when evaluating LEP type sta
 	}
 }
 
-//if(test_statistics==1)prepareLogNoverB(_lognoverb);
+double CLsBase::FindLimitFromPreComputedGrid(std::map<double, TTree*> gridCLsb, std::map<double, TTree*> gridCLb, std::map<double, double> gridQdata, double alpha){ // from precomputed m2lnQ grid to extract r corresponding to _alpha ... e.g. 0.05
+	TGraphErrors *tge =  new TGraphErrors();
+	if (_debug >= 10) std::cout << "Search for upper limit using pre-computed grid of p-values" << std::endl;
+
+	int i = 0, n = gridCLsb.size();
+	if(_debug)cout<<" grid size = "<<n<<endl;
+	for (std::map<double, TTree *>::iterator itg = gridCLsb.begin(), edg = gridCLsb.end(); itg != edg; ++itg) {
+		double cls, clserr;
+		GetCLs(gridQdata[itg->first], itg->second, gridCLb[itg->first], cls, clserr, _debug);
+		tge->SetPoint(     i, itg->first, cls   ); 
+		tge->SetPointError(i, 0,          clserr);
+		if(_debug>=10)cout<<" input grid:  r="<<itg->first<<" cls="<<cls<<"+/-"<<clserr<<endl;
+		i++;
+	}
+
+	double limit, limitErr;
+	FindLimitFromTGE(tge, alpha, limit, limitErr);
+
+	delete tge;
+	return limit;
+}
+
+double CLsBase::FindLimitFromTGE(TGraphErrors *tge, double alpha, double &limit, double & limitErr, TString plotName){
+	tge->Sort();
+	TF1 *fit = fitToRvsCL_expo;
+
+	double dist=9999.;
+	int n= tge->GetN();
+	double rMin=0, rMax=0;
+	std::pair<double, double> clsMin, clsMax;
+	for (int i = 0; i < n; i++) {
+		double x = tge->GetX()[i], y = tge->GetY()[i], ey = tge->GetErrorY(i);
+		if (y-3*ey >= alpha) { rMin = x; clsMin = make_pair(y,ey); }
+		if (y+3*ey <= alpha) { rMax = x; clsMax = make_pair(y,ey); }
+		if (fabs(y-alpha) < dist) { limit = x; dist = fabs(y-alpha); }
+		if (_debug >=10 ) std::cout << "  r " << x << ", CLs = " << y << " +/- " << ey << std::endl;
+	}
+	if((clsMin.first==0 and clsMin.second==0) || (clsMax.first==0 and clsMax.second==0))
+	{
+		if(_debug) cout<<"Couldn't find both points with CLs < alpha-3*eCLs and CLs > alpha+3*eCLs, decide to fit to full available range"<<endl;
+	       	rMin = tge->GetX()[0]; clsMin=make_pair(tge->GetY()[0], tge->GetErrorY(0)); 
+		rMax = tge->GetX()[n-1]; clsMax=make_pair(tge->GetY()[n-1], tge->GetErrorY(n-1));
+       	}
+
+	limitErr = std::max(limit-rMin, rMax-limit);
+	fit->SetRange(rMin,rMax);
+
+	if (_debug) {
+		std::cout << " Limit Before Fit: r = " << limit << " +/- " << limitErr << endl;
+		std::cout << " r fitting range: [" << rMin << ", " << rMax << "]"<<endl;
+	}
+
+	fit->FixParameter(0,alpha);
+	fit->SetParameter(1,log(clsMax.first/clsMin.first)/(rMax-rMin));
+	fit->SetParameter(2,limit);
+	double rMinBound, rMaxBound; fit->GetRange(rMinBound, rMaxBound);
+	limitErr = std::max(fabs(rMinBound-limit), fabs(rMaxBound-limit));
+	int npoints = 0; 
+	for (int j = 0; j < tge->GetN(); ++j) { 
+		if (tge->GetX()[j] >= rMinBound && tge->GetX()[j] <= rMaxBound) npoints++; 
+	}
+
+	tge->Fit(fit,(_debug <= 10 ? "QNR EX0" : "NR EXO"));
+	limit = fit->GetParameter(2);
+	limitErr = fit->GetParError(2);
+	if (_debug) {
+		std::cout << "After Fit to " << npoints << " points: r@"<<(1-alpha)*100<<"%CL = " << limit << " +/- " << limitErr << std::endl;
+	}
+
+	if (plotName!="") {
+		TCanvas c1("c1","c1");
+		tge->Sort();
+		tge->SetLineWidth(2);
+		tge->Draw("AP");
+		fit->Draw("SAME");
+		TLine line(tge->GetX()[0], alpha, tge->GetX()[tge->GetN()-1], alpha);
+		line.SetLineColor(kRed); line.SetLineWidth(2); line.Draw();
+		line.DrawLine(limit, 0, limit, tge->GetY()[0]);
+		line.SetLineWidth(1); line.SetLineStyle(2);
+		line.DrawLine(limit-limitErr, 0, limit-limitErr, tge->GetY()[0]);
+		line.DrawLine(limit+limitErr, 0, limit+limitErr, tge->GetY()[0]);
+		c1.Print(plotName+".gif");
+		c1.Print(plotName+".root");
+	}
+
+	return limit;
+}
 };

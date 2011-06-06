@@ -4,6 +4,7 @@
 #include <vector>
 #include "CountingModel.h"
 #include "TMinuit.h"
+#include "TGraphErrors.h"
 /*
  *    Description:  doing frequentist approach + CLs(not fully frequentist)
  *			w/ and w/o systematic/statistic errors 
@@ -66,6 +67,10 @@ namespace lands{
 			void checkFittedParsInData(bool bReadPars=false, bool bWritePars=false, TString sfilename="");
 			double M2lnQ(int checkFailure=0);
 			void prepareLogNoverB();
+
+			double FindLimitFromTGE(TGraphErrors *tge, double alpha, double &limit, double & limitErr, TString plotName="");
+			double FindLimitFromPreComputedGrid(std::map<double, TTree*> gridCLsb, std::map<double, TTree*> gridCLb, std::map<double, double> gridQdata, double alpha); // from precomputed m2lnQ grid to extract r corresponding to _alpha ... e.g. 0.05
+
 
 		private:
 			void ProcessM2lnQ();

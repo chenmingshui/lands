@@ -2,6 +2,7 @@
 #define  LIMITBANDS_H
 #include "CLsLimit.h"
 #include "BayesianBase.h"
+#include "TString.h"
 namespace lands{
 	class LimitBands{
 		public:
@@ -27,6 +28,7 @@ namespace lands{
 
 			vector<double> GetDifferentialLimitsCLs(){return _difrcls;};
 			vector<double> GetDifferentialLimitsBys(){return _difrbys;};
+			void IsM2lnQGridPreComputed(bool b, TString s){bM2lnQGridPreComputed=b; sFileM2lnQGrid=s;};
 		private:
 			void Bands();
 			bool _doCLs, _doBys;
@@ -45,6 +47,8 @@ namespace lands{
 			CountingModel *_cms;
 			double _rcls[6], _rbys[6];
 			int _tossPseudoDataConvention;
+			bool bM2lnQGridPreComputed;
+			TString sFileM2lnQGrid;
 			
 	};
 };

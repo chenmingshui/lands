@@ -3,6 +3,9 @@
 #include <cstdio>
 #include <iostream>
 #include "RooDataSet.h"
+#include "TTree.h"
+#include <map>
+#include "UtilsROOT.h"
 
 using namespace RooFit;
 namespace lands{
@@ -148,6 +151,14 @@ namespace lands{
 
 		cout<<"\t Computing expected Upper Limit for "<<_noutcomes<<" sets of outcomes "<<endl;
 		double r;
+
+		std::map<double, TTree*> gridCLsb; //r, <clsb, clserr>
+		std::map<double, TTree*> gridCLb; //r, <clsb, clserr>
+		std::map<double, double> gridQdata; //r, q_data
+		if(_doCLs && bM2lnQGridPreComputed){
+			ReadM2lnQGridFromFile(sFileM2lnQGrid, gridCLsb, gridCLb, _debug);
+			_frequentist->checkFittedParsInData();
+		}
 		for(int n=0; n<npsbl_outcomes; n++){
 			if( tmpcount==0 || (tmpcount!=0 && (n%tmpcount == 0)) ) printf(" ... ... ... process %3.0f\%\n", n/(double)npsbl_outcomes*100);
 			double p=vEntries.at(iEntries_v[n])/(double)_noutcomes;
@@ -168,7 +179,19 @@ namespace lands{
 			//int nentries_for_thisR=(int)(vEntries.at(iEntries_v[n]));
 			if(_doCLs) { 
 				//--------------calc r95% with (s,b,n) by throwing pseudo experiments and using the fits to get r95% at CLs=5
-				r=_clslimit->LimitOnSignalScaleFactor(_cms, _frequentist, _ntoysM2lnQ);
+				if(!bM2lnQGridPreComputed)r=_clslimit->LimitOnSignalScaleFactor(_cms, _frequentist, _ntoysM2lnQ);
+				else {
+					int i = 0, n = gridCLsb.size();
+					for (std::map<double, TTree *>::iterator itg = gridCLsb.begin(), edg = gridCLsb.end(); itg != edg; ++itg) {
+						double rVal = itg->first;
+						_cms->SetSignalScaleFactor(rVal);
+						if(_frequentist->GetTestStatistics()==1)_frequentist->prepareLogNoverB();
+						_frequentist->BuildM2lnQ_data();
+						gridQdata[rVal] = _frequentist->Get_m2lnQ_data();
+						i++;
+					}
+					r = _frequentist->FindLimitFromPreComputedGrid(gridCLsb, gridCLb, gridQdata, fAlpha);
+				}
 				vrcls.push_back(r);
 				vpcls.push_back(p);
 				rmeancls+=r*p;
