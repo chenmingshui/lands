@@ -2336,6 +2336,9 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys){  // 0 for sbANDb,
 			case 31:
 			case 4:
 				vdata_global =  _model->GetToyData_H0();
+				if(_model->hasParametricShape()){
+					_model->SetTmpDataForUnbinned(_model->Get_v_pdfs_roodataset_toy());
+				}
 				break;
 			case 5:
 				vdata_global = (VDChannel)_model->GetToyData_H0(_model->Get_fittedParsInData_b());
