@@ -236,9 +236,11 @@ namespace lands{
 			fflush(stdout);
 		}
 		// correct weight of each r for bys 
-		if(_actualOutComesForBys<=0) {cout<<"ERROR: LimitBands bys _actualOutComesForBys="<<_actualOutComesForBys<<endl; exit(0);};
-		for(int ii=0; ii<vrbys.size(); ii++){
-			vpbys[ii] = (vpbys[ii]*_noutcomes/(double)_actualOutComesForBys);
+		if(_doBys) {
+			if(actualOutComesForBys<=0) {cout<<"ERROR: LimitBands bys _actualOutComesForBys="<<_actualOutComesForBys<<endl; exit(0);};
+			for(int ii=0; ii<vrbys.size(); ii++){
+				vpbys[ii] = (vpbys[ii]*_noutcomes/(double)_actualOutComesForBys);
+			}
 		}
 
 		if(Entries_v) delete [] Entries_v;
