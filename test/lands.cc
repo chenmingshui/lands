@@ -85,6 +85,8 @@ TString sFileM2lnQGrid = "";
 
 bool bCalcObservedLimit = true;
 
+TString sFileLimitsDistribution = "";
+
 int main(int argc, const char*argv[]){
 	TStopwatch watch;  
 	watch.Start();
@@ -122,7 +124,9 @@ int main(int argc, const char*argv[]){
 			tmp1[i]->SetUseSystematicErrors(true);
 		}	
 		cms = tmp1[datacards.size()-1];
-	}else{exit(0);}
+	}else{
+		if(sFileLimitsDistribution=="") exit(0);
+	}
 	cout<<"totally "<<datacards.size()<<" data cards combined"<<endl;
 	cms->SetUseSystematicErrors(systematics);
 	// done combination
@@ -177,7 +181,7 @@ int main(int argc, const char*argv[]){
 				}
 			}
 
-			if(doExpectation){
+			if(doExpectation && sFileLimitsDistribution==""){
 				cms->SetSignalScaleFactor(1.);
 				LimitBands lb(&bys, cms);	
 				lb.SetTossPseudoDataConvention(tossPseudoDataConvention);
@@ -407,7 +411,7 @@ int main(int argc, const char*argv[]){
 
 			}
 
-			if(doExpectation){
+			if(doExpectation && sFileLimitsDistribution==""){
 				cms->SetSignalScaleFactor(1.);
 				LimitBands lb(&clsr95, &frequentist, cms);	
 				lb.SetTossPseudoDataConvention(tossPseudoDataConvention);
@@ -707,7 +711,16 @@ int main(int argc, const char*argv[]){
 			// plot the distribution of limits of noutcomes
 			// and the cummulative pdf
 			TString ts=jobname; ts+="_limits";
-			FillTree(ts, difflimits);
+
+			if(sFileLimitsDistribution!=""){
+				TTree * tree = (TTree*)GetTObject(sFileLimitsDistribution.Data(), "T");
+				difflimits = GetVectorFrom(tree, "brT");
+				rmean = 0;
+				for(int i=0; i<difflimits.size(); i++)rmean+=difflimits[i];
+				if(difflimits.size()==0) rmean=0; else rmean/=float(difflimits.size());
+			}else 	FillTree(ts, difflimits);
+
+
 			vector<double> all_calculated_R95s;
 			vector<double> cummulativeProbabilities; // all_calculated_R95s has been sorted, each of them has a cummulative probability
 			SortAndCumulative(difflimits, all_calculated_R95s, cummulativeProbabilities);
@@ -873,11 +886,19 @@ void processParameters(int argc, const char* argv[]){
 		cout<<endl;
 	}
 
+	vector<TString> tmpv;
+	tmpv = options["--readLimitsFromFile"]; 
+	if( tmpv.size()!=1 ) { }
+	else sFileLimitsDistribution = tmpv[0];
+
 	vector<TString> tmpcards = options["-d"];
 	if(tmpcards.size()==0) tmpcards = options["--datacards"];
 	cout<<endl<<"You are trying to combine following "<<tmpcards.size()<<" cards:"<<endl;
-	if(tmpcards.size()==0) { cout<<"*** No data card specified, please use option \"-d or --datacards\""<<endl; exit(0); }
-	else{
+	if(tmpcards.size()==0) { 
+		if(sFileLimitsDistribution==""){
+			cout<<"*** No data card specified, please use option \"-d or --datacards\""<<endl; exit(0); 
+		}
+	}else{
 		for(int i=0; i<tmpcards.size(); i++){
 			FileStat_t buf;
 			if(gSystem->GetPathInfo(tmpcards[i], buf) ==1 ) { cout<<tmpcards[i] << " not found, skipped"<<endl;}
@@ -892,7 +913,6 @@ void processParameters(int argc, const char* argv[]){
 
 	if(isWordInMap("--plot", options)) bPlots = 1;
 
-	vector<TString> tmpv;
 	// limit or significance
 	tmpv = options["--significance"]; 
 	if( tmpv.size()!=1 ) { calcsignificance = 0; }
@@ -903,8 +923,11 @@ void processParameters(int argc, const char* argv[]){
 	else bPlots = tmpv[0].Atoi();
 
 	tmpv = options["-M"]; if(tmpv.size()!=1) tmpv = options["--method"];
-	if( tmpv.size()!=1 ) { cout<<"ERROR No method specified, please use option \"-M or --method\" "<<endl; exit(0); }
-	else {
+	if( tmpv.size()!=1) { 
+		if(sFileLimitsDistribution==""){
+			cout<<"ERROR No method specified, please use option \"-M or --method\" "<<endl; exit(0);
+		}
+       	}else {
 		method = tmpv[0];
 		if( calcsignificance && 
 				(method!="ProfiledLikelihood" and method!="Hybrid")
@@ -919,7 +942,7 @@ void processParameters(int argc, const char* argv[]){
 	else debug = tmpv[0].Atoi();
 
 	tmpv = options["-n"]; if(tmpv.size()!=1) tmpv = options["--name"];
-	if( tmpv.size()!=1 ) { jobname = datacards[0]+"_"+method; }
+	if( tmpv.size()!=1 ) { jobname = (datacards.size()>0?datacards[0]:"")+"_"+method; }
 	else jobname = tmpv[0];
 
 	tmpv = options["-D"]; if(tmpv.size()!=1) tmpv = options["--dataset"];
@@ -1214,6 +1237,7 @@ void PrintHelpMessage(){
 	printf("-D [ --dataset ] arg (=data_obs)      Dataset for observed limit,  data_obs,  asimov_b, asimov_sb \n"); 
 	printf("-M [ --method ] arg                   Method to extract upper limit. Supported methods are: Bayesian, FeldmanCousins, Hybrid, ProfiledLikelihood \n"); 
 	printf("--doExpectation arg (=0)              i.e calc expected bands and mean/median values     \n"); 
+	printf("--readLimitsFromFile arg (fileName)   i.e read expectations from merged files \n");
 	printf("--bCalcObservedLimit arg (=1)         i.e calc observed limit values     \n"); 
 	printf("-t [ --toys ] arg (=1000)             Number of Toy MC extractions for expectation \n"); 
 	printf("--tossPseudoDataConvention arg (=0)   choose convention for tossing toys to build -2lnQ distribution. 0 (LEP, TEVATRON) or 1 (LHC)\n");

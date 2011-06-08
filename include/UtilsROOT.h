@@ -51,5 +51,6 @@ bool GetCLs(double qdata, TTree* tsb, TTree*tb,  double &cls, double &err, int d
 bool GetM2lnQ(TTree* tsb, TTree*tb, vector<double> &vclsb, vector<double>&vclb, int debug=0);
 bool GetPValue(vector<double> vclsb, double qdata, double &ret, double &err, int debug=0);
 void ReadM2lnQGridFromFile(TString filename, std::map<double, TTree*>&gridCLsb, std::map<double, TTree*>&gridCLb, int _debug=0); 
+vector<double> GetVectorFrom(TTree* tree, TString brName);
 #endif   /* ----- #ifndef UTILSROOT_INC  ----- */
 
