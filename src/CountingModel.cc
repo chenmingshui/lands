@@ -118,7 +118,7 @@ namespace lands{
 		_fittedParsInPseudoData_sb= 0;
 		_fittedParsInPseudoData_global= 0;
 		_tossToyConvention = 0;
-		_UseBestEstimateToCalcQ = true;
+		_UseBestEstimateToCalcQ = 1;
 	}
 	CountingModel::~CountingModel(){
 		v_data.clear();
@@ -1891,10 +1891,10 @@ If we need to change it later, it will be easy to do.
 		}
 		AddObservedDataSet(ch, rds);
 	}
-	double CountingModel::EvaluateChi2(double *par, bool bUseBestEstimateToCalcQ){ 
+	double CountingModel::EvaluateChi2(double *par, int bUseBestEstimateToCalcQ){ 
 		double ret=0;
 
-		FluctuatedNumbers(par, true, bUseBestEstimateToCalcQ?1:0);
+		FluctuatedNumbers(par, true, bUseBestEstimateToCalcQ);
 
 		for(int ch=0; ch<vv_pdfs.size(); ch++){
 			double btot = 0, stot=0;

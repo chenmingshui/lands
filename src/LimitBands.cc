@@ -11,19 +11,19 @@ using namespace RooFit;
 namespace lands{
 	LimitBands::LimitBands(){
 		_frequentist=0;	_clslimit=0; _byslimit=0; _cms=0;
-		_doCLs=0; _doBys=0; _debug=0; 
+		_doCLs=0; _doBys=0; _debug=0; _plotLevel=0;
 	}
 	LimitBands::LimitBands(CLsLimit *cl, CLsBase *cb, CountingModel* cms){
 		_frequentist=cb;	_clslimit=cl;  _byslimit=0; _cms=cms;
-		_doCLs=0; _doBys=0; _debug=0; 
+		_doCLs=0; _doBys=0; _debug=0;  _plotLevel=0;
 	}
 	LimitBands::LimitBands(BayesianBase *bb, CountingModel* cms){
 		_frequentist=0;	_clslimit=0; _byslimit=bb; _cms=cms;
-		_doCLs=0; _doBys=0; _debug=0; 
+		_doCLs=0; _doBys=0; _debug=0;  _plotLevel=0;
 	}
 	LimitBands::LimitBands(CLsLimit *cl, CLsBase *cb, BayesianBase *bb, CountingModel* cms){
 		_frequentist=cb;	_clslimit=cl;  _byslimit=bb; _cms=cms; bb->SetModel(cms);
-		_doCLs=0; _doBys=0; _debug=0; 
+		_doCLs=0; _doBys=0; _debug=0;  _plotLevel=0;
 	}
 	LimitBands::~LimitBands(){}
 	void LimitBands::CLsLimitBands(double alpha, int noutcome, int ntoysM2lnQ){
@@ -181,16 +181,18 @@ namespace lands{
 				//--------------calc r95% with (s,b,n) by throwing pseudo experiments and using the fits to get r95% at CLs=5
 				if(!bM2lnQGridPreComputed)r=_clslimit->LimitOnSignalScaleFactor(_cms, _frequentist, _ntoysM2lnQ);
 				else {
-					int i = 0, n = gridCLsb.size();
+					int ii = 0;
 					for (std::map<double, TTree *>::iterator itg = gridCLsb.begin(), edg = gridCLsb.end(); itg != edg; ++itg) {
 						double rVal = itg->first;
 						_cms->SetSignalScaleFactor(rVal);
 						if(_frequentist->GetTestStatistics()==1)_frequentist->prepareLogNoverB();
 						_frequentist->BuildM2lnQ_data();
 						gridQdata[rVal] = _frequentist->Get_m2lnQ_data();
-						i++;
+						ii++;
 					}
-					r = _frequentist->FindLimitFromPreComputedGrid(gridCLsb, gridCLb, gridQdata, fAlpha);
+					cout<<" _plotLevel = "<<_plotLevel<<endl;
+					TString plotName = "plots_rVScl_toy_"; plotName+=n;
+					r = _frequentist->FindLimitFromPreComputedGrid(gridCLsb, gridCLb, gridQdata, fAlpha, _plotLevel<10?"":plotName);
 				}
 				vrcls.push_back(r);
 				vpcls.push_back(p);
@@ -232,6 +234,32 @@ namespace lands{
 					cout<<"\n\t CompareCLsBys n="<<n<<" cls= "<<vrcls.back()<<" bys= "<<vrbys.back()
 						<<" (c-b)/(c+b)="<<(vrcls.back()-vrbys.back())/(vrcls.back()+vrbys.back())<<"  repeated "<<nentries_for_thisR<<endl;
 				}
+			}
+
+			if(_debug>=10){
+				cout<<"******************* pseudo_outcome ("<<n<<") *****************************"<<endl;
+				cout<<"         r = "<<r<<endl;
+				if(vvPossibleOutcomes[0].size()!=0){
+					cout<<" Counting part: "<<endl;
+					for(int ii=0; ii<vvPossibleOutcomes.at(iEntries_v[n]).size(); ii++){
+						if(ii%10==0) cout<<endl<<"       ";
+						printf(" %5d ", vvPossibleOutcomes.at(iEntries_v[n])[ii]);
+					}
+					cout<<endl;
+				}
+
+				if(_cms->hasParametricShape()){
+					cout<<" Unbinned part: "<<endl;
+					for(int ii=0; ii<vvPossibleOutcomes_forUnbinnedChannels[n].size(); ii++){
+						cout<<" * "<<_cms->Get_v_pdfs_channelname()[ii]<<": "<<endl;
+						vvPossibleOutcomes_forUnbinnedChannels[n][ii]->Print("V");	
+						for(int ie=0; ie<vvPossibleOutcomes_forUnbinnedChannels[n][ii]->sumEntries(); ie++){
+							vvPossibleOutcomes_forUnbinnedChannels[n][ii]->get(ie)->Print("V");	
+						}
+					}
+				}
+				cout<<endl;
+
 			}
 			fflush(stdout);
 		}

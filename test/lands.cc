@@ -56,7 +56,7 @@ bool singlePoint;
 double testR;
 bool scanRs;
 int nSteps;
-bool bPlots = false;
+int bPlots = 0;
 int tossToyConvention;
 int tossPseudoDataConvention;
 int UseBestEstimateToCalcQ;
@@ -92,6 +92,8 @@ int main(int argc, const char*argv[]){
 
 
 	if(debug<2)RooMsgService::instance().getStream(1).removeTopic(ObjectHandling) ;
+	if(debug<10)RooMsgService::instance().getStream(1).removeTopic(NumIntegration) ;
+	if(debug<10)RooMsgService::instance().getStream(1).removeTopic(Caching) ;
 
 	CountingModel *cms; // this instance will be the one combining all sub cards
 	cms = new CountingModel();
@@ -410,6 +412,7 @@ int main(int argc, const char*argv[]){
 				LimitBands lb(&clsr95, &frequentist, cms);	
 				lb.SetTossPseudoDataConvention(tossPseudoDataConvention);
 				lb.SetDebug(debug);
+				lb.SetPlotLevel(bPlots);
 				lb.IsM2lnQGridPreComputed(bM2lnQGridPreComputed, sFileM2lnQGrid);
 				int noutcomes = toys;
 				lb.CLsLimitBands(1-CL, noutcomes, toysHybrid);
@@ -887,13 +890,17 @@ void processParameters(int argc, const char* argv[]){
 		if(datacards.size()<=0){ cout<< " please provide valid data cards "<<endl; exit(0); }
 	}
 
-	if(isWordInMap("--plot", options)) bPlots = true;
+	if(isWordInMap("--plot", options)) bPlots = 1;
 
 	vector<TString> tmpv;
 	// limit or significance
 	tmpv = options["--significance"]; 
 	if( tmpv.size()!=1 ) { calcsignificance = 0; }
 	else calcsignificance = tmpv[0].Atoi();
+
+	tmpv = options["--plot"]; 
+	if( tmpv.size()!=1 ) { }
+	else bPlots = tmpv[0].Atoi();
 
 	tmpv = options["-M"]; if(tmpv.size()!=1) tmpv = options["--method"];
 	if( tmpv.size()!=1 ) { cout<<"ERROR No method specified, please use option \"-M or --method\" "<<endl; exit(0); }
@@ -1190,6 +1197,7 @@ void processParameters(int argc, const char* argv[]){
 	cout<<"  random number generator seed: "<<seed<<endl;
 	cout<<"  debug level = "<<debug<<endl;
 	cout<<"  job name: "<<jobname<<endl;
+	cout<<"  plotLevel = "<<bPlots<<endl;
 	cout<<endl<<endl;
 
 	fflush(stdout);	
@@ -1247,7 +1255,7 @@ void PrintHelpMessage(){
 	printf("--bSkipM2lnQ (= 0)\n");
 	printf("--nToysForCLb (= -1)\n");
 	printf("--nToysForCLsb (= -1)\n");
-	printf("--String fileFittedPars (=\"\")\n");
+	printf("--fileFittedPars (=\"\")\n");
 	printf("--fileM2lnQ (= \"m2lnq.root\")\n");
 	printf("--M2lnQGridFile (= \"filename\")\n");
 

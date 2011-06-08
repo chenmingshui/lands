@@ -69,7 +69,7 @@ namespace lands{
 			void prepareLogNoverB();
 
 			double FindLimitFromTGE(TGraphErrors *tge, double alpha, double &limit, double & limitErr, TString plotName="");
-			double FindLimitFromPreComputedGrid(std::map<double, TTree*> gridCLsb, std::map<double, TTree*> gridCLb, std::map<double, double> gridQdata, double alpha); // from precomputed m2lnQ grid to extract r corresponding to _alpha ... e.g. 0.05
+			double FindLimitFromPreComputedGrid(std::map<double, TTree*> gridCLsb, std::map<double, TTree*> gridCLb, std::map<double, double> gridQdata, double alpha, TString plotName=""); // from precomputed m2lnQ grid to extract r corresponding to _alpha ... e.g. 0.05
 
 
 		private:

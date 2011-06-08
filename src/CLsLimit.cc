@@ -2343,9 +2343,6 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys){  // 0 for sbANDb,
 			case 5:
 				vdata_global = (VDChannel)_model->GetToyData_H0(_model->Get_fittedParsInData_b());
 				if(_model->hasParametricShape()){
-					for(int c=0; c<-1; c++){
-						//FIXME   if no this loop, then it crashes,   veryyyyyyy weird
-					}
 					_model->SetTmpDataForUnbinned(_model->Get_v_pdfs_roodataset_toy());
 				}
 				if(!_model->UseBestEstimateToCalcQ()){
@@ -2626,9 +2623,6 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys){
 			case 5:
 				vdata_global = (VDChannel)_model->GetToyData_H1(_model->Get_fittedParsInData_sb());
 				if(_model->hasParametricShape()){
-					//for(int c=0; c<-1; c++){
-						//FIXME   if no this loop, then it crashes,   veryyyyyyy weird
-					//}
 					_model->SetTmpDataForUnbinned(_model->Get_v_pdfs_roodataset_toy());
 				}
 				if(!_model->UseBestEstimateToCalcQ()){
@@ -2781,7 +2775,7 @@ void CLsBase::prepareLogNoverB(){ // only necessary when evaluating LEP type sta
 	}
 }
 
-double CLsBase::FindLimitFromPreComputedGrid(std::map<double, TTree*> gridCLsb, std::map<double, TTree*> gridCLb, std::map<double, double> gridQdata, double alpha){ // from precomputed m2lnQ grid to extract r corresponding to _alpha ... e.g. 0.05
+double CLsBase::FindLimitFromPreComputedGrid(std::map<double, TTree*> gridCLsb, std::map<double, TTree*> gridCLb, std::map<double, double> gridQdata, double alpha, TString plotName){ // from precomputed m2lnQ grid to extract r corresponding to _alpha ... e.g. 0.05
 	TGraphErrors *tge =  new TGraphErrors();
 	if (_debug >= 10) std::cout << "Search for upper limit using pre-computed grid of p-values" << std::endl;
 
@@ -2797,7 +2791,7 @@ double CLsBase::FindLimitFromPreComputedGrid(std::map<double, TTree*> gridCLsb, 
 	}
 
 	double limit, limitErr;
-	FindLimitFromTGE(tge, alpha, limit, limitErr);
+	FindLimitFromTGE(tge, alpha, limit, limitErr, plotName);
 
 	delete tge;
 	return limit;
@@ -2851,6 +2845,7 @@ double CLsBase::FindLimitFromTGE(TGraphErrors *tge, double alpha, double &limit,
 	}
 
 	if (plotName!="") {
+		//FIXME to-dos: change background to white,  add x/y labels,  add markers for central values .... show limit+/-err on the plot 
 		TCanvas c1("c1","c1");
 		tge->Sort();
 		tge->SetLineWidth(2);

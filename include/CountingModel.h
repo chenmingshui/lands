@@ -163,8 +163,8 @@ namespace lands{
 				vv_pdfs_norm_fitted = vv_pdfs_norm_varied;
 			};
 
-			void SetUseBestEstimateToCalcQ(bool b=true){ _UseBestEstimateToCalcQ=b;};
-			bool UseBestEstimateToCalcQ(){ return _UseBestEstimateToCalcQ;};
+			void SetUseBestEstimateToCalcQ(int b=1){ _UseBestEstimateToCalcQ=b;};
+			int UseBestEstimateToCalcQ(){ return _UseBestEstimateToCalcQ;};
 
 			// start to add parametric shape into model
 			bool hasParametricShape(){return bHasParametricShape;};
@@ -213,7 +213,7 @@ namespace lands{
 			void AddChannel(string channel_name, RooRealVar* observable, vector<RooAbsPdf*> sigPdfs, vector<double> sigNorms, vector<RooAbsPdf*> bkgPdfs, vector<double> bkgNorms, RooWorkspace *w );
 			// need to add names of each parameter .... 
 			double EvaluateLnQ(int ch, int dataOrToy); // for Likelihood ratio
-			double EvaluateChi2(double *par, bool bUseBestEstimateToCalcQ=true);          // for Chi2
+			double EvaluateChi2(double *par, int bUseBestEstimateToCalcQ=1);          // for Chi2
 			double EvaluateGL(int ch, double xr); // for bayesian 
 			double EvaluateGL(vector< vector<double> > vvnorms, vector<double> vparams, double xr); // for bayesian 
 			void AddObservedDataSet(int index_channel, RooDataSet* rds);
@@ -277,7 +277,8 @@ namespace lands{
 			int _tossToyConvention;
 		       	// convention 0 for the LEP type we used to do;
 		        // convention 1 for the LHC type agreed on LHC-HCG meeting https://indico.cern.ch/getFile.py/access?contribId=48&sessionId=5&resId=0&materialId=slides&confId=139132
-			bool _UseBestEstimateToCalcQ; // this should sit inside CLsBase....   however to avoid a global CLsBase, we put it inside CountingModel   FIXME  low priority 
+			int _UseBestEstimateToCalcQ; // this should sit inside CLsBase....   however to avoid a global CLsBase, we put it inside CountingModel   FIXME  low priority 
+			// 0 use randomized measurements;  1 use the original best estimates;  2 use the fitted sets in data
 
 			//// start to add unbinned parametric shape into model,  for only 1-dimention 
 			bool bHasParametricShape;// for both binned and unbinned 

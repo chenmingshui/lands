@@ -29,6 +29,7 @@ namespace lands{
 			vector<double> GetDifferentialLimitsCLs(){return _difrcls;};
 			vector<double> GetDifferentialLimitsBys(){return _difrbys;};
 			void IsM2lnQGridPreComputed(bool b, TString s){bM2lnQGridPreComputed=b; sFileM2lnQGrid=s;};
+			void SetPlotLevel(int i){_plotLevel = i;};
 		private:
 			void Bands();
 			bool _doCLs, _doBys;
@@ -49,6 +50,8 @@ namespace lands{
 			int _tossPseudoDataConvention;
 			bool bM2lnQGridPreComputed;
 			TString sFileM2lnQGrid;
+
+			int _plotLevel;
 			
 	};
 };
