@@ -2279,6 +2279,6 @@ If we need to change it later, it will be easy to do.
 			vector< vector<double> > vv; vv.push_back(v);
 			map_param_sources[pname]=vv;
 		}
-		cout<<"DELETEME: map_param_sources.size = "<<map_param_sources.size()<<endl;
+		if(_debug)cout<<"DELETEME: map_param_sources.size = "<<map_param_sources.size()<<endl;
 	}
 };
