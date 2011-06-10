@@ -85,6 +85,7 @@ double FCInterpolation(double x1, double y1, double x2, double y2, double y);
 double IntegralSum(double (*fcn)(double *, double *, int), double a, double b, double *par, int npar);
 int GetBandsByFermiCurveInterpolation(vector<double>  rn, vector<double> pn, double& _1SigmaLow, double& _1SigmaHigh, double& _2SigmaLow, double& _2SigmaHigh);
 int GetBandsByLinearInterpolation(vector<double>  rn, vector<double> pn, double& _1SigmaLow, double& _1SigmaHigh, double& _2SigmaLow, double& _2SigmaHigh);
+int GetBandsByNoInterpolation(vector<double>  rn, vector<double> pn, double& _1SigmaLow, double& _1SigmaHigh, double& _2SigmaLow, double& _2SigmaHigh, double &median);
 int GetBandsByFeldmanCousins(vector<double>  rn, vector<double> pn, double& _1SigmaLow, double& _1SigmaHigh, double& _2SigmaLow, double& _2SigmaHigh);
 int GetBands(vector<double> & rn, vector<double>& pn, double& _1SigmaLow, double& _1SigmaHigh, double& _2SigmaLow, double& _2SigmaHigh);
 int GetBands(vector<double> & vx, double& _1SigmaLow, double& _1SigmaHigh, double& _2SigmaLow, double& _2SigmaHigh);

@@ -579,7 +579,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 				cout<<"uncertainty configuration is not correct"<<endl; 
 				cout<<lines[j]<<endl;
 				exit(0);
-			}else if(ss[1]=="shape_param"){
+			}else if(ss[1]=="affects"){
 				uncerlinesAffectingShapes.push_back(ss);
 			}else{
 				nsyssources++;
@@ -2198,28 +2198,30 @@ bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vecto
 	}
 	for(int i=0; i<uncerlinesAffectingShapes.size(); i++){
 		vector<string>	ss = uncerlinesAffectingShapes[i]; 
-		if(ss.size()<5) {
-			cout<<"ERROR uncertainty line on parameter: "<<ss[0]<<" "<<ss[1]<<" don't have enough parameters, need at least mean and sigma"<<endl;
+		if(ss.size()<6) {
+			cout<<"ERROR format of uncertainty affecting parameters should be as follows"<<endl;
+			cout<<"<systname> affects <bin> <process> <parameter> <effect strength>"<<endl;
+			cout<<"      while in data card, following line not compatible with the convention: "<<endl;
 			for(int ii=0; ii<ss.size(); ii++){
 				cout<<ss[ii]<<" ";
 			}
 			cout<<endl;
 			exit(0);
 		}
-		double mean = TString(ss[3]).Atof();
+		//double mean = TString(ss[3]).Atof();
 		double sigmaL, sigmaR;
 		double rangeMin=0, rangeMax=0;
-		if(TString(ss[4]).Contains("/")){
+		if(TString(ss[5]).Contains("/")){
 			vector<string> asymetricerrors; asymetricerrors.clear();
-			StringSplit(asymetricerrors, ss[4], "/");
+			StringSplit(asymetricerrors, ss[5], "/");
 			sigmaL = (TString(asymetricerrors[0])).Atof(); // downside 
 			sigmaR = (TString(asymetricerrors[1])).Atof();  // upside
 		}else {
-			sigmaL = (TString(ss[4])).Atof();
+			sigmaL = (TString(ss[5])).Atof();
 			sigmaR = sigmaL;
 		}
-		if(ss.size()>5){
-			TString sr = ss[5];
+		if(ss.size()>6){
+			TString sr = ss[6];
 			if(sr.BeginsWith("[") and sr.EndsWith("]") and sr.Contains(",") ){
 				sr.ReplaceAll("[", "");
 				sr.ReplaceAll("]", "");
@@ -2229,7 +2231,8 @@ bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vecto
 				rangeMax= (TString(asymetricerrors[1])).Atof();  // upside
 			}
 		}
-		cms->AddUncertaintyAffectingShapeParam(ss[0], ss[2], mean, sigmaL, sigmaR, rangeMin, rangeMax );
+		//cms->AddUncertaintyAffectingShapeParam(ss[0], ss[2], mean, sigmaL, sigmaR, rangeMin, rangeMax );
+		cms->AddUncertaintyAffectingShapeParam(ss[0], ss[4], sigmaL, sigmaR);
 	}
 
 	if(debug) cout<<"filled systematics"<<endl;

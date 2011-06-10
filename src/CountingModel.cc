@@ -119,6 +119,8 @@ namespace lands{
 		_fittedParsInPseudoData_global= 0;
 		_tossToyConvention = 0;
 		_UseBestEstimateToCalcQ = 1;
+
+		map_param_sources.clear();
 	}
 	CountingModel::~CountingModel(){
 		v_data.clear();
@@ -204,6 +206,8 @@ namespace lands{
 		_fittedParsInPseudoData_bonly=0;
 		_fittedParsInPseudoData_sb=0;
 		_fittedParsInPseudoData_global=0;
+
+		map_param_sources.clear();
 
 		delete _w;
 		delete _w_varied;
@@ -597,6 +601,8 @@ namespace lands{
 			if(max_uncorrelation < v_pdfs_floatParamsIndcorr[i]) max_uncorrelation=v_pdfs_floatParamsIndcorr[i];
 		}
 
+		if(max_uncorrelation < v_uncname.size()) max_uncorrelation = v_uncname.size();
+
 		for(int i=0; i<=max_uncorrelation; i++){
 			v_TruncatedGaussian_maxUnc.push_back(-1);
 			v_pdftype.push_back(-1);	
@@ -706,6 +712,9 @@ If we need to change it later, it will be easy to do.
 		for(int i=0; i<v_pdfs_floatParamsName.size(); i++){
 			v_pdftype[v_pdfs_floatParamsIndcorr[i]] = typeBifurcatedGaussian;
 		}
+		for(int i=0; i<v_uncname.size(); i++){
+			if(v_pdftype[i+1]==-1) v_pdftype[i+1]=typeLogNormal; // some uncertainty source not affect normalization but shape 
+		}
 		MakeListOfShapeUncertainties();
 	}	
 	void CountingModel::MakeListOfShapeUncertainties(){
@@ -792,7 +801,6 @@ If we need to change it later, it will be easy to do.
 							vrdm.back()= dynamic_cast<RooRealVar*> ( tmpRDS->get(0)->first() )->getVal();
 							delete tmpRDS;
 							if(_debug>=100) cout<<"  "<<vrdm.back()<<endl;
-							v_pdfs_floatParamsVaried.push_back(vrdm.back());
 							break;
 						}
 					case typeControlSampleInferredLogNormal:
@@ -1015,9 +1023,37 @@ If we need to change it later, it will be easy to do.
 					_w_varied->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_varied[ch][isam]);
 				}
 			}
+
+			int id;
+			MapStrVV::iterator iter; 
 			for(int i=0; i<v_pdfs_floatParamsName.size(); i++){
-				if(_debug>=100) cout<<" setting new value for parameter "<<v_pdfs_floatParamsName[i]<<": "<<vrdm[v_pdfs_floatParamsIndcorr[i]]<<endl;
-				_w_varied->var(v_pdfs_floatParamsName[i].c_str())->setVal(vrdm[v_pdfs_floatParamsIndcorr[i]]);
+
+				int ip  = v_pdfs_floatParamsIndcorr[i];
+
+				if(_debug>=100)cout<<v_pdfs_floatParamsName[i]<<endl;
+				// additive implementation of multi-sources affecting params
+				double param = vrdm[v_pdfs_floatParamsIndcorr[i]];
+				if(_debug>=100)cout<<"DELETEME: param only fitunc "<<param<<endl;
+				iter = map_param_sources.find(v_pdfs_floatParamsName[i]);
+				if (iter != map_param_sources.end() ) {
+					vector< vector<double> > vvtmp = iter->second;
+					for(int ii=0; ii<vvtmp.size(); ii++){
+						id = (int)vvtmp[ii][0];
+						if(v_pdftype[id]==typeBifurcatedGaussian) continue;
+						param += vrdm[id]*(vrdm[id]<0?vvtmp[ii][1]:vvtmp[ii][2]);
+					}
+				}else ; //std::cout << v_pdfs_floatParamsName[i]<<" is not in map_param_sources" << '\n';
+				if(_debug>=100)cout<<"DELETEME: param after allunc: "<<param<<endl;
+
+				// currently, we don't rethrow random numbers if accumulative param not in its range
+				if(param<v_pdfs_floatParamsUnc[ip][3]) param=v_pdfs_floatParamsUnc[ip][3]; // ip  motivated by the code in AddUncertaintyOnShapeParam
+				if(param>v_pdfs_floatParamsUnc[ip][4]) param=v_pdfs_floatParamsUnc[ip][4];
+
+				if(_debug>=100)cout<<"DELETEME: param after range check: "<<param<<"  in ["<<v_pdfs_floatParamsUnc[ip][3]<<", "<<v_pdfs_floatParamsUnc[ip][4]<<"]"<<endl;
+				if(_debug>=100) cout<<" setting new value for parameter "<<v_pdfs_floatParamsName[i]<<": "<<param<<endl;
+				_w_varied->var(v_pdfs_floatParamsName[i].c_str())->setVal(param);
+				v_pdfs_floatParamsVaried.push_back(param);
+
 			}
 			if(_debug>=100) {
 				cout<<"FluctuatedNumbers, varied workspace: "<<endl;
@@ -1538,7 +1574,9 @@ If we need to change it later, it will be easy to do.
 				if(ms[m]->GetDebug()) cout<<" uncname.size="<<tmp_v_uncname.size()<<" vparamunc.size="<<vparamunc.size()<<endl;
 				if(ms[m]->GetDebug()) cout<<" "<<vparamIndcorr.size()<<" floating parameters "<<endl;
 				for(int ii=0; ii<vparamIndcorr.size(); ii++){
+					if(ms[m]->GetDebug()>=10) cout<<" ii =  "<<ii<<endl;
 					int id= vparamIndcorr[ii];
+					if(ms[m]->GetDebug()>=10) cout<<" id =  "<<id<<endl;
 					cms->AddUncertaintyOnShapeParam(tmp_v_uncname[id-1], vparamunc[id][0], vparamunc[id][1], vparamunc[id][2], vparamunc[id][3], vparamunc[id][4] );
 					if(ms[m]->GetDebug()) cout<<"  AddUncertaintyOnShapeParam "<<tmp_v_uncname[id-1]<<" "
 						<<vparamunc[id][0] <<" "
@@ -1547,6 +1585,24 @@ If we need to change it later, it will be easy to do.
 							<<vparamunc[id][3] <<" "
 							<<vparamunc[id][4] <<" "
 							<<endl;
+				}
+
+				if(ms[m]->GetDebug()>=10) cout<<" before adding map_param_sources"<<endl;
+
+				// add map_param_sources
+				MapStrVV map = ms[m]->Get_map_param_sources();
+
+				if(ms[m]->GetDebug()>=10) cout<<" map_param_sources.size = "<<map.size()<<endl;
+
+				MapStrVV::iterator iter = map.begin();
+				for(; iter!=map.end(); iter++){
+					if(ms[m]->GetDebug()>=10) cout<<" pname = "<<iter->first<<endl;
+					vector< vector<double> > vv = iter->second;
+					if(ms[m]->GetDebug()>=10) cout<<" vv.size = "<<vv.size()<<endl;
+					for(int ii=0; ii<vv.size(); ii++){
+						int id = (int)vv[ii][0];
+						cms->AddUncertaintyAffectingShapeParam(ms[m]->Get_v_uncname()[id-1], iter->first, vv[ii][1], vv[ii][2]);
+					}
 				}
 			}
 		}
@@ -2165,35 +2221,40 @@ If we need to change it later, it will be easy to do.
 				v_pdfs_floatParamsUnc.push_back(vunc);
 			}
 		}else v_pdfs_floatParamsUnc[index_correlation] = vunc;
-		if(_debug) cout<<" v_pdfs_floatParamsUnc.size() = "<<v_pdfs_floatParamsUnc.size()<<endl;
+		if(_debug) cout<<" v_pdfs_floatParamsUnc.size() = "<<v_pdfs_floatParamsUnc.size()<<" index_correlation="<<index_correlation<<endl;
 
 		TString s = pname;
 		if(_debug)cout<<" * Adding floating parameter: "<<pname<<endl;
 		_w_varied->factory(TString::Format("%s_x[%f,%f]", pname.c_str(), rangeMin, rangeMax));
+		_w_varied->factory(TString::Format("%s_mean[%f,%f,%f]", pname.c_str(), mean, rangeMin, rangeMax));
 		if(_debug)cout<<pname<<"_x added"<<endl;
-		_w_varied->factory(TString::Format("BifurGauss::%s_bfg(%s_x, %f, %f, %f )", pname.c_str(), pname.c_str(), mean, sigmaL, sigmaR));
+		_w_varied->factory(TString::Format("BifurGauss::%s_bfg(%s_x, %s_mean, %f, %f )", pname.c_str(), pname.c_str(), pname.c_str(), sigmaL, sigmaR));
 		if(_debug)cout<<pname<<"_bfg added"<<endl;
 
 		v_pdfs_floatParamsName.push_back(pname);
 		v_pdfs_floatParamsIndcorr.push_back(index_correlation);
 	}
 
-	void CountingModel::AddUncertaintyAffectingShapeParam(string uname, string pname, double mean, double sigmaL, double sigmaR, double rangeMin, double rangeMax ){
+	void CountingModel::AddUncertaintyAffectingShapeParam(string uname, string pname, double sigmaL, double sigmaR ){
 
 		// for the uncertainty uname,  assign it a range for truncation ....     sigmaL sigmaR are absolute values, need to translate to  gaussian unit
 		//
 		// type should be gaussain ,  truncated
 		//
-		// check if the parameter name is in the uncname list, if yes,  then  mean should be same,  also rangeMin, rangeMax
-		//
-		//
 		// for each uncertainty source:  need a range,  and a list of parameters which it affects 
-		
 
-		if(_w_varied->var(pname.c_str())==NULL) {
-			cout<<" parameter "<<pname<<" not exist in the added channels,   skip it"<<endl;
-			return;
+		bool pname_added = false;
+		for(int i=0; i<v_uncname.size(); i++){
+			if(v_uncname[i]==pname){
+				pname_added = true;
+			}
 		}
+		if(!pname_added){
+			cout<<"In AddUncertaintyAffectingShapeParam: parameter["<<pname<<"] not added yet"<<endl;
+			cout<<"Need a line in data card: \""<<pname<<"\" param mean sigma"<<endl;
+			exit(1);
+		}
+
 
 		int index_correlation = -1; // numeration starts from 1
 		sigmaL = fabs(sigmaL);
@@ -2201,7 +2262,7 @@ If we need to change it later, it will be easy to do.
 		for(int i=0; i<v_uncname.size(); i++){
 			if(v_uncname[i]==uname){
 				index_correlation = i+1;	
-				return;
+				break;
 			}
 		}
 		if(index_correlation<0)  {
@@ -2209,42 +2270,15 @@ If we need to change it later, it will be easy to do.
 			v_uncname.push_back(uname);
 		}
 
-		if(rangeMax==rangeMin){
-			rangeMin = mean - 4*sigmaL;
-			rangeMax = mean + 4*sigmaR;
+
+		vector<double> v; v.push_back(float(index_correlation)); v.push_back(sigmaL); v.push_back(sigmaR);
+		MapStrVV::iterator iter = map_param_sources.find(pname);
+		if (iter != map_param_sources.end() ) {
+			(iter->second).push_back(v);
+		}else{
+			vector< vector<double> > vv; vv.push_back(v);
+			map_param_sources[pname]=vv;
 		}
-
-		// implementation needed:
-		//
-		// * first check the range and translate to constraint on the normal random number 
-		// * if this uncname is already exist, then check and compare the constraint range , pick correct one,  update it if needed
-		// * note that the asymetric error here ... 
-		// * associate this pname to this uncname 
-		// * this uncertainty pdf should become truncated Gaussian ...  but can operate differently 
-
-		
-
-		vector<double> vunc; vunc.clear(); 
-		vunc.push_back(mean);
-		vunc.push_back(sigmaL);
-		vunc.push_back(sigmaR);
-		vunc.push_back(rangeMin);
-		vunc.push_back(rangeMax);
-		if(v_pdfs_floatParamsUnc.size() <= index_correlation){
-			for(int i = v_pdfs_floatParamsUnc.size(); i<=index_correlation; i++){
-				v_pdfs_floatParamsUnc.push_back(vunc);
-			}
-		}else v_pdfs_floatParamsUnc[index_correlation] = vunc;
-		if(_debug) cout<<" v_pdfs_floatParamsUnc.size() = "<<v_pdfs_floatParamsUnc.size()<<endl;
-
-		TString s = pname;
-		cout<<" * Adding floating parameter: "<<pname<<endl;
-		_w_varied->factory(TString::Format("%s_x[%f,%f]", pname.c_str(), rangeMin, rangeMax));
-		cout<<pname<<"_x added"<<endl;
-		_w_varied->factory(TString::Format("BifurGauss::%s_bfg(%s_x, %f, %f, %f )", pname.c_str(), pname.c_str(), mean, sigmaL, sigmaR));
-		cout<<pname<<"_bfg added"<<endl;
-
-		v_pdfs_floatParamsName.push_back(pname);
-		v_pdfs_floatParamsIndcorr.push_back(index_correlation);
+		cout<<"DELETEME: map_param_sources.size = "<<map_param_sources.size()<<endl;
 	}
 };

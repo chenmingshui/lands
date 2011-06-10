@@ -407,7 +407,23 @@ namespace lands{
 
 	}
 	//double lgamma(double x); // decalare double instance here
-
+	int GetBandsByNoInterpolation(vector<double>  rn, vector<double> pn,  double& _1SigmaLow, double& _1SigmaHigh,  double& _2SigmaLow, double& _2SigmaHigh, double& median){
+		_1SigmaLow=0; _1SigmaHigh=0; _2SigmaHigh=0; _2SigmaLow=0; median=0;
+		// =====rn is already sorted and pn is cummulative probability
+		double _GreenBandLow = (1- 0.683)/2.; //1 sigma
+		double _GreenBandHigh = 1 - (1- 0.683)/2.; //1 sigma
+		double _YellowBandLow = (1- 0.955)/2.; //2 sigma
+		double _YellowBandHigh = 1 - (1- 0.955)/2.; //2 sigma
+		bool brmedian2=false, brm1s2=false, brm2s2=false, brp1s2=false, brp2s2=false;	
+		for(int i=0; i<pn.size(); i++){
+			if(pn[i]>=_GreenBandLow && !brm1s2) { _1SigmaLow= rn[i]; brm1s2 = true; } 
+			if(pn[i]>=_GreenBandHigh && !brp1s2) { _1SigmaHigh= rn[i]; brp1s2 = true; } 
+			if(pn[i]>=_YellowBandLow && !brm2s2) { _2SigmaLow= rn[i]; brm2s2 = true; } 
+			if(pn[i]>=_YellowBandHigh && !brp2s2) { _2SigmaHigh= rn[i]; brp2s2 = true; } 
+			if(pn[i]>=0.5 && !brmedian2) { median= rn[i]; brmedian2 = true; } 
+		}
+		return 1;
+	}
 	double IntegralSum(double (*fcn)(double *, double *, int), double a, double b, double *par, int npar){
 		// very dirty 
 		double result = 0;

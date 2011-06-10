@@ -25,6 +25,7 @@
 #include "RooRealVar.h"
 #include "RooBifurGauss.h"
 #include "RooWorkspace.h"
+#include <map>
 
 using namespace std;
 namespace lands{
@@ -34,6 +35,7 @@ namespace lands{
 	typedef vector< vector<double> > VChannelVSample;
 	typedef vector< vector< vector<int> > > VChannelVSampleVUncertainty;
 	typedef vector< vector< vector< vector<double> > > > VChannelVSampleVUncertaintyVParameter;
+	typedef map< string, vector< vector<double> > > MapStrVV;
 
 	enum enumPdfType {typeLogNormal=1, typeTruncatedGaussian=2, typeGamma=3, typeShapeGaussianLinearMorph=4, typeShapeGaussianQuadraticMorph=5, 
 		typeBifurcatedGaussian=6, typeControlSampleInferredLogNormal=11 };
@@ -227,7 +229,9 @@ namespace lands{
 			void AddUncertaintyOnShapeNorm(string chname, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, string uncname);
 			void AddUncertaintyOnShapeParam(string pname, double mean, double sigmaL, double sigmaR, double rangeMin=0, double rangeMax=0 );
 
-			void AddUncertaintyAffectingShapeParam(string uname, string pname, double mean, double sigmaL, double sigmaR, double rangeMin, double rangeMax );
+			void AddUncertaintyAffectingShapeParam(string uname, string pname, double sigmaL, double sigmaR);
+
+			MapStrVV Get_map_param_sources(){return map_param_sources;};
 		private:
 			VDChannel v_data; // could be pseudo-data for bands
 			VDChannel v_data_real; // real data, not changed during entire run 
@@ -337,6 +341,8 @@ namespace lands{
 			// three types of uncertainties: 1. only affect shape;  2. only affect normalization; 3. affect both 
 			vector< vector< vector<int> > > vvv_pdfs_unctype;
 			vector< vector<string> > vv_pdfs_procname;
+
+			MapStrVV map_param_sources; // map <paramName, vector< idcorrl, sigmaL, sigmaR > > 
 	};
 	CountingModel* CombineModels(CountingModel *cms1, CountingModel *cms2);
 };
