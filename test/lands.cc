@@ -87,6 +87,8 @@ bool bCalcObservedLimit = true;
 
 TString sFileLimitsDistribution = "";
 
+vector<TString> librariesToBeLoaded;
+
 int main(int argc, const char*argv[]){
 	TStopwatch watch;  
 	watch.Start();
@@ -96,6 +98,11 @@ int main(int argc, const char*argv[]){
 	if(debug<2)RooMsgService::instance().getStream(1).removeTopic(ObjectHandling) ;
 	if(debug<10)RooMsgService::instance().getStream(1).removeTopic(NumIntegration) ;
 	if(debug<10)RooMsgService::instance().getStream(1).removeTopic(Caching) ;
+
+
+	for(int i=0; i<librariesToBeLoaded.size(); i++){
+		gSystem->Load(librariesToBeLoaded[i]);
+	}
 
 	CountingModel *cms; // this instance will be the one combining all sub cards
 	cms = new CountingModel();
@@ -910,6 +917,9 @@ void processParameters(int argc, const char* argv[]){
 		cout<<" .... valid data cards = "<<datacards.size()<<endl;
 		if(datacards.size()<=0){ cout<< " please provide valid data cards "<<endl; exit(0); }
 	}
+
+	tmpv= options["-L"];if(tmpv.size()==0)tmpv=options["--LoadLibraries"];
+	librariesToBeLoaded = tmpv;
 
 	if(isWordInMap("--plot", options)) bPlots = 1;
 
