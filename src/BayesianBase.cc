@@ -275,12 +275,16 @@ namespace lands{
 			if(_vs[i]) delete [] _vs[i];
 			if(_vb[i]) delete [] _vb[i];
 		}
+
+		if(_debug>=100)cout<<"DELETEME 1"<<endl;
+
 		_vs.clear();
 		_vb.clear();
 		if(_d) delete [] _d; 
 		if(_stot) delete [] _stot;
 		if(_btot) delete [] _btot;
 
+		if(_debug>=100)cout<<"DELETEME 2"<<endl;
 		_vNorms_forShapeChannels.clear();
 		_vParams_forShapeChannels.clear();
 
@@ -290,14 +294,21 @@ namespace lands{
 
 		double dtot=0;
 		_logscale=0;
+		if(_debug>=100)cout<<"DELETEME 3"<<endl;
 		for(int ch=0; ch<_nchannels; ch++){	
 			_d[ch]=_cms->Get_v_data()[ch];
 			dtot+=_d[ch];
 			_logscale-=lgamma(_d[ch]+1);
 		}
+		if(_debug>=100)cout<<"DELETEME 4"<<endl;
 		for(int ch=0; ch<_cms->Get_vv_pdfs().size(); ch++){
+			if(_debug>=100)cout<<"v_pdfs_roodataset.size = "<<_cms->Get_v_pdfs_roodataset().size()<<endl;
+			if(_cms->Get_v_pdfs_roodataset()[0]) _cms->Get_v_pdfs_roodataset()[0]->Print();
+			else cout<<" 0th: not exist "<<endl;
 			dtot+=(_cms->Get_v_pdfs_roodataset()[ch])->sumEntries();
+			if(_debug>=100)cout<<"DELETEME 42"<<endl;
 		}
+		if(_debug>=100)cout<<"DELETEME 5"<<endl;
 		if(dtot!=_dtot) _ngl=0;
 		_dtot=dtot;
 

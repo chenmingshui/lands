@@ -1231,6 +1231,10 @@ void processParameters(int argc, const char* argv[]){
 	cout<<"  debug level = "<<debug<<endl;
 	cout<<"  job name: "<<jobname<<endl;
 	cout<<"  plotLevel = "<<bPlots<<endl;
+	if(librariesToBeLoaded.size()>0){
+		cout<<"    custom libraries to be loaded: "<<endl;
+		for(int i=0; i<librariesToBeLoaded.size(); i++) cout<<" "<<librariesToBeLoaded[i]<<endl;
+	}
 	cout<<endl<<endl;
 
 	fflush(stdout);	
@@ -1241,6 +1245,7 @@ void PrintHelpMessage(){
 	printf("Allowed options: \n");                                                                                                                 
 	printf("-h [ --help ]                         Produce help message \n"); 
 	printf("-v [ --verbose ] arg (=0)             Verbosity level \n"); 
+	printf("-L [ --LoadLibraries]                 custom libs to be loaded \n"); 
 	printf("--plot 	                              make plots when appropriate \n");
 	printf("-n [ --name ] arg                     Name of the job,  default is \"datacard\"+\"method\" \n"); 
 	printf("-d [ --datacards ] args               Datacard files,  can contain \"*, ?\" \n"); 

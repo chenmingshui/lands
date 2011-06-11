@@ -197,8 +197,8 @@ namespace lands{
 			void Set_vv_pdfs_norm_fitted_scaled(VChannelVSample vv){vv_pdfs_norm_fitted_scaled=vv;};
 			VChannelVSample Get_vv_pdfs_norm_fitted_scaled(){return vv_pdfs_norm_fitted_scaled;};
 			vector<int> Get_v_pdfs_sigproc(){return v_pdfs_sigproc;};
+			vector< RooDataSet* > Get_v_pdfs_roodataset();
 			vector< RooDataSet* > Get_v_pdfs_roodataset_toy(){return v_pdfs_roodataset_toy;}; // in each channel, it has a list of events
-			vector< RooDataSet* > Get_v_pdfs_roodataset(){return v_pdfs_roodataset;}; // in each channel, it has a list of events
 			vector< RooDataSet* > Get_v_pdfs_roodataset_real(){return v_pdfs_roodataset_real;}; // in each channel, it has a list of events
 			vector< double > Get_v_pdfs_floatParamsVaried(){return v_pdfs_floatParamsVaried;};
 			vector< vector< double > >Get_v_pdfs_floatParamsUnc(){ return v_pdfs_floatParamsUnc;};

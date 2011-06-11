@@ -2516,12 +2516,14 @@ bool CLsBase::BuildM2lnQ_data(){
 
 	vdata_global = _model->Get_v_data();
 
+	/*
 	if(test_statistics==1){  // otherwise it need to specify in the arguments of EvaluateLnQ() to do evaluation for data
 		_model->SetToyForUnbinned(_model->Get_v_pdfs_roodataset());
 	}
+	*/
 
 	int checkFailure = 1;
-	Q_b_data = M2lnQ(checkFailure);
+	Q_b_data = M2lnQ(checkFailure, 0); // 0 for data, 1 for toy
 	if(_debug)cout<<"* BuildM2lnQ_data: end"<<endl;
 	return true;
 }
@@ -2647,7 +2649,7 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys){
 	return true;
 }
 
-double CLsBase::M2lnQ(int checkFailure){
+double CLsBase::M2lnQ(int checkFailure, int dataOrToy){
 	double q = 0;
 	double tmp1, tmp2, minchi2tmp;
 	if(test_statistics==1){
@@ -2656,7 +2658,7 @@ double CLsBase::M2lnQ(int checkFailure){
 			q += (vdata_global[ch]*_lognoverb[ch]) ;
 		}
 		for(int ch=0; ch<_model->Get_vv_pdfs().size(); ch++){
-			q += _model->EvaluateLnQ(ch, 1);// evaluate lnQ in channel i,  on the data (0) ,   1 for toy 
+			q += _model->EvaluateLnQ(ch, dataOrToy);// evaluate lnQ in channel i,  on the data (0) ,   1 for toy 
 		}
 	}else if(test_statistics==2){
 		// here Q =  2ln(L_sb/L_b),  will correct in later stage to -2lnQ
