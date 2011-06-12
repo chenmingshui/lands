@@ -2136,47 +2136,66 @@ If we need to change it later, it will be easy to do.
 
 	}
 
-	double CountingModel::EvaluateGL(vector< vector<double> > vnorms, vector<double> vparams, double xr){ 
+	double CountingModel::EvaluateGL(vector< vector<double> > vnorms, vector<double> vparams, double xr, vector< vector<double> > & vvs, vector< vector<double> > &vvb){ 
 		double ret=0;
-		if(_debug>=100){cout<<"In EvaluateGL:  xr ="<<xr<<endl;};
-		for(int i=0; i<v_pdfs_floatParamsName.size(); i++){
-			if(_debug>=100) cout<<" EvaluateGL: setting value of parameter ["<<v_pdfs_floatParamsName[i]<<"] = "<<vparams[i]<<endl;
-			_w_varied->var(v_pdfs_floatParamsName[i].c_str())->setVal(vparams[i]);
-		}
-		for(int ch=0; ch<vv_pdfs.size(); ch++){
-			double btot = 0, stot=0;
-			int ntot = int(v_pdfs_roodataset[ch]->sumEntries());
-			double tmp=0;
-			for(int i=0; i<vnorms[ch].size(); i++){
-				if(i>=v_pdfs_sigproc[ch]) btot+=vnorms[ch][i];
-				else stot+=vnorms[ch][i];
 
-				_w_varied->var(vv_pdfs_normNAME[ch][i])->setVal(vnorms[ch][i]);
-				if(_debug>=100)cout<<vv_pdfs_normNAME[ch][i]<<" "<<vnorms[ch][i]<<endl;
-			}
-			RooArgSet vars(*(_w->var(v_pdfs_observables[ch])));
-			for(int i=0; i<ntot; i++){
-				_w_varied->var(v_pdfs_observables[ch])->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal());
-				if(_debug>=100){
-					if(i==0 or i==ntot-1 or i==ntot/2){
-						cout<<"* event "<<i<<":  m= "<<( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal()<<endl;
-						cout<<" varied_pdfs= "<<_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars)<<endl;
-						cout<<" varied_pdfb= "<<_w_varied->pdf(v_pdfs_b[ch])->getVal(&vars)<<endl;
-						cout<<" stot= "<<stot<<" btot="<<btot<<endl;
-						cout<<" log(event) = "<<log(stot*_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars)
-								+btot*_w_varied->pdf(v_pdfs_b[ch])->getVal(&vars))<<endl;
-					}
+		if(vvs.size()>0 && vvb.size()>0){
+			for(int ch=0; ch<vv_pdfs.size(); ch++){
+				int ntot = int(v_pdfs_roodataset[ch]->sumEntries());
+				double tmp=0;
+				for(int i=0; i<ntot; i++){
+					tmp+= log( xr*vvs[ch][i] + vvb[ch][i]);
 				}
-				tmp+= log( xr*stot*_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars)
-						+btot*_w_varied->pdf(v_pdfs_b[ch])->getVal(&vars));
+				ret+=tmp;
 			}
+		}else{
+			if(_debug>=100){cout<<"In EvaluateGL:  xr ="<<xr<<endl;};
+			for(int i=0; i<v_pdfs_floatParamsName.size(); i++){
+				if(_debug>=100) cout<<" EvaluateGL: setting value of parameter ["<<v_pdfs_floatParamsName[i]<<"] = "<<vparams[i]<<endl;
+				_w_varied->var(v_pdfs_floatParamsName[i].c_str())->setVal(vparams[i]);
+			}
+			double tmps, tmpb;
+			vector<double> vs, vb;
+			for(int ch=0; ch<vv_pdfs.size(); ch++){
+				vs.clear(); vb.clear();
+				double btot = 0, stot=0;
+				int ntot = int(v_pdfs_roodataset[ch]->sumEntries());
+				double tmp=0;
+				for(int i=0; i<vnorms[ch].size(); i++){
+					if(i>=v_pdfs_sigproc[ch]) btot+=vnorms[ch][i];
+					else stot+=vnorms[ch][i];
 
-			if(_debug>=100){
-				cout<<"EvaluateGL in channel ["<<v_pdfs_channelname[ch]<<"]: gl = "<<tmp<<endl;
-				cout<<"\n model_sb"<<endl;
-				_w_varied->pdf(v_pdfs_sb[ch])->getParameters(*_w->var(v_pdfs_observables[ch]))->Print("V");
+					_w_varied->var(vv_pdfs_normNAME[ch][i])->setVal(vnorms[ch][i]);
+					if(_debug>=100)cout<<vv_pdfs_normNAME[ch][i]<<" "<<vnorms[ch][i]<<endl;
+				}
+				RooArgSet vars(*(_w->var(v_pdfs_observables[ch])));
+				for(int i=0; i<ntot; i++){
+					_w_varied->var(v_pdfs_observables[ch])->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal());
+					if(_debug>=100){
+						if(i==0 or i==ntot-1 or i==ntot/2){
+							cout<<"* event "<<i<<":  m= "<<( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal()<<endl;
+							cout<<" varied_pdfs= "<<_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars)<<endl;
+							cout<<" varied_pdfb= "<<_w_varied->pdf(v_pdfs_b[ch])->getVal(&vars)<<endl;
+							cout<<" stot= "<<stot<<" btot="<<btot<<endl;
+							cout<<" log(event) = "<<log(stot*_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars)
+									+btot*_w_varied->pdf(v_pdfs_b[ch])->getVal(&vars))<<endl;
+						}
+					}
+					tmps =  stot*_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars); tmpb =  btot*_w_varied->pdf(v_pdfs_b[ch])->getVal(&vars);
+					vs.push_back(tmps); vb.push_back(tmpb);
+					tmp+= log(xr*tmps+tmpb);
+					//tmp+= log( xr*stot*_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars)
+					//		+btot*_w_varied->pdf(v_pdfs_b[ch])->getVal(&vars));
+				}
+
+				if(_debug>=100){
+					cout<<"EvaluateGL in channel ["<<v_pdfs_channelname[ch]<<"]: gl = "<<tmp<<endl;
+					cout<<"\n model_sb"<<endl;
+					_w_varied->pdf(v_pdfs_sb[ch])->getParameters(*_w->var(v_pdfs_observables[ch]))->Print("V");
+				}
+				ret+=tmp;
+				vvs.push_back(vs); vvb.push_back(vb);
 			}
-			ret+=tmp;
 		}
 		if(_debug>=100) {
 			cout<<" Unbinned Model EvaluateGL all channels = " << ret <<endl;

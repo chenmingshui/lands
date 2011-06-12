@@ -217,7 +217,7 @@ namespace lands{
 			double EvaluateLnQ(int ch, int dataOrToy); // for Likelihood ratio
 			double EvaluateChi2(double *par, int bUseBestEstimateToCalcQ=1);          // for Chi2
 			double EvaluateGL(int ch, double xr); // for bayesian 
-			double EvaluateGL(vector< vector<double> > vvnorms, vector<double> vparams, double xr); // for bayesian 
+			double EvaluateGL(vector< vector<double> > vvnorms, vector<double> vparams, double xr, VChannelVSample& vvs, VChannelVSample&vvb); // for bayesian 
 			void AddObservedDataSet(int index_channel, RooDataSet* rds);
 			void AddObservedDataSet(string channelname, RooDataSet* rds);
 			void SetDataForUnbinned(vector< RooDataSet*> data, bool bRealData=true);
