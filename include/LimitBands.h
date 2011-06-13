@@ -30,6 +30,12 @@ namespace lands{
 			vector<double> GetDifferentialLimitsBys(){return _difrbys;};
 			void IsM2lnQGridPreComputed(bool b, TString s){bM2lnQGridPreComputed=b; sFileM2lnQGrid=s;};
 			void SetPlotLevel(int i){_plotLevel = i;};
+
+			void Set_bOnlyEvalCL_forVR(bool b){bOnlyEvalCL_forVR=b;};
+			void Set_vR_toEval(vector<double> v){_vR_toEval = v;};
+			vector< vector<double> > Get_vvCL_forVR(){return _vvCL_forVR;};
+			vector<double>  Get_vR_toEval(){return _vR_toEval;};
+
 		private:
 			void Bands();
 			bool _doCLs, _doBys;
@@ -52,6 +58,10 @@ namespace lands{
 			TString sFileM2lnQGrid;
 
 			int _plotLevel;
+
+			vector<double> _vR_toEval;
+			bool bOnlyEvalCL_forVR;
+			vector< vector<double> > _vvCL_forVR;
 			
 	};
 };

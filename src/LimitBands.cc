@@ -178,6 +178,18 @@ namespace lands{
 			int nentries_for_thisR=(int)(vEntries.at(iEntries_v[n]));
 			//int nentries_for_thisR=(int)(vEntries.at(iEntries_v[n]));
 			if(_doCLs) { 
+				if(bOnlyEvalCL_forVR){
+					vector<double> v;
+					for (int ii=0; ii<_vR_toEval.size(); ii++){
+						double rVal = _vR_toEval[ii];
+						_cms->SetSignalScaleFactor(rVal);
+						if(_frequentist->GetTestStatistics()==1)_frequentist->prepareLogNoverB();
+						_frequentist->BuildM2lnQ_data();
+						v.push_back( _frequentist->Get_m2lnQ_data() );
+					}
+					_vvCL_forVR.push_back(v);
+					continue;
+				}
 				//--------------calc r95% with (s,b,n) by throwing pseudo experiments and using the fits to get r95% at CLs=5
 				if(!bM2lnQGridPreComputed)r=_clslimit->LimitOnSignalScaleFactor(_cms, _frequentist, _ntoysM2lnQ);
 				else {
@@ -263,6 +275,7 @@ namespace lands{
 			}
 			fflush(stdout);
 		}
+		if(bOnlyEvalCL_forVR) return;
 		// correct weight of each r for bys 
 		if(_doBys) {
 			if(_actualOutComesForBys<=0) {cout<<"ERROR: LimitBands bys _actualOutComesForBys="<<_actualOutComesForBys<<endl; exit(0);};

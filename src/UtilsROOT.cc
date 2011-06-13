@@ -1935,6 +1935,11 @@ bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vecto
 			cms->SetProcessNames(channelnames[c], tmpprocn);
 			cms->AddObservedData(channelnames[c], observeddata[c]);
 		}else{
+			if(TString(channelnames[c].substr(0,1)).IsAlpha()==false) {
+				cout<<endl<<"ERROR: channel name ["<<channelnames[c]<<"] has a problem: "<<endl;
+				cout<<"Parametric shape channel name should begin with alphabetai, exit"<<endl;
+				exit(1);
+			}
 			vector<RooAbsPdf*> vspdf, vbpdf; vspdf.clear(); vbpdf.clear();
 			for(int i=0; i<sigbkgs.size(); i++){
 				RooAbsPdf * pdf = (RooAbsPdf*)GetPdf(channelnames[c], tmpprocn[i], parametricShapeLines);

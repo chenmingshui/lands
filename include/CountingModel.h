@@ -112,7 +112,7 @@ namespace lands{
 			void SetUseSystematicErrors(bool b){b_systematics=b;ConfigUncertaintyPdfs();};
 			bool IsUsingSystematicsErrors(){return b_systematics;};
 
-			void SetSignalScaleFactor(double r, bool bScaleBestEstimate=true);
+			void SetSignalScaleFactor(double r, int bScaleBestEstimate=1);
 			double GetSignalScaleFactor(){return _common_signal_strength; };
 			void SetRdm(CRandom *rdm){_rdm=rdm;};
 			CRandom * GetRdm(){return _rdm;};

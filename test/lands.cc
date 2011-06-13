@@ -89,6 +89,9 @@ TString sFileLimitsDistribution = "";
 
 vector<TString> librariesToBeLoaded;
 
+bool bOnlyEvalCL_forVR = false;
+vector<double> vR_toEval;
+
 int main(int argc, const char*argv[]){
 	TStopwatch watch;  
 	watch.Start();
@@ -426,6 +429,26 @@ int main(int argc, const char*argv[]){
 				lb.SetPlotLevel(bPlots);
 				lb.IsM2lnQGridPreComputed(bM2lnQGridPreComputed, sFileM2lnQGrid);
 				int noutcomes = toys;
+				if(bOnlyEvalCL_forVR){
+					lb.Set_bOnlyEvalCL_forVR(true);	
+					lb.Set_vR_toEval(vR_toEval);
+					lb.CLsLimitBands(1-CL, noutcomes, toysHybrid);
+					vector< vector<double> > vvCL_forVR = lb.Get_vvCL_forVR();
+					cout<<endl<<"VR: ";
+					for(int jj=0; jj<vR_toEval.size(); jj++){
+						printf(" %8.5f ",vR_toEval[jj]);
+					}
+					cout<<endl;
+					for(int ii=0; ii<vvCL_forVR.size(); ii++){
+						cout<<"CL: ";
+						for(int jj=0; jj<vvCL_forVR[ii].size(); jj++){
+							printf(" %8.5f ",vvCL_forVR[ii][jj]);
+						}
+						cout<<endl;
+					}
+					watch.Print();
+					return 0;
+				}
 				lb.CLsLimitBands(1-CL, noutcomes, toysHybrid);
 				rmean=lb.GetCLsLimitMean();
 				difflimits = lb.GetDifferentialLimitsCLs();
@@ -1170,6 +1193,40 @@ void processParameters(int argc, const char* argv[]){
 		else bCalcObservedLimit = true;
 	}
 
+	if(isWordInMap("--bOnlyEvalCL_forVR", options)) bOnlyEvalCL_forVR = true;
+	tmpv = options["-vR"];
+	if( tmpv.size()==0 && bOnlyEvalCL_forVR) { cout<<"ERROR: args of -vR empty while bOnlyEvalCL_forVR=true"<<endl; exit(1); }
+	else{
+		for(int i=0; i<tmpv.size(); i++){
+			if(tmpv[i].IsFloat()) vR_toEval.push_back(tmpv[i].Atof());
+			else if(tmpv[i].BeginsWith("[") and tmpv[i].EndsWith("]")){
+				tmpv[i].ReplaceAll("[","");tmpv[i].ReplaceAll("]","");	
+				vector<string> vstr;
+				StringSplit(vstr, tmpv[i].Data(), ",");
+				if(vstr.size()==3 and (TString(vstr[2]).IsFloat() or TString(vstr[2]).BeginsWith("x")) ){
+					double r0 = TString(vstr[0]).Atof(), r1=TString(vstr[1]).Atof();	
+					if(r0>r1 or r0<=0) continue;
+					if(TString(vstr[2]).BeginsWith("x")) {
+						double step = TString(vstr[2]).ReplaceAll("x", "").Atof();
+						if(step<=1) continue;
+						for(double r=r0; r<=r1; r*=step) vR_toEval.push_back(r);
+					}else{
+						double step = TString(vstr[2]).Atof();
+						if(step<=0) continue;
+						for(double r=r0; r<=r1; r+=step) vR_toEval.push_back(r);
+					};
+				}else{
+					cout<<"ERROR: wrong format of -vR, should be sth like [1.2,2.0,x1.05] or [1.2,2.0,0.05]"<<endl; exit(1);
+				};
+			}else {cout<<"ERROR: wrong format of args of -vR:  \""<<tmpv[i]<<"\""<<endl; exit(1);}
+		}
+		std::sort(vR_toEval.begin(), vR_toEval.end());
+		vector<double>::iterator it;
+		it = std::unique(vR_toEval.begin(), vR_toEval.end());
+		vR_toEval.resize(it - vR_toEval.begin());
+	}
+
+
 	printf("\n\n[ Summary of configuration in this job: ]\n");
 	cout<<"  Calculating "<<(calcsignificance?"significance":"limit")<<" with "<<method<<" method "<<endl;
 	if(!bCalcObservedLimit) cout<<" not calc observed one"<<endl;
@@ -1184,6 +1241,13 @@ void processParameters(int argc, const char* argv[]){
 			cout<<"  tossPseudoDataConvention = "<<tossPseudoDataConvention<<endl;
 		}
 	}
+
+	if(bOnlyEvalCL_forVR){
+		cout<<" bOnlyEvalCL_forVR: ";
+		for(int i=0; i<vR_toEval.size(); i++) cout<< vR_toEval[i] << " ";
+		cout<<endl;
+	}
+
 	if(method=="Bayesian") { 
 		cout<<"  prior = ";
 		if(prior==flat) cout<<"flat"<<endl;
@@ -1252,6 +1316,8 @@ void PrintHelpMessage(){
 	printf("-D [ --dataset ] arg (=data_obs)      Dataset for observed limit,  data_obs,  asimov_b, asimov_sb \n"); 
 	printf("-M [ --method ] arg                   Method to extract upper limit. Supported methods are: Bayesian, FeldmanCousins, Hybrid, ProfiledLikelihood \n"); 
 	printf("--doExpectation arg (=0)              i.e calc expected bands and mean/median values     \n"); 
+	printf("--bOnlyEvalCL_forVR                   only evaluate CL for each pseudo data, should with -vR option \n");
+	printf("-vR args                              sth like \"1.2 1.3 1.4 [1.5,3.0,x1.05] [3.0,10.0,0.5]\" \n");
 	printf("--readLimitsFromFile arg (fileName)   i.e read expectations from merged files \n");
 	printf("--bCalcObservedLimit arg (=1)         i.e calc observed limit values     \n"); 
 	printf("-t [ --toys ] arg (=1000)             Number of Toy MC extractions for expectation \n"); 

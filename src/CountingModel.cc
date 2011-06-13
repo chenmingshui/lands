@@ -1311,7 +1311,7 @@ If we need to change it later, it will be easy to do.
 		// need more check
 		return true;
 	}
-	void CountingModel::SetSignalScaleFactor(double r, bool bScaleBestEstimate){
+	void CountingModel::SetSignalScaleFactor(double r, int bScaleBestEstimate){
 		if(_debug>=10) cout<<"\n  *** SetSignalScaleFactor r= "<<r<<endl;
 		if(!b_AllowNegativeSignalStrength && r<=0 ){
 			cout<<"Error: signal strength r <=0"<<endl;
@@ -1320,7 +1320,7 @@ If we need to change it later, it will be easy to do.
 		}
 		_common_signal_strength=r;
 
-		if(bScaleBestEstimate==true){
+		if(bScaleBestEstimate>=1){
 			vv_exp_sigbkgs_scaled = vv_exp_sigbkgs;
 			for(int ch=0; ch<vv_exp_sigbkgs_scaled.size(); ch++){
 				for(int isam=0; isam<v_sigproc[ch]; isam++){
@@ -1337,7 +1337,7 @@ If we need to change it later, it will be easy to do.
 					}
 				}
 			}
-		}else{
+		}else if(bScaleBestEstimate==0){
 			if(vv_exp_sigbkgs.size()>0 && vv_randomized_sigbkgs.size()<=0) {cout<<" vv_randomized_sigbkgs not yet set, please check code where invokes SetSignalScaleFactor"<<endl; exit(0);};
 			vv_randomized_sigbkgs_scaled = vv_randomized_sigbkgs;
 			for(int ch=0; ch<vv_randomized_sigbkgs_scaled.size(); ch++){
@@ -1356,6 +1356,9 @@ If we need to change it later, it will be easy to do.
 					}
 				}
 			}
+		}else{
+			cout<<"ERROR: UseBestEstimateToCalcQ only support 0, 1 and 2 "<<endl;
+			exit(1);
 		}
 
 		//if(bHasParametricShape)SetTmpDataForUnbinned(v_pdfs_roodataset);// reset to data , need refit for mu=r  //FIXME  need move to somewhere else needed
@@ -1961,7 +1964,7 @@ If we need to change it later, it will be easy to do.
 				else stot+=vv_pdfs_norm_varied[ch][i];
 			}
 			RooArgSet vars(*(_w_varied->var(v_pdfs_observables[ch])));
-			
+
 			for(int i=0; i<ntot; i++){
 				_w_varied->var(v_pdfs_observables[ch])->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset_tmp[ch]->get(i)->first()))->getVal());
 				if(_debug>=100){
@@ -1977,7 +1980,7 @@ If we need to change it later, it will be easy to do.
 					}
 				}
 				if(stot>=0){
-				tmp = (stot+btot)*_w_varied->pdf(v_pdfs_sb[ch])->getVal(&vars);// give some error message ... when r<0
+					tmp = (stot+btot)*_w_varied->pdf(v_pdfs_sb[ch])->getVal(&vars);// give some error message ... when r<0
 				}else {
 					tmp = 0;  ///////////////
 					if(stot!=0) tmp += stot*_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars);  //give some warning message when r=0
@@ -1987,7 +1990,7 @@ If we need to change it later, it will be easy to do.
 				if(_debug>=100)cout<<" log(event) = "<<log(tmp)<<endl;
 				retch -= (tmp>0?log(tmp):0);
 			}
-			
+
 
 			retch+=stot;
 			retch+=btot;
@@ -2053,13 +2056,13 @@ If we need to change it later, it will be easy to do.
 	}
 	void CountingModel::SetDataForUnbinned(vector< RooDataSet* > data, bool bRealData){
 		/*
-		for(int ch=0; ch<vv_pdfs.size(); ch++){
-			if(v_pdfs_roodataset[ch])delete v_pdfs_roodataset[ch];
-			if(bRealData){
-				if(v_pdfs_roodataset_real[ch])delete v_pdfs_roodataset[ch];
-			}
-		}
-		*/
+		   for(int ch=0; ch<vv_pdfs.size(); ch++){
+		   if(v_pdfs_roodataset[ch])delete v_pdfs_roodataset[ch];
+		   if(bRealData){
+		   if(v_pdfs_roodataset_real[ch])delete v_pdfs_roodataset[ch];
+		   }
+		   }
+		   */
 		v_pdfs_roodataset.clear();
 		v_pdfs_roodataset_tmp.clear();
 		if(bRealData){

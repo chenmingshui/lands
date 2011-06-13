@@ -57,14 +57,18 @@ namespace lands{
 
 		VChannelVSample vv_sigbks; 
 		// FIXME 
-		if ( cms_global -> UseBestEstimateToCalcQ () ) {
+		if ( cms_global -> UseBestEstimateToCalcQ () ==1 ) {
 			vv_sigbks= cms_global -> Get_vv_exp_sigbkgs(); 
 			//cout<<" c1 "<< vv_sigbks[0][0] <<" "<<vv_sigbks[0][1]<<endl;
 			//cout<<" c2 "<< vv_sigbks[1][0] <<" "<<vv_sigbks[1][1]<<endl;
-		}else{
+		}else if(cms_global->UseBestEstimateToCalcQ()==0){
 			vv_sigbks= cms_global -> Get_vv_randomized_sigbkgs(); 
 			//cout<<" c1 "<< vv_sigbks[0][0] <<" "<<vv_sigbks[0][1]<<endl;
 			//cout<<" c2 "<< vv_sigbks[1][0] <<" "<<vv_sigbks[1][1]<<endl;
+		}else if(cms_global->UseBestEstimateToCalcQ()==2){
+			vv_sigbks= cms_global -> Get_vv_exp_sigbkgs(); 
+		}else{
+			cout<<"ERROR: UseBestEstimateToCalcQ only supports 0, 1, 2 "<<endl; exit(1);
 		}
 
 
