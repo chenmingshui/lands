@@ -1979,13 +1979,14 @@ If we need to change it later, it will be easy to do.
 						//cout<<" log(event) ="<<(tmp>0?log(tmp):0)<<endl;
 					}
 				}
-				if(stot>=0){
-					tmp = (stot+btot)*_w_varied->pdf(v_pdfs_sb[ch])->getVal(&vars);// give some error message ... when r<0
-				}else {
+
+				//     When it has two signal processes in one channel, like ggH and vbfH in 2l2j data-card
+				//     (stot+btot)*pdf_sb != stot*pdf_s + btot*pdf_b
+				//	tmp = (stot+btot)*_w_varied->pdf(v_pdfs_sb[ch])->getVal(&vars);// give some error message ... when r<0
+
 					tmp = 0;  ///////////////
 					if(stot!=0) tmp += stot*_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars);  //give some warning message when r=0
 					tmp += btot*_w_varied->pdf(v_pdfs_b[ch])->getVal(&vars);
-				}
 
 				if(_debug>=100)cout<<" log(event) = "<<log(tmp)<<endl;
 				retch -= (tmp>0?log(tmp):0);
