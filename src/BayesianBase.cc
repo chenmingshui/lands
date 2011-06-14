@@ -301,10 +301,12 @@ namespace lands{
 			_logscale-=lgamma(_d[ch]+1);
 		}
 		if(_debug>=100)cout<<"DELETEME 4"<<endl;
+		if(_debug>=100)cout<<"v_pdfs_roodataset.size = "<<_cms->Get_v_pdfs_roodataset().size()<<endl;
 		for(int ch=0; ch<_cms->Get_vv_pdfs().size(); ch++){
-			if(_debug>=100)cout<<"v_pdfs_roodataset.size = "<<_cms->Get_v_pdfs_roodataset().size()<<endl;
-			if(_cms->Get_v_pdfs_roodataset()[0]) _cms->Get_v_pdfs_roodataset()[0]->Print();
-			else cout<<" 0th: not exist "<<endl;
+			if(_debug)if(_cms->Get_v_pdfs_roodataset()[ch]) {
+				cout<<_cms->Get_v_pdfs_channelname()[ch]<<": "<<_cms->Get_v_pdfs_roodataset()[ch]->GetName()<<endl;
+				_cms->Get_v_pdfs_roodataset()[ch]->Print(_debug>=100?"V":"");
+			}
 			dtot+=(_cms->Get_v_pdfs_roodataset()[ch])->sumEntries();
 			if(_debug>=100)cout<<"DELETEME 42"<<endl;
 		}
@@ -501,14 +503,17 @@ namespace lands{
 			if(_prior == prior_1overSqrtS)t -= 0.5*log(_xgl[k] + rlow * _stot[iexps] );
 			
 			double tmp =  _lwgl[k]+t; 
-			if(tmp>ret) ret = tmp;
+			
+			if(_debug>=100) cout<<" k="<<k<<": _lwgl="<<_lwgl[k]<<" tmp="<<tmp<<endl;
 
-			tmp -= 500*(int)(tmp/500);
+			if(fabs(tmp)>fabs(ret)) ret = tmp;
+
+			tmp -= 300*(int)(tmp/300);
 			sum += v = exp( tmp );
 			if(v<DBL_EPSILON*sum) break;
 		}
 		
-		ret = 500*(int)(ret/500);
+		ret = 300*(int)(ret/300);
 		return int(ret);
 	}
 };
