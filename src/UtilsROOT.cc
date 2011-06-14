@@ -1953,6 +1953,11 @@ bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vecto
 				else vbnorm.push_back(sigbkgs[i]);
 			}
 			RooDataSet *data = (RooDataSet*)GetRooDataSet(channelnames[c], "data_obs", parametricShapeLines);
+			if(data->sumEntries()!=observeddata[c] && observeddata[c]>=0) {
+				cout<<"ERROR: In Channel: "<<channelnames[c]<<endl;
+				cout<<"Observed data in card: "<<observeddata[c]<<" != "<<" RooDataSet.sumEntries"<<endl;
+				exit(1);
+			}
 			RooRealVar* x = dynamic_cast<RooRealVar*> (data->get()->first());
 			//x->SetName(TString(channelnames[c])+x->GetName());
 			RooWorkspace *w;
