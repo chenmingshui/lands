@@ -360,9 +360,11 @@ int main(int argc, const char*argv[]){
 				vector<double> qsb = frequentist.Get_m2logQ_sb();
 				vector<double> qb = frequentist.Get_m2logQ_b();
 				int n10 = int(qsb.size()/10); if(n10<=0) n10=1;
+				if(debug>=100) n10=1;
 				cout<<"-2lnQ for SB"<<endl;
 				for(int i=0; i<qsb.size(); i+=n10) cout<<qsb[i]<<endl;
 				n10 = int(qb.size()/10); if(n10<=0) n10=1;
+				if(debug>=100) n10=1;
 				cout<<"-2lnQ for B"<<endl;
 				for(int i=0; i<qb.size(); i+=n10) cout<<qb[i]<<endl;
 			}
@@ -617,6 +619,8 @@ int main(int argc, const char*argv[]){
 			double tmperr;
 			double *pars = new double[cms->Get_max_uncorrelation()+1]; // nsys + r
 
+			_inputNuisances = cms->Get_norminalPars();
+
 			double ErrorDef = TMath::ChisquareQuantile(CL , 1);// (confidenceLevel, ndf)
 			if(PLalgorithm == "Minos"){
 				double upperL=0, lowerL=0; 
@@ -807,7 +811,8 @@ int main(int argc, const char*argv[]){
 		double rmean, rm1s, rm2s, rp1s, rp2s;	
 		vector<double> difflimits; 
 		if(method == "ProfiledLikelihood"){
-
+			
+			_inputNuisances = cms->Get_norminalPars();
 			cms_global= cms;
 			vdata_global=cms->Get_v_data();
 
@@ -1158,6 +1163,13 @@ void processParameters(int argc, const char* argv[]){
 		UseBestEstimateToCalcQ = tmpv[0].Atoi();
 	}
 
+	if(isWordInMap("--freq", options)){
+		tossToyConvention = 1;
+		tossPseudoDataConvention = 1;
+		UseBestEstimateToCalcQ = 0;
+		testStat = 5; // LHC
+	}
+
 	if(isWordInMap("--bReadPars", options)) bReadPars = true;
 	if(isWordInMap("--bWritePars", options)) bWritePars = true;
 	if(isWordInMap("--bNotCalcQdata", options)) bNotCalcQdata = true;
@@ -1351,6 +1363,8 @@ void PrintHelpMessage(){
 	printf("--scanRs arg (=numSteps)              scanning CLs vs. r,  r from initialRmin to initialRmax with numSteps \n"); 
 	printf("--tossToyConvention arg (=0)          choose convention for tossing toys to build -2lnQ distribution. 0 (LEP, TEVATRON) or 1 (LHC)\n");
 	printf("--UseBestEstimateToCalcQ arg (=1)     0: randomized nuisances; 1: use best estimate of nuisances  --> to calc Q\n");
+	printf("--freq                                shorcut to the configuration of LHC-type frequestist method \n");
+	printf("                                      (i.e. --tossToyConvention 1 --UseBestEstimateToCalcQ 0  --tossPseudoDataConvention --testStat LHC) \n");
 
 	printf("--bReadPars (=0)\n");
 	printf("--bWritePars (=0)\n");

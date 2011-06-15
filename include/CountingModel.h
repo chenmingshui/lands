@@ -156,7 +156,7 @@ namespace lands{
 			double* Get_fittedParsInData_b(){return _fittedParsInData_bonly;};
 			void Set_fittedParsInData_sb(double *p){
 			       	_fittedParsInData_sb=p;
-				vv_fitted_sigbkgs_scaled = FluctuatedNumbers(p);
+				vv_fitted_sigbkgs_scaled = FluctuatedNumbers(p); // fit_sb and scaled
 				vv_pdfs_norm_fitted_scaled = vv_pdfs_norm_varied;
 			};
 			void Set_fittedParsInData_b(double *p){
@@ -232,6 +232,9 @@ namespace lands{
 			void AddUncertaintyAffectingShapeParam(string uname, string pname, double sigmaL, double sigmaR);
 
 			MapStrVV Get_map_param_sources(){return map_param_sources;};
+
+			double * Get_norminalPars(){return _norminalPars;};
+			double * Get_randomizedPars(){return _randomizedPars;};
 		private:
 			VDChannel v_data; // could be pseudo-data for bands
 			VDChannel v_data_real; // real data, not changed during entire run 
@@ -271,6 +274,9 @@ namespace lands{
 			vector< vector< vector<int> > > vvv_shapeuncindex; //channel:process:shapeunc
 
 			bool bMoveUpShapeUncertainties;
+
+			double * _norminalPars; 
+			double * _randomizedPars; 
 
 			double * _fittedParsInData_bonly; // perform a fit on real data  with mu=0	
 			double * _fittedParsInData_sb;	  // perform a fit on real data  with mu being tested

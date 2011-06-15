@@ -121,6 +121,9 @@ namespace lands{
 		_UseBestEstimateToCalcQ = 1;
 
 		map_param_sources.clear();
+
+		_norminalPars = 0;
+		_randomizedPars= 0;
 	}
 	CountingModel::~CountingModel(){
 		v_data.clear();
@@ -211,6 +214,9 @@ namespace lands{
 
 		delete _w;
 		delete _w_varied;
+
+		if(_norminalPars) delete _norminalPars;
+		if(_randomizedPars) delete _randomizedPars;
 	}
 	void CountingModel::AddChannel(std::string channel_name, double num_expected_signal, double num_expected_bkg_1, double num_expected_bkg_2, 
 			double num_expected_bkg_3, double num_expected_bkg_4, double num_expected_bkg_5, double num_expected_bkg_6 ){
@@ -716,6 +722,31 @@ If we need to change it later, it will be easy to do.
 			if(v_pdftype[i+1]==-1) v_pdftype[i+1]=typeLogNormal; // some uncertainty source not affect normalization but shape 
 		}
 		MakeListOfShapeUncertainties();
+
+		_norminalPars = new double[max_uncorrelation+1];
+		_randomizedPars= new double[max_uncorrelation+1];
+		for(int i=1; i<=max_uncorrelation; i++){
+			switch (v_pdftype[i]){
+				case typeShapeGaussianLinearMorph:
+				case typeShapeGaussianQuadraticMorph:
+				case typeLogNormal:
+				case typeTruncatedGaussian :
+					_norminalPars[i]=0;
+					break;
+				case typeGamma:
+					_norminalPars[i]=v_GammaN[i];
+					break;
+				case typeBifurcatedGaussian:
+					_norminalPars[i]=v_pdfs_floatParamsUnc[i][0];
+					break;
+				default:
+					cout<<"pdftype not yet defined:  "<<v_pdftype[i]<<endl;
+					cout<<"**********"<<endl;
+					exit(0);
+			}
+		}
+
+
 	}	
 	void CountingModel::MakeListOfShapeUncertainties(){
 		vvv_shapeuncindex.clear();
@@ -764,38 +795,31 @@ If we need to change it later, it will be easy to do.
 				vrdm.push_back(-999);
 				switch (v_pdftype[i]){
 					case typeLogNormal:
-						vrdm.back()=_rdm->Gaus();
-						break;
 					case typeShapeGaussianLinearMorph:
 					case typeShapeGaussianQuadraticMorph:
-						/*	
-							tmp = -5;
-							while(fabs(tmp)>4){
-							tmp=_rdm->Gaus();
-							}
-							vrdm.back()=tmp;
-							break;
-							*/	
-						vrdm.back()=_rdm->Gaus();
+						// for LHC-type frequentist method 
+						vrdm.back()=_rdm->Gaus(bUseBestEstimateToCalcQ!=2?0:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]));
 						break;
 
 					case typeTruncatedGaussian:
 						//      another way is to throw normal gaus random number and regenerate if x<-1, it's more transparent
 						tmp = -2;
 						while(tmp<-1){
-							tmp=_rdm->Gaus(0, v_TruncatedGaussian_maxUnc[i]);
+							// FIXME  need to be care about range of nuisances, since we change the central values
+							vrdm.back()=_rdm->Gaus(bUseBestEstimateToCalcQ!=2?0:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]), v_TruncatedGaussian_maxUnc[i]);
 						}
 						vrdm.back()=tmp;
 						break;
 
 					case typeGamma:
-						//if(_debug)cout<<" i = "<<i<<"  v_GammaN[i]="<<v_GammaN[i]<<endl;
-						vrdm.back()=_rdm->Gamma(v_GammaN[i]);
-						//if(_debug) cout<<"done for random gamma"<<endl;
+						//vrdm.back()=_rdm->Gamma(v_GammaN[i]);
+						vrdm.back()=_rdm->Gaus(bUseBestEstimateToCalcQ!=2?v_GammaN[i]:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]));
 						break;
 					case typeBifurcatedGaussian:
 						{
+							// FIXME need to think about this .. .
 							if(_debug>=100) cout<<" generating new value for parameter "<<v_uncname[i-1]<<endl;
+							_w_varied->var(TString::Format("%s_mean",v_uncname[i-1].c_str()))->setVal(bUseBestEstimateToCalcQ!=2?v_pdfs_floatParamsUnc[i][0]:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]));
 							RooDataSet *tmpRDS =  _w_varied->pdf(TString::Format("%s_bfg",v_uncname[i-1].c_str()))
 								->generate(RooArgSet(*_w_varied->var(TString::Format("%s_x", v_uncname[i-1].c_str()))), 1);
 							vrdm.back()= dynamic_cast<RooRealVar*> ( tmpRDS->get(0)->first() )->getVal();
@@ -1061,6 +1085,8 @@ If we need to change it later, it will be easy to do.
 			}
 		}
 
+		if(bUseBestEstimateToCalcQ==2)for(int i=1; i<=max_uncorrelation; i++) _randomizedPars[i] = vrdm[i]; // only for LHC-type test statistics evaluation
+
 		return vv;
 	}	
 	VIChannel CountingModel::GetToyData_H0(double *pars){
@@ -1320,45 +1346,21 @@ If we need to change it later, it will be easy to do.
 		}
 		_common_signal_strength=r;
 
-		if(bScaleBestEstimate>=1){
-			vv_exp_sigbkgs_scaled = vv_exp_sigbkgs;
-			for(int ch=0; ch<vv_exp_sigbkgs_scaled.size(); ch++){
-				for(int isam=0; isam<v_sigproc[ch]; isam++){
-					vv_exp_sigbkgs_scaled[ch][isam]*=_common_signal_strength;
+		vv_exp_sigbkgs_scaled = vv_exp_sigbkgs;
+		for(int ch=0; ch<vv_exp_sigbkgs_scaled.size(); ch++){
+			for(int isam=0; isam<v_sigproc[ch]; isam++){
+				vv_exp_sigbkgs_scaled[ch][isam]*=_common_signal_strength;
+			}
+		}
+		if(bHasParametricShape){
+			vv_pdfs_norm_scaled = vv_pdfs_norm;
+			for(int ch=0; ch<vv_pdfs_norm_scaled.size(); ch++){
+				for(int isam=0; isam<v_pdfs_sigproc[ch]; isam++){
+					vv_pdfs_norm_scaled[ch][isam]*=_common_signal_strength;
+					_w->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_scaled[ch][isam]);
+					_w_varied->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_scaled[ch][isam]);
 				}
 			}
-			if(bHasParametricShape){
-				vv_pdfs_norm_scaled = vv_pdfs_norm;
-				for(int ch=0; ch<vv_pdfs_norm_scaled.size(); ch++){
-					for(int isam=0; isam<v_pdfs_sigproc[ch]; isam++){
-						vv_pdfs_norm_scaled[ch][isam]*=_common_signal_strength;
-						_w->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_scaled[ch][isam]);
-						_w_varied->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_scaled[ch][isam]);
-					}
-				}
-			}
-		}else if(bScaleBestEstimate==0){
-			if(vv_exp_sigbkgs.size()>0 && vv_randomized_sigbkgs.size()<=0) {cout<<" vv_randomized_sigbkgs not yet set, please check code where invokes SetSignalScaleFactor"<<endl; exit(0);};
-			vv_randomized_sigbkgs_scaled = vv_randomized_sigbkgs;
-			for(int ch=0; ch<vv_randomized_sigbkgs_scaled.size(); ch++){
-				for(int isam=0; isam<v_sigproc[ch]; isam++){
-					vv_randomized_sigbkgs_scaled[ch][isam]*=_common_signal_strength;
-				}
-			}
-			if(bHasParametricShape){
-				if(vv_pdfs_norm_randomized.size()<=0) {cout<<" vv_pdfs_norm_randomized not yet set, please check code where invokes SetSignalScaleFactor"<<endl; exit(0);};
-				vv_pdfs_norm_randomized_scaled = vv_pdfs_norm_randomized;
-				for(int ch=0; ch<vv_pdfs_norm_randomized_scaled.size(); ch++){
-					for(int isam=0; isam<v_pdfs_sigproc[ch]; isam++){
-						vv_pdfs_norm_randomized_scaled[ch][isam]*=_common_signal_strength;
-						_w->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_randomized_scaled[ch][isam]);
-						_w_varied->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_randomized_scaled[ch][isam]);
-					}
-				}
-			}
-		}else{
-			cout<<"ERROR: UseBestEstimateToCalcQ only support 0, 1 and 2 "<<endl;
-			exit(1);
 		}
 
 		//if(bHasParametricShape)SetTmpDataForUnbinned(v_pdfs_roodataset);// reset to data , need refit for mu=r  //FIXME  need move to somewhere else needed

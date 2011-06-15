@@ -38,6 +38,8 @@ namespace lands{
 	vector<double> vdata_global;
 	TMinuit *myMinuit = 0;
 	TF1 * fitToRvsCL_expo = new TF1("fitToRvsCL_expo","[0]*exp([1]*(x-[2]))", 0, 0);
+	double _signalScale=0;
+	double * _inputNuisances = 0;	
 	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag){
 		// par[0] for the ratio of cross section, common signal strength ....
 		if(!cms_global)  {
@@ -49,28 +51,11 @@ namespace lands{
 		VChannelVSampleVUncertainty vvv_idcorrl = (cms_global->Get_vvv_idcorrl());
 		VChannelVSampleVUncertainty vvv_pdftype = (cms_global->Get_vvv_pdftype());
 		VChannelVSampleVUncertaintyVParameter vvvv_uncpar = cms_global->Get_vvvv_uncpar();
-		//VChannelVSample vv_sigbks = cms_global -> Get_vv_exp_sigbkgs(); // FIXME scaled or unscaled ?
 
-		// need unscaled signal yields here....   
-		// before it used scaled yields, and it was ok for PLR approximation methods, because they don't advoke SetSignalScaleFactor. 
-		cms_global->SetSignalScaleFactor(par[0], cms_global->UseBestEstimateToCalcQ());
+		cms_global->SetSignalScaleFactor(par[0]); // scale the norminal set of signal normalizations 
 
 		VChannelVSample vv_sigbks; 
-		// FIXME 
-		if ( cms_global -> UseBestEstimateToCalcQ () ==1 ) {
-			vv_sigbks= cms_global -> Get_vv_exp_sigbkgs(); 
-			//cout<<" c1 "<< vv_sigbks[0][0] <<" "<<vv_sigbks[0][1]<<endl;
-			//cout<<" c2 "<< vv_sigbks[1][0] <<" "<<vv_sigbks[1][1]<<endl;
-		}else if(cms_global->UseBestEstimateToCalcQ()==0){
-			vv_sigbks= cms_global -> Get_vv_randomized_sigbkgs(); 
-			//cout<<" c1 "<< vv_sigbks[0][0] <<" "<<vv_sigbks[0][1]<<endl;
-			//cout<<" c2 "<< vv_sigbks[1][0] <<" "<<vv_sigbks[1][1]<<endl;
-		}else if(cms_global->UseBestEstimateToCalcQ()==2){
-			vv_sigbks= cms_global -> Get_vv_exp_sigbkgs(); 
-		}else{
-			cout<<"ERROR: UseBestEstimateToCalcQ only supports 0, 1, 2 "<<endl; exit(1);
-		}
-
+		vv_sigbks= cms_global -> Get_vv_exp_sigbkgs(); 
 
 
 		vector<int> v_pdftype = cms_global->Get_v_pdftype();
@@ -215,9 +200,7 @@ namespace lands{
 			//		else chisq += (tc - vdata_global[c]*log(tc));   // to be identical with ATLAS TDR description, for limit only
 		}
 		if(cms_global->hasParametricShape()){
-			//for(int ch=0; ch<cms_global->Get_vv_pdfs().size(); ch++)
-			//	chisq+=	cms_global->EvaluateChi2(ch);		
-			chisq+=	cms_global->EvaluateChi2(par, cms_global->UseBestEstimateToCalcQ());		
+			chisq+=	cms_global->EvaluateChi2(par);// use default, norminal sigbkgs for evaluation, not randomized one 		
 		}
 		// to be identical with ATLAS TDR description, for limit only
 		//http://cdsweb.cern.ch/record/1159618/files/Higgs%20Boson%20%28p1197%29.pdf
@@ -233,18 +216,20 @@ namespace lands{
 					case typeShapeGaussianQuadraticMorph:
 					case typeShapeGaussianLinearMorph:
 					case typeLogNormal:
-						chisq += pow(par[u],2);  
+						chisq += pow(par[u]-_inputNuisances[u],2); // make sure if doing lep/tev type and also data fit, then _inputNuisances = norminal set 
 						break;
 					case typeGamma:
 						// this is important, one need constraint on the pdf 
 						//see wiki,  gamma distribution with theta = 1 :  x^(k-1)*exp(-x)/ (k-1)!
-						k = v_GammaN[u];
+						//k = v_GammaN[u];
+						k = _inputNuisances[u];
 						tmp = (k-1)*log(par[u]) - par[u];
 						chisq-=tmp*2; // we are evaluating chisq = -2 * ( ln(Q_H1) - ln(Q_H0) )
 						break;
 					case typeBifurcatedGaussian:
 						{
-							Double_t arg = par[u] - v_paramsUnc[u][0]; // x-mean
+							//Double_t arg = par[u] - v_paramsUnc[u][0]; // x-mean
+							Double_t arg = par[u] - _inputNuisances[u]; // x-mean
 
 							Double_t coef(0.0);
 
@@ -280,7 +265,7 @@ namespace lands{
 
 
 
-		double signalScale = cms_global->GetSignalScaleFactor();
+		_signalScale = cms_global->GetSignalScaleFactor();
 
 		int UseMinos = 0;
 		if(model == 102) UseMinos = 2; // PL approximation method using Minos ....  with migrad 
@@ -295,7 +280,7 @@ namespace lands{
 			int tmp;
 			double l;
 			Chisquare(tmp, 0, l, pars, 0);
-			cms_global->SetSignalScaleFactor(signalScale);
+			cms_global->SetSignalScaleFactor(_signalScale);
 			return l;
 		}
 		if( (cms_global->IsUsingSystematicsErrors() && npars>0 )  || model ==2 or model==101 or model==102 ){
@@ -339,20 +324,20 @@ namespace lands{
 					case typeShapeGaussianLinearMorph:
 					case typeShapeGaussianQuadraticMorph:
 					case typeLogNormal:
-						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:0., minuitStep, -20, 20,ierflg); // was 5,  causing problem with significance larger than > 7 
+						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, -20, 20,ierflg); // was 5,  causing problem with significance larger than > 7 
 						break;
 					case typeTruncatedGaussian :
 						maxunc = v_TG_maxUnc[i];	
 						if(maxunc>0.2) maxunc = -1./maxunc;
 						else maxunc = -5;   // FIXME is hear also need to be extended to -20  ?
-						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:0., minuitStep, maxunc, 20,ierflg); // was 5
+						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, maxunc, 20,ierflg); // was 5
 						break;
 					case typeGamma:
 						//myMinuit->mnparm(i, sname, v_GammaN[i], 0.5, 0, 100000, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
-						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:v_GammaN[i], minuitStep, 0, (v_GammaN[i]+1)*5, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
+						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, 0, (v_GammaN[i]+1)*5, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
 						break;
 					case typeBifurcatedGaussian:
-						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:v_paramsUnc[i][0], minuitStep, v_paramsUnc[i][3], v_paramsUnc[i][4], ierflg  );
+						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, v_paramsUnc[i][3], v_paramsUnc[i][4], ierflg  );
 						break;
 					default:
 						cout<<"pdftype not yet defined:  "<<v_pdftype[i]<<", npars="<<npars<<", i="<<i<<endl;
@@ -402,7 +387,7 @@ namespace lands{
 
 				Chisquare(tmp, 0, l, par, 0);
 				delete []  par;
-				cms_global->SetSignalScaleFactor(signalScale);
+				cms_global->SetSignalScaleFactor(_signalScale);
 				return l;
 
 			}else {
@@ -465,7 +450,7 @@ namespace lands{
 				}
 			}
 
-			cms_global->SetSignalScaleFactor(signalScale);
+			cms_global->SetSignalScaleFactor(_signalScale);
 			return l;
 		}else{
 			double par[1];
@@ -476,10 +461,10 @@ namespace lands{
 			else if (model == 3) par[0]=mu;
 			else {cout<<"model is 2, but going to fix "<<endl; exit(0);}
 			Chisquare(tmp, 0, l, par, 0);
-			cms_global->SetSignalScaleFactor(signalScale);
+			cms_global->SetSignalScaleFactor(_signalScale);
 			return l;
 		}
-		cms_global->SetSignalScaleFactor(signalScale);
+		cms_global->SetSignalScaleFactor(_signalScale);
 		return 0.0;
 	}	
 
@@ -526,517 +511,11 @@ namespace lands{
 	bool CLsBase::BuildM2lnQ(int nexps, int sbANDb_bOnly_sbOnly, bool reUsePreviousToys){  // 0 for sbANDb, 1 for bOnly, 2 for sbOnly
 		if(test_statistics==1)prepareLogNoverB();
 		BuildM2lnQ_data();
-		BuildM2lnQ_b(nexps);
-		BuildM2lnQ_sb(nexps);
+		if(sbANDb_bOnly_sbOnly!=2)BuildM2lnQ_b(nexps);
+		if(sbANDb_bOnly_sbOnly!=1)BuildM2lnQ_sb(nexps);
 
 		printM2LnQInfo(sbANDb_bOnly_sbOnly);	
 		
-		return true;
-
-
-		// below are deprecated 
-
-		// effort for adaptive sampling
-		int oldNexps = _nexps;
-		vector<double> tmpQb, tmpQsb;
-		if(reUsePreviousToys){
-			// you have to make sure in the same model with same signal scale factor ...
-			if(!Q_sb || !Q_b) reUsePreviousToys = false;  // the previous toys are either not exist or deleted
-			if(nexps<=oldNexps) reUsePreviousToys = false; // if the new total nexps required is less than previous number ... 
-			if(reUsePreviousToys){
-				tmpQsb.clear(); tmpQb.clear();
-				for(int i=0; i<oldNexps; i++){
-					tmpQb.push_back(Q_b[i]);
-					tmpQsb.push_back(Q_sb[i]);
-				}
-			}
-		}
-
-
-		double tmp1, tmp2, minchi2tmp;
-		if(!_model) { 
-			cout<<"No model constructed....exit"<<endl;
-			exit(0);
-		}
-		if(! (_model->Check()) ){
-			cout<<"Model is not correctly constructed, exit"<<endl;
-			_model->Print();
-			exit(0);
-		}
-		_rdm=_model->GetRdm();
-
-		clock_t start_time=clock(), cur_time=clock();
-
-		if( _debug >= 100 )_model->Print();
-
-		//------if input is null, then do nothing	
-		_nexps = nexps;
-		_nchannels = _model->NumOfChannels();
-
-		_nsig=0; _nbkg=0; _ndat=0;
-		vector<double> vs, vb, vd; 
-		vs.clear(); vb.clear(); vd.clear();
-		for(int i=0; i<_nchannels; i++){
-			double totbkg = 0, totsig=0;
-			for(int isamp = 0; isamp<(_model->Get_vv_exp_sigbkgs())[i].size(); isamp++){
-				if(_debug>=100) cout<<"ch "<<i<<" isamp "<<isamp<<",  nsigproc= "<<_model->GetNSigprocInChannel(i)<<endl;
-				if(isamp<_model->GetNSigprocInChannel(i)) totsig+= (_model->Get_vv_exp_sigbkgs())[i][isamp];
-				else totbkg+=(_model->Get_vv_exp_sigbkgs())[i][isamp];
-			}
-			vs.push_back(totsig);
-			vb.push_back(totbkg);
-			vd.push_back((_model->Get_v_data())[i]);
-			_nsig += vs[i];
-			_nbkg += vb[i];
-			_ndat += vd[i];
-		}
-
-		if(Q_sb) delete [] Q_sb;
-		if(Q_b) delete [] Q_b;
-		if(iq_sb) delete [] iq_sb;
-		if(iq_b) delete [] iq_b;
-		Q_sb=new double[_nexps];
-		Q_b=new double[_nexps];
-		iq_sb = new int[_nexps];	
-		iq_b = new int[_nexps];	
-
-		Q_b_exp = 0; //_nbkg*log((_nsig+_nbkg)/_nbkg);
-		Q_b_data     = 0;
-
-		if(_model->GetTossToyConvention()==1){
-			if( _model->Get_fittedParsInData_b() == 0) {
-				double *pars1 =new double[_model->Get_max_uncorrelation()+1];// FIXME potential memory leak
-				_model->Set_vv_randomized_sigbkgs(_model->Get_vv_exp_sigbkgs_nonscaled());	
-				_model->Set_vv_pdfs_norm_randomized(_model->Get_vv_pdfs_norm_nonscaled());	
-				DoAfit(0, _model->Get_v_data_real(), _model->Get_v_pdfs_roodataset_real(), pars1);
-				_model->Set_fittedParsInData_b(pars1);
-			}
-
-			if( _model->Get_fittedParsInData_sb() == 0) {
-				double *pars2 =new double[_model->Get_max_uncorrelation()+1]; // FIXME potential memory leak
-				_model->Set_vv_randomized_sigbkgs(_model->Get_vv_exp_sigbkgs_nonscaled());	
-				_model->Set_vv_pdfs_norm_randomized(_model->Get_vv_pdfs_norm_nonscaled());	
-				DoAfit(_model->GetSignalScaleFactor(), _model->Get_v_data_real(), _model->Get_v_pdfs_roodataset_real(), pars2);
-				_model->Set_fittedParsInData_sb(pars2);
-				if(!pars2) cout<<"pars2=0"<<endl;
-				cout<<"r ="<<pars2[0]<<endl;
-			}
-			if(_debug>=10){
-				cout<<"*** PreFit *******, "<<_model->Get_max_uncorrelation()+1<<" pars"<<endl;
-				for(int i=0; i<=_model->Get_max_uncorrelation(); i++){
-					cout<<" par "<<i<<" : "<<(_model->Get_fittedParsInData_sb())[i]<<endl;
-				}
-			}
-		}
-
-		_model->SetTmpDataForUnbinned(_model->Get_v_pdfs_roodataset());
-
-		_model -> Set_vv_randomized_sigbkgs(_model->Get_vv_exp_sigbkgs()); // set to expected set, for calc observed Q 
-		_model -> Set_vv_pdfs_norm_randomized(_model->Get_vv_pdfs_norm_scaled());
-
-		double *n=new double[_nchannels];
-		double *noverb=new double[_nchannels];
-		double *lognoverb=new double[_nchannels];
-		if(test_statistics==1){
-			for(int i=0; i<_nchannels; i++){	
-				// skip a channle in which nsig==0 || ntotbkg==0
-				if(( _model->AllowNegativeSignalStrength()==true || vs[i] > 0) && vb[i] > 0) {
-					n[i]=vs[i]+vb[i];
-					noverb[i]=n[i]/vb[i];
-					lognoverb[i]= ( n[i]>0 ?log(noverb[i]):0 );
-					lognoverb[i]=fabs(lognoverb[i]);
-
-					Q_b_exp+=(vb[i]*lognoverb[i]);
-					Q_b_data    +=(vd[i]*lognoverb[i]);
-				}else{
-					lognoverb[i]=0;
-				}
-
-				if(_debug>=10)cout<<" \t channel "<<i<<" s="<<vs[i]<<" b="<<vb[i]<<" d="<<vd[i]<<" lognoverb="<<lognoverb[i]<<endl;	
-			}
-			for(int i=0; i<_model->Get_vv_pdfs().size(); i++){
-				Q_b_data+= _model->EvaluateLnQ(i, 0);// evaluate lnQ in channel i,  on the data (0) ,   1 for toy 
-			}
-		}else if(test_statistics==2){
-			// here Q =  2ln(L_sb/L_b),  will correct in later stage to -2lnQ
-			vdata_global = vb;
-			//	cout<<"delete me : vdata_global.size = "<<vdata_global.size()<<endl;
-			//Q_b_exp = MinuitFit(0, tmp1, tmp1) - MinuitFit(1, tmp1, tmp1);
-			Q_b_exp = MinuitFit(0, tmp1, tmp1) - MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor());
-			//	cout<<"delete me : Q = "<<Q_b_exp<<endl;
-			vdata_global = vd;
-			//Q_b_data = MinuitFit(0, tmp1, tmp1) - MinuitFit(1, tmp1, tmp1);
-			Q_b_data = MinuitFit(0, tmp1, tmp1) - MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor());
-		}else if(test_statistics==3 || test_statistics==31 || test_statistics==5){
-			double fitted_r ;
-			// here Q =  2ln(L_sb/L_b),  will correct in later stage to -2lnQ
-			/*		
-					vdata_global = vb;
-					minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
-					if(tmp1<0) Q_b_exp = 0;
-					else Q_b_exp = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
-					vdata_global = vd;
-					minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
-					if(tmp1<0) Q_b_data= 0;
-					else Q_b_data = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
-					*/
-			/*
-			   vdata_global = vb;
-			   minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
-			   fitted_r = tmp1;
-			   if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(0, tmp1, tmp2);  // MinuitFit(mode, r, err_r),  want r to be >=0
-			   if(test_statistics==3){
-			   if(fitted_r>=_model->GetSignalScaleFactor()) Q_b_exp = 0;
-			   else Q_b_exp = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor() ) - minchi2tmp);
-			   }
-			   if(test_statistics==31){
-			// in Feldman Cousins paper,  it allows fitted_r > the r being tested
-			Q_b_exp = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor() ) - minchi2tmp);
-			}
-			*/
-
-			vdata_global = vd;
-			if(_debug>=100){
-				cout<<" * data in fit: ";
-				for(int i=0; i<vd.size(); i++){
-					cout<<vd[i]<<" ";
-				}
-				cout<<endl;
-			}
-			int success[1];
-			minchi2tmp = MinuitFit(21, tmp1, tmp2, 0, 0, false, _debug, success);  // MinuitFit(mode, r, err_r)
-			if(success[0]!=0) { 
-				cout<<"ERROR WARNING data fit failed, try to dump info:  this failure sometimes related to ROOT versions, potential bugs in TMinuit. "<<endl;
-				cout<<"ERROR WARNING I had experienced that 5.28.00b gave failure while 5.26 didn't on the following data card (V2011-04-21): "<<endl;
-				cout<<"\n";
-				cout<<"	observation 11  13 \n";
-				cout<<"	bin 1 1  2  2 \n";
-				cout<<"	process 0 1  0  1 \n";
-				cout<<"	rate 10   50     0   50 \n";
-				cout<<"	unc lnN -  2.     -   2. \n";
-				cout<<endl;
-
-				cout<<" * data in fit: ";
-				for(int i=0; i<vd.size(); i++){
-					cout<<vd[i]<<" ";
-				}
-				cout<<endl;
-				minchi2tmp = MinuitFit(2, tmp1, tmp2, 0, 0, false, 100);  // MinuitFit(mode, r, err_r)
-			}
-
-			fitted_r = tmp1;
-			if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(0, tmp1, tmp2);  // MinuitFit(mode, r, err_r),  want r to be >=0
-			if(test_statistics==3 || test_statistics==5){
-				if(fitted_r>=_model->GetSignalScaleFactor()) Q_b_data= 0;
-				else Q_b_data = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor() ) - minchi2tmp);
-			}
-			if(test_statistics==31){
-				// in Feldman Cousins paper,  it allows fitted_r > the r being tested
-				Q_b_data = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor() ) - minchi2tmp);
-			}
-			if(fitted_r>=_model->GetSignalScaleFactor()){
-				if(_debug)cout<<"data OverFlow:  fitted_r= "<<fitted_r<<",  the probe r ="<<_model->GetSignalScaleFactor()<<endl;
-			}
-			if(fitted_r<0){
-				if(_debug)cout<<"data UnderFlow:  fitted_r= "<<fitted_r<<",  the probe r ="<<_model->GetSignalScaleFactor()<<endl;
-			}
-			if(_debug>=100) cout<<" end of data fit"<<endl;
-		}else if(test_statistics==4){ // only fit for signal strength, not for systematics 
-			double fitted_r;
-			// here Q =  2ln(L_sb/L_b),  will correct in later stage to -2lnQ
-			/*		
-					vdata_global = vb;
-					minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
-					if(tmp1<0) Q_b_exp = 0;
-					else Q_b_exp = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
-					vdata_global = vd;
-					minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
-					if(tmp1<0) Q_b_data= 0;
-					else Q_b_data = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
-					*/
-			/*
-			   vdata_global = vb;
-			   minchi2tmp = MinuitFit(4, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
-			   fitted_r = tmp1;
-			   if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(5, tmp1, tmp2, 0);  // MinuitFit(mode, r, err_r),  want r to be >=0
-			   if(fitted_r>=_model->GetSignalScaleFactor()) Q_b_exp = 0;
-			   else Q_b_exp = -(MinuitFit(5, tmp1, tmp1, _model->GetSignalScaleFactor() ) - minchi2tmp);
-			   */
-			vdata_global = vd;
-			minchi2tmp = MinuitFit(4, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
-			fitted_r = tmp1;
-			if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(5, tmp1, tmp2, 0);  // MinuitFit(mode, r, err_r),  want r to be >=0
-			if(fitted_r>=_model->GetSignalScaleFactor()) Q_b_data= 0;
-			else Q_b_data = -(MinuitFit(5, tmp1, tmp1, _model->GetSignalScaleFactor() ) - minchi2tmp);
-			if(fitted_r>=_model->GetSignalScaleFactor()){
-				if(_debug)cout<<"data OverFlow:  fitted_r= "<<fitted_r<<",  the probe r ="<<_model->GetSignalScaleFactor()<<endl;
-			}
-			if(fitted_r<0){
-				if(_debug)cout<<"data UnderFlow:  fitted_r= "<<fitted_r<<",  the probe r ="<<_model->GetSignalScaleFactor()<<endl;
-			}
-		}
-
-		int nsbi, nbi;
-		int tenth = _nexps/10;
-		int ntemp = _nexps*_nchannels;
-		if(_debug >=10 ) cout<<"ntemp="<<ntemp<<endl;
-		if(test_statistics!=1 && test_statistics!=4){
-			ntemp *= _model->Get_max_uncorrelation(); // if using Q_tev or Q_atlas, then multiply by the number of nuisance parameters
-			ntemp *= 100;
-		}
-		if( ntemp>=10000000 ) {
-			cout<<"\t gonna generate "<<ntemp*2<<" poisson numbers "<<endl;
-		}
-
-		clock_t toytime_start = clock(); int ntoysFor10sec = _nexps;
-		for(int i=0; i<_nexps; i++){
-			if(i==1) {
-				clock_t toytime_stop = clock(); int timeForOneToy = toytime_stop - toytime_start; 
-				if(_debug) cout<<" time per toy = "<<timeForOneToy<<" microsec"<<endl;
-				if(timeForOneToy>0) ntoysFor10sec = 10*1000000/timeForOneToy+1; 
-			}
-			if( ntemp>=10000000 or _debug) {
-				if( (i+1)%tenth == 0 ){
-					printf("... Building -2lnQ,  %4.1f \%\n", i/(double)_nexps*100);
-					fflush(stdout);
-				}
-			}
-			if(_debug){
-				if( (i+1)%ntoysFor10sec== 0 ){
-					clock_t toytime_stop = clock();
-					cout<< " from_1st toy to "<<i+1<<" toy takes "<< (toytime_stop - toytime_start)/1000000. <<" secs "<<endl;; 
-					fflush(stdout);
-				}
-			}
-			Q_sb[i]=0;Q_b[i]=0;	
-			if(reUsePreviousToys && i<oldNexps){
-				Q_sb[i] = tmpQsb[i];
-				Q_b[i] = tmpQb[i];
-				continue;
-			}
-
-			if(0){
-				double q_lep=0, q_tev=0, q_atl=0, q_mu=0, muhat_lep=0, muhat_tev=0;
-				vdata_global =  _model->GetToyData_H0();
-
-				for(int ch=0; ch<_nchannels; ch++){	
-					nbi  = int(vdata_global[ch]);
-					q_lep  += (nbi *lognoverb[ch]) ;
-				}
-
-				q_tev = MinuitFit(0, tmp1, tmp1) - MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor());
-
-				minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
-				double fitted_r = tmp1;
-				if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(0, tmp1, tmp2);  // MinuitFit(mode, r, err_r),  want r to be >=0
-				if(fitted_r>=_model->GetSignalScaleFactor()) q_atl=0;
-				else q_atl = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor()) - minchi2tmp);
-				muhat_tev = fitted_r;
-
-				minchi2tmp = MinuitFit(4, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
-				fitted_r = tmp1;
-				if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(5, tmp1, tmp2, 0);  // MinuitFit(mode, r, err_r),  want r to be >=0
-				if(fitted_r>=_model->GetSignalScaleFactor()) q_mu=0;
-				else q_mu = -(MinuitFit(5, tmp1, tmp1, _model->GetSignalScaleFactor()) - minchi2tmp);
-				muhat_lep = fitted_r;
-
-
-				cout<<"TESTSTATISTICS: {"<<q_lep<<", "<<q_mu<<", "<<muhat_lep<<", "<<q_tev<<", "<<q_atl<<", "<<muhat_tev<<"},"<<endl; 
-
-				continue;
-			}
-
-
-
-			if(test_statistics==1){
-				// change to " flutuate rates before throw H0 and then flutuate again to throw H1 ",  was "flutuate once and throw both H0 and H1"
-				if( sbANDb_bOnly_sbOnly != 1 ){
-					vdata_global =  _model->GetToyData_H1();
-					for(int ch=0; ch<_nchannels; ch++){
-						Q_sb[i] += (vdata_global[ch]*lognoverb[ch]) ;
-					}
-					for(int ch=0; ch<_model->Get_vv_pdfs().size(); ch++){
-						Q_sb[i] += _model->EvaluateLnQ(ch, 1);// evaluate lnQ in channel i,  on the data (0) ,   1 for toy 
-					}
-				}
-				if( sbANDb_bOnly_sbOnly != 2 ){
-					vdata_global = (VDChannel)_model->GetToyData_H0();
-					for(int ch=0; ch<_nchannels; ch++){
-						Q_b[i] += (vdata_global[ch]*lognoverb[ch]) ;
-					}
-					for(int ch=0; ch<_model->Get_vv_pdfs().size(); ch++){
-						Q_b[i]+= _model->EvaluateLnQ(ch, 1);// evaluate lnQ in channel i,  on the data (0) ,   1 for toy 
-					}
-				}
-			}else if(test_statistics==2){
-				// here Q =  2ln(L_sb/L_b),  will correct in later stage to -2lnQ
-				if( sbANDb_bOnly_sbOnly != 1 ){
-					vdata_global =  _model->GetToyData_H1();
-					//	cout<<"2delete me : vdata_global.size = "<<vdata_global.size()<<endl;
-					//	cout<<"2delete me : _model->GetToyData_H1.size = "<<_model->GetToyData_H1().size()<<endl;
-					//Q_sb[i] = MinuitFit(0, tmp1, tmp1) - MinuitFit(1, tmp1, tmp1);
-					Q_sb[i] = MinuitFit(0, tmp1, tmp1) - MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor());
-				}
-				if( sbANDb_bOnly_sbOnly != 2 ){
-					vdata_global = (VDChannel)_model->GetToyData_H0();
-					//	cout<<"3delete me : vdata_global.size = "<<vdata_global.size()<<endl;
-					//Q_b[i] = MinuitFit(0, tmp1, tmp1) - MinuitFit(1, tmp1, tmp1);
-					Q_b[i] = MinuitFit(0, tmp1, tmp1) - MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor());
-				}
-			}else if(test_statistics==3 || test_statistics==31){
-				// here Q =  2ln(L_sb/L_b),  will correct in later stage to -2lnQ
-				if( sbANDb_bOnly_sbOnly != 1 ){
-					vdata_global = (VDChannel)_model->GetToyData_H1();
-
-					minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
-					//if(tmp1<0) Q_sb[i] = 0;
-					//else Q_sb[i] = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
-					double fitted_r = tmp1;
-					if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(0, tmp1, tmp2);  // MinuitFit(mode, r, err_r),  want r to be >=0
-					if(test_statistics==3){
-						if(fitted_r>=_model->GetSignalScaleFactor()) Q_sb[i]=0;
-						else Q_sb[i] = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor()) - minchi2tmp);
-					}
-					if(test_statistics==31){
-						// in Feldman Cousins paper,  it allows fitted_r > the r being tested
-						Q_sb[i] = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor()) - minchi2tmp);
-					}
-
-					if(_debug>=100)cout<<" testStat["<<test_statistics<<"]:   q_sb="<<Q_sb[i]<<" fitted_r="<<fitted_r<<" minchi2tmp="<<minchi2tmp<<" tmp1="<<tmp1<<endl;
-				}
-				if( sbANDb_bOnly_sbOnly != 2 ){
-					vdata_global = (VDChannel)_model->GetToyData_H0();
-					minchi2tmp = MinuitFit(2, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
-					//if(tmp1<0) Q_b[i] = 0;
-					//else Q_b[i] = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
-					double fitted_r = tmp1;
-					if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(0, tmp1, tmp2);  // MinuitFit(mode, r, err_r),  want r to be >=0
-					if(test_statistics==3){
-						if(fitted_r>=_model->GetSignalScaleFactor()) Q_b[i]=0;
-						else Q_b[i] = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor()) - minchi2tmp);
-					}
-					if(test_statistics==31){
-						// in Feldman Cousins paper,  it allows fitted_r > the r being tested
-						Q_b[i] = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor()) - minchi2tmp);
-					}
-				}
-			}else if(test_statistics==4){
-				// here Q =  2ln(L_sb/L_b),  will correct in later stage to -2lnQ
-				if( sbANDb_bOnly_sbOnly != 1 ){
-					vdata_global = (VDChannel)_model->GetToyData_H1();
-
-					minchi2tmp = MinuitFit(4, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
-					//if(tmp1<0) Q_sb[i] = 0;
-					//else Q_sb[i] = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
-					double fitted_r = tmp1;
-					double minchi2tmp2 = 0;
-					if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(5, tmp1, tmp2, 0);  // MinuitFit(mode, r, err_r),  want r to be >=0
-					if(fitted_r>=_model->GetSignalScaleFactor()) Q_sb[i]=0;
-					else {
-						minchi2tmp2 =MinuitFit(5, tmp1, tmp1, _model->GetSignalScaleFactor()); 
-						Q_sb[i] = -(minchi2tmp2 - minchi2tmp);
-					}
-
-					if(_debug>=100)cout<<" testStat["<<test_statistics<<"]: q_sb="<<Q_sb[i]<<" fitted_r="<<fitted_r<<" minchi2tmp="<<minchi2tmp<<" tmp1="<<tmp1<<" minchi2tmp2="<<minchi2tmp2<<endl;
-				}
-				if( sbANDb_bOnly_sbOnly != 2 ){
-					vdata_global = (VDChannel)_model->GetToyData_H0();
-					minchi2tmp = MinuitFit(4, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
-					//if(tmp1<0) Q_b[i] = 0;
-					//else Q_b[i] = MinuitFit(3, tmp1, tmp1) - minchi2tmp;
-					double fitted_r = tmp1;
-					if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(5, tmp1, tmp2, 0);  // MinuitFit(mode, r, err_r),  want r to be >=0
-					if(fitted_r>=_model->GetSignalScaleFactor()) Q_b[i]=0;
-					else Q_b[i] = -(MinuitFit(5, tmp1, tmp1, _model->GetSignalScaleFactor()) - minchi2tmp);
-				}
-			}else if(test_statistics==5){ // LHC type, agreed at LHC-HCG meeting on 18.05.2011
-				// here Q =  2ln(L_sb/L_b),  will correct in later stage to -2lnQ
-				if( sbANDb_bOnly_sbOnly != 1 ){
-
-					vdata_global = (VDChannel)_model->GetToyData_H1(_model->Get_fittedParsInData_sb());
-
-					if(_model->hasParametricShape()){
-						for(int c=0; c<-1; c++){
-							//FIXME   if no this loop, then it crashes,   veryyyyyyy weird
-						}
-						_model->SetTmpDataForUnbinned(_model->Get_v_pdfs_roodataset_toy());
-					}
-
-					if(!_model->UseBestEstimateToCalcQ()){
-						VChannelVSample vv =  _model->FluctuatedNumbers(0, false, 2); // fluctuate nuisances .... to be used to build Q // FIXME toss nuisance around fitted b_hat in data ? 
-						_model -> Set_vv_randomized_sigbkgs(vv);
-						_model -> Set_vv_pdfs_norm_randomized(_model->Get_vv_pdfs_norm_varied());
-						// need to be delivered to Chisquare function 
-					}
-
-
-					minchi2tmp = MinuitFit(21, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
-					double fitted_r = tmp1;
-					if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(0, tmp1, tmp2);  // MinuitFit(mode, r, err_r),  want r to be >=0
-					if(fitted_r>=_model->GetSignalScaleFactor()) Q_sb[i]=0;
-					else Q_sb[i] = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor()) - minchi2tmp);
-					if(_debug>=100)cout<<" testStat["<<test_statistics<<"]: q_sb="<<Q_sb[i]<<" fitted_r="<<fitted_r<<" minchi2tmp="<<minchi2tmp<<" tmp1="<<tmp1<<endl;
-				}
-				if( sbANDb_bOnly_sbOnly != 2 ){
-					vdata_global = (VDChannel)_model->GetToyData_H0(_model->Get_fittedParsInData_b());
-
-					if(_model->hasParametricShape()){
-						_model->SetTmpDataForUnbinned(_model->Get_v_pdfs_roodataset_toy());
-					}
-
-					if(!_model->UseBestEstimateToCalcQ()){
-						VChannelVSample vv =  _model->FluctuatedNumbers(0, false, 2); // fluctuate nuisances .... to be used to build Q // FIXME toss nuisance around fitted b_hat in data ? 
-						_model -> Set_vv_randomized_sigbkgs(vv);
-						_model -> Set_vv_pdfs_norm_randomized(_model->Get_vv_pdfs_norm_varied());
-					}
-
-					minchi2tmp = MinuitFit(21, tmp1, tmp2);  // MinuitFit(mode, r, err_r)
-					double fitted_r = tmp1;
-					if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(0, tmp1, tmp2);  // MinuitFit(mode, r, err_r),  want r to be >=0
-					if(fitted_r>=_model->GetSignalScaleFactor()) Q_b[i]=0;
-					else Q_b[i] = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor()) - minchi2tmp);
-				}
-			}
-		}
-
-		if(_debug) { start_time=cur_time; cur_time=clock(); cout << "\t\t\t TIME in RunMCExps run_"<<_nexps<<"_pseudo exps: " << (cur_time - start_time)/1000. << " millisec\n"; }
-
-		//ProcessM2lnQ();
-		if( sbANDb_bOnly_sbOnly !=2 )Sort(_nexps, Q_b, iq_b, 0); // rank from small to large
-		if( sbANDb_bOnly_sbOnly !=1 )Sort(_nexps, Q_sb, iq_sb, 0);
-		if (sbANDb_bOnly_sbOnly==0) 
-			if( ( Q_b_data < Q_b[iq_b[0]] || Q_b_data > Q_sb[iq_sb[_nexps-1]] ) && _debug ){ 
-				cout<<"\t probability of this -2lnQ_data is very very small, it's out of "<<_nexps<<" exps, you need more toys"<<endl;
-				if(test_statistics==1){
-					cout<<"\t -2lnQ_data =   "<<-2*Q_b_data+2*_nsig<<endl;
-					cout<<"\t -2lnQ_b    = [ "<<-2*Q_b[iq_b[_nexps-1]]+2*_nsig<<" , "<<-2*Q_b[iq_b[0]]+2*_nsig<<" ]"<<endl;
-					cout<<"\t -2lnQ_sb   = [ "<<-2*Q_sb[iq_sb[_nexps-1]]+2*_nsig<<" , "<<-2*Q_sb[iq_sb[0]]+2*_nsig<<" ]"<<endl;
-				}else{
-					cout<<"\t -2lnQ_data =   "<<-2*Q_b_data<<endl;
-					cout<<"\t -2lnQ_b    = [ "<<-2*Q_b[iq_b[_nexps-1]]<<" , "<<-2*Q_b[iq_b[0]]<<" ]"<<endl;
-					cout<<"\t -2lnQ_sb   = [ "<<-2*Q_sb[iq_sb[_nexps-1]]<<" , "<<-2*Q_sb[iq_sb[0]]<<" ]"<<endl;
-				}
-			}
-		if(_debug>=1 && sbANDb_bOnly_sbOnly==0 ) {
-			if(test_statistics==1){
-				cout<<"\t -2lnQ_data =   "<<-2*Q_b_data+2*_nsig<<endl;
-				cout<<"\t -2lnQ_b    = [ "<<-2*Q_b[iq_b[_nexps-1]]+2*_nsig<<" , "<<-2*Q_b[iq_b[0]]+2*_nsig<<" ]"<<endl;
-				cout<<"\t -2lnQ_sb   = [ "<<-2*Q_sb[iq_sb[_nexps-1]]+2*_nsig<<" , "<<-2*Q_sb[iq_sb[0]]+2*_nsig<<" ]"<<endl;
-			}else{
-				cout<<"\t -2lnQ_data =   "<<-2*Q_b_data<<endl;
-				cout<<"\t -2lnQ_b    = [ "<<-2*Q_b[iq_b[_nexps-1]]<<" , "<<-2*Q_b[iq_b[0]]<<" ]"<<endl;
-				cout<<"\t -2lnQ_sb   = [ "<<-2*Q_sb[iq_sb[_nexps-1]]<<" , "<<-2*Q_sb[iq_sb[0]]<<" ]"<<endl;
-			}
-		}
-		if(_debug>=100 && sbANDb_bOnly_sbOnly==0 ){
-			cout<<"\t\t CHECKING order ---index Q_b Q_sb-- "<<endl;
-			for(int i=0; i<_nexps; i++){
-				if(test_statistics==1)	cout<<"\t "<<i<<"     "<<-2*Q_b[iq_b[i]]+2*_nsig<<"  "<<-2*Q_sb[iq_sb[i]]+2*_nsig<<endl;
-				else 	cout<<"\t "<<i<<"     "<<-2*Q_b[iq_b[i]]<<"  "<<-2*Q_sb[iq_sb[i]]<<endl;
-			}
-		}
-
-		delete [] n; delete [] noverb; delete [] lognoverb;
 		return true;
 	}
 	void CLsBase::ProcessM2lnQ(){
@@ -1468,8 +947,6 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 		for(double rmid=minRtoScan; rmid<=maxRtoScan; rmid+=(maxRtoScan-minRtoScan)/(double)nstep){
 			cms->SetSignalScaleFactor(rmid);
 			if(cms->GetTossToyConvention()==1) {
-				cms->Set_vv_randomized_sigbkgs(cms->Get_vv_exp_sigbkgs_nonscaled());	
-				cms->Set_vv_pdfs_norm_randomized(cms->Get_vv_pdfs_norm_nonscaled());	
 				DoAfit(rmid, cms->Get_v_data_real(), cms->Get_v_pdfs_roodataset_real(), cms->Get_fittedParsInData_sb());
 				cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
 			}
@@ -1517,15 +994,9 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 	} else {
 		cms->SetSignalScaleFactor(1.);
 		if(cms->GetTossToyConvention()==1) {
-			cms->Set_vv_randomized_sigbkgs(cms->Get_vv_exp_sigbkgs_nonscaled());	
-			cms->Set_vv_pdfs_norm_randomized(cms->Get_vv_pdfs_norm_nonscaled());	
 			DoAfit(1, cms->Get_v_data_real(), cms->Get_v_pdfs_roodataset_real(), cms->Get_fittedParsInData_sb());
 				cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
 		}
-		//		if(_debug>=10)
-		//			r0=R_CL(cms, 1-_alpha, 1.e-30, 1.e-6, 1000., _debug );
-		//		else 
-		//			r0=R_CL(cms, 1-_alpha, 1.e-30, 1.e-6, 1000., 0);
 		BayesianBase bys(cms, 0.05, 1.e-2);
 		bys.SetNumToys(100);
 		bys.SetDebug(_debug);
@@ -1539,8 +1010,6 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 
 		cms->SetSignalScaleFactor(r0);
 		if(cms->GetTossToyConvention()==1) {
-			cms->Set_vv_randomized_sigbkgs(cms->Get_vv_exp_sigbkgs_nonscaled());	
-			cms->Set_vv_pdfs_norm_randomized(cms->Get_vv_pdfs_norm_nonscaled());	
 			cout<<"Before refit: r=1"<<endl;
 			for(int i=0; i<cms->Get_max_uncorrelation(); i++) cout<<"par "<<i<<"     "<<cms->Get_fittedParsInData_sb()[i]<<endl;
 			DoAfit(r0, cms->Get_v_data_real(), cms->Get_v_pdfs_roodataset_real(), cms->Get_fittedParsInData_sb());
@@ -1564,8 +1033,6 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 
 		cms->SetSignalScaleFactor(r1);
 		if(cms->GetTossToyConvention()==1) {
-			cms->Set_vv_randomized_sigbkgs(cms->Get_vv_exp_sigbkgs_nonscaled());	
-			cms->Set_vv_pdfs_norm_randomized(cms->Get_vv_pdfs_norm_nonscaled());	
 			DoAfit(r1, cms->Get_v_data_real(), cms->Get_v_pdfs_roodataset_real(), cms->Get_fittedParsInData_sb());
 				cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
 		}
@@ -1607,8 +1074,6 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 		cms->SetSignalScaleFactor(rmid);
 		rmid = cms->GetSignalScaleFactor(); // if not allow negative r, then the scale factor will not be modified in SetSignalScaleFactor. 
 		if(cms->GetTossToyConvention()==1) {
-			cms->Set_vv_randomized_sigbkgs(cms->Get_vv_exp_sigbkgs_nonscaled());	
-			cms->Set_vv_pdfs_norm_randomized(cms->Get_vv_pdfs_norm_nonscaled());	
 			DoAfit(rmid, cms->Get_v_data_real(), cms->Get_v_pdfs_roodataset_real(), cms->Get_fittedParsInData_sb());
 				cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
 		}
@@ -1680,10 +1145,8 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 					if(rmid<0)rmid *= 0.95; //FIXME this number should more smart 
 					cms->SetSignalScaleFactor(rmid);
 					if(cms->GetTossToyConvention()==1) {
-						cms->Set_vv_randomized_sigbkgs(cms->Get_vv_exp_sigbkgs_nonscaled());	
-						cms->Set_vv_pdfs_norm_randomized(cms->Get_vv_pdfs_norm_nonscaled());	
 						DoAfit(rmid, cms->Get_v_data_real(), cms->Get_v_pdfs_roodataset_real(), cms->Get_fittedParsInData_sb());
-				cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
+						cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
 					}
 					frequentist->BuildM2lnQ(cms, nexps); 
 					double clmid;
@@ -1700,10 +1163,8 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 					if(rmid>0)rmid *= 0.95; //FIXME this number should more smart 
 					cms->SetSignalScaleFactor(rmid);
 					if(cms->GetTossToyConvention()==1){
-						cms->Set_vv_randomized_sigbkgs(cms->Get_vv_exp_sigbkgs_nonscaled());	
-						cms->Set_vv_pdfs_norm_randomized(cms->Get_vv_pdfs_norm_nonscaled());	
 						DoAfit(rmid, cms->Get_v_data_real(), cms->Get_v_pdfs_roodataset_real(), cms->Get_fittedParsInData_sb());
-				cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
+						cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
 					}
 					frequentist->BuildM2lnQ(cms, nexps); 
 					double clmid;
@@ -2253,6 +1714,7 @@ double CLsLimit::FeldmanCousins(CountingModel *cms,
 }
 
 bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys){  // 0 for sbANDb, 1 for bOnly, 2 for sbOnly, 3 for data only 
+	_inputNuisances = _model->Get_norminalPars();	
 	// effort for adaptive sampling
 	int oldNexps = _nexps;// need to be changed   to two parts :   sb toys,  b toys 
 	vector<double> tmpQb;
@@ -2351,28 +1813,8 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys){  // 0 for sbANDb,
 				}
 				if(!_model->UseBestEstimateToCalcQ()){
 					//generate nuisance around b^hat_0 
-					VChannelVSample vv =  _model->FluctuatedNumbers(0, false, 2); // fluctuate nuisances .... to be used to build Q // FIXME toss nuisance around fitted b_hat in data ? 
-					
-					//VChannelVSample vv =  _model->FluctuatedNumbers(); // fluctuate nuisances .... to be used to build Q // FIXME toss nuisance around fitted b_hat in data ? 
-					_model -> Set_vv_randomized_sigbkgs(vv);
-					_model -> Set_vv_pdfs_norm_randomized(_model->Get_vv_pdfs_norm_varied());
-					// need to be delivered to Chisquare function 
-
-					// since we will evaluate the Q at the mu point being tested, we need to scale the generated signal yields by mu
-					_model -> SetSignalScaleFactor(_model->GetSignalScaleFactor(), false);//scale the random set
-					vv = _model->Get_vv_pdfs_norm_randomized();
-					_model -> Set_vv_pdfs_norm_randomized(_model->Get_vv_pdfs_norm_randomized());
-					_model -> Set_vv_randomized_sigbkgs(_model->Get_vv_randomized_sigbkgs());
-
-					/*
-					cout<<" Nuisances: ";
-					for(int c=0; c<vv.size(); c++){
-						for(int s=0; s<vv[c].size(); s++){
-							cout<<" "<<vv[c][s];
-						}
-					}
-					cout<<endl;
-					*/
+					VChannelVSample vv =  _model->FluctuatedNumbers(0, false, 2); // toss nuisance around fitted b_hat_0 in data  
+					_inputNuisances = _model->Get_randomizedPars();	
 				}
 
 				break;
@@ -2426,6 +1868,7 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys){  // 0 for sbANDb,
 	}
 
 void CLsBase::checkFittedParsInData(bool bReadPars, bool bWritePars, TString sfilename){
+	_inputNuisances = _model->Get_norminalPars();	
 	TH1D *hParsB, *hParsSB; TFile *fToWrite;
 	if(bReadPars and bWritePars) { cout<<"ERROR: checkFittedParsInData():  bReadPars and bWritePars can't be both true "<<endl; exit(1); }
 	if(bReadPars){
@@ -2447,8 +1890,6 @@ void CLsBase::checkFittedParsInData(bool bReadPars, bool bWritePars, TString sfi
 				_model->Set_fittedParsInData_b(pars1);
 			}
 			else {
-				_model->Set_vv_randomized_sigbkgs(_model->Get_vv_exp_sigbkgs_nonscaled());	
-				_model->Set_vv_pdfs_norm_randomized(_model->Get_vv_pdfs_norm_nonscaled());	
 				DoAfit(0, _model->Get_v_data_real(), _model->Get_v_pdfs_roodataset_real(), pars1);
 				_model->Set_fittedParsInData_b(pars1);
 				if(bWritePars){
@@ -2476,8 +1917,6 @@ void CLsBase::checkFittedParsInData(bool bReadPars, bool bWritePars, TString sfi
 				_model->Set_fittedParsInData_sb(pars2);
 			}
 			else {
-				_model->Set_vv_randomized_sigbkgs(_model->Get_vv_exp_sigbkgs_nonscaled());	
-				_model->Set_vv_pdfs_norm_randomized(_model->Get_vv_pdfs_norm_nonscaled());	
 				DoAfit(_model->GetSignalScaleFactor(), _model->Get_v_data_real(), _model->Get_v_pdfs_roodataset_real(), pars2);
 				_model->Set_fittedParsInData_sb(pars2);
 				if(!pars2) cout<<"pars2=0"<<endl;
@@ -2515,8 +1954,6 @@ void CLsBase::checkFittedParsInData(bool bReadPars, bool bWritePars, TString sfi
 bool CLsBase::BuildM2lnQ_data(){
 	if(_debug)cout<<"* BuildM2lnQ_data: start"<<endl;
 	_model->SetTmpDataForUnbinned(_model->Get_v_pdfs_roodataset());
-	_model -> Set_vv_randomized_sigbkgs(_model->Get_vv_exp_sigbkgs()); // set to expected set, for calc observed Q 
-	_model -> Set_vv_pdfs_norm_randomized(_model->Get_vv_pdfs_norm_scaled());
 
 	vdata_global = _model->Get_v_data();
 
@@ -2526,13 +1963,17 @@ bool CLsBase::BuildM2lnQ_data(){
 	}
 	*/
 
+	_inputNuisances = _model->Get_norminalPars();	
+
 	int checkFailure = 1;
 	Q_b_data = M2lnQ(checkFailure, 0); // 0 for data, 1 for toy
-	if(_debug)cout<<"* BuildM2lnQ_data: end"<<endl;
+	if(_debug)cout<<"* BuildM2lnQ_data: end "<<Q_b_data<<endl;
 	return true;
 }
 
 bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys){  
+
+	_inputNuisances = _model->Get_norminalPars();	
 
 	// effort for adaptive sampling
 	int oldNexps = _nexps;
@@ -2632,11 +2073,8 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys){
 					_model->SetTmpDataForUnbinned(_model->Get_v_pdfs_roodataset_toy());
 				}
 				if(!_model->UseBestEstimateToCalcQ()){
-					VChannelVSample vv =  _model->FluctuatedNumbers(0, true, 2); // fluctuate nuisances .... to be used to build Q // FIXME toss nuisance around fitted b_hat in data ? 
-					//VChannelVSample vv =  _model->FluctuatedNumbers(); // fluctuate nuisances .... to be used to build Q // FIXME toss nuisance around fitted b_hat in data ? 
-					_model -> Set_vv_randomized_sigbkgs(vv);
-					_model -> Set_vv_pdfs_norm_randomized(_model->Get_vv_pdfs_norm_varied());
-					// need to be delivered to Chisquare function 
+					VChannelVSample vv =  _model->FluctuatedNumbers(0, true, 2); // toss nuisance around fitted b_hat_mu in data 
+					_inputNuisances = _model->Get_randomizedPars();	
 				}
 
 				break;
@@ -2702,6 +2140,8 @@ double CLsBase::M2lnQ(int checkFailure, int dataOrToy){
 				cout<<vdata_global[i]<<" ";
 			}
 			cout<<endl;
+
+			_model->Print();
 		}
 		int success[1];
 		minchi2tmp = MinuitFit(21, tmp1, tmp2, 0, 0, false, checkFailure?_debug:0, success);  // MinuitFit(mode, r, err_r)
