@@ -896,9 +896,9 @@ double CLsBase::lnQsb_sigma(int sigma){
 }
 
 void CLsBase::SetTestStatistics(int ts)	{
-	if(ts==1 || ts==2 || ts==3 || ts==31 || ts==4 || ts==5)test_statistics = ts; 
+	if(ts==1 || ts==2 || ts==3 || ts==31 || ts==4 || ts==5 || ts==6)test_statistics = ts; 
 	else {
-		cout <<"ts should be 1 for Q_LEP, 2 for Q_TEV or 3 for Q_ATLAS, 31 allowing mu_hat>mu, 4 for only profiling mu, 5 for LHC "
+		cout <<"testStat should be 1 for Q_LEP, 2 for Q_TEV or 3 for Q_ATLAS, 31 allowing mu_hat>mu, 4 for only profiling mu, 5 for LHC, 6 for PL "
 			<<", your input is not correct: "
 			<<ts<<".  ts is set to be default type Q_LEP"
 			<<endl; 
@@ -2069,6 +2069,7 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys){
 				}
 				break;
 			case 5:
+			case 6:
 				vdata_global = (VDChannel)_model->GetToyData_H1(_model->Get_fittedParsInData_sb());
 				if(_model->hasParametricShape()){
 					_model->SetTmpDataForUnbinned(_model->Get_v_pdfs_roodataset_toy());

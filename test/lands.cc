@@ -1167,8 +1167,8 @@ void processParameters(int argc, const char* argv[]){
 		tossPseudoDataConvention = 1;
 		UseBestEstimateToCalcQ = 0;
 		if(calcsignificance)
-			testStat = 5; // LHC  for one-sided upper limit
-		else testStat=6; //PL for significance evaluation
+			testStat = 6; // LHC  for one-sided upper limit
+		else testStat=5; //PL for significance evaluation
 	}
 
 	if(isWordInMap("--bReadPars", options)) bReadPars = true;
