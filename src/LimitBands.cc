@@ -11,19 +11,19 @@ using namespace RooFit;
 namespace lands{
 	LimitBands::LimitBands(){
 		_frequentist=0;	_clslimit=0; _byslimit=0; _cms=0;
-		_doCLs=0; _doBys=0; _debug=0; _plotLevel=0;
+		_doCLs=0; _doBys=0; _debug=0; _plotLevel=0;bOnlyEvalCL_forVR = 0;
 	}
 	LimitBands::LimitBands(CLsLimit *cl, CLsBase *cb, CountingModel* cms){
 		_frequentist=cb;	_clslimit=cl;  _byslimit=0; _cms=cms;
-		_doCLs=0; _doBys=0; _debug=0;  _plotLevel=0;
+		_doCLs=0; _doBys=0; _debug=0;  _plotLevel=0; bOnlyEvalCL_forVR = 0;
 	}
 	LimitBands::LimitBands(BayesianBase *bb, CountingModel* cms){
 		_frequentist=0;	_clslimit=0; _byslimit=bb; _cms=cms;
-		_doCLs=0; _doBys=0; _debug=0;  _plotLevel=0;
+		_doCLs=0; _doBys=0; _debug=0;  _plotLevel=0; bOnlyEvalCL_forVR = 0;
 	}
 	LimitBands::LimitBands(CLsLimit *cl, CLsBase *cb, BayesianBase *bb, CountingModel* cms){
 		_frequentist=cb;	_clslimit=cl;  _byslimit=bb; _cms=cms; bb->SetModel(cms);
-		_doCLs=0; _doBys=0; _debug=0;  _plotLevel=0;
+		_doCLs=0; _doBys=0; _debug=0;  _plotLevel=0; bOnlyEvalCL_forVR = 0;
 	}
 	LimitBands::~LimitBands(){}
 	void LimitBands::CLsLimitBands(double alpha, int noutcome, int ntoysM2lnQ){
@@ -237,7 +237,7 @@ namespace lands{
 				}else{
 					_actualOutComesForBys -= (int)(_noutcomes*p);
 				}
-				if(_debug)cout<<"n="<<n<<" bys_r= "<<r<<" p= "<<p<<" repeated "<<nentries_for_thisR<<endl;
+				if(_debug)cout<<"n="<<n<<" bys_r= "<<r<<" p= "<<p<<" repeated "<<nentries_for_thisR<<"  debug "<<rmeanbys<<endl;
 				if(_debug) { start_time=cur_time; cur_time=clock(); cout << "\t\t\t TIME_in_BAND, doBys "<< n << " took " <<(cur_time - start_time)/1000000. << " sec\n"; }
 			}
 			if(_doCLs && _doBys && _debug ) {

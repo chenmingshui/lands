@@ -294,7 +294,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 	bool hasParametricShape = false;
 	vector<TString> shapeinfo; 
 	for(int l=0; l<lines.size(); l++){
-		if(lines[l].BeginsWith("shapes")){
+		if(lines[l].BeginsWith("shapes ")){
 			hasShape = true;
 			shapeinfo.push_back(lines[l]);
 			if(GetWordFromLine(lines[l], 4).Contains(":")) hasParametricShape =true;
@@ -305,7 +305,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 		// get number of channels
 		int nchannel = -1;
 		for(int l=0; l<lines.size(); l++){
-			if(lines[l].BeginsWith("imax")){
+			if(lines[l].BeginsWith("imax ")){
 				vector<string>	ss; 
 				ss.clear();
 				StringSplit(ss, lines[l].Data(), " ");
@@ -331,7 +331,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 		vector<double> observeddata;
 		bool hasFilled = false;
 		for(int l=0; l<lines.size(); l++){
-			if(lines[l].BeginsWith("Observation") or lines[l].BeginsWith("observation")){
+			if(lines[l].BeginsWith("Observation ") or lines[l].BeginsWith("observation ")){
 				observeddata.clear();
 				if(hasFilled) cout<<"WARNING: You have two lines started with \"observation\", we will use the second line"<<endl;
 				vector<string>	ss; 
@@ -371,7 +371,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 		int nlines_with_process = 0;
 		vector< vector<string> > vss_processes; vss_processes.clear();
 		for(int l=0; l<lines.size(); l++){
-			if(lines[l].BeginsWith("process")){
+			if(lines[l].BeginsWith("process ")){
 				nlines_with_process++;
 				vector<string>	ss; 
 				ss.clear();
@@ -467,7 +467,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 
 		// if you have "bins" or "binname" line,  then replace channel name  with the ones from this line
 		for(int l=0; l<lines.size(); l++){
-			if(lines[l].BeginsWith("bins ") or lines[l].BeginsWith("binname") or lines[l].BeginsWith("bin ") ){
+			if(lines[l].BeginsWith("bins ") or lines[l].BeginsWith("binname ") or lines[l].BeginsWith("bin ") ){
 				vector<string>	ss; 
 				ss.clear();
 				StringSplit(ss, lines[l].Data(), " ");
@@ -510,7 +510,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 		for(int i=0; i<ntotprocesses; i++) eventrate[i]=0;
 		hasFilled = false;
 		for(int l=0; l<lines.size(); l++){
-			if(lines[l].BeginsWith("rate")){
+			if(lines[l].BeginsWith("rate ")){
 				TString tmps = TString::Format("%10s ","rate");
 				vector<string>	ss; 
 				ss.clear();
@@ -538,7 +538,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 		int kmax = -1;
 		//hasFilled = false;
 		for(int l=0; l<lines.size(); l++){
-			if(lines[l].BeginsWith("kmax")){
+			if(lines[l].BeginsWith("kmax ")){
 				vector<string>	ss; 
 				ss.clear();
 				StringSplit(ss, lines[l].Data(), " ");
@@ -565,13 +565,13 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 		vector< vector<string> >uncerlinesAffectingShapes; uncerlinesAffectingShapes.clear();
 		for(int j=lines.size()-1; j>=0; j--){
 			if(lines[j].BeginsWith("---") )	break;
-			if(lines[j].BeginsWith("rate"))	break;
-			if(lines[j].BeginsWith("bin") )	break;
-			if(lines[j].BeginsWith("process"))break;
-			if(lines[j].BeginsWith("imax"))break;
-			if(lines[j].BeginsWith("jmax"))break;
-			if(lines[j].BeginsWith("kmax"))break;
-			if(lines[j].BeginsWith("shapes"))continue;
+			if(lines[j].BeginsWith("rate "))	break;
+			if(lines[j].BeginsWith("bin ") )	break;
+			if(lines[j].BeginsWith("process "))break;
+			if(lines[j].BeginsWith("imax "))break;
+			if(lines[j].BeginsWith("jmax "))break;
+			if(lines[j].BeginsWith("kmax "))break;
+			if(lines[j].BeginsWith("shapes "))continue;
 			vector<string>	ss; 
 			ss.clear();
 			StringSplit(ss, lines[j].Data(), " ");
@@ -607,7 +607,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 		vector< vector<string> > xx_needtointerpret;
 		vector< vector<string> > parametricShapeLines; 
 		for(int j=0; j<shapeinfo.size(); j++){
-			if(shapeinfo[j].BeginsWith("shapes")){
+			if(shapeinfo[j].BeginsWith("shapes ")){
 				vector<string>	ss; 
 				ss.clear();
 				StringSplit(ss, shapeinfo[j].Data(), " ");
@@ -828,7 +828,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 		newlines.push_back(s);
 
 		for(int k=0; k<lines.size(); k++){
-			if(lines[k].BeginsWith("Observation") or lines[k].BeginsWith("observation")){
+			if(lines[k].BeginsWith("Observation ") or lines[k].BeginsWith("observation ")){
 				vector<string> ss_old; ss_old.clear();
 				StringSplit(ss_old, lines[k].Data(), " ");
 				TString s = "Observation ";
@@ -1118,7 +1118,7 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped, int debug)
 	// get number of channels
 	int nchannel = -1;
 	for(int l=0; l<lines.size(); l++){
-		if(lines[l].BeginsWith("imax")){
+		if(lines[l].BeginsWith("imax ")){
 			vector<string>	ss; 
 			ss.clear();
 			StringSplit(ss, lines[l].Data(), " ");
@@ -1146,7 +1146,7 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped, int debug)
 	vector<double> observeddata;
 	bool hasFilled = false;
 	for(int l=0; l<lines.size(); l++){
-		if(lines[l].BeginsWith("Observation") or lines[l].BeginsWith("observation")){
+		if(lines[l].BeginsWith("Observation ") or lines[l].BeginsWith("observation ")){
 			observeddata.clear();
 			if(hasFilled) cout<<"WARNING: You have two lines started with \"observation\", we will use the second line"<<endl;
 			vector<string>	ss; 
@@ -1186,7 +1186,7 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped, int debug)
 	int nlines_with_process = 0;
 	vector< vector<string> > vss_processes; vss_processes.clear();
 	for(int l=0; l<lines.size(); l++){
-		if(lines[l].BeginsWith("process")){
+		if(lines[l].BeginsWith("process ")){
 			nlines_with_process++;
 			vector<string>	ss; 
 			ss.clear();
@@ -1266,7 +1266,7 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped, int debug)
 
 	// if you have "bins" or "binname" line,  then replace channel name  with the ones from this line
 	for(int l=0; l<lines.size(); l++){
-		if(lines[l].BeginsWith("bins ") or lines[l].BeginsWith("binname") or lines[l].BeginsWith("bin ") ){
+		if(lines[l].BeginsWith("bins ") or lines[l].BeginsWith("binname ") or lines[l].BeginsWith("bin ") ){
 			vector<string>	ss; 
 			ss.clear();
 			StringSplit(ss, lines[l].Data(), " ");
@@ -1305,7 +1305,7 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped, int debug)
 	for(int i=0; i<ntotprocesses; i++) eventrate[i]=0;
 	hasFilled = false;
 	for(int l=0; l<lines.size(); l++){
-		if(lines[l].BeginsWith("rate")){
+		if(lines[l].BeginsWith("rate ")){
 			TString tmps = TString::Format("%10s ","rate");
 			vector<string>	ss; 
 			ss.clear();
@@ -1333,7 +1333,7 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped, int debug)
 	int kmax = -1;
 	//hasFilled = false;
 	for(int l=0; l<lines.size(); l++){
-		if(lines[l].BeginsWith("kmax")){
+		if(lines[l].BeginsWith("kmax ")){
 			vector<string>	ss; 
 			ss.clear();
 			StringSplit(ss, lines[l].Data(), " ");
@@ -1379,12 +1379,12 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped, int debug)
 	int nsyssources = 0;
 	for(int j=lines.size()-1; j>=0; j--){
 		if(lines[j].BeginsWith("---") )	break;
-		if(lines[j].BeginsWith("rate"))	break;
-		if(lines[j].BeginsWith("bin") )	break;
-		if(lines[j].BeginsWith("process"))break;
-		if(lines[j].BeginsWith("imax"))break;
-		if(lines[j].BeginsWith("jmax"))break;
-		if(lines[j].BeginsWith("kmax"))break;
+		if(lines[j].BeginsWith("rate "))	break;
+		if(lines[j].BeginsWith("bin ") )	break;
+		if(lines[j].BeginsWith("process "))break;
+		if(lines[j].BeginsWith("imax "))break;
+		if(lines[j].BeginsWith("jmax "))break;
+		if(lines[j].BeginsWith("kmax "))break;
 		nsyssources++;
 	}
 	if(kmax>=0 && kmax!=nsyssources) {cout<<"kmax !=  number of independant uncertainties"<<endl; exit(0);}
@@ -1676,7 +1676,7 @@ bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vecto
 	// get number of channels
 	int nchannel = -1;
 	for(int l=0; l<lines.size(); l++){
-		if(lines[l].BeginsWith("imax")){
+		if(lines[l].BeginsWith("imax ")){
 			vector<string>	ss; 
 			ss.clear();
 			StringSplit(ss, lines[l].Data(), " ");
@@ -1704,7 +1704,7 @@ bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vecto
 	vector<double> observeddata;
 	bool hasFilled = false;
 	for(int l=0; l<lines.size(); l++){
-		if(lines[l].BeginsWith("Observation") or lines[l].BeginsWith("observation")){
+		if(lines[l].BeginsWith("Observation ") or lines[l].BeginsWith("observation ")){
 			observeddata.clear();
 			if(hasFilled) cout<<"WARNING: You have two lines started with \"observation\", we will use the second line"<<endl;
 			vector<string>	ss; 
@@ -1744,7 +1744,7 @@ bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vecto
 	int nlines_with_process = 0;
 	vector< vector<string> > vss_processes; vss_processes.clear();
 	for(int l=0; l<lines.size(); l++){
-		if(lines[l].BeginsWith("process")){
+		if(lines[l].BeginsWith("process ")){
 			nlines_with_process++;
 			vector<string>	ss; 
 			ss.clear();
@@ -1863,7 +1863,7 @@ bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vecto
 	for(int i=0; i<ntotprocesses; i++) eventrate[i]=0;
 	hasFilled = false;
 	for(int l=0; l<lines.size(); l++){
-		if(lines[l].BeginsWith("rate")){
+		if(lines[l].BeginsWith("rate ")){
 			TString tmps = TString::Format("%10s ","rate");
 			vector<string>	ss; 
 			ss.clear();
@@ -1891,7 +1891,7 @@ bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vecto
 	int kmax = -1;
 	//hasFilled = false;
 	for(int l=0; l<lines.size(); l++){
-		if(lines[l].BeginsWith("kmax")){
+		if(lines[l].BeginsWith("kmax ")){
 			vector<string>	ss; 
 			ss.clear();
 			StringSplit(ss, lines[l].Data(), " ");
@@ -1976,12 +1976,12 @@ bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vecto
 	int nsyssources = 0;
 	for(int j=lines.size()-1; j>=0; j--){
 		if(lines[j].BeginsWith("---") )	break;
-		if(lines[j].BeginsWith("rate"))	break;
-		if(lines[j].BeginsWith("bin") )	break;
-		if(lines[j].BeginsWith("process"))break;
-		if(lines[j].BeginsWith("imax"))break;
-		if(lines[j].BeginsWith("jmax"))break;
-		if(lines[j].BeginsWith("kmax"))break;
+		if(lines[j].BeginsWith("rate "))	break;
+		if(lines[j].BeginsWith("bin ") )	break;
+		if(lines[j].BeginsWith("process "))break;
+		if(lines[j].BeginsWith("imax "))break;
+		if(lines[j].BeginsWith("jmax "))break;
+		if(lines[j].BeginsWith("kmax "))break;
 		nsyssources++;
 	}
 	if(kmax>=0 && kmax!=nsyssources) {cout<<"kmax !=  number of independant uncertainties"<<endl; exit(0);}

@@ -27,8 +27,8 @@ int main(int argc, const char* argv[]){
 	cms->AddObservedData(0,d); //for the first channel
 	// AddUncertainty(index_channel,  index_sample, err_in_relative_fraction,  pdf_type, index_correlation)
 	//                 channel         signal        err            LogNormal               index_correlation
-	cms->AddUncertainty(0,              0,            s_err,         pdftypeEs,                       1                ); 
-	cms->AddUncertainty(0,              1,            b_err,         pdftypeEb,                       EsEb_correlated==0?2:1        ); 
+	cms->AddUncertainty(0,              0,            s_err,         pdftypeEs,                       "1"                ); 
+	cms->AddUncertainty(0,              1,            b_err,         pdftypeEb,                       EsEb_correlated==0?"2":"1"        ); 
 
 	if(s_err !=0 || b_err !=0 ) { // decide to use or not systematic errors
 		cms->SetUseSystematicErrors(true);
