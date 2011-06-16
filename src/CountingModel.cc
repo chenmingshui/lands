@@ -1028,22 +1028,41 @@ If we need to change it later, it will be easy to do.
 						pdftype = vvv_pdfs_pdftype[ch][isam][iunc];
 						ran = vrdm[indexcorrl];
 						switch (pdftype){
-							default:
+							case typeLogNormal:
 								if(_debug>=100) cout<<" in FluctuatedNumbers, bHasParametricShape: ch["<<ch<<"] isam["<<isam<<"] iunc["<<iunc<<"]"<<" pdftype="<<pdftype<<endl;
-								/*
-								   for(int i=0; i<vv_pdfs_npar[ch][isam]; i++){
-								   vv_pdfs_params_varied[ch][isam][i] += 
-								   ( ran * (ran>0? vvv_pdfs_params_up[ch][isam][iunc][i] -vv_pdfs_params[ch][isam][i] 
-								   : vv_pdfs_params[ch][isam][i] -vvv_pdfs_params_down[ch][isam][iunc][i] ) );
-								   }
-								   */		
 								vv_pdfs_norm_varied[ch][isam] *= pow( (1+ (ran>0? vvv_pdfs_normvariation[ch][isam][iunc][1]: vvv_pdfs_normvariation[ch][isam][iunc][0])) , ran );
 								if(_debug>=100) cout<<" norm varied after this unc = "<<vv_pdfs_norm_varied[ch][isam]<<endl;
 								break;
 
+							case typeTruncatedGaussian :
+								if(_debug>=100) cout<<" in FluctuatedNumbers, bHasParametricShape: ch["<<ch<<"] isam["<<isam<<"] iunc["<<iunc<<"]"<<" pdftype="<<pdftype<<endl;
+								vv_pdfs_norm_varied[ch][isam]*=( 1+vvv_pdfs_normvariation[ch][isam][iunc][(ran>0?1:0)] / v_TruncatedGaussian_maxUnc[indexcorrl] * ran );		
+								if(_debug>=100) cout<<" norm varied after this unc = "<<vv_pdfs_norm_varied[ch][isam]<<endl;
+								break;
+
+							case typeGamma:
+								if(_debug>=100) cout<<" in FluctuatedNumbers, bHasParametricShape: ch["<<ch<<"] isam["<<isam<<"] iunc["<<iunc<<"]"<<" pdftype="<<pdftype<<endl;
+								if(vvv_pdfs_normvariation[ch][isam][iunc][0]>0){
+									tmp = scaled?vv_pdfs_norm_scaled[ch][isam]:vv_pdfs_norm[ch][isam];
+									if(isam<nsigproc){
+										if(tmp!=0) {vv_pdfs_norm_varied[ch][isam] /=tmp; vv_pdfs_norm_varied[ch][isam]*=(ran * vvv_pdfs_normvariation[ch][isam][iunc][0] * _common_signal_strength );}
+										else vv_pdfs_norm_varied[ch][isam] = ran * vvv_pdfs_normvariation[ch][isam][iunc][0] * _common_signal_strength ; // Gamma
+									}else{
+										if(tmp!=0) {vv_pdfs_norm_varied[ch][isam] /=tmp; vv_pdfs_norm_varied[ch][isam]*=(ran * vvv_pdfs_normvariation[ch][isam][iunc][0] );}
+										else vv_pdfs_norm_varied[ch][isam] = ran * vvv_pdfs_normvariation[ch][isam][iunc][0]; // Gamma
+									}
+								}else{ // if rho<0,   then this is multiplicative gamma function ....
+									vv_pdfs_norm_varied[ch][isam] *= (ran/v_GammaN[indexcorrl]);
+								}
+								if(_debug>=100) cout<<" norm varied after this unc = "<<vv_pdfs_norm_varied[ch][isam]<<endl;
+								break;
+							default:
+								cout<<"ERROR: for shape norm uncertainies, we have only support LogNormal (lnN), TruncatedGaussian (trG) and Gamma (gmN) currently. exit "<<endl;
+								exit(1);
+								break;	
 						}
 					}
-					if(_debug>=100) cout<<" norm varied after all unc = "<<vv_pdfs_norm_varied[ch][isam]<<endl;
+					if(_debug>=100) cout<<" **norm varied after all unc = "<<vv_pdfs_norm_varied[ch][isam]<<endl;
 					_w_varied->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_varied[ch][isam]);
 				}
 			}
@@ -2130,7 +2149,7 @@ If we need to change it later, it will be easy to do.
 			index_correlation = v_uncname.size()+1;
 			v_uncname.push_back(uncname);
 		}
-		if(_debug>=10) cout<<" AddUncertaintyOnShapeNorm for "<<index_sample<<"th channel, "<<index_sample<<"th proc,  unc ["<<uncname<<"]"<<endl;
+		if(_debug>=10) cout<<" AddUncertaintyOnShapeNorm for "<<index_channel<<"th channel, "<<index_sample<<"th proc,  unc ["<<uncname<<"]"<<endl;
 		AddUncertaintyOnShapeNorm(index_channel, index_sample, uncertainty_in_relative_fraction_down, uncertainty_in_relative_fraction_up, pdf_type, index_correlation );
 	}
 	void CountingModel::AddUncertaintyOnShapeNorm(string c, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, string uncname ){
@@ -2142,6 +2161,52 @@ If we need to change it later, it will be easy to do.
 
 	}
 
+	void CountingModel::AddUncertaintyOnShapeNorm(int index_channel, int index_sample, double rho, double rho_err, double B, int pdf_type, string uncname ){
+		int index_correlation = -1; // numeration starts from 1
+		for(int i=0; i<v_uncname.size(); i++){
+			if(v_uncname[i]==uncname){
+				index_correlation = i+1;	
+				break;
+			}
+		}
+		if(index_correlation<0)  {
+			index_correlation = v_uncname.size()+1;
+			v_uncname.push_back(uncname);
+		}
+		AddUncertaintyOnShapeNorm(index_channel, index_sample, rho, rho_err, B, pdf_type, index_correlation );
+	}
+	void CountingModel::AddUncertaintyOnShapeNorm(string c, int index_sample, double rho, double rho_err, double B, int pdf_type, string uncname ){
+		int index_channel = -1;
+		for(int i=0; i<v_pdfs_channelname.size(); i++){
+			if(v_pdfs_channelname[i]==c) index_channel=i;
+		}
+		AddUncertaintyOnShapeNorm(index_channel, index_sample, rho, rho_err, B, pdf_type, uncname);
+	}
+
+	// From SideBand
+	// when B is large, it's close to Gaussian. then use Gaussian, don't use Gamma function
+	void CountingModel::AddUncertaintyOnShapeNorm(int index_channel, int index_sample, double rho, double rho_err, double B, int pdf_type, int index_correlation ){
+		if(B<0){
+			cout<<"Gamma PDF, B can't be less 0"<<endl;
+			exit(0);
+			//return;
+		}
+		if(index_correlation <= 0) {
+			cout<<"Error: Adding index_correlation <=0, exit "<<endl;
+			exit(0);
+		}
+		if(pdf_type!=typeControlSampleInferredLogNormal && pdf_type!=typeGamma) {
+			cout<<"Error: your pdf_type is wrong "<<endl;
+			exit(0);
+		}
+		vector<double> vunc; vunc.clear();
+		vunc.push_back(rho);  // if rho<0, it means this gamma term is for multiplicative gamma function...
+		vunc.push_back(rho_err);
+		vunc.push_back(B);
+		vvv_pdfs_normvariation.at(index_channel).at(index_sample).push_back(vunc);
+		vvv_pdfs_pdftype.at(index_channel).at(index_sample).push_back(pdf_type);
+		vvv_pdfs_idcorrl.at(index_channel).at(index_sample).push_back(index_correlation);
+	}
 	double CountingModel::EvaluateGL(vector< vector<double> > vnorms, vector<double> vparams, double xr, vector< vector<double> > & vvs, vector< vector<double> > &vvb){ 
 		double ret=0;
 

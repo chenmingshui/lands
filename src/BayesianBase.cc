@@ -303,6 +303,7 @@ namespace lands{
 		if(_debug>=100)cout<<"DELETEME 4"<<endl;
 		if(_debug>=100)cout<<"v_pdfs_roodataset.size = "<<_cms->Get_v_pdfs_roodataset().size()<<endl;
 		for(int ch=0; ch<_cms->Get_vv_pdfs().size(); ch++){
+			if(_debug>=100)cout<<"DELETEME 41"<<endl;
 			if(_debug)if(_cms->Get_v_pdfs_roodataset()[ch]) {
 				cout<<_cms->Get_v_pdfs_channelname()[ch]<<": "<<_cms->Get_v_pdfs_roodataset()[ch]->GetName()<<endl;
 				_cms->Get_v_pdfs_roodataset()[ch]->Print(_debug>=100?"V":"");

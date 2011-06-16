@@ -2016,6 +2016,9 @@ bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vecto
 		}
 		else pdf =  (TString(ss[1])).Atoi();
 
+
+		if(debug) cout<<" pdf type "<<pdf<<endl;
+
 		tmps+= TString::Format("%8s ", ss[1].c_str());
 		if(pdf==typeGamma && ss[1]!="gmM") tmps+= TString::Format("%8s ", ss[2].c_str());
 		else if(pdf==typeBifurcatedGaussian) {
@@ -2135,30 +2138,39 @@ bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vecto
 					exit(0);
 				}
 			}
+
+			//if(debug)cout<<" To add unc"<<endl;
+
 			if(pdf==typeLogNormal||pdf==typeTruncatedGaussian){
 				if(isParametricChannel)cms->AddUncertaintyOnShapeNorm(channelName, subprocess[p], err, errup, pdf, indexcorrelation );
 				else cms->AddUncertainty(channelName, subprocess[p], err, errup, pdf, indexcorrelation );
 			}
 			if(pdf==typeGamma){
 				if(ss[1]=="gmA" or ss[1]=="gmN"){
+					//if(debug)cout<<"  it's  gmN "<<endl;
 					double N = (TString(ss[2]).Atof()); // your input should be Most Probable Value,  while mean value is N+1
 					if(N<0)  {
 						cout<<"Yield in control Region in gamma can't be negative, please check your input card at "<<s+1<<"th source, "<<2<<"th entry"<<endl;
 						exit(0);
 					}
-					cms->AddUncertainty(channelName, subprocess[p], rho, 0, N, pdf, indexcorrelation );
+					//if(debug)cout<<" ch "<<channelName<<", subp  "<<p<<" "<<" rho="<<rho<<" N="<<N<<" indexcorrelation="<<indexcorrelation<<endl;
+					if(isParametricChannel)cms->AddUncertaintyOnShapeNorm(channelName, subprocess[p], rho, 0, N, pdf, indexcorrelation );
+					else cms->AddUncertainty(channelName, subprocess[p], rho, 0, N, pdf, indexcorrelation );
 					//FIXME  here need to check:  rho*N == cms->GetExpectedNumber(channelName, subprocess[p]);
 				}
 				else if(ss[1]=="gmM"){
 					double N = 1./err/err-1; // we use convention: mean of events is 1./err/err,  so we do "-1" here, and then add back "1"  in src/CountingModel.cc
 					//double N = (int) (1./err/err);
-					cms->AddUncertainty(channelName, subprocess[p], -1, 0, N, pdf, indexcorrelation ); // use "rho = -1" here to imply that this gamma term is not for control sample inferred uncertainties, but multiplicative gamma function ....
+					if(isParametricChannel)cms->AddUncertaintyOnShapeNorm(channelName, subprocess[p], -1, 0, N, pdf, indexcorrelation ); // use "rho = -1" here to imply that this gamma term is not for control sample inferred uncertainties, but multiplicative gamma function ....
+					else cms->AddUncertainty(channelName, subprocess[p], -1, 0, N, pdf, indexcorrelation ); // use "rho = -1" here to imply that this gamma term is not for control sample inferred uncertainties, but multiplicative gamma function ....
 					//FIXME  here need to check:  all uncertainties with same indexcorrelation are the same,   can't be different currently ... 
 					//  e.g.   check   N == cms->Get_v_Gamma(indexcorrelation); // can't do here before ConfigUncertaintyPdfs()
 					//we might allow them different and do rescaling 
 				}
+				//if(debug)cout<<"  added  gamma "<<endl;
 			}
 			if(pdf==typeShapeGaussianLinearMorph or pdf==typeShapeGaussianQuadraticMorph){
+				if(isParametricChannel) { cout<< "WARNING  Morph is not working for parametric shape input ,  will skip  this uncertainty" << endl; continue; };
 				cms->AddUncertainty(channelName, subprocess[p], 8, shape, pdf, indexcorrelation );
 			}
 

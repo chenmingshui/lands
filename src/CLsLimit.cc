@@ -1807,6 +1807,7 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys){  // 0 for sbANDb,
 				}
 				break;
 			case 5:
+			case 6:
 				vdata_global = (VDChannel)_model->GetToyData_H0(_model->Get_fittedParsInData_b());
 				if(_model->hasParametricShape()){
 					_model->SetTmpDataForUnbinned(_model->Get_v_pdfs_roodataset_toy());
@@ -2131,7 +2132,7 @@ double CLsBase::M2lnQ(int checkFailure, int dataOrToy){
 			q = -(minchi2tmp2 - minchi2tmp);
 		}
 		if(_debug>=100)cout<<" testStat["<<test_statistics<<"]: q = "<<q<<" fitted_r="<<fitted_r<<" minchi2tmp="<<minchi2tmp<<" tmp1="<<tmp1<<" minchi2tmp2="<<minchi2tmp2<<endl;
-	}else if(test_statistics==5){ // LHC type, agreed at LHC-HCG meeting on 18.05.2011
+	}else if(test_statistics==5 or test_statistics==6){ // LHC type, agreed at LHC-HCG meeting on 18.05.2011   5 for upperlimit one-side, 6 for significance 
 		// here Q =  2ln(L_sb/L_b),  will correct in later stage to -2lnQ
 
 		if(_debug>=100){
@@ -2166,8 +2167,12 @@ double CLsBase::M2lnQ(int checkFailure, int dataOrToy){
 
 		double fitted_r = tmp1;
 		if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(0, tmp1, tmp2);  // MinuitFit(mode, r, err_r),  want r to be >=0
-		if(fitted_r>=_model->GetSignalScaleFactor()) q=0;
-		else q = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor()) - minchi2tmp);
+		if(test_statistics==5){ // for evaluating one-sided limit 
+			if(fitted_r>=_model->GetSignalScaleFactor()) q=0;
+			else q = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor()) - minchi2tmp);
+		}else if(test_statistics==6){// for evaluating significance
+			q = -(MinuitFit(3, tmp1, tmp1, 0/*fixed at mu=0*/) - minchi2tmp);
+		}
 		if(_debug>=100)cout<<" testStat["<<test_statistics<<"]: q = "<<q<<" fitted_r="<<fitted_r<<" minchi2tmp="<<minchi2tmp<<" tmp1="<<tmp1<<endl;
 
 		if(checkFailure){
@@ -2269,7 +2274,7 @@ double CLsBase::FindLimitFromTGE(TGraphErrors *tge, double alpha, double &limit,
 	fit->SetRange(rMin,rMax);
 
 	if (_debug) {
-		std::cout << " Limit Before Fit: r = " << limit << " +/- " << limitErr << endl;
+		std::cout << " Limit Before Fit: r = " << limit << " +/- " << limitErr <<endl;
 		std::cout << " r fitting range: [" << rMin << ", " << rMax << "]"<<endl;
 	}
 

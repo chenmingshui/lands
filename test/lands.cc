@@ -843,15 +843,14 @@ int main(int argc, const char*argv[]){
 			frequentist.SetModel(cms);
 			cout<<"\n Running "<<ntoysToDoSignificance<<" toys to evaluate significance for data "<<endl;
 			double signi = frequentist.SignificanceForData(ntoysToDoSignificance);
-			if(bPlots){
-				cout<<"Q_b_data = "<<frequentist.Get_m2lnQ_data()<<endl;	
-				vector<double> vclb = frequentist.Get_m2logQ_b();
-				TString  s = jobname; 
-				s+="_hybridSig_ts"; s+=testStat;
-				s+="_seed"; s+=seed;
-				FillTree(s, vclb);
 
-			}
+			cout<<"Q_b_data = "<<frequentist.Get_m2lnQ_data()<<endl;	
+			vector<double> vclb = frequentist.Get_m2logQ_b();
+			TString  s = jobname; 
+			s+="_hybridSig_ts"; s+=testStat;
+			s+="_seed"; s+=seed;
+			FillTree(s, vclb);
+
 			cout<<"------------------------------------------------------------"<<endl;
 			cout<<" Observed Significance for the data = "<<signi<<endl;
 			cout<<"------------------------------------------------------------"<<endl;
@@ -883,7 +882,6 @@ int main(int argc, const char*argv[]){
 			PlotXvsCummulativeProb plotRvsP(all_calculated_R95s, cummulativeProbabilities,
 					rm1s, rp1s, rm2s, rp2s,ssave, stitle, pt);
 			plotRvsP.draw();
-
 		}
 	}
 	watch.Print();
@@ -965,7 +963,7 @@ void processParameters(int argc, const char* argv[]){
 		if(sFileLimitsDistribution==""){
 			cout<<"ERROR No method specified, please use option \"-M or --method\" "<<endl; exit(0);
 		}
-       	}else {
+	}else {
 		method = tmpv[0];
 		if( calcsignificance && 
 				(method!="ProfiledLikelihood" and method!="Hybrid")
@@ -1106,6 +1104,7 @@ void processParameters(int argc, const char* argv[]){
 		else if(tmpv[0]=="Atlas") testStat=3;
 		else if(tmpv[0]=="AtlasAllowMuHatNeg") testStat=32;
 		else if(tmpv[0]=="LHC") testStat=5;
+		else if(tmpv[0]=="PL") testStat=6;
 		else {cout<<"ERROR Unimplemented testStat: "<<tmpv[0]<<". Supported: LEP, TEV, Atlas, AtlasAllowMuHatNeg "<<endl; exit(0); }
 	}
 
@@ -1167,7 +1166,9 @@ void processParameters(int argc, const char* argv[]){
 		tossToyConvention = 1;
 		tossPseudoDataConvention = 1;
 		UseBestEstimateToCalcQ = 0;
-		testStat = 5; // LHC
+		if(calcsignificance)
+			testStat = 5; // LHC  for one-sided upper limit
+		else testStat=6; //PL for significance evaluation
 	}
 
 	if(isWordInMap("--bReadPars", options)) bReadPars = true;
@@ -1284,7 +1285,8 @@ void processParameters(int argc, const char* argv[]){
 		}
 	}else if(method=="Hybrid"){
 		if(calcsignificance==false){
-			cout<<"  testStat = "; if(testStat==1) cout<<"LEP"; if(testStat==2)cout<<"TEV"; if(testStat==3)cout<<"Atals"; if(testStat==32)cout<<"AtlasAllowMuHatNeg"; if(testStat==5)cout<<"LHC";
+			cout<<"  testStat = "; if(testStat==1) cout<<"LEP"; if(testStat==2)cout<<"TEV"; if(testStat==3)cout<<"Atals"; 
+			if(testStat==32)cout<<"AtlasAllowMuHatNeg"; if(testStat==5)cout<<"LHC"; if(testStat==6) cout<<"PL";
 			cout<<endl;
 			cout<<"  rule     = "; if(rule==1) cout<<"CLs"; if(rule==2)cout<<"CLsb";
 			cout<<endl;
@@ -1358,7 +1360,7 @@ void PrintHelpMessage(){
 	printf("--rAbsAcc arg (=0.01)                 Absolute accuracy on r to reach to terminate the scan \n"); 
 	printf("--rRelAcc arg (=0.01)                 Relative accuracy on r to reach to terminate the scan \n"); 
 	printf("--rule arg (=CLs)                     Rule to use: CLs, CLsb \n"); 
-	printf("--testStat arg (=LEP)                 Test statistics: LEP, TEV, Atlas, AtlasAllowMuHatNeg, LHC. \n"); 
+	printf("--testStat arg (=LEP)                 Test statistics: LEP, TEV, Atlas, AtlasAllowMuHatNeg, LHC (only for limit),  PL (only for significance). \n"); 
 	printf("--singlePoint arg (=float)            Just compute CLsb/CLb/CLs values for a given value of r \n"); 
 	printf("--scanRs arg (=numSteps)              scanning CLs vs. r,  r from initialRmin to initialRmax with numSteps \n"); 
 	printf("--tossToyConvention arg (=0)          choose convention for tossing toys to build -2lnQ distribution. 0 (LEP, TEVATRON) or 1 (LHC)\n");
