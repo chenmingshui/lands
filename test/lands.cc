@@ -76,7 +76,6 @@ int nToysForCLb = -1;
 int nToysForCLsb = -1;
 bool bNotCalcCLssbb = false;
 bool bSaveM2lnQ = false;
-TString fileM2lnQ = "m2lnq.root";
 bool bSkipM2lnQ = false; 
 
 bool bM2lnQGridPreComputed = false;
@@ -91,6 +90,10 @@ vector<TString> librariesToBeLoaded;
 
 bool bOnlyEvalCL_forVR = false;
 vector<double> vR_toEval;
+
+int makeCLsBands = 0;
+
+TString sFileBonlyM2lnQ = "";
 
 int main(int argc, const char*argv[]){
 	TStopwatch watch;  
@@ -135,7 +138,7 @@ int main(int argc, const char*argv[]){
 		}	
 		cms = tmp1[datacards.size()-1];
 	}else{
-		if(sFileLimitsDistribution=="") exit(0);
+		if(sFileLimitsDistribution=="" && makeCLsBands<2 && sFileBonlyM2lnQ=="") exit(0);
 	}
 	cout<<"totally "<<datacards.size()<<" data cards combined"<<endl;
 	cms->SetUseSystematicErrors(systematics);
@@ -214,8 +217,14 @@ int main(int argc, const char*argv[]){
 			cms_global= cms;
 			vdata_global=cms->Get_v_data();
 
+			CLsLimit clsr95;
+			clsr95.SetDebug(debug);
+			clsr95.SetRule(rule);
+			double rtmp;
+			clsr95.SetAlpha(1-CL);
+
 			if(singlePoint){ cms->SetSignalScaleFactor(testR); }
-			else { cms->SetSignalScaleFactor(1.); }
+			else { cms->SetSignalScaleFactor(1.); testR=1.;}
 
 			frequentist.SetModel(cms);
 
@@ -233,6 +242,41 @@ int main(int argc, const char*argv[]){
 				vb = frequentist.Get_m2logQ_b();
 				frequentist.BuildM2lnQ_sb(nToysForCLsb);
 				vsb = frequentist.Get_m2logQ_sb();
+			}
+			if(makeCLsBands>=2){
+				if(debug) cout<<"MakeCLsValues from precomputed file = "<<sFileM2lnQGrid<<endl;
+				std::map<double, TTree*> gridCLsb; //r, <clsb, clserr>
+				std::map<double, TTree*> gridCLb; //r, <clsb, clserr>
+				std::map<double, double> gridQdata; //r, q_data
+				ReadM2lnQGridFromFile(sFileM2lnQGrid, gridCLsb, gridCLb, debug);
+				ReadM2lnQGridFromFile(sFileM2lnQGrid, gridQdata, debug);
+
+				TTree *tsb = gridCLsb[testR];
+				TTree *tb = gridCLb[testR];
+				double qdata = gridQdata[testR];
+		
+				if(tsb==0 || tb==0) {
+					cout<<"ERROR: grid of R="<<testR<<" not in the file"<<endl; 
+					cout<<"   all available R's : "<<endl;
+					for (std::map<double, TTree *>::iterator itg = gridCLsb.begin(), edg = gridCLsb.end(); itg != edg; ++itg) {
+						if(itg->first == testR) continue;
+						cout<<"  "<<itg->first<<"  ";
+					}
+					cout<<endl;
+					exit(1);
+				}
+
+				GetM2lnQ(tsb, tb, vsb, vb, debug);
+				clsr95.DoingStatisticalBandsForCLs(vsb, vb);	
+				double cls, errs;
+				GetCLs(qdata, tsb, tb, cls, errs);
+				cout<<"Observed CLs = "<<cls<<" +/- "<<errs<<endl;
+
+				return 0;
+			}
+
+			if(!bSkipM2lnQ && makeCLsBands==1){
+				clsr95.DoingStatisticalBandsForCLs(vsb, vb);	
 			}
 
 			if(!bNotCalcCLssbb && !bSkipM2lnQ){
@@ -253,6 +297,7 @@ int main(int argc, const char*argv[]){
 				TString s_qdata; s_qdata.Form("DATA_R%.5f_Q%.5f", cms->GetSignalScaleFactor(), qdata);
 				TString s_sb = "SAMPLING_SB_"; s_sb+=s_r;
 				TString s_b = "SAMPLING_B_"; s_b+=s_r;
+				TString fileM2lnQ = jobname; fileM2lnQ+="_m2lnQ";
 				FillTree(fileM2lnQ, cms->GetSignalScaleFactor(), qdata, vsb, vb, s_r, s_qdata, s_sb, s_b);
 			}
 
@@ -400,12 +445,6 @@ int main(int argc, const char*argv[]){
 				return 1;
 			}
 
-
-			CLsLimit clsr95;
-			clsr95.SetDebug(debug);
-			clsr95.SetRule(rule);
-			double rtmp;
-			clsr95.SetAlpha(1-CL);
 
 			if(bCalcObservedLimit){
 				if(bQuickEstimateInitialLimit) rtmp = clsr95.LimitOnSignalScaleFactor(cms, &frequentist, toysHybrid);
@@ -607,7 +646,7 @@ int main(int argc, const char*argv[]){
 
 			watch.Print();
 			return 1;
-		}else if(method=="ProfiledLikelihood"){
+		}else if(method=="ProfiledLikelihood" or method=="ProfileLikelihood"){
 
 			// change to use parabora approximation ....
 
@@ -810,7 +849,7 @@ int main(int argc, const char*argv[]){
 		double tmp, tmperr;
 		double rmean, rm1s, rm2s, rp1s, rp2s;	
 		vector<double> difflimits; 
-		if(method == "ProfiledLikelihood"){
+		if(method == "ProfiledLikelihood" or method=="ProfileLikelihood"){
 			
 			_inputNuisances = cms->Get_norminalPars();
 			cms_global= cms;
@@ -837,19 +876,35 @@ int main(int argc, const char*argv[]){
 				difflimits=lb.GetDifferentialSignificances();
 			}
 		}else if(method == "Hybrid"){
+			cout<<" calc p-value ... "<<endl;
 
 			cms->SetSignalScaleFactor(1.);
-			int ntoysToDoSignificance = toysHybrid; //10000000;
+			cms->SetUseBestEstimateToCalcQ(UseBestEstimateToCalcQ);
+			frequentist.SetTestStatistics(testStat);
 			frequentist.SetModel(cms);
-			cout<<"\n Running "<<ntoysToDoSignificance<<" toys to evaluate significance for data "<<endl;
-			double signi = frequentist.SignificanceForData(ntoysToDoSignificance);
+			vector<double> vclb;
 
-			cout<<"Q_b_data = "<<frequentist.Get_m2lnQ_data()<<endl;	
-			vector<double> vclb = frequentist.Get_m2logQ_b();
-			TString  s = jobname; 
-			s+="_hybridSig_ts"; s+=testStat;
-			s+="_seed"; s+=seed;
-			FillTree(s, vclb);
+			double  signi, pvalue;
+			if(sFileBonlyM2lnQ==""){
+				int ntoysToDoSignificance = toysHybrid; //10000000;
+				if(tossToyConvention==1)frequentist.checkFittedParsInData(bReadPars, bWritePars, fileFittedPars);
+				cout<<"\n Running "<<ntoysToDoSignificance<<" toys to evaluate significance for data "<<endl;
+				signi = frequentist.SignificanceForData(ntoysToDoSignificance);
+
+				cout<<"Q_b_data = "<<frequentist.Get_m2lnQ_data()<<endl;	
+				vclb = frequentist.Get_m2logQ_b();
+				TString  s = jobname; 
+				s+="_hybridSig_ts"; s+=testStat;
+				s+="_seed"; s+=seed;
+				TString s_qdata = TString::Format("%.5f",frequentist.Get_m2lnQ_data());
+				FillTree(s, vclb, s_qdata);
+			}else{
+				cout<<"\n reading toys to evaluate significance for data "<<endl;
+				TString s_qdata = "";
+				TTree * tb = (TTree*)LoadTreeBonly(sFileBonlyM2lnQ, s_qdata);				
+				vclb = GetVectorFrom(tb, "brT");
+				signi = frequentist.SignificanceForData(-s_qdata.Atof(), vclb);
+			}
 
 			cout<<"------------------------------------------------------------"<<endl;
 			cout<<" Observed Significance for the data = "<<signi<<endl;
@@ -924,11 +979,22 @@ void processParameters(int argc, const char* argv[]){
 	if( tmpv.size()!=1 ) { }
 	else sFileLimitsDistribution = tmpv[0];
 
+	tmpv = options["--calcPValueFromFile"]; 
+	if( tmpv.size()!=1 ) { }
+	else sFileBonlyM2lnQ = tmpv[0];
+
+	// 
+	tmpv = options["--makeCLsBands"];
+	if( tmpv.size()!=1 ) { makeCLsBands= 0; }
+	else {
+		makeCLsBands = tmpv[0].Atoi();
+	}
+
 	vector<TString> tmpcards = options["-d"];
 	if(tmpcards.size()==0) tmpcards = options["--datacards"];
 	cout<<endl<<"You are trying to combine following "<<tmpcards.size()<<" cards:"<<endl;
 	if(tmpcards.size()==0) { 
-		if(sFileLimitsDistribution==""){
+		if(sFileLimitsDistribution=="" && makeCLsBands<2 && sFileBonlyM2lnQ==""){
 			cout<<"*** No data card specified, please use option \"-d or --datacards\""<<endl; exit(0); 
 		}
 	}else{
@@ -960,16 +1026,16 @@ void processParameters(int argc, const char* argv[]){
 
 	tmpv = options["-M"]; if(tmpv.size()!=1) tmpv = options["--method"];
 	if( tmpv.size()!=1) { 
-		if(sFileLimitsDistribution==""){
+		if(sFileLimitsDistribution=="" && makeCLsBands<2 && sFileBonlyM2lnQ==""){
 			cout<<"ERROR No method specified, please use option \"-M or --method\" "<<endl; exit(0);
 		}
 	}else {
 		method = tmpv[0];
 		if( calcsignificance && 
-				(method!="ProfiledLikelihood" and method!="Hybrid")
+				(method!="ProfiledLikelihood" and method!="Hybrid" and method!="ProfileLikelihood")
 		  ){cout<<"ERROR You are trying to use "<<method<<", which is not supported currently to calculate Significance"<<endl; exit(0);}
 		if( !calcsignificance && 
-				(method!="ProfiledLikelihood" and method!="Hybrid" and method!="Bayesian" and method!="FeldmanCousins" )
+				(method!="ProfiledLikelihood" and method!="Hybrid" and method!="Bayesian" and method!="FeldmanCousins" and method!="ProfileLikelihood" )
 		  ){cout<<"ERROR You are trying to use "<<method<<", which is not supported currently to calculate limit "<<endl; exit(0);}
 	}
 
@@ -1188,9 +1254,6 @@ void processParameters(int argc, const char* argv[]){
 	tmpv = options["--fileFittedPars"];
 	if( tmpv.size()!=1 ) { fileFittedPars = ""; }
 	else fileFittedPars = tmpv[0];
-	tmpv = options["--fileM2lnQ"];
-	if( tmpv.size()!=1 ) { fileM2lnQ= "m2lnq.root"; }
-	else fileM2lnQ= tmpv[0];
 
 	tmpv = options["--M2lnQGridFile"];
 	if( tmpv.size()!=1 ) { bM2lnQGridPreComputed=false; }
@@ -1239,6 +1302,9 @@ void processParameters(int argc, const char* argv[]){
 		vR_toEval.resize(it - vR_toEval.begin());
 	}
 
+	if(makeCLsBands>=2){
+		bSkipM2lnQ = 1; doExpectation = 0;
+	}
 
 	printf("\n\n[ Summary of configuration in this job: ]\n");
 	cout<<"  Calculating "<<(calcsignificance?"significance":"limit")<<" with "<<method<<" method "<<endl;
@@ -1270,7 +1336,7 @@ void processParameters(int argc, const char* argv[]){
 
 		cout<<"  toysPreBayesian = "<<toysPreBayesian<<endl;
 		cout<<"  toysBayesian = "<<toysBayesian<<endl;
-	}else if(method=="ProfiledLikelihood"){
+	}else if(method=="ProfiledLikelihood" or method=="ProfileLikelihood"){
 		if(!calcsignificance)cout<<(oneside==1?"  one sided":"  two sided")<<endl;
 		cout<<"  algorithm to extract limit: "<<PLalgorithm<<endl;
 	}else if(method=="FeldmanCousins"){
@@ -1304,6 +1370,7 @@ void processParameters(int argc, const char* argv[]){
 			cout<<" Use pre-computed grid (-2lnQ) from file : "<<sFileM2lnQGrid<<endl;
 		}
 	}
+	if(makeCLsBands) cout<<"  makeCLsBands = "<<makeCLsBands<<endl;
 
 	cout<<"  random number generator seed: "<<seed<<endl;
 	cout<<"  debug level = "<<debug<<endl;
@@ -1340,6 +1407,7 @@ void PrintHelpMessage(){
 	printf("-S [ --systematics ] arg (=1)         if 0, then will not use systematics  \n"); 
 	printf("-C [ --cl ] arg (=0.95)               Confidence Level \n"); 
 	printf("--significance arg (=0)               Compute significance instead of upper limit,  supported methods: ProfiledLikelihood and Hybrid (CLb) \n"); 
+	printf("--calcPValueFromFile arg (fileName)   i.e calc p-values from merged files \n");
 	printf(" \n"); 
 	printf("Bayesian specific options: \n"); 
 	printf("--prior arg (=flat)            	      Prior to use: \'flat\' (default), \'1/sqrt(r)\', \'corr\' \n"); 
@@ -1366,7 +1434,7 @@ void PrintHelpMessage(){
 	printf("--tossToyConvention arg (=0)          choose convention for tossing toys to build -2lnQ distribution. 0 (LEP, TEVATRON) or 1 (LHC)\n");
 	printf("--UseBestEstimateToCalcQ arg (=1)     0: randomized nuisances; 1: use best estimate of nuisances  --> to calc Q\n");
 	printf("--freq                                shorcut to the configuration of LHC-type frequestist method \n");
-	printf("                                      (i.e. --tossToyConvention 1 --UseBestEstimateToCalcQ 0  --tossPseudoDataConvention --testStat LHC) \n");
+	printf("                                      (i.e. --tossToyConvention 1 --UseBestEstimateToCalcQ 0  --tossPseudoDataConvention 1 --testStat LHC) \n");
 
 	printf("--bReadPars (=0)\n");
 	printf("--bWritePars (=0)\n");
@@ -1377,12 +1445,28 @@ void PrintHelpMessage(){
 	printf("--nToysForCLb (= -1)\n");
 	printf("--nToysForCLsb (= -1)\n");
 	printf("--fileFittedPars (=\"\")\n");
-	printf("--fileM2lnQ (= \"m2lnq.root\")\n");
 	printf("--M2lnQGridFile (= \"filename\")\n");
+
+	printf("--makeCLsBands arg (=0)               0: skip it;  1: run toys and make it;  2: read toys and make it, with --M2lnQGridFile\n");
 
 	printf(" \n"); 
 	printf("ProfiledLikelihood specific options: \n"); 
 	printf("--OneOrTwoSided arg (=2)              1 sided limit -lnL = 1.345;  2 sided limit -lnL = 1.921 \n"); 
 	printf("--PLalgorithm arg (=Minos)            algorithms for ProfileLikelihood approximation: Minos, Migrad \n"); 
+
+	printf(" \n");
+	printf("------------------some comand lines-----------------------------------------------\n");
+	printf("            *extract CLs values with bands from precomputed grid*\n");
+	printf("lands.exe  -M Hybrid --makeCLsBands 2 --M2lnQGridFile fileContainsM2lnQ_R=1.root\n");
+	printf("            *extract UL expectation from merged file contains limit tree*\n");
+	printf("lands.exe --doExpectation 1 --readLimitsFromFile fileContains_R_distribuition.root\n");
+	printf("            *calculate p-value from merged file contains -2lnQ of b-only toys*\n");
+	printf("lands.exe --significance 1 -M Hybrid --testStat PL/LEP --calcPValueFromFile fileContains_-2lnQ@bonly.root\n");
+	printf("            *prepare grid of -2lnQ *\n");
+	printf("lands.exe -M Hybrid --freq --bNotCalcCLssbb --bSaveM2lnQ --nToysForCLsb 1000 --nToysForCLb 500 --singlePoint rValue  -n JobName -s Seed -d cards*.txt\n");
+	printf("            *make limit bands with throwing pseudo data, \n");
+	printf("            *for each pseudo data, evaluate testStat for all available grid Rs from grid file*\n");
+	printf("lands.exe -d datacards*txt -M Hybrid --freq --bCalcObservedLimit 0  --M2lnQGridFile grid.root  --doExpectation 1 -t XXX --bSkipM2lnQ 1\n");
+
 	exit(0);
 }

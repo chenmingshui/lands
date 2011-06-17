@@ -22,7 +22,7 @@ inline Double_t Significance(Double_t pvalue){
 */
 // FIXME make a few trees which save all important numbers, so we can easily remake plots 
 // and parallel running .....,  combine them at the final step
-void FillTree(TString sfile, vector<double> array);
+void FillTree(TString sfile, vector<double> array, TString treeName="");
 void FillTree(TString sfile, vector<int> array);
 void FillTree(TString sfile, double * array, int nsize=100000);
 void FillTree(TString sfile, int* array, int nsize=100000);
@@ -40,6 +40,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 vector<TString> SplitIntoLines(TString ifileContentStripped, bool debug=false);
 TString GetWordFromLine(TString line, int index, string delim = " ");
 
+TTree * LoadTreeBonly(TString filename, TString & treeName);
 TH1F* GetHisto(string filename, string histoname);
 TObject* GetTObject(string filename, string objname);
 bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vector< vector<string> > parametricShapeLines,  vector< vector<string> > uncerlinesAffectingShapes,  int debug=0);
@@ -52,5 +53,6 @@ bool GetM2lnQ(TTree* tsb, TTree*tb, vector<double> &vclsb, vector<double>&vclb, 
 bool GetPValue(vector<double> vclsb, double qdata, double &ret, double &err, int debug=0);
 void ReadM2lnQGridFromFile(TString filename, std::map<double, TTree*>&gridCLsb, std::map<double, TTree*>&gridCLb, int _debug=0); 
 vector<double> GetVectorFrom(TTree* tree, TString brName);
+void ReadM2lnQGridFromFile(TString filename, std::map<double, double>&gridQdata, int _debug=0); 
 #endif   /* ----- #ifndef UTILSROOT_INC  ----- */
 

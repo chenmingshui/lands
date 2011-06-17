@@ -19,6 +19,41 @@ TH1F* GetHisto(string filename, string histoname){
 	if(!h) {cout<<"hist ["<<histoname<<"] in file ["<<filename<<"] couldn't be found"<<endl; exit(0);};
 	return h;
 }
+TTree * LoadTreeBonly(TString filename, TString & treeName){
+	TTree * tb;
+	// dedicated to locate a tree with name including Q_data value
+	if(treeName!="")return (TTree*)GetTObject(filename.Data(), treeName.Data());
+	else{
+		if( gSystem->AccessPathName(filename)) {cout<<filename<<" couldn't be found"<<endl; exit(1);};
+		TFile *f;
+		f = (TFile*)gROOT->GetListOfFiles()->FindObject(filename);
+		if(f==NULL) f=new TFile(filename);
+		if (!f) {cout<<"Input file: "<<f->GetName()<<" error!  either not exist or empty,  exit"<<endl; exit(1);}
+		TDirectory *toyDir = f->GetDirectory("");
+		TIter next(toyDir->GetListOfKeys()); TKey *k;
+		int ntrees = 0;
+		while ((k = (TKey *) next()) != 0) {
+			TString name(k->GetName());
+			if(name.BeginsWith("T")){
+				name.ReplaceAll("T","");
+				cout<<"File ["<<filename<<"] contains tree with -2lnQ for data = "<<name<<endl;
+				if(name.IsFloat()==false) { cout<< "     *not float number*  "<<endl ; continue;}
+				treeName = name;
+				tb = dynamic_cast<TTree *>(toyDir->Get(k->GetName()));
+				ntrees ++ ;
+			}
+		}
+
+		if(ntrees>1) cout<<"WARNING: this File contains "<<ntrees<<" trees, we take "<<tb->GetName()<<endl;
+		if(ntrees==0) {
+			cout<<"ERROR: File ["<<filename<<"] contains 0 tree"<<endl;
+			exit(1);
+		}
+	}
+
+	return tb;
+
+}
 TObject* GetTObject(string filename, string objname){
 
 	// FIXME need to check if filename is exist, and histoname is exist 
@@ -66,10 +101,11 @@ void FillTree(TString sfile, double d1, double d2, vector<double> array1,  vecto
 	fTrees.Write();
 	fTrees.Close();
 }
-void FillTree(TString sfile, vector<double> array){
+void FillTree(TString sfile, vector<double> array, TString treeName){
 	TFile fTrees(sfile+"_tree.root", "RECREATE");
 	Double_t brT;
-	TTree *tree = new TTree("T","T"); 
+	TString stmp = "T"; stmp+=treeName;
+	TTree *tree = new TTree(stmp, stmp); 
 	tree->Branch("brT", &brT, "brT/D");
 	for(int i=0; i<array.size(); i++){
 		brT= array.at(i);
@@ -2414,7 +2450,7 @@ bool GetPValue(vector<double> vclsb, double qdata, double &ret, double &err, int
 	return true;
 }
 void ReadM2lnQGridFromFile(TString filename, std::map<double, TTree*>&gridCLsb, std::map<double, TTree*>&gridCLb, int _debug) {
-	if( gSystem->AccessPathName(filename)) {cout<<filename<<" couldn't be found"<<endl; exit(0);};
+	if( gSystem->AccessPathName(filename)) {cout<<"file: ("<<filename<<") couldn't be found"<<endl; exit(0);};
 	TFile *f;
 	f = (TFile*)gROOT->GetListOfFiles()->FindObject(filename);
 	if(f==NULL) f=new TFile(filename);
@@ -2440,6 +2476,28 @@ void ReadM2lnQGridFromFile(TString filename, std::map<double, TTree*>&gridCLsb, 
 	if(gridCLsb.size()!=gridCLb.size()) cout<<"Error: gridCLsb size="<<gridCLsb.size()<<" *** != *** "<<"gridCLb ="<<gridCLb.size()<<endl;
 }
 
+void ReadM2lnQGridFromFile(TString filename, std::map<double, double>&gridQdata, int _debug) {
+	if( gSystem->AccessPathName(filename)) {cout<<"file: ("<<filename<<") couldn't be found"<<endl; exit(0);};
+	TFile *f;
+	f = (TFile*)gROOT->GetListOfFiles()->FindObject(filename);
+	if(f==NULL) f=new TFile(filename);
+	if (!f) {cout<<"Input file: "<<f->GetName()<<" error!  either not exist or empty,  exit"<<endl; exit(1);}
+	TDirectory *toyDir = f->GetDirectory("");
+	TIter next(toyDir->GetListOfKeys()); TKey *k;
+	while ((k = (TKey *) next()) != 0) {
+		double rVal;
+		TString name(k->GetName());
+		if(name.BeginsWith("DATA_R")){
+			name.ReplaceAll("DATA_R","");
+			TString tmp = name;
+			rVal = tmp.Remove(tmp.Index("_"), tmp.Length()).Atof();
+			name.Remove(0,name.Index("_Q")+2);
+			gridQdata[rVal]=name.Atof();
+			if (_debug > 2) std::cout << "  Do " << k->GetName() << " -> " << tmp << " --> " << rVal << " Q_data ="<<name<<" --> "<<name.Atof()<< std::endl;
+		}
+	}
+	if(_debug) cout<<"M2lnQGrid size = "<<gridQdata.size()<<endl;
+}
 vector<double> GetVectorFrom(TTree* tree, TString brName){
 	vector<double> v;
 	double c;

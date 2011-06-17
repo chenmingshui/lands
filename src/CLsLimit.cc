@@ -600,18 +600,31 @@ namespace lands{
 	double CLsBase::CLb(double &err){
 		return CLb(Q_b_data, err);
 	}
+
 	double CLsBase::PValue(double lnq){
 		double ret=0;
 		bool hasQ_gt_lnq = false;
-		for(int i=0; i<_nexps; i++){ 
-			if(Q_b[iq_b[i]] >= lnq)  {
-				ret = i/(double)_nexps;	
-				hasQ_gt_lnq=true;
-				break;
-			}
-		}		
+
+		if(test_statistics!=6){ // LEP or Tevatron type
+			for(int i=0; i<_nexps; i++){ 
+				if(Q_b[iq_b[i]] >= lnq)  {
+					ret = i/(double)_nexps;	
+					hasQ_gt_lnq=true;
+					break;
+				}
+			}		
+		}else{ // Standard ProfiledLikelihood ration  
+			for(int i=0; i<_nexps; i++){ 
+				if(Q_b[iq_b[i]] > lnq)  {
+					ret = i/(double)_nexps;	
+					break;
+				}else{
+					hasQ_gt_lnq=true;
+				}
+			}	
+		}
 		if(hasQ_gt_lnq==false) {
-			ret= 1-1./(double)_nexps;
+			ret= test_statistics==6?(1./(double)_nexps):(1-1./(double)_nexps);
 			if(_debug or 1) {
 				cout<<"********WARNING********"<<endl;
 				cout<<" Toys for b-only hypothesis are NOT enough to evaluate the true significance, "<<endl;
@@ -620,7 +633,7 @@ namespace lands{
 				cout<<" we set PValue to be 1./_nexps = "<<1-ret<<endl;
 			}
 		}
-		return 1-ret;
+		return test_statistics==6?ret:(1-ret);
 	}
 	void CLsBase::CheckFractionAtHighEnd(vector<double> vlogQ, vector<double> vlogQ_prob){
 		//cout<<endl<<"*********Start Calc mean value of significance ......."<<endl;
@@ -832,7 +845,33 @@ namespace lands{
 		tmpp = Significance(tmpp);
 		tmpm = Significance(tmpm);
 
-		if(_debug) cout<<" p value of data = "<< pvalue << ",  significance = "<< significance << " +"<<tmpp-significance<<" -"<<significance-tmpm<<endl;
+		cout<<" p value of data = "<< pvalue << ",  significance = "<< significance << " +"<<tmpp-significance<<" -"<<significance-tmpm<<endl;
+		return significance;
+	}
+	double CLsBase::SignificanceForData(double qdata, vector<double> vq){
+
+		// the input is -2lnQ.  need to translate to 2lnQ
+		vector<double> vlnQ_b;
+		for(int i=0; i<vq.size(); i++){
+			vlnQ_b.push_back(-vq[i]);
+		}
+		SetLogQ_b(vlnQ_b);
+		double pvalue=PValue(qdata);
+		double significance = Significance(pvalue);
+
+		int ntoys_for_b = vq.size();
+		if(ntoys_for_b<=0) {cout<<" Your input has 0 toy. "<<endl; return 0;}
+		double tmpn = ntoys_for_b*pvalue;  
+		double tmpp = ( tmpn - sqrt(tmpn) )/(double)ntoys_for_b;
+		double tmpm = ( tmpn + sqrt(tmpn) )/(double)ntoys_for_b;
+
+
+		if(tmpn<1.8)  tmpp = tmpn/10./(double)ntoys_for_b;
+
+		tmpp = Significance(tmpp);
+		tmpm = Significance(tmpm);
+
+		cout<<" p value of data = "<< pvalue << ",  significance = "<< significance << " +"<<tmpp-significance<<" -"<<significance-tmpm<<endl;
 		return significance;
 	}
 	/*
@@ -995,7 +1034,7 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 		cms->SetSignalScaleFactor(1.);
 		if(cms->GetTossToyConvention()==1) {
 			DoAfit(1, cms->Get_v_data_real(), cms->Get_v_pdfs_roodataset_real(), cms->Get_fittedParsInData_sb());
-				cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
+			cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
 		}
 		BayesianBase bys(cms, 0.05, 1.e-2);
 		bys.SetNumToys(100);
@@ -1013,7 +1052,7 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 			cout<<"Before refit: r=1"<<endl;
 			for(int i=0; i<cms->Get_max_uncorrelation(); i++) cout<<"par "<<i<<"     "<<cms->Get_fittedParsInData_sb()[i]<<endl;
 			DoAfit(r0, cms->Get_v_data_real(), cms->Get_v_pdfs_roodataset_real(), cms->Get_fittedParsInData_sb());
-				cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
+			cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
 			cout<<"After refit: r="<<r0<<endl;
 			for(int i=0; i<cms->Get_max_uncorrelation(); i++) cout<<"par "<<i<<"     "<<cms->Get_fittedParsInData_sb()[i]<<endl;
 		}
@@ -1034,7 +1073,7 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 		cms->SetSignalScaleFactor(r1);
 		if(cms->GetTossToyConvention()==1) {
 			DoAfit(r1, cms->Get_v_data_real(), cms->Get_v_pdfs_roodataset_real(), cms->Get_fittedParsInData_sb());
-				cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
+			cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
 		}
 		frequentist->BuildM2lnQ(cms, nexps); 
 		if(_rule == 1)
@@ -1075,7 +1114,7 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 		rmid = cms->GetSignalScaleFactor(); // if not allow negative r, then the scale factor will not be modified in SetSignalScaleFactor. 
 		if(cms->GetTossToyConvention()==1) {
 			DoAfit(rmid, cms->Get_v_data_real(), cms->Get_v_pdfs_roodataset_real(), cms->Get_fittedParsInData_sb());
-				cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
+			cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
 		}
 		frequentist->BuildM2lnQ(cms, nexps); 
 		double clmid, errsmid;
@@ -1248,30 +1287,17 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms, CLsBase *frequenti
 	LimitOnSignalScaleFactor(cms,  1, 1, frequentist, nexps);
 }
 
-void CLsLimit::DoingStatisticalBandsForCLs(CountingModel *cms, CLsBase *frequentist, int nexps){
-	cms_global = cms;
+void CLsLimit::DoingStatisticalBandsForCLs(vector<double> vm2logQ_sb, vector<double> vm2logQ_b){
 	clock_t start_time, cur_time, funcStart_time;
 	start_time=clock(); cur_time=clock(); funcStart_time=clock();
-	_frequentist = frequentist; _nexps=nexps;
 
-	cms->SetSignalScaleFactor(1.0);
 	double cls_mean=0;
 	double cp=0; // cumulative p
 	_vCLs_Req1.clear(); _vCLs_Req1_CP.clear(); 
-	cms->UseAsimovData();
-	_frequentist->BuildM2lnQ(cms, _nexps);
-	if(_debug){
-		start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_BuildM2logQ: "<< _nexps<<" toys, "<< (cur_time - start_time)/1000000./60. << " minutes\n"; fflush(stdout);
-	}
-	vector<double> vm2logQ_b = _frequentist->Get_m2logQ_b()	;
-	vector<double> vm2logQ_sb = _frequentist->Get_m2logQ_sb();		
-	nexps=vm2logQ_sb.size();  int nexps_b=vm2logQ_b.size();
-	if(nexps!=nexps_b) {
-		cout<<"**Error exps for s+b = "<<nexps<<", for b-only="<<nexps_b<<endl;
-		return;
-	}
-	if(nexps<=0){
-		cout<<"***Error exps = "<<nexps<<endl;
+	int nexps=vm2logQ_sb.size();  int nexps_b=vm2logQ_b.size();
+
+	if(nexps<=10 || nexps_b<=10){
+		cout<<"***Error: too few toys, vsb.size= "<<nexps<<",  vb.size="<<nexps_b<<endl;
 		return;
 	}
 
@@ -1285,7 +1311,7 @@ void CLsLimit::DoingStatisticalBandsForCLs(CountingModel *cms, CLsBase *frequent
 	double *dpcls = new double[nb];
 
 	if(_debug){
-		start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_SortOut -2lnQ: "<< _nexps<<" toys, "<< (cur_time - start_time)/1000. << " milisec \n"; fflush(stdout);
+		start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_SortOut -2lnQ: b"<< nexps_b <<", sb"<<nexps<<" toys, "<< (cur_time - start_time)/1000. << " milisec \n"; fflush(stdout);
 	}
 
 	int previousStopPoint=0;
@@ -1308,7 +1334,7 @@ void CLsLimit::DoingStatisticalBandsForCLs(CountingModel *cms, CLsBase *frequent
 		dpcls[i]=pcls;
 	}
 	if(_debug){
-		start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_CLsBands: "<< _nexps<<" toys, "<< (cur_time - start_time)/1000. << " milisec \n"; fflush(stdout);
+		start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_CLsBands -2lnQ: b"<< nexps_b <<", sb"<<nexps<<" toys, "<< (cur_time - start_time)/1000. << " milisec \n"; fflush(stdout);
 	}
 
 	int csize=nb;
@@ -1325,7 +1351,7 @@ void CLsLimit::DoingStatisticalBandsForCLs(CountingModel *cms, CLsBase *frequent
 	if(i_cls) delete []i_cls;
 
 	if(_debug) {
-		int step = _vCLs_Req1_CP.size()/20;
+		int step = _vCLs_Req1_CP.size()/20+1;
 		cout<<"\t In ProjectingCLs, printing out the CLs (r=1) and cummulative p"<<endl;
 		cout<<"\t size="<<_vCLs_Req1_CP.size()<<", step="<<step<<endl;
 		int i=0;
@@ -1337,11 +1363,7 @@ void CLsLimit::DoingStatisticalBandsForCLs(CountingModel *cms, CLsBase *frequent
 	}
 	GetBandsByFermiCurveInterpolation(_vCLs_Req1,_vCLs_Req1_CP, _CLsProjected[1], _CLsProjected[3], _CLsProjected[0], _CLsProjected[4]);
 	_CLsProjected[5]=cls_mean; _CLsProjected[2]=GetBandByFermiCurveInterpolation(_vCLs_Req1, _vCLs_Req1_CP, 0);
-	if(_debug) cout<<" \t ProjectingCLs_m2sigma_p2sigma: -2s= "<<_CLsProjected[0]<<" -1s= "<<_CLsProjected[1]<<" mean= "<<cls_mean<<" 1s= "<<_CLsProjected[3]<<" 2s= "<<_CLsProjected[4]<<endl;
-	if(_debug){
-		start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_CLsBandsEnd: " << (cur_time - funcStart_time)/1000000./60. << " minutes\n"; fflush(stdout);
-	}
-
+	cout<<" \t ProjectingCLs_m2sigma_p2sigma: -2s= "<<_CLsProjected[0]<<" -1s= "<<_CLsProjected[1]<<" mean= "<<cls_mean<<" 1s= "<<_CLsProjected[3]<<" 2s= "<<_CLsProjected[4]<<endl;
 }
 // this is deprecated by  the "LimitBands" class
 void CLsLimit::DoingStatisticalBandsForLimit(CountingModel *cms, CLsBase *frequentist, int nexps, int npossibleoutcomes){
@@ -1959,10 +1981,10 @@ bool CLsBase::BuildM2lnQ_data(){
 	vdata_global = _model->Get_v_data();
 
 	/*
-	if(test_statistics==1){  // otherwise it need to specify in the arguments of EvaluateLnQ() to do evaluation for data
-		_model->SetToyForUnbinned(_model->Get_v_pdfs_roodataset());
-	}
-	*/
+	   if(test_statistics==1){  // otherwise it need to specify in the arguments of EvaluateLnQ() to do evaluation for data
+	   _model->SetToyForUnbinned(_model->Get_v_pdfs_roodataset());
+	   }
+	   */
 
 	_inputNuisances = _model->Get_norminalPars();	
 
@@ -2267,9 +2289,9 @@ double CLsBase::FindLimitFromTGE(TGraphErrors *tge, double alpha, double &limit,
 	if((clsMin.first==0 and clsMin.second==0) || (clsMax.first==0 and clsMax.second==0))
 	{
 		if(_debug) cout<<"Couldn't find both points with CLs < alpha-3*eCLs and CLs > alpha+3*eCLs, decide to fit to full available range"<<endl;
-	       	rMin = tge->GetX()[0]; clsMin=make_pair(tge->GetY()[0], tge->GetErrorY(0)); 
+		rMin = tge->GetX()[0]; clsMin=make_pair(tge->GetY()[0], tge->GetErrorY(0)); 
 		rMax = tge->GetX()[n-1]; clsMax=make_pair(tge->GetY()[n-1], tge->GetErrorY(n-1));
-       	}
+	}
 
 	limitErr = std::max(limit-rMin, rMax-limit);
 	fit->SetRange(rMin,rMax);

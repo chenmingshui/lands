@@ -51,6 +51,7 @@ namespace lands{
 			double SignificanceComputation(int ntoys_for_sb, int ntoys_for_b);
 			double SignificanceComputation(int ntoys_for_sb, int ntoys_for_b, vector<double>& vsignificance, vector<double> & vsignificance_cp);
 			double SignificanceForData(int ntoys_for_b);
+			double SignificanceForData(double qdata, vector<double> vq);
 
 
 			void SetDebug(int debug);
@@ -112,7 +113,7 @@ namespace lands{
 			vector<double> GetvLimits(); // corresponding to all possible outcomes  ,  cummulative
 			vector<double> GetvLimits_CP(); // corresponding to all possible outcomes
 
-			void DoingStatisticalBandsForCLs(CountingModel *cms, CLsBase *frequentist, int nexps_to_buildM2lnQ = 100000);
+			void DoingStatisticalBandsForCLs(vector<double> vsb, vector<double> vb);
 			double CLs_sigma(int nsigma); // return CLs at -2sigma, -1sigma, median(50%), 1sigma, 2sigma
 			double CLs_mean(); //return average value mathmatically.....
 			vector<double> GetDifferentialCLsReq1();
