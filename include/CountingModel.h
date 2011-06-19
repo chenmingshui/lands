@@ -240,6 +240,8 @@ namespace lands{
 
 			double * Get_norminalPars(){return _norminalPars;};
 			double * Get_randomizedPars(){return _randomizedPars;};
+
+			void SetMass(double d);
 		private:
 			VDChannel v_data; // could be pseudo-data for bands
 			VDChannel v_data_real; // real data, not changed during entire run 

@@ -1738,6 +1738,7 @@ If we need to change it later, it will be easy to do.
 		vector<int> vidcorrl; vidcorrl.clear();
 
 		vector<TString> vrrvnorm; vrrvnorm.clear();
+		vector<RooAbsArg*> vraaExtraNorm; vraaExtraNorm.clear();
 
 		vector<RooRealVar*> vrrvparams; vrrvparams.clear();
 		vector< vector<RooRealVar*> > vvrrvparams; vvrrvparams.clear();
@@ -1747,7 +1748,7 @@ If we need to change it later, it will be easy to do.
 			vvpdftype.push_back(vpdftype);
 			vvidcorrl.push_back(vidcorrl);
 			vnorms.push_back(sigNorms[i]);
-			TString sn = channel_name; sn+=vproc[i]; sn+="_norm";
+			TString sn = channel_name; sn+=vproc[i]; sn+="_norm";sn+=i;
 			RooRealVar *rrv = new RooRealVar(sn, "", sigNorms[i]);
 			vrrvnorm.push_back(sn);
 			//rrv->SetName(TString::Format("%s_%s", channel_name.c_str(), rrv->GetName()));
@@ -1773,7 +1774,7 @@ If we need to change it later, it will be easy to do.
 			tmp_totbkg+=bkgNorms[i];
 			vnorms.push_back(bkgNorms[i]);
 
-			TString sn = channel_name; sn+=vproc[i+sigNorms.size()]; sn+="_norm";
+			TString sn = channel_name; sn+=vproc[i+sigNorms.size()]; sn+="_norm";sn+=(i+sigNorms.size());
 			RooRealVar *rrv = new RooRealVar(sn, "", bkgNorms[i]);
 			vrrvnorm.push_back(sn);
 			//rrv->SetName(TString::Format("%s_%s", channel_name.c_str(), rrv->GetName()));
@@ -2377,4 +2378,16 @@ If we need to change it later, it will be easy to do.
 		//v_pdfs_roodataset[0]->Print();
 		return v_pdfs_roodataset;
 	}; // in each channel, it has a list of events
+	void CountingModel::SetMass(double m){
+		if(_w and _w_varied) {
+			if(_w->var("MH")){
+				cout<<" ** running with Mass point = "<<m<<endl;
+				if(m<=0) { cout<<"ERROR: There is variable MH in workspace, but the input mass is "<<m<<endl; exit(1); };
+				_w->var("MH")->setVal(m);
+				_w_varied->var("MH")->setVal(m);
+			}
+		}else{
+			cout<<"ERROR: SetMass() must be invoked after ConfigureModel"<<endl; exit(1);
+		}
+	}
 };

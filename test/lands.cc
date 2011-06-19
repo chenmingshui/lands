@@ -95,6 +95,8 @@ int makeCLsBands = 0;
 
 TString sFileBonlyM2lnQ = "";
 
+double HiggsMass = -1;
+
 int main(int argc, const char*argv[]){
 	TStopwatch watch;  
 	watch.Start();
@@ -161,6 +163,8 @@ int main(int argc, const char*argv[]){
 	cms->SetMoveUpShapeUncertainties(1);
 
 	cms->SetTossToyConvention(tossToyConvention);
+
+	cms->SetMass(HiggsMass);
 
 	// common results
 	double rmean;
@@ -297,7 +301,7 @@ int main(int argc, const char*argv[]){
 				TString s_qdata; s_qdata.Form("DATA_R%.5f_Q%.5f", cms->GetSignalScaleFactor(), qdata);
 				TString s_sb = "SAMPLING_SB_"; s_sb+=s_r;
 				TString s_b = "SAMPLING_B_"; s_b+=s_r;
-				TString fileM2lnQ = jobname; fileM2lnQ+="_m2lnQ";
+				TString fileM2lnQ = jobname; fileM2lnQ+="_m2lnQ.root";
 				FillTree(fileM2lnQ, cms->GetSignalScaleFactor(), qdata, vsb, vb, s_r, s_qdata, s_sb, s_b);
 			}
 
@@ -1013,6 +1017,10 @@ void processParameters(int argc, const char* argv[]){
 	tmpv= options["-L"];if(tmpv.size()==0)tmpv=options["--LoadLibraries"];
 	librariesToBeLoaded = tmpv;
 
+	tmpv= options["-m"];if(tmpv.size()==0)tmpv=options["--mass"];
+	if( tmpv.size()!=1 ) { HiggsMass = -1; }
+	else HiggsMass = tmpv[0].Atof();
+
 	if(isWordInMap("--plot", options)) bPlots = 1;
 
 	// limit or significance
@@ -1308,6 +1316,7 @@ void processParameters(int argc, const char* argv[]){
 
 	printf("\n\n[ Summary of configuration in this job: ]\n");
 	cout<<"  Calculating "<<(calcsignificance?"significance":"limit")<<" with "<<method<<" method "<<endl;
+	if(HiggsMass>0) cout<<" higgs mass = "<<HiggsMass<<endl;
 	if(!bCalcObservedLimit) cout<<" not calc observed one"<<endl;
 	cout<<"  datacards: "; for(int i=0; i<datacards.size(); i++) cout<<datacards[i]<<" "; cout<<endl;
 	cout<<"  "<<(systematics?"use systematics":"not use systematics")<<endl;
@@ -1383,6 +1392,8 @@ void processParameters(int argc, const char* argv[]){
 	cout<<endl<<endl;
 
 	fflush(stdout);	
+
+	// check duplicate options ,  non-exist options 
 }
 
 void PrintHelpMessage(){
@@ -1396,6 +1407,7 @@ void PrintHelpMessage(){
 	printf("-d [ --datacards ] args               Datacard files,  can contain \"*, ?\" \n"); 
 	printf("-D [ --dataset ] arg (=data_obs)      Dataset for observed limit,  data_obs,  asimov_b, asimov_sb \n"); 
 	printf("-M [ --method ] arg                   Method to extract upper limit. Supported methods are: Bayesian, FeldmanCousins, Hybrid, ProfiledLikelihood \n"); 
+	printf("-m [ --mass ] arg                     input higgs mass \n"); 
 	printf("--doExpectation arg (=0)              i.e calc expected bands and mean/median values     \n"); 
 	printf("--bOnlyEvalCL_forVR                   only evaluate CL for each pseudo data, should with -vR option \n");
 	printf("-vR args                              sth like \"1.2 1.3 1.4 [1.5,3.0,x1.05] [3.0,10.0,0.5]\" \n");
