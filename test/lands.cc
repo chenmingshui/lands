@@ -77,6 +77,7 @@ int nToysForCLsb = -1;
 bool bNotCalcCLssbb = false;
 bool bSaveM2lnQ = false;
 bool bSkipM2lnQ = false; 
+bool bOnlyEvaluateQdata= false; 
 
 bool bM2lnQGridPreComputed = false;
 TString sFileM2lnQGrid = "";
@@ -234,6 +235,13 @@ int main(int argc, const char*argv[]){
 			else { cms->SetSignalScaleFactor(1.); testR=1.;}
 
 			frequentist.SetModel(cms);
+
+			if(bOnlyEvaluateQdata){
+				if(testStat==1)frequentist.prepareLogNoverB();
+				frequentist.BuildM2lnQ_data();
+				watch.Print();
+				return 0;
+			}
 
 			//frequentist.checkFittedParsInData(true, false, "fittedPars.root");
 			if(tossToyConvention==1)frequentist.checkFittedParsInData(bReadPars, bWritePars, fileFittedPars);
@@ -449,7 +457,7 @@ int main(int argc, const char*argv[]){
 				}
 
 				watch.Print();
-				return 1;
+				return 0;
 			}
 
 
@@ -1254,6 +1262,7 @@ void processParameters(int argc, const char* argv[]){
 	if(isWordInMap("--bNotCalcCLssbb", options)) bNotCalcCLssbb = true;
 	if(isWordInMap("--bSaveM2lnQ", options)) bSaveM2lnQ = true;
 	if(isWordInMap("--bSkipM2lnQ", options)) bSkipM2lnQ = true;
+	if(isWordInMap("--bOnlyEvaluateQdata", options)) bOnlyEvaluateQdata= true;
 
 	tmpv = options["--nToysForCLsb"];
 	if( tmpv.size()!=1 ) { nToysForCLsb = -1; }
@@ -1454,6 +1463,7 @@ void PrintHelpMessage(){
 	printf("--bReadPars (=0)\n");
 	printf("--bWritePars (=0)\n");
 	printf("--bNotCalcQdata (=0)\n");
+	printf("--bOnlyEvaluateQdata (= 0)\n");
 	printf("--bNotCalcCLssbb (= 0)\n");
 	printf("--bSaveM2lnQ (= 0)\n");
 	printf("--bSkipM2lnQ (= 0)\n");

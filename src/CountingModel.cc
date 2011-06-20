@@ -591,7 +591,7 @@ namespace lands{
 		for(int ch=0; ch<vvv_idcorrl.size(); ch++){
 			for(int isam=0; isam<vvv_idcorrl.at(ch).size(); isam++){
 				for(int iunc=0; iunc<vvv_idcorrl.at(ch).at(isam).size(); iunc++){
-					if(_debug>=10)	 cout<< "in counting ConfigUncertaintyPdfs: ch "<<ch<<" isam "<<isam<<" iunc "<<iunc<<endl;
+					if(_debug>=100)	 cout<< "in counting ConfigUncertaintyPdfs: ch "<<ch<<" isam "<<isam<<" iunc "<<iunc<<endl;
 					int indexcorrl = vvv_idcorrl.at(ch).at(isam).at(iunc);
 					if(max_uncorrelation<indexcorrl) max_uncorrelation=indexcorrl;
 				}
@@ -600,7 +600,7 @@ namespace lands{
 		for(int ch=0; ch<vvv_pdfs_idcorrl.size(); ch++){
 			for(int isam=0; isam<vvv_pdfs_idcorrl.at(ch).size(); isam++){
 				for(int iunc=0; iunc<vvv_pdfs_idcorrl.at(ch).at(isam).size(); iunc++){
-					if(_debug>=10)	 cout<< "in shape ConfigUncertaintyPdfs: ch "<<ch<<" isam "<<isam<<" iunc "<<iunc<<endl;
+					if(_debug>=100)	 cout<< "in shape ConfigUncertaintyPdfs: ch "<<ch<<" isam "<<isam<<" iunc "<<iunc<<endl;
 					int indexcorrl = vvv_pdfs_idcorrl.at(ch).at(isam).at(iunc);
 					if(max_uncorrelation<indexcorrl) max_uncorrelation=indexcorrl;
 				}
@@ -620,7 +620,7 @@ namespace lands{
 			for(int ch=0; ch<vvv_idcorrl.size(); ch++){
 				for(int isam=0; isam<vvv_idcorrl.at(ch).size(); isam++){
 					for(int iunc=0; iunc<vvv_idcorrl.at(ch).at(isam).size(); iunc++){
-					if(_debug>=10)	 cout<< "in counting ConfigUncertaintyPdfs: ch "<<ch<<" isam "<<isam<<" iunc "<<iunc<<endl;
+					if(_debug>=100)	 cout<< "in counting ConfigUncertaintyPdfs: ch "<<ch<<" isam "<<isam<<" iunc "<<iunc<<endl;
 						int indexcorrl = vvv_idcorrl.at(ch).at(isam).at(iunc);
 						if(indexcorrl==i && v_pdftype.back()<0 ){
 							v_pdftype.back()=vvv_pdftype.at(ch).at(isam).at(iunc);
@@ -689,7 +689,7 @@ If we need to change it later, it will be easy to do.
 				if(_debug>=100)cout<<isam<<endl;
 					for(int iunc=0; iunc<vvv_pdfs_idcorrl.at(ch).at(isam).size(); iunc++){
 				if(_debug>=100)cout<<iunc<<endl;
-					if(_debug>=10)	 cout<< "in shape ConfigUncertaintyPdfs: ch "<<v_pdfs_channelname[ch]<<" isam "<<vv_pdfs[ch][isam]<<endl;
+					if(_debug>=100)	 cout<< "in shape ConfigUncertaintyPdfs: ch "<<v_pdfs_channelname[ch]<<" isam "<<vv_pdfs[ch][isam]<<endl;
 						int indexcorrl = vvv_pdfs_idcorrl.at(ch).at(isam).at(iunc);
 						if(_debug>=10) cout<<"      "<<v_uncname[indexcorrl-1]<<endl;
 						if(indexcorrl==i && v_pdftype.back()<0 ){
@@ -2039,6 +2039,7 @@ If we need to change it later, it will be easy to do.
 
 					tmp = 0;  ///////////////
 					if(stot!=0) tmp += stot*_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars);  //give some warning message when r=0
+					//if(stot>0) tmp += stot*_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars);  //give some warning message when r=0
 					tmp += btot*_w_varied->pdf(v_pdfs_b[ch])->getVal(&vars);
 
 				if(_debug>=100)cout<<" log(event) = "<<log(tmp)<<endl;
