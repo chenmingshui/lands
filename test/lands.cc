@@ -125,7 +125,7 @@ int main(int argc, const char*argv[]){
 	for(int i=0; i<datacards.size(); i++){
 		tmp[i] = new CountingModel();
 		tmp[i] -> SetDebug(debug);
-		ConfigureModel(tmp[i], datacards[i].Data(), debug);
+		ConfigureModel(tmp[i], HiggsMass, datacards[i].Data(), debug);
 		tmp[i]->SetUseSystematicErrors(true);
 	}
 	if(debug)cout<<"totally "<<datacards.size()<<" data cards processed"<<endl;
@@ -135,8 +135,11 @@ int main(int argc, const char*argv[]){
 		tmp1[1]->SetUseSystematicErrors(true);
 		if(debug)cout<<"2 data cards have been combined"<<endl;
 		for(int i=2; i<datacards.size(); i++){
+			if(debug)cout<<"Adding "<<i+1<<" data cards have been combined"<<endl;
 			tmp1[i] = CombineModels(tmp1[i-1], tmp[i]);
+			tmp1[i]->SetDebug(debug);
 			tmp1[i]->SetUseSystematicErrors(true);
+			if(debug)cout<<i+1<<" data cards have been combined"<<endl;
 		}	
 		cms = tmp1[datacards.size()-1];
 	}else{
@@ -341,7 +344,7 @@ int main(int argc, const char*argv[]){
 				if(datacards.size()>100) {cout<<"too many datacards "<<datacards.size()<<endl; exit(0);}
 				for(int i=0; i<datacards.size(); i++){
 					tmpn[i] = new CountingModel();
-					ConfigureModel(tmpn[i], datacards[i].Data());
+					ConfigureModel(tmpn[i], HiggsMass, datacards[i].Data());
 					tmpn[i]->SetUseSystematicErrors(true);
 				}
 				if(datacards.size()==1) cmsClone=tmpn[0];

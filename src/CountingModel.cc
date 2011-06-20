@@ -28,6 +28,7 @@
 #include "RooRealVar.h"
 #include "RooBifurGauss.h"
 #include "RooWorkspace.h"
+#include "RooHistFunc.h"
 #include "RooStats/RooStatsUtils.h"
 
 using namespace std;
@@ -590,6 +591,7 @@ namespace lands{
 		for(int ch=0; ch<vvv_idcorrl.size(); ch++){
 			for(int isam=0; isam<vvv_idcorrl.at(ch).size(); isam++){
 				for(int iunc=0; iunc<vvv_idcorrl.at(ch).at(isam).size(); iunc++){
+					if(_debug>=10)	 cout<< "in counting ConfigUncertaintyPdfs: ch "<<ch<<" isam "<<isam<<" iunc "<<iunc<<endl;
 					int indexcorrl = vvv_idcorrl.at(ch).at(isam).at(iunc);
 					if(max_uncorrelation<indexcorrl) max_uncorrelation=indexcorrl;
 				}
@@ -598,6 +600,7 @@ namespace lands{
 		for(int ch=0; ch<vvv_pdfs_idcorrl.size(); ch++){
 			for(int isam=0; isam<vvv_pdfs_idcorrl.at(ch).size(); isam++){
 				for(int iunc=0; iunc<vvv_pdfs_idcorrl.at(ch).at(isam).size(); iunc++){
+					if(_debug>=10)	 cout<< "in shape ConfigUncertaintyPdfs: ch "<<ch<<" isam "<<isam<<" iunc "<<iunc<<endl;
 					int indexcorrl = vvv_pdfs_idcorrl.at(ch).at(isam).at(iunc);
 					if(max_uncorrelation<indexcorrl) max_uncorrelation=indexcorrl;
 				}
@@ -617,6 +620,7 @@ namespace lands{
 			for(int ch=0; ch<vvv_idcorrl.size(); ch++){
 				for(int isam=0; isam<vvv_idcorrl.at(ch).size(); isam++){
 					for(int iunc=0; iunc<vvv_idcorrl.at(ch).at(isam).size(); iunc++){
+					if(_debug>=10)	 cout<< "in counting ConfigUncertaintyPdfs: ch "<<ch<<" isam "<<isam<<" iunc "<<iunc<<endl;
 						int indexcorrl = vvv_idcorrl.at(ch).at(isam).at(iunc);
 						if(indexcorrl==i && v_pdftype.back()<0 ){
 							v_pdftype.back()=vvv_pdftype.at(ch).at(isam).at(iunc);
@@ -660,14 +664,19 @@ If we need to change it later, it will be easy to do.
 							//						if(v_pdftype.back()==typeGamma)v_GammaN.back()=vvvv_uncpar.at(ch).at(isam).at(iunc).at(2)+1;	
 						}
 						if(indexcorrl==i && v_pdftype.back()>0 ){
-							if( v_pdftype.back()!=vvv_pdftype.at(ch).at(isam).at(iunc) ){
+							if( v_pdftype.back()!=vvv_pdftype.at(ch).at(isam).at(iunc)
+							 && ( vvv_pdftype.at(ch).at(isam).at(iunc)!=typeShapeGaussianQuadraticMorph &&
+								 vvv_pdftype.at(ch).at(isam).at(iunc)!=typeShapeGaussianLinearMorph) 
+							 && v_pdftype.back()!=typeShapeGaussianLinearMorph 
+							 && v_pdftype.back()!=typeShapeGaussianQuadraticMorph
+							    ){
 								cout<<" Error:  two uncertainties with 100% correlation must be with same pdftype, exit "<<endl;
-								cout<<" Independant unc "<<indexcorrl<<"th, name "<<v_uncname[indexcorrl];
+								cout<<" Independant unc "<<indexcorrl<<"th, name "<<v_uncname[indexcorrl-1];
 								cout<<" should be "<<v_pdftype.back()<<", but "<<vvv_pdftype.at(ch).at(isam).at(iunc)<<" for ch"<<ch<<"("<<v_channelname[ch]<<")"
 									<<" isam"<<isam<<"("<<vv_procname[ch][isam]<<")"
-									<<" iunc"<<iunc<<"("<<v_uncname[indexcorrl]<<")"<<endl;
+									<<" iunc"<<iunc<<"("<<v_uncname[indexcorrl-1]<<")"<<endl;
 								cout<<" The conflict unc at above process is for "<<vvv_idcorrl[ch][isam][iunc]
-									<<"th source, name "<<v_uncname[vvv_idcorrl[ch][isam][iunc]]<<endl;
+									<<"th source, name "<<v_uncname[vvv_idcorrl[ch][isam][iunc]-1]<<endl;
 								exit(0);
 							}
 						}
@@ -675,9 +684,14 @@ If we need to change it later, it will be easy to do.
 				}
 			}
 			for(int ch=0; ch<vvv_pdfs_idcorrl.size(); ch++){
+				if(_debug>=100)cout<<ch<<endl;
 				for(int isam=0; isam<vvv_pdfs_idcorrl.at(ch).size(); isam++){
+				if(_debug>=100)cout<<isam<<endl;
 					for(int iunc=0; iunc<vvv_pdfs_idcorrl.at(ch).at(isam).size(); iunc++){
+				if(_debug>=100)cout<<iunc<<endl;
+					if(_debug>=10)	 cout<< "in shape ConfigUncertaintyPdfs: ch "<<v_pdfs_channelname[ch]<<" isam "<<vv_pdfs[ch][isam]<<endl;
 						int indexcorrl = vvv_pdfs_idcorrl.at(ch).at(isam).at(iunc);
+						if(_debug>=10) cout<<"      "<<v_uncname[indexcorrl-1]<<endl;
 						if(indexcorrl==i && v_pdftype.back()<0 ){
 							v_pdftype.back()=vvv_pdfs_pdftype.at(ch).at(isam).at(iunc);
 						}
@@ -697,17 +711,23 @@ If we need to change it later, it will be easy to do.
 
 						}
 						if(indexcorrl==i && v_pdftype.back()>0 ){
-							if( v_pdftype.back()!=vvv_pdfs_pdftype.at(ch).at(isam).at(iunc) ){
+							if( v_pdftype.back()!=vvv_pdfs_pdftype.at(ch).at(isam).at(iunc)
+							 && ( vvv_pdfs_pdftype.at(ch).at(isam).at(iunc)!=typeShapeGaussianQuadraticMorph &&
+								 vvv_pdfs_pdftype.at(ch).at(isam).at(iunc)!=typeShapeGaussianLinearMorph) 
+							 && v_pdftype.back()!=typeShapeGaussianLinearMorph 
+							 && v_pdftype.back()!=typeShapeGaussianQuadraticMorph
+							  ){
 								cout<<" Error:  two uncertainties with 100% correlation must be with same pdftype, exit "<<endl;
-								cout<<" Independant unc "<<indexcorrl<<"th, name "<<v_uncname[indexcorrl];
+								cout<<" Independant unc "<<indexcorrl<<"th, name "<<v_uncname[indexcorrl-1];
 								cout<<" should be "<<v_pdftype.back()<<", but "<<vvv_pdfs_pdftype.at(ch).at(isam).at(iunc)<<" for shape ch"<<ch<<"("<<v_pdfs_channelname[ch]<<")"
 									<<" isam"<<isam<<"("<<vv_pdfs[ch][isam]<<")"
-									<<" iunc"<<iunc<<"("<<v_uncname[indexcorrl]<<")"<<endl;
+									<<" iunc"<<iunc<<"("<<v_uncname[indexcorrl-1]<<")"<<endl;
 								cout<<" The conflict unc at above process is for "<<vvv_pdfs_idcorrl[ch][isam][iunc]
-									<<"th source, name "<<v_uncname[vvv_idcorrl[ch][isam][iunc]]<<endl;
+									<<"th source, name "<<v_uncname[vvv_idcorrl[ch][isam][iunc]-1]<<endl;
 								exit(0);
 							}
 						}
+						if(_debug>=100) cout<<ch<<" "<<isam<< " "<<iunc<<endl;
 					}
 				}
 			}
@@ -1454,6 +1474,7 @@ If we need to change it later, it will be easy to do.
 		VChannelVSampleVUncertainty tmp_vvv_pdftype=cms1->Get_vvv_pdftype();	
 		VChannelVSampleVUncertainty tmp_vvv_idcorrl=cms1->Get_vvv_idcorrl();	
 		vector<string> tmp_v_uncname = cms1->Get_v_uncname();
+		if(cms2->GetDebug())cout<<"DELETEME 1"<<endl;
 		for(int ch=0; ch<cms1->NumOfChannels(); ch++){
 			//cms.AddChannel(cms1->GetExpectedNumber(ch,0),cms1->GetExpectedNumber(ch,1), cms1->GetExpectedNumber(ch,2), cms1->GetExpectedNumber(ch,3),
 			//		cms1->GetExpectedNumber(ch,4), cms1->GetExpectedNumber(ch, 5), cms1->GetExpectedNumber(ch, 6));	
@@ -1540,9 +1561,12 @@ If we need to change it later, it will be easy to do.
 			cms->SetProcessNames(newch, cms2->GetProcessNames(ch));
 		}	
 
+		if(cms2->GetDebug()) cout<<"Added Counting parts"<<endl;
+
 		vector<CountingModel*> ms; ms.push_back(cms1); ms.push_back(cms2);
 		for(int m=0; m<ms.size(); m++){
 			if(ms[m]->hasParametricShape()){
+				if(cms2->GetDebug())cout<<"DELETEME 2"<<endl;
 				RooWorkspace * w = ms[m]->GetWorkSpace();
 				vector<int> vsigproc = ms[m]->Get_v_pdfs_sigproc();
 				vector< vector<string> > vvpdfs = ms[m]->Get_vv_pdfs();
@@ -1572,10 +1596,10 @@ If we need to change it later, it will be easy to do.
 						}
 					}
 					RooRealVar*x=w->var(vobs[ch]);
-					cms->AddChannel(vchnames[ch], x, vs, vsnorm, vb, vbnorm, w);
-					if(ms[m]->GetDebug()) cout<<"  AddChannel "<<endl;
+					cms->AddChannel(vchnames[ch], x, vs, vsnorm, vb, vbnorm);
+					if(cms2->GetDebug()) cout<<"  AddChannel "<<endl;
 					cms->AddObservedDataSet(vchnames[ch], vrds[ch]);
-					if(ms[m]->GetDebug()) cout<<"  AddObservedDataSet"<<endl;
+					if(cms2->GetDebug()) cout<<"  AddObservedDataSet"<<endl;
 
 					// add uncertainties on norm 
 					for(int isamp=0; isamp<vvpdfs[ch].size(); isamp++){
@@ -1590,19 +1614,19 @@ If we need to change it later, it will be easy to do.
 							}
 						}
 					}
-					if(ms[m]->GetDebug()) cout<<"  AddUncertaintyOnShapeNorm"<<endl;
-					if(ms[m]->GetDebug()) cout<<"Added ch = "<<newch<<"th channel from "<<ms[m]->GetModelName()<<endl;
+					if(cms2->GetDebug()) cout<<"  AddUncertaintyOnShapeNorm"<<endl;
+					if(cms2->GetDebug()) cout<<"Added ch = "<<newch<<"th channel from "<<ms[m]->GetModelName()<<endl;
 				}
 
 				// add uncertainties on shape parameters
-				if(ms[m]->GetDebug()) cout<<" uncname.size="<<tmp_v_uncname.size()<<" vparamunc.size="<<vparamunc.size()<<endl;
-				if(ms[m]->GetDebug()) cout<<" "<<vparamIndcorr.size()<<" floating parameters "<<endl;
+				if(cms2->GetDebug()) cout<<" uncname.size="<<tmp_v_uncname.size()<<" vparamunc.size="<<vparamunc.size()<<endl;
+				if(cms2->GetDebug()) cout<<" "<<vparamIndcorr.size()<<" floating parameters "<<endl;
 				for(int ii=0; ii<vparamIndcorr.size(); ii++){
-					if(ms[m]->GetDebug()>=10) cout<<" ii =  "<<ii<<endl;
+					if(cms2->GetDebug()>=10) cout<<" ii =  "<<ii<<endl;
 					int id= vparamIndcorr[ii];
-					if(ms[m]->GetDebug()>=10) cout<<" id =  "<<id<<endl;
+					if(cms2->GetDebug()>=10) cout<<" id =  "<<id<<endl;
 					cms->AddUncertaintyOnShapeParam(tmp_v_uncname[id-1], vparamunc[id][0], vparamunc[id][1], vparamunc[id][2], vparamunc[id][3], vparamunc[id][4] );
-					if(ms[m]->GetDebug()) cout<<"  AddUncertaintyOnShapeParam "<<tmp_v_uncname[id-1]<<" "
+					if(cms2->GetDebug()) cout<<"  AddUncertaintyOnShapeParam "<<tmp_v_uncname[id-1]<<" "
 						<<vparamunc[id][0] <<" "
 							<<vparamunc[id][1] <<" "
 							<<vparamunc[id][2] <<" "
@@ -1611,16 +1635,16 @@ If we need to change it later, it will be easy to do.
 							<<endl;
 				}
 
-				if(ms[m]->GetDebug()>=10) cout<<" before adding map_param_sources"<<endl;
+				if(cms2->GetDebug()>=10) cout<<" before adding map_param_sources"<<endl;
 
 				// add map_param_sources
 				MapStrVV map = ms[m]->Get_map_param_sources();
 
-				if(ms[m]->GetDebug()>=10) cout<<" map_param_sources.size = "<<map.size()<<endl;
+				if(cms2->GetDebug()>=10) cout<<" map_param_sources.size = "<<map.size()<<endl;
 
 				MapStrVV::iterator iter = map.begin();
 				for(; iter!=map.end(); iter++){
-					if(ms[m]->GetDebug()>=10) cout<<" pname = "<<iter->first<<endl;
+					if(cms2->GetDebug()>=10) cout<<" pname = "<<iter->first<<endl;
 					vector< vector<double> > vv = iter->second;
 					if(ms[m]->GetDebug()>=10) cout<<" vv.size = "<<vv.size()<<endl;
 					for(int ii=0; ii<vv.size(); ii++){
@@ -1628,6 +1652,7 @@ If we need to change it later, it will be easy to do.
 						cms->AddUncertaintyAffectingShapeParam(ms[m]->Get_v_uncname()[id-1], iter->first, vv[ii][1], vv[ii][2]);
 					}
 				}
+				if(cms2->GetDebug()>=10) cout<<" after adding map_param_sources"<<endl;
 			}
 		}
 
@@ -1687,7 +1712,8 @@ If we need to change it later, it will be easy to do.
 
 
 	// for parametric shapes
-	void CountingModel::AddChannel(string channel_name, RooRealVar* observable, vector<RooAbsPdf*> sigPdfs, vector<double> sigNorms, vector<RooAbsPdf*> bkgPdfs, vector<double> bkgNorms, RooWorkspace *w ){
+	void CountingModel::AddChannel(string channel_name, RooRealVar* observable, vector<RooAbsPdf*> sigPdfs, vector<double> sigNorms, 
+			vector<RooAbsPdf*> bkgPdfs, vector<double> bkgNorms){
 		int signal_processes = sigPdfs.size();
 		int bkg_processes = bkgPdfs.size();
 		if(signal_processes<=0)  {cout<<"ERROR: you add a channel with number of signal_processes <=0 "<<endl; exit(0);}
@@ -1738,7 +1764,8 @@ If we need to change it later, it will be easy to do.
 		vector<int> vidcorrl; vidcorrl.clear();
 
 		vector<TString> vrrvnorm; vrrvnorm.clear();
-		vector<RooAbsArg*> vraaExtraNorm; vraaExtraNorm.clear();
+
+		vector<TString> vcoeffs; vcoeffs.clear();
 
 		vector<RooRealVar*> vrrvparams; vrrvparams.clear();
 		vector< vector<RooRealVar*> > vvrrvparams; vvrrvparams.clear();
@@ -1747,23 +1774,23 @@ If we need to change it later, it will be easy to do.
 			vvvuncpar.push_back(vvunc);
 			vvpdftype.push_back(vpdftype);
 			vvidcorrl.push_back(vidcorrl);
+
 			vnorms.push_back(sigNorms[i]);
 			TString sn = channel_name; sn+=vproc[i]; sn+="_norm";sn+=i;
 			RooRealVar *rrv = new RooRealVar(sn, "", sigNorms[i]);
 			vrrvnorm.push_back(sn);
-			//rrv->SetName(TString::Format("%s_%s", channel_name.c_str(), rrv->GetName()));
-			//sigPdfs[i]->SetName(TString::Format("%s_%s", channel_name.c_str(), sigPdfs[i]->GetName()));
-			//_w->import(*rrv, Rename(TString::Format("%s_%s", channel_name.c_str(), rrv->GetName())));
-			//_w->import(*sigPdfs[i], Rename(TString::Format("%s_%s", channel_name.c_str(), sigPdfs[i]->GetName())));
-			//_w_varied->import(*rrv, Rename(TString::Format("%s_%s", channel_name.c_str(), rrv->GetName())));
-			//_w_varied->import(*sigPdfs[i], Rename(TString::Format("%s_%s", channel_name.c_str(), sigPdfs[i]->GetName())));
 
 			_w->import(*rrv);
 			_w->import(*sigPdfs[i], RenameConflictNodes(channel_name.c_str()));
+
 			_w_varied->import(*rrv);
 			_w_varied->import(*sigPdfs[i], RenameConflictNodes(channel_name.c_str()));
 			RooArgSet *rds	= sigPdfs[i]->getParameters(*observable);
 			// need to store the list of parameters and for future modification, fluctuation 
+
+			TString coef;
+			coef = rrv->GetName();
+			vcoeffs.push_back(coef);
 		}
 
 		for(int i=0; i<bkgPdfs.size(); i++){
@@ -1771,26 +1798,26 @@ If we need to change it later, it will be easy to do.
 			vvvuncpar.push_back(vvunc);
 			vvpdftype.push_back(vpdftype);
 			vvidcorrl.push_back(vidcorrl);
+
 			tmp_totbkg+=bkgNorms[i];
 			vnorms.push_back(bkgNorms[i]);
 
 			TString sn = channel_name; sn+=vproc[i+sigNorms.size()]; sn+="_norm";sn+=(i+sigNorms.size());
 			RooRealVar *rrv = new RooRealVar(sn, "", bkgNorms[i]);
 			vrrvnorm.push_back(sn);
-			//rrv->SetName(TString::Format("%s_%s", channel_name.c_str(), rrv->GetName()));
-			//bkgPdfs[i]->SetName(TString::Format("%s_%s", channel_name.c_str(), bkgPdfs[i]->GetName()));
-			//_w->import(*rrv, Rename(TString::Format("%s_%s", channel_name.c_str(), rrv->GetName())));
-			//_w->import(*bkgPdfs[i], Rename(TString::Format("%s_%s", channel_name.c_str(), bkgPdfs[i]->GetName())));
-			//_w_varied->import(*rrv, Rename(TString::Format("%s_%s", channel_name.c_str(), rrv->GetName())));
-			//_w_varied->import(*bkgPdfs[i], Rename(TString::Format("%s_%s", channel_name.c_str(), bkgPdfs[i]->GetName())));
+			
 			_w->import(*rrv);
 			_w->import(*bkgPdfs[i], RenameConflictNodes(channel_name.c_str()));
+
 			_w_varied->import(*rrv);
 			_w_varied->import(*bkgPdfs[i], RenameConflictNodes(channel_name.c_str()));
+
+			TString coef;
+			coef = rrv->GetName();
+			vcoeffs.push_back(coef);
 		}
 
 		vv_pdfs.push_back(vsigbkgs);
-		//vv_exp_sigbkgs_scaled.push_back(vsigbkgs);
 		vvv_pdfs_normvariation.push_back(vvvuncpar);
 		vvv_pdfs_pdftype.push_back(vvpdftype);
 		vvv_pdfs_idcorrl.push_back(vvidcorrl);
@@ -1805,7 +1832,8 @@ If we need to change it later, it will be easy to do.
 		TString s = "SUM::"; s+=channel_name; s+="_sb(";
 		for(int i=0; i<vsigbkgs.size(); i++){
 			if(i!=0) s+=",";
-			s+=vrrvnorm[i]; s+="*"; s+=vsigbkgs[i]; 			
+			s+=vcoeffs[i];
+			s+="*"; s+=vsigbkgs[i]; 			
 		}
 		s+=")";
 		_w->factory(s);
@@ -1815,10 +1843,12 @@ If we need to change it later, it will be easy to do.
 
 		//if(_debug) _w->pdf(s)->Print("V");
 
+
 		s = "SUM::"; s+=channel_name; s+="_s(";
 		for(int i=0; i<signal_processes; i++){
 			if(i!=0) s+=",";
-			s+=vrrvnorm[i]; s+="*"; s+=vsigbkgs[i]; 			
+			s+=vcoeffs[i];
+			s+="*"; s+=vsigbkgs[i]; 			
 		}
 		s+=")";
 		_w->factory(s);
@@ -1830,7 +1860,8 @@ If we need to change it later, it will be easy to do.
 		s = "SUM::"; s+=channel_name; s+="_b(";
 		for(int i=signal_processes; i<vsigbkgs.size(); i++){
 			if(i!=signal_processes) s+=",";
-			s+=vrrvnorm[i]; s+="*"; s+=vsigbkgs[i]; 			
+			s+=vcoeffs[i];
+			s+="*"; s+=vsigbkgs[i]; 			
 		}
 		s+=")";
 		_w->factory(s);

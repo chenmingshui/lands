@@ -319,7 +319,7 @@ string GetUncertainy(int c, int p, vector< vector<string> >vv_procnames, vector<
 	if(ss1[1]=="gmN" or ss1[1]=="gmA") return ss1[stop+p+3];
 	else return ss1[stop+p+2];
 }
-bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped, int debug){
+bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileContentStripped, int debug){
 	//int debug = 0;
 	vector<TString> lines;
 	lines = SplitIntoLines(ifileContentStripped, debug);
@@ -336,7 +336,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 			if(GetWordFromLine(lines[l], 4).Contains(":")) hasParametricShape =true;
 		}
 	}
-	if(hasShape==false) ConfigureModel(cms, ifileContentStripped, debug);
+	if(hasShape==false) ConfigureModel(cms, mass, ifileContentStripped, debug);
 	if(hasShape){
 		// get number of channels
 		int nchannel = -1;
@@ -934,10 +934,10 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 					for(int q=0; q<shape.size(); q++){
 						if(shape[q][INDEXofChannel]!=channelnames[c] || shape[q][INDEXofProcess]!=vv_procnames[c][t]) continue; 
 						hn[t] = ((TH1F*)GetHisto(shape[q][3], shape[q][4]));
-						if(hn[t]->Integral()== 0) { 
-							cout<<"ERROR: channel ["<<channelnames[c]<<"] process ["<<vv_procnames[c][t]
+						if(hn[t]->Integral() == 0) { 
+							cout<<"WARNING: channel ["<<channelnames[c]<<"] process ["<<vv_procnames[c][t]
 								<<"] is shape, but the norminal histogram->Integral = 0"<<endl;
-							exit(0);
+							//exit(0);
 						}
 
 						// check if normalization consistent with the rate declared in the data card
@@ -1131,12 +1131,12 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, TString ifileContentStripped,
 			cout<<cardExpanded<<endl<<endl<<endl;
 		}
 		//exit(1);
-		if(hasParametricShape) ConfigureShapeModel(cms, cardExpanded, parametricShapeLines, uncerlinesAffectingShapes, debug);
-		else ConfigureModel(cms, cardExpanded, debug);
+		if(hasParametricShape) ConfigureShapeModel(cms, mass, cardExpanded, parametricShapeLines, uncerlinesAffectingShapes, debug);
+		else ConfigureModel(cms, mass,  cardExpanded, debug);
 	}// line begin with "shape"
 }
 
-bool ConfigureModel(CountingModel *cms, TString ifileContentStripped, int debug){
+bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripped, int debug){
 	// channel index starts from 1
 	// systematics source index also starts from 1
 
@@ -1634,10 +1634,10 @@ bool ConfigureModel(CountingModel *cms, TString ifileContentStripped, int debug)
 	return true;
 }
 
-bool ConfigureModel(CountingModel *cms, const char* fileName, int debug){
+bool ConfigureModel(CountingModel *cms, double mass, const char* fileName, int debug){
 	TString s = ReadFile(fileName);
 	cms->SetModelName(fileName);
-	return CheckIfDoingShapeAnalysis(cms, s, debug);
+	return CheckIfDoingShapeAnalysis(cms, mass,  s, debug);
 }
 
 
@@ -1688,7 +1688,7 @@ vector<TString> SplitIntoLines(TString ifileContentStripped, bool debug){
 
 	return lines;
 }
-bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vector< vector<string> > parametricShapeLines, vector< vector<string> > uncerlinesAffectingShapes, int debug){
+bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentStripped, vector< vector<string> > parametricShapeLines, vector< vector<string> > uncerlinesAffectingShapes, int debug){
 	// channel index starts from 1
 	// systematics source index also starts from 1
 	if(debug)for(int i=0; i<parametricShapeLines.size(); i++){
@@ -1977,27 +1977,49 @@ bool ConfigureShapeModel(CountingModel *cms, TString ifileContentStripped, vecto
 				exit(1);
 			}
 			vector<RooAbsPdf*> vspdf, vbpdf; vspdf.clear(); vbpdf.clear();
+			vector<RooAbsArg*> vsExtraNorm, vbExtraNorm; vsExtraNorm.clear(); vbExtraNorm.clear();
 			for(int i=0; i<sigbkgs.size(); i++){
-				RooAbsPdf * pdf = (RooAbsPdf*)GetPdf(channelnames[c], tmpprocn[i], parametricShapeLines);
-				pdf->SetName(TString(channelnames[c])+pdf->GetName());
-				if(i<nsigproc[c])vspdf.push_back(pdf);
-				else vbpdf.push_back(pdf);
+				RooAbsPdf * pdf = (RooAbsPdf*)GetPdf(channelnames[c], tmpprocn[i], parametricShapeLines, mass);
+				RooAbsArg * extraNom = (RooAbsArg*)GetExtraNorm(channelnames[c], tmpprocn[i], parametricShapeLines, mass);
+				pdf->SetName(TString(channelnames[c])+"_"+tmpprocn[i]+"_"+pdf->GetName());
+				if(extraNom)extraNom->SetName(TString(pdf->GetName())+"_"+"extranorm");
+				if(i<nsigproc[c]){
+					vspdf.push_back(pdf);
+					vsExtraNorm.push_back(extraNom);
+				}else{
+					vbpdf.push_back(pdf);
+					vbExtraNorm.push_back(extraNom);
+				}
 			}
 			vector<double> vsnorm, vbnorm; vsnorm.clear(); vbnorm.clear();
 			for(int i=0; i<sigbkgs.size(); i++){
 				if(i<nsigproc[c]) vsnorm.push_back(sigbkgs[i]);
 				else vbnorm.push_back(sigbkgs[i]);
 			}
-			RooDataSet *data = (RooDataSet*)GetRooDataSet(channelnames[c], "data_obs", parametricShapeLines);
+			for(int i=0; i<vsnorm.size(); i++){
+				if(debug)cout<<"* pdf "<<vspdf[i]->GetName()<<endl;
+				if(debug)cout<<"* Normalization in data card = "<<vsnorm[i]<<endl;
+				if(vsExtraNorm[i]) {
+					vsnorm[i]*=((RooAbsReal*)vsExtraNorm[i])->getVal();
+					if(debug)cout<<"* ExtraNormalization in workspace = "<<((RooAbsReal*)vsExtraNorm[i])->getVal()<<endl;
+				}
+			}
+			for(int i=0; i<vbnorm.size(); i++){
+				if(debug)cout<<"* pdf "<<vbpdf[i]->GetName()<<endl;
+				if(debug)cout<<"* Normalization in data card = "<<vbnorm[i]<<endl;
+				if(vbExtraNorm[i]) {
+				       	vbnorm[i]*=((RooAbsReal*)vbExtraNorm[i])->getVal();
+					if(debug)cout<<"* ExtraNormalization in workspace = "<<((RooAbsReal*)vbExtraNorm[i])->getVal()<<endl;
+				}
+			}
+			RooDataSet *data = (RooDataSet*)GetRooDataSet(channelnames[c], "data_obs", parametricShapeLines, mass);
 			if(data->sumEntries()!=observeddata[c] && observeddata[c]>=0) {
 				cout<<"ERROR: In Channel: "<<channelnames[c]<<endl;
 				cout<<"Observed data in card: "<<observeddata[c]<<" != "<<" RooDataSet.sumEntries"<<endl;
 				exit(1);
 			}
 			RooRealVar* x = dynamic_cast<RooRealVar*> (data->get()->first());
-			//x->SetName(TString(channelnames[c])+x->GetName());
-			RooWorkspace *w;
-			cms->AddChannel(channelnames[c], x, vspdf, vsnorm, vbpdf, vbnorm, w);
+			cms->AddChannel(channelnames[c], x, vspdf, vsnorm, vbpdf, vbnorm);
 			cms->AddObservedDataSet(channelnames[c], data);
 		}
 	}	
@@ -2316,12 +2338,13 @@ TString GetWordFromLine(TString line, int index, string delim){
 	TString s = ss[index];
 	return s;
 }
-RooAbsPdf* GetPdf(string c, string p, vector< vector<string> > lines){
+RooAbsPdf* GetPdf(string c, string p, vector< vector<string> > lines, double mass){
 	RooAbsPdf* pdf = 0;
 	for(int i=0; i<lines.size(); i++){
 		if(c==lines[i][2] and p==lines[i][1]){
 			RooWorkspace *w;
 			w = (RooWorkspace*)GetTObject(lines[i][3], GetWordFromLine(lines[i][4], 0, ":").Data());
+			if(w->var("MH") && mass>0) w->var("MH")->setVal(mass);
 			pdf= (RooAbsPdf*)w->pdf(GetWordFromLine(lines[i][4], 1 ,":")); //pdf->SetName(channelnames[c]+pdf->GetName());
 		}
 	}
@@ -2331,12 +2354,25 @@ RooAbsPdf* GetPdf(string c, string p, vector< vector<string> > lines){
 	}
 	return pdf;
 }
-RooDataSet* GetRooDataSet(string c, string p, vector< vector<string> > lines){
+RooAbsArg * GetExtraNorm(string c, string p, vector< vector<string> > lines, double mass){
+	RooAbsArg * arg = 0;
+	for(int i=0; i<lines.size(); i++){
+		if(c==lines[i][2] and p==lines[i][1]){
+			RooWorkspace *w;
+			w = (RooWorkspace*)GetTObject(lines[i][3], GetWordFromLine(lines[i][4], 0, ":").Data());
+			if(w->var("MH") && mass>0) w->var("MH")->setVal(mass);
+			arg= (RooAbsArg*)w->arg(GetWordFromLine(lines[i][4], 1 ,":")+"_norm"); //arg->SetName(channelnames[c]+arg->GetName());
+		}
+	}
+	return arg;
+}
+RooDataSet* GetRooDataSet(string c, string p, vector< vector<string> > lines, double mass){
 	RooDataSet* pdf = 0;
 	for(int i=0; i<lines.size(); i++){
 		if(c==lines[i][2] and p==lines[i][1]){
 			RooWorkspace *w;
 			w = (RooWorkspace*)GetTObject(lines[i][3], GetWordFromLine(lines[i][4], 0, ":").Data());
+			if(w->var("MH") && mass>0) w->var("MH")->setVal(mass);
 			pdf= (RooDataSet*)w->data(GetWordFromLine(lines[i][4], 1 ,":")); //pdf->SetName(channelnames[c]+pdf->GetName());
 		}
 	}

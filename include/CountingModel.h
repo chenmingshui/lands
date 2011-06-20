@@ -212,7 +212,8 @@ namespace lands{
 			RooWorkspace * GetWorkSpace(){return _w;};
 
 
-			void AddChannel(string channel_name, RooRealVar* observable, vector<RooAbsPdf*> sigPdfs, vector<double> sigNorms, vector<RooAbsPdf*> bkgPdfs, vector<double> bkgNorms, RooWorkspace *w );
+			void AddChannel(string channel_name, RooRealVar* observable, vector<RooAbsPdf*> sigPdfs, vector<double> sigNorms, 
+				       	vector<RooAbsPdf*> bkgPdfs, vector<double> bkgNorms);
 			// need to add names of each parameter .... 
 			double EvaluateLnQ(int ch, int dataOrToy); // for Likelihood ratio
 			double EvaluateChi2(double *par, int bUseBestEstimateToCalcQ=1);          // for Chi2
