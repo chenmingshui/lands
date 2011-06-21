@@ -223,7 +223,9 @@ namespace lands{
 						//see wiki,  gamma distribution with theta = 1 :  x^(k-1)*exp(-x)/ (k-1)!
 						//k = v_GammaN[u];
 						k = _inputNuisances[u];
-						tmp = (k-1)*log(par[u]) - par[u];
+						if(par[u]<=0) tmp = -par[u];
+						else tmp = (k-1)*log(par[u]) - par[u];
+
 						chisq-=tmp*2; // we are evaluating chisq = -2 * ( ln(Q_H1) - ln(Q_H0) )
 						break;
 					case typeBifurcatedGaussian:
@@ -334,7 +336,8 @@ namespace lands{
 						break;
 					case typeGamma:
 						//myMinuit->mnparm(i, sname, v_GammaN[i], 0.5, 0, 100000, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
-						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, 0, (v_GammaN[i]+1)*5, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
+						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, 0, (v_GammaN[i]+1)*5, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
+						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], 1, 0, (v_GammaN[i]+1)*5, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
 						break;
 					case typeBifurcatedGaussian:
 						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, v_paramsUnc[i][3], v_paramsUnc[i][4], ierflg  );
@@ -1845,7 +1848,8 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys){  // 0 for sbANDb,
 				break;
 
 		}
-		Q_b[i] = M2lnQ();
+		int checkFailure = (_debug>=10?1:0);
+		Q_b[i] = M2lnQ(checkFailure);
 	}
 
 	if(_debug) { start_time=cur_time; cur_time=clock(); 
@@ -2106,7 +2110,8 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys){
 				break;
 
 		}
-		Q_sb[i] = M2lnQ();
+		int checkFailure = (_debug>=10?1:0);
+		Q_sb[i] = M2lnQ(checkFailure);
 	}
 
 	if(_debug) { start_time=cur_time; cur_time=clock(); cout << "\t\t\t TIME in RunMCExps run_"<<_nexps<<"_pseudo exps: " << (cur_time - start_time)/1000. << " millisec\n"; }

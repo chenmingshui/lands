@@ -833,7 +833,9 @@ If we need to change it later, it will be easy to do.
 
 					case typeGamma:
 						//vrdm.back()=_rdm->Gamma(v_GammaN[i]);
-						vrdm.back()=_rdm->Gaus(bUseBestEstimateToCalcQ!=2?v_GammaN[i]:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]));
+						vrdm.back()=(int)_rdm->Gamma(bUseBestEstimateToCalcQ!=2?v_GammaN[i]:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]));
+						cout<<"DELETEME gamma N="<<(bUseBestEstimateToCalcQ!=2?v_GammaN[i]:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]))<<endl;
+						cout<<"DELETEME -->rdm = "<<vrdm.back()<<endl;
 						break;
 					case typeBifurcatedGaussian:
 						{
@@ -1611,6 +1613,18 @@ If we need to change it later, it will be easy to do.
 										tmp_vvv_pdftype.at(ch).at(isamp).at(iunc),
 										tmp_v_uncname[tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)-1]
 										);
+							}else if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeControlSampleInferredLogNormal
+									|| tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeGamma){
+								cms->AddUncertaintyOnShapeNorm(vchnames[ch], isamp, 
+										tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(0), 
+										tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(1), 
+										tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(2), 
+										tmp_vvv_pdftype.at(ch).at(isamp).at(iunc),
+										tmp_v_uncname[tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)-1]
+										);
+
+							}else {
+								cout<<"The pdftype Not implemented yet in shapeNorm: "<<tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)<<endl;
 							}
 						}
 					}
