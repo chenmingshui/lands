@@ -50,7 +50,7 @@ namespace lands{
 		f = 0; // fabs(cms_global->GetRdm()->Gaus() ) ;
 
 
-		if(par[0]<0) { f = -99999; return; }
+		if(par[0]<0 && _bPositiveSignalStrength) { f = -99999; return; }
 
 		VChannelVSampleVUncertainty vvv_idcorrl = (cms_global->Get_vvv_idcorrl());
 		VChannelVSampleVUncertainty vvv_pdftype = (cms_global->Get_vvv_pdftype());
@@ -367,9 +367,11 @@ namespace lands{
 			else if(model==2){ // S+B,  float r
 				myMinuit->mnparm(0, "ratio", 1, minuitStep, -100, 300, ierflg); // andrey's suggestion, alow mu hat < 0
 				//myMinuit->mnparm(0, "ratio", 1, 0.1, 0, 100, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
+				_bPositiveSignalStrength = false;
 			}
 			else if(model==21 || model==101 || model==102){ // S+B,  float r
-				myMinuit->mnparm(0, "ratio", 1, minuitStep, 0.00001, 300, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
+				myMinuit->mnparm(0, "ratio", 1, minuitStep, 0.0, 300, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
+				_bPositiveSignalStrength = true;
 			}
 			else if(model==3){ // profile mu
 				myMinuit->mnparm(0, "ratio", mu, minuitStep, -100, 300, ierflg);
@@ -377,6 +379,7 @@ namespace lands{
 			}
 			else if(model==4){ // only floating mu,  not fit for systematics
 				myMinuit->mnparm(0, "ratio", mu, minuitStep, -100, 300, ierflg);
+				_bPositiveSignalStrength = false;
 				for(int i=1; i<=npars; i++) myMinuit->FixParameter(i);
 			}
 			else if(model==5){ // no profiling at all, i.e. fix all parameters including strength 
