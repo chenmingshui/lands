@@ -40,6 +40,7 @@ namespace lands{
 	TF1 * fitToRvsCL_expo = new TF1("fitToRvsCL_expo","[0]*exp([1]*(x-[2]))", 0, 0);
 	double _signalScale=0;
 	double * _inputNuisances = 0;	
+	bool _bPositiveSignalStrength = true;
 	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag){
 		// par[0] for the ratio of cross section, common signal strength ....
 		if(!cms_global)  {
@@ -47,6 +48,9 @@ namespace lands{
 			exit(0);
 		}
 		f = 0; // fabs(cms_global->GetRdm()->Gaus() ) ;
+
+
+		if(par[0]<0) { f = -99999; return; }
 
 		VChannelVSampleVUncertainty vvv_idcorrl = (cms_global->Get_vvv_idcorrl());
 		VChannelVSampleVUncertainty vvv_pdftype = (cms_global->Get_vvv_pdftype());
@@ -364,8 +368,8 @@ namespace lands{
 				myMinuit->mnparm(0, "ratio", 1, minuitStep, -100, 300, ierflg); // andrey's suggestion, alow mu hat < 0
 				//myMinuit->mnparm(0, "ratio", 1, 0.1, 0, 100, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
 			}
-			else if(model==21 or model==101 or model==102){ // S+B,  float r
-				myMinuit->mnparm(0, "ratio", 0, minuitStep, 0, 300, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
+			else if(model==21 || model==101 || model==102){ // S+B,  float r
+				myMinuit->mnparm(0, "ratio", 1, minuitStep, 0.00001, 300, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
 			}
 			else if(model==3){ // profile mu
 				myMinuit->mnparm(0, "ratio", mu, minuitStep, -100, 300, ierflg);
@@ -399,7 +403,7 @@ namespace lands{
 			}
 
 			arglist[0] = 1;
-			if(model==101 or model==102)arglist[0] = mu; // ErrorDef for Minos,  just temporaliry using mu ...
+			if(model==101 || model==102)arglist[0] = mu; // ErrorDef for Minos,  just temporaliry using mu ...
 			myMinuit->mnexcm("SET ERR", arglist ,1,ierflg);
 			// Now ready for minimization step
 			arglist[0] = 5000; // to be good at minization, need set this number to be 5000 (from experience of hgg+hww+hzz combination)
@@ -418,13 +422,16 @@ namespace lands{
 				arglist[0] = 5000;
 				arglist[1] = 1;
 				myMinuit->mnexcm("MINOS", arglist , 2, ierflg);
-				if(debug)cout << " MINOS Number of function calls in Minuit: " << myMinuit->fNfcn << endl;
+				if(debug || ierflg )cout << " MINOS Number of function calls in Minuit: " << myMinuit->fNfcn << endl;
 				if(debug || ierflg )cout << " MINOS return errflg = "<<ierflg<<endl;
 				if(ierflg){
 					cout<<"WARNING: Minos fit fails, try other options"<<endl;
 				}
 				if(success) success[0]=ierflg;
 			}
+
+			myMinuit->GetParameter(0, r, er);
+			cout<<"DELETEME before calc error,  r="<<r<<"+/-"<<er<<endl;
 
 			// Print results
 			Double_t amin,edm,errdef;
@@ -433,9 +440,11 @@ namespace lands{
 			Double_t errUp, errLow, errParab=0, gcor=0; 
 			myMinuit->mnerrs(0, errUp, errLow, errParab, gcor);
 
+			cout<<"DELETEME errUp="<<errUp<<" errLow="<<errLow<<" errParab="<<errParab<<" gcor="<<gcor<<endl;
 
 			double l = myMinuit->fAmin;
 			myMinuit->GetParameter(0, r, er);
+			cout<<"DELETEME r="<<r<<"+/-"<<er<<" fMin="<<l<<endl;
 
 			if(debug and UseMinos) cout<<" signal_strength :  [ "<<r+errLow<<"  "<<r+errUp<<" ] "<<endl;
 			if(model==101 or model==102) {

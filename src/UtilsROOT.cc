@@ -897,7 +897,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 		for(int u=0; u<nsyssources; u++) {
 			vector<string>	ss1 = uncerlines[u]; 
 			if(ss1[1]=="shapeN") ss1[1]="lnN";
-			TString s = ""; s+=ss1[0].c_str(); s+=" "; s+=ss1[1].c_str(); s+=" "; // weired, it doesn't give good error message when using "s+=ss1[1]"
+			TString s = ""; s+=ss1[0].c_str(); s+=" "; s+=ss1[1].c_str(); s+=" "; 
 			if(ss1[1]=="gmA" or ss1[1]=="gmN"){
 				s+=ss1[2]; s+=" ";
 				//cout<<s<<endl;
@@ -925,7 +925,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 				int n_proc = nprocesses[c];
 				TH1F* h = (TH1F*)GetHisto(shape[p][3], shape[p][4]);
 				TH1F* hn[n_proc];
-				TH1F *hnorm[n_proc];
+				TH1F *hnorm[n_proc]; // normalized to 1 
 				TH1F *hunc_up[n_proc][nsyssources];
 				TH1F *hunc_dn[n_proc][nsyssources];
 				TH1F *hunc_up_norm[n_proc][nsyssources];
@@ -1056,7 +1056,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 								}else{
 									string tmp =GetUncertainy(c, t, vv_procnames, uncerlines[u]); 
 									if(uncertypes[u]=="gmA" or uncertypes[u]=="gmN"){
-										cout<<"gamma "<<tmp<<endl;
+										if(debug>=10)cout<<" binned histo: gamma "<<tmp<<endl;
 										if(TString(tmp).IsFloat()){
 											float tmpd = TString(tmp).Atof()*hnorm[t]->GetBinContent(r);
 											TString tmps; 
@@ -1106,7 +1106,6 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 						if(ss1[0]!=uncernames[u]) continue;
 						vs_unc[u]+=GetUncertainy(c, t, vv_procnames, ss1); vs_unc[u] += " ";  // must be careful with gamma uncertainties
 					}
-
 				}
 			}
 			if(debug) cout<<" done channel "<<channelnames[c]<<endl;

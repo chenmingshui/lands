@@ -87,7 +87,7 @@ namespace lands{
 		_cms=cms;	
 		return Limit();
 	}
-	double BayesianBase::Limit(double alpha){
+	double BayesianBase::Limit(double alpha, double hint){
 		fAlpha = alpha;
 		fConfidenceLevel = 1-fAlpha;
 
@@ -105,66 +105,74 @@ namespace lands{
 		if(!bsys) _nexps_to_averageout_sys=1;	
 		else _nexps_to_averageout_sys=_preToys;	
 
-		GenToys();
-
-		_NormReduction = EvaluateNormReduction();
-		if(_debug) cout<<"  _NormReduction = "<<_NormReduction<<endl;
-
-		_norm = AverageIntegral(0);
-		if(_debug) cout<<(bsys?"w/ sys, ":"w/o sys,")<<" norm  = "<<_norm<<" , with my own approach to converge"<<endl;
-		if(_norm ==0 || _norm>8.2e307) {
-			cout<<"ERROR: the normalization of likelihood is very unlikely  = "<<(_norm==0?0:_norm)<<endl;
-			cout<<"ERROR: we set the limit to 0"<<endl;
-			_limit = 0;
-			return 0;
-		}
-
-		// first try  ---to get p<fAlpha
-		double rlo= 0;
 		double rmid = 10;
-		double rhi=20;
-		double p = AverageIntegral(rmid)/_norm;
-		if(_debug) cout<<"p [ "<<rmid<<", inf ]"<<p<<endl;
-		while(p>fAlpha) {
-			rlo=rmid;
-			rmid*=2;
-			p = AverageIntegral(rmid)/_norm;
-			if(_debug) cout<<"p [ "<<rmid<<", inf ] = "<<p<<endl;
-		}
-		rhi=rmid;
-		
-		// to converge at fAlpha+/-fPrecision
-		while( fabs(p-fAlpha)/fAlpha > fPrecision ) {
-			if(p<fAlpha){
-				rhi=rmid;
-				rmid=rlo+0.5*(rhi-rlo);				
-				p = AverageIntegral(rmid)/_norm;
-				if(_debug) cout<<"p [ "<<rmid<<", inf ] = "<<p<< "\t rlo="<<rlo<<" rhi="<<rhi<<endl;
-			}else{
+		if(hint<-10000){
+
+			GenToys();
+
+			_NormReduction = EvaluateNormReduction();
+			if(_debug) cout<<"  _NormReduction = "<<_NormReduction<<endl;
+
+			_norm = AverageIntegral(0);
+			if(_debug) cout<<(bsys?"w/ sys, ":"w/o sys,")<<" norm  = "<<_norm<<" , with my own approach to converge"<<endl;
+			if(_norm ==0 || _norm>8.2e307) {
+				cout<<"ERROR: the normalization of likelihood is very unlikely  = "<<(_norm==0?0:_norm)<<endl;
+				cout<<"ERROR: we set the limit to 0"<<endl;
+				_limit = 0;
+				return 0;
+			}
+
+			// first try  ---to get p<fAlpha
+			double rlo= 0;
+			double rhi=20;
+			double p = AverageIntegral(rmid)/_norm;
+			if(_debug) cout<<"p [ "<<rmid<<", inf ]"<<p<<endl;
+			while(p>fAlpha) {
 				rlo=rmid;
-				rmid=rhi-0.5*(rhi-rlo);
+				rmid*=2;
 				p = AverageIntegral(rmid)/_norm;
-				if(_debug) cout<<"p [ "<<rmid<<", inf ] = "<<p<< "\t rlo="<<rlo<<" rhi="<<rhi<<endl;
-			}	
+				if(_debug) cout<<"p [ "<<rmid<<", inf ] = "<<p<<endl;
+			}
+			rhi=rmid;
+
+			// to converge at fAlpha+/-fPrecision
+			while( fabs(p-fAlpha)/fAlpha > fPrecision ) {
+				if(p<fAlpha){
+					rhi=rmid;
+					rmid=rlo+0.5*(rhi-rlo);				
+					p = AverageIntegral(rmid)/_norm;
+					if(_debug) cout<<"p [ "<<rmid<<", inf ] = "<<p<< "\t rlo="<<rlo<<" rhi="<<rhi<<endl;
+				}else{
+					rlo=rmid;
+					rmid=rhi-0.5*(rhi-rlo);
+					p = AverageIntegral(rmid)/_norm;
+					if(_debug) cout<<"p [ "<<rmid<<", inf ] = "<<p<< "\t rlo="<<rlo<<" rhi="<<rhi<<endl;
+				}	
+			}
+
+			ret = rmid;
+			if(!bsys){
+				_limit=ret;
+				return ret;
+			}
+			if(_debug)cout<<"\t limit starts at = "<<ret<<endl;
+			// resume the memory
+			//_cms->SetUseSystematicErrors(bsys);
+			_nexps_to_averageout_sys=ntoys;
+			if(_nexps_to_averageout_sys<=_preToys) { _limit=ret; return ret;}
+			_nexps_to_averageout_sys=ntoys;
+			GenToys();
+
+		}else{
+			//_cms->SetUseSystematicErrors(bsys);
+			_nexps_to_averageout_sys=ntoys;
+			GenToys();
+			_NormReduction = EvaluateNormReduction();
+			if(_debug) cout<<"  _NormReduction = "<<_NormReduction<<endl;
+			rmid = hint;
 		}
 
-		ret = rmid;
-		if(!bsys){
-			_limit=ret;
-			return ret;
-		}
-
-
-		if(_debug)cout<<"\t limit starts at = "<<ret<<endl;
-
-		// resume the memory
-		_cms->SetUseSystematicErrors(bsys);
-		_nexps_to_averageout_sys=ntoys;
-
-		
-		if(_nexps_to_averageout_sys<=_preToys) { _limit=ret; return ret;}
-
-		GenToys();
+		//cout<<"DELETEME 1"<<endl;
 
 		// try to get p<fAlpha 
 		_norm = AverageIntegral(0);
@@ -176,34 +184,6 @@ namespace lands{
 			return ret;
 		}
 
-/*
-		rmid = 2*ret;	
-		p = AverageIntegral(rmid)/_norm;
-		if(_debug) cout<<"p [ "<<rmid<<", inf ]"<<p<<endl;
-		while(p>fAlpha) {
-			rlo=rmid;
-			rmid*=2;
-			p = AverageIntegral(rmid)/_norm;
-			if(_debug) cout<<"p [ "<<rmid<<", inf ] = "<<p<<endl;
-		}
-		rhi=rmid;
-
-		// to converge at fAlpha+/-fPrecision
-		while( fabs(p-fAlpha)/fAlpha > fPrecision ) {
-			if(p<fAlpha){
-				rhi=rmid;
-				rmid=rlo+0.5*(rhi-rlo);				
-				p = AverageIntegral(rmid)/_norm;
-				if(_debug) cout<<"p [ "<<rmid<<", inf ] = "<<p<< "\t rlo="<<rlo<<" rhi="<<rhi<<endl;
-				}else{
-				rlo=rmid;
-				rmid=rhi-0.5*(rhi-rlo);
-				p = AverageIntegral(rmid)/_norm;
-				if(_debug) cout<<"p [ "<<rmid<<", inf ] = "<<p<< "\t rlo="<<rlo<<" rhi="<<rhi<<endl;
-				}	
-				}
-				ret = rmid;
- */
 		// Joel Heinrich's approach to converge	
 		const double eps=1.0e-6;
 		double norm = _norm;
@@ -266,7 +246,7 @@ namespace lands{
 
 		   _cms->SetUseSystematicErrors(bsys);
 		   return r_avr;
-		 */
+		   */
 	}
 	void BayesianBase::GenToys(){
 		if(_debug >= 100) _cms->Print();
@@ -377,8 +357,10 @@ namespace lands{
 		double ret=0;
 		for(int i=0; i<_nexps_to_averageout_sys; i++){
 			ret += glintegral(rlow, i);
+	//		cout<<"DELETEME 5"<<endl;
 		}
 		ret/=(double)_nexps_to_averageout_sys;
+	//	cout<<"DELETEME 5 "<<ret<<endl;
 		return ret;
 	}
 	double BayesianBase::glintegral(double rlow, int iexps ) {
@@ -500,11 +482,14 @@ namespace lands{
 			for(i=0;i<_nchannels;++i)
 				if(_d[i]>0)
 					t += _d[i] * log( xr*_vs[iexps][i] + _vb[iexps][i] );
+
+//			cout<<"DELETEME 2"<<endl;
 			t+=_cms->EvaluateGL(_vNorms_forShapeChannels[iexps], _vParams_forShapeChannels[iexps], xr, vvs, vvb);
+//			cout<<"DELETEME 3"<<endl;
 			if(_prior == prior_1overSqrtS)t -= 0.5*log(_xgl[k] + rlow * _stot[iexps] );
-			
+
 			double tmp =  _lwgl[k]+t; 
-			
+
 			if(_debug>=100) cout<<" k="<<k<<": _lwgl="<<_lwgl[k]<<" tmp="<<tmp<<endl;
 
 			if(fabs(tmp)>fabs(ret)) ret = tmp;
@@ -513,7 +498,7 @@ namespace lands{
 			sum += v = exp( tmp );
 			if(v<DBL_EPSILON*sum) break;
 		}
-		
+
 		ret = 300*(int)(ret/300);
 		return int(ret);
 	}

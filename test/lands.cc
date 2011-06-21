@@ -1,5 +1,6 @@
 #include <TString.h>
 #include <map>
+#include <cmath>
 #include <stdio.h>
 #include <vector>
 #include <iostream>
@@ -98,6 +99,8 @@ TString sFileBonlyM2lnQ = "";
 
 double HiggsMass = -1;
 
+int nTries = 1;
+
 int main(int argc, const char*argv[]){
 	TStopwatch watch;  
 	watch.Start();
@@ -184,12 +187,30 @@ int main(int argc, const char*argv[]){
 			bys.SetCrossSectionPrior(prior);
 			double rtmp;
 			if(bCalcObservedLimit){
-				rtmp = bys.Limit();
-				cout<<"------------------------------------------------------------"<<endl;
-				cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<rtmp<<endl;
-				cout<<"------------------------------------------------------------"<<endl;
+				rtmp = bys.Limit(1-CL);
 
-				// draw 
+				if(nTries>1)cout<<"try "<<1<<": R at 95\% CL = "<<rtmp<<endl;
+
+				vector<double> rtries;
+				double hint = rtmp;
+				rtries.push_back(rtmp);
+				double avgR=0, errR=0;
+				for(int i=1; i<nTries; i++){
+					rtmp = bys.Limit(1-CL, hint);
+					cout<<"try "<<i+1<<": R at 95\% CL = "<<rtmp<<endl;
+					rtries.push_back(rtmp);
+					avgR=0;
+					for(int j=0; j<rtries.size(); j++) avgR+=rtries[j]; avgR/=(float)(i+1);	
+					hint = avgR;
+				}
+				if(nTries<=1) avgR=rtmp;
+				for(int i=0; i<nTries; i++) errR+= (rtries[i]-avgR)*(rtries[i]-avgR); errR = sqrt(errR)/(float)nTries;
+
+				cout<<"------------------------------------------------------------"<<endl;
+				cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<avgR;
+				if(nTries>1)cout<<" +/- "<<errR<<endl;
+				else cout<<endl;
+				cout<<"------------------------------------------------------------"<<endl;
 
 				if(bPlots)	{
 					bys.PosteriorPdf();
@@ -1120,6 +1141,13 @@ void processParameters(int argc, const char* argv[]){
 		if(toysPreBayesian<0) toysPreBayesian = 1;
 	}
 
+	tmpv = options["--tries"]; 
+	if( tmpv.size()!=1 ) { }
+	else {
+		nTries = tmpv[0].Atoi();
+		if(nTries<0) nTries= 1;
+	}
+
 
 	// FeldmanCousins specific options
 	tmpv = options["--lowerLimit"]; 
@@ -1437,6 +1465,7 @@ void PrintHelpMessage(){
 	printf("--prior arg (=flat)            	      Prior to use: \'flat\' (default), \'1/sqrt(r)\', \'corr\' \n"); 
 	printf("-tB [ --toysBayesian ] arg (=10000)   number of toys used to average out nuisance paramereters in Bayesian method     \n"); 
 	printf("-tPB [ --toysPreBayesian ] arg (=100)   number of toys used to average out nuisance paramereters in Bayesian pre-estimation \n"); 
+	printf("--tries arg (=1)                      number of tries for observed limit, if more than 1, will print out the average value and standard deviation of those tries");
 	printf(" \n"); 
 	printf("FeldmanCousins specific options: \n"); 
 	printf("--lowerLimit arg (=0)                 Compute the lower limit instead of the upper limit \n"); 

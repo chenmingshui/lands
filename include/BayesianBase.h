@@ -17,7 +17,7 @@ namespace lands{
 			~BayesianBase();
 
 			double Limit(CountingModel *cms);
-			double Limit(double alpha=0.05);
+			double Limit(double alpha=0.05, double hint=-99999.);
 			void SetModel(CountingModel *cms);
 
 			//single channel counting experiment, limit in average which is with mathmatical meaning

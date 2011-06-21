@@ -833,9 +833,11 @@ If we need to change it later, it will be easy to do.
 
 					case typeGamma:
 						//vrdm.back()=_rdm->Gamma(v_GammaN[i]);
-						vrdm.back()=(int)_rdm->Gamma(bUseBestEstimateToCalcQ!=2?v_GammaN[i]:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]));
-						cout<<"DELETEME gamma N="<<(bUseBestEstimateToCalcQ!=2?v_GammaN[i]:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]))<<endl;
-						cout<<"DELETEME -->rdm = "<<vrdm.back()<<endl;
+						//frequentist way, need to toss integer number 
+						if(_tossToyConvention)vrdm.back()=(int)_rdm->Gamma(bUseBestEstimateToCalcQ!=2?v_GammaN[i]:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i])); 
+						else vrdm.back()=_rdm->Gamma(bUseBestEstimateToCalcQ!=2?v_GammaN[i]:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]));
+						if(_debug)cout<<"DELETEME gamma N="<<(bUseBestEstimateToCalcQ!=2?v_GammaN[i]:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]))<<endl;
+						if(_debug)cout<<"DELETEME -->rdm = "<<vrdm.back()<<endl;
 						break;
 					case typeBifurcatedGaussian:
 						{
