@@ -469,7 +469,7 @@ namespace lands{
 				er+=errLow; // for lower limit
 			}
 
-			if(debug || pars){
+			if(debug || pars || ierflg){
 				
 				if(debug || ierflg )printf("  par                 name         fitted_value        input_value\n");
 				for(int i=0; i<=npars; i++){
