@@ -38,7 +38,7 @@ namespace lands{
 	typedef map< string, vector< vector<double> > > MapStrVV;
 
 	enum enumPdfType {typeLogNormal=1, typeTruncatedGaussian=2, typeGamma=3, typeShapeGaussianLinearMorph=4, typeShapeGaussianQuadraticMorph=5, 
-		typeBifurcatedGaussian=6, typeControlSampleInferredLogNormal=11 };
+		typeBifurcatedGaussian=6, typeFlat=7, typeControlSampleInferredLogNormal=11 };
 	// for uncertainties only affecting Shape, we can choose different morphing algorithm.  in commom, user must provide three templates:  norminal,  shift_1sigma_up, shift_1sigma_down
 	// i.e. 3 parameters for each shape uncertainty in each bin .... ,  the interface alway do normalization (to unity) for all three templates.
 	
@@ -207,6 +207,7 @@ namespace lands{
 			vector< double > Get_v_pdfs_floatParamsVaried(){return v_pdfs_floatParamsVaried;};
 			vector< vector< double > >Get_v_pdfs_floatParamsUnc(){ return v_pdfs_floatParamsUnc;};
 			vector<int> Get_v_pdfs_floatParamsIndcorr() {return v_pdfs_floatParamsIndcorr;};      // only for params
+			vector<int> Get_v_pdfs_floatParamsType() {return v_pdfs_floatParamsType;};      // only for params
 
 			vector<string> Get_v_pdfs_channelname(){return v_pdfs_channelname;};
 			vector<TString> Get_v_pdfs_sb(){return v_pdfs_sb;};
@@ -238,6 +239,7 @@ namespace lands{
 			void AddUncertaintyOnShapeNorm(int index_channel, int index_sample, double rho, double rho_err, double B, int pdf_type, int index_correlation );
 
 			bool AddUncertaintyOnShapeParam(string pname, double mean, double sigmaL, double sigmaR, double rangeMin=0, double rangeMax=0 );
+			bool AddUncertaintyOnShapeParam(string pname);// add flatParam
 
 			void AddUncertaintyAffectingShapeParam(string uname, string pname, double sigmaL, double sigmaR);
 
@@ -340,6 +342,7 @@ namespace lands{
 			RooWorkspace * _w_varied;
 
 			vector<int> v_pdfs_floatParamsIndcorr;      // only for params
+			vector<int> v_pdfs_floatParamsType;      // only for params
 			vector<string> v_pdfs_floatParamsName;     // only for params
 			vector<double> v_pdfs_floatParamsVaried;  // only for params
 			vector< vector<double> > v_pdfs_floatParamsUnc; // from 0 to max_uncorl

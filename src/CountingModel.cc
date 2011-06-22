@@ -107,6 +107,7 @@ namespace lands{
 
 		v_pdfs_floatParamsName.clear();
 		v_pdfs_floatParamsIndcorr.clear();
+		v_pdfs_floatParamsType.clear();
 		v_pdfs_floatParamsUnc.clear();
 
 
@@ -197,6 +198,7 @@ namespace lands{
 		vvv_pdfs_paramsRRV.clear();
 		v_pdfs_floatParamsName.clear();
 		v_pdfs_floatParamsIndcorr.clear();
+		v_pdfs_floatParamsType.clear();
 		v_pdfs_floatParamsUnc.clear();
 
 		/*
@@ -761,7 +763,8 @@ If we need to change it later, it will be easy to do.
 			} 
 		}
 		for(int i=0; i<v_pdfs_floatParamsName.size(); i++){
-			v_pdftype[v_pdfs_floatParamsIndcorr[i]] = typeBifurcatedGaussian;
+			//v_pdftype[v_pdfs_floatParamsIndcorr[i]] = typeBifurcatedGaussian;
+			v_pdftype[v_pdfs_floatParamsIndcorr[i]] = v_pdfs_floatParamsType[i];
 		}
 		for(int i=0; i<v_uncname.size(); i++){
 			if(v_pdftype[i+1]==-1) v_pdftype[i+1]=typeLogNormal; // some uncertainty source not affect normalization but shape 
@@ -783,6 +786,9 @@ If we need to change it later, it will be easy to do.
 					break;
 				case typeBifurcatedGaussian:
 					_norminalPars[i]=v_pdfs_floatParamsUnc[i][0];
+					break;
+				case typeFlat:
+					_norminalPars[i]=(v_pdfs_floatParamsUnc[i][0]-v_pdfs_floatParamsUnc[i][3])/v_pdfs_floatParamsUnc[i][1];
 					break;
 				default:
 					cout<<"pdftype not yet defined:  "<<v_pdftype[i]<<endl;
@@ -876,6 +882,11 @@ If we need to change it later, it will be easy to do.
 							if(_debug>=100) cout<<"  "<<vrdm.back()<<endl;
 							break;
 						}
+					case typeFlat:
+						//vrdm.back()=_rdm->Rndm(bUseBestEstimateToCalcQ!=2?0:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]));
+						vrdm.back() = _rdm->Rndm(); // FIXME HGG  how to toss flat random number around fitted data
+						break;
+						
 					case typeControlSampleInferredLogNormal:
 						//dummy
 						cout<<"Error: We haven't implemented the pdf of typeControlSampleInferredLogNormal"<<endl;
@@ -1010,6 +1021,9 @@ If we need to change it later, it will be easy to do.
 						case typeControlSampleInferredLogNormal :
 							// FIXME
 							break;
+						case typeFlat:
+							cout<<"WARNING: typeFlat pdf on normalization not yet implemented, skip it "<<endl;
+							break;
 						case typeShapeGaussianLinearMorph:
 							if(!bMoveUpShapeUncertainties){
 								if(*(uncpars+7) == 1.){
@@ -1053,8 +1067,6 @@ If we need to change it later, it will be easy to do.
 								}
 							}
 							if(_debug>=100)cout<< "main =" << *(uncpars+2) << " up="<< *(uncpars+1) << " down="<< *uncpars << " ran="<<ran<< " --> h="<<h<<endl;
-
-
 							break;
 						default:
 							break;
@@ -1105,6 +1117,9 @@ If we need to change it later, it will be easy to do.
 								}
 								if(_debug>=100) cout<<" norm varied after this unc = "<<vv_pdfs_norm_varied[ch][isam]<<endl;
 								break;
+							case typeFlat:
+								cout<<"WARNING: typeFlat pdf on normalization not yet implemented, skip it "<<endl;
+								break;
 							default:
 								cout<<"ERROR: for shape norm uncertainies, we have only support LogNormal (lnN), TruncatedGaussian (trG) and Gamma (gmN) currently. exit "<<endl;
 								exit(1);
@@ -1125,13 +1140,22 @@ If we need to change it later, it will be easy to do.
 				if(_debug>=100)cout<<v_pdfs_floatParamsName[i]<<endl;
 				// additive implementation of multi-sources affecting params
 				double param = vrdm[v_pdfs_floatParamsIndcorr[i]];
+				
+				if(v_pdfs_floatParamsType[i]==typeFlat){
+					// for flatParam: vector-->    0  norminal value, 1 max-min,  2 dumy, 3 min, 4 max 
+					param =( v_pdfs_floatParamsUnc[ip][3] + param* v_pdfs_floatParamsUnc[ip][1] );
+				}
+
+				if(_debug>=100)cout<<"DELETEME: param norminal value: "<<v_pdfs_floatParamsUnc[ip][0]<<endl;
 				if(_debug>=100)cout<<"DELETEME: param only fitunc "<<param<<endl;
+
 				iter = map_param_sources.find(v_pdfs_floatParamsName[i]);
 				if (iter != map_param_sources.end() ) {
 					vector< vector<double> > vvtmp = iter->second;
 					for(int ii=0; ii<vvtmp.size(); ii++){
 						id = (int)vvtmp[ii][0];
 						if(v_pdftype[id]==typeBifurcatedGaussian) continue;
+						// FIXME HGG
 						param += vrdm[id]*(vrdm[id]<0?vvtmp[ii][1]:vvtmp[ii][2]);
 					}
 				}else ; //std::cout << v_pdfs_floatParamsName[i]<<" is not in map_param_sources" << '\n';
@@ -2426,6 +2450,59 @@ If we need to change it later, it will be easy to do.
 		return ret;
 	}
 
+	bool CountingModel::AddUncertaintyOnShapeParam(string pname){ // add flatParam
+		if(_debug>=10)cout<<"In AddUncertaintyOnShapeParam  Adding floating parameter with flatParam: "<<pname<<endl;
+		if(_w_varied->var(pname.c_str())==NULL) {
+			cout<<" parameter "<<pname<<" not exist in the added channels,   skip it"<<endl;
+			if(_w_varied->arg(pname.c_str())) cout<<" but it exist as RooAbsArg"<<endl;
+			_w_varied->Print();
+			return false;
+		}
+
+		int index_correlation = -1; // numeration starts from 1
+		for(int i=0; i<v_uncname.size(); i++){
+			if(v_uncname[i]==pname){
+				index_correlation = i+1;	
+				cout<<" There are two shape parameters with same name = "<<pname<<", skip it"<<endl;
+				return false;
+			}
+		}
+		if(index_correlation<0)  {
+			index_correlation = v_uncname.size()+1;
+			v_uncname.push_back(pname);
+			v_uncFloatInFit.push_back(1);
+		}
+
+		RooRealVar* rrv = (RooRealVar*)_w_varied->var(pname.c_str());
+		double norminalValue = rrv->getVal();
+		double rangeMin = rrv->getMin();
+		double rangeMax = rrv->getMax();
+		if(_debug) {
+			rrv->Print();
+			cout<<norminalValue<<", ["<<rangeMin<<", "<<rangeMax<<"]"<<endl;
+		}
+
+
+		vector<double> vunc; vunc.clear(); 
+		vunc.push_back(norminalValue);
+		vunc.push_back(rangeMax-rangeMin);
+		vunc.push_back(0);
+		vunc.push_back(rangeMin);
+		vunc.push_back(rangeMax);
+		if(v_pdfs_floatParamsUnc.size() <= index_correlation){
+			for(int i = v_pdfs_floatParamsUnc.size(); i<=index_correlation; i++){
+				v_pdfs_floatParamsUnc.push_back(vunc);
+			}
+		}else v_pdfs_floatParamsUnc[index_correlation] = vunc;
+		if(_debug) cout<<" v_pdfs_floatParamsUnc.size() = "<<v_pdfs_floatParamsUnc.size()<<" index_correlation="<<index_correlation<<endl;
+
+		TString s = pname;
+		v_pdfs_floatParamsName.push_back(pname);
+		v_pdfs_floatParamsIndcorr.push_back(index_correlation);
+		v_pdfs_floatParamsType.push_back(typeFlat);
+
+		return true;
+	}
 	bool CountingModel::AddUncertaintyOnShapeParam(string pname, double mean, double sigmaL, double sigmaR, double rangeMin, double rangeMax ){
 		if(_debug>=10)cout<<"In AddUncertaintyOnShapeParam  Adding floating parameter: "<<pname<<endl;
 		if(_w_varied->var(pname.c_str())==NULL) {
@@ -2477,6 +2554,7 @@ If we need to change it later, it will be easy to do.
 
 		v_pdfs_floatParamsName.push_back(pname);
 		v_pdfs_floatParamsIndcorr.push_back(index_correlation);
+		v_pdfs_floatParamsType.push_back(typeBifurcatedGaussian);
 
 		return true;
 	}

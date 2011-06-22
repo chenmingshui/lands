@@ -611,7 +611,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 			vector<string>	ss; 
 			ss.clear();
 			StringSplit(ss, lines[j].Data(), " ");
-			if(ss.size()<ntotprocesses+2 and GetWordFromLine(lines[j], 1)!="param" ){
+			if( ss.size()<ntotprocesses+2 and (GetWordFromLine(lines[j], 1)!="param" and GetWordFromLine(lines[j],1)!="flatParam") ){
 				cout<<"uncertainty configuration is not correct"<<endl; 
 				cout<<lines[j]<<endl;
 				exit(0);
@@ -903,7 +903,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 				//cout<<s<<endl;
 			};
 			//if(uncerlines[u][1]=="gmN") cout<<s<<endl;
-			if(uncertypes[u]=="param") {
+			if(uncertypes[u]=="param" || uncertypes[u]=="flatParam") {
 				for(int ii = 2; ii<ss1.size(); ii++){
 					s+=ss1[ii]; s+=" ";
 				}
@@ -1015,7 +1015,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 
 						for(int u=0; u<nsyssources; u++){
 							//for(int k=0; k<uncerlines.size(); k++)
-							if(uncertypes[u]=="param") continue;
+							if(uncertypes[u]=="param" or uncertypes[u]=="flatParam") continue;
 							if(1){
 								if(debug>=100) cout<<"debug "<<uncertypes[u]<<endl;
 								if(uncertypes[u]=="shape" or uncertypes[u]=="shapeL" or uncertypes[u]=="shapeQ" or uncertypes[u]=="shapeN"){
@@ -1101,7 +1101,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 					s_process_name += vv_procnames[c][t] ; s_process_name += " ";
 
 					for(int u=0; u<nsyssources; u++){
-						if(uncertypes[u]=="param") continue;
+						if(uncertypes[u]=="param" || uncertypes[u]=="flatParam") continue;
 						vector<string>	ss1 = uncerlines[u]; 
 						if(ss1[0]!=uncernames[u]) continue;
 						vs_unc[u]+=GetUncertainy(c, t, vv_procnames, ss1); vs_unc[u] += " ";  // must be careful with gamma uncertainties
@@ -1987,7 +1987,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 				RooAbsPdf * pdf = (RooAbsPdf*)GetPdf(channelnames[c], tmpprocn[i], parametricShapeLines, mass);
 				RooAbsArg * extraNom = (RooAbsArg*)GetExtraNorm(channelnames[c], tmpprocn[i], parametricShapeLines, mass);
 				pdf->SetName(TString(channelnames[c])+"_"+tmpprocn[i]+"_"+pdf->GetName());
-				if(extraNom)extraNom->SetName(TString(pdf->GetName())+"_"+"extranorm");
+				//if(extraNom)extraNom->SetName(TString(pdf->GetName())+"_"+"extranorm");
 				if(i<nsigproc[c]){
 					vspdf.push_back(pdf);
 					vsExtraNorm.push_back(extraNom);
@@ -2080,6 +2080,9 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 		else if(ss[1]=="param" ) {
 			pdf=typeBifurcatedGaussian;
 			vshape_params_unclines.push_back(ss);
+		}else if(ss[1]=="flatParam") {
+			pdf=typeFlat;
+			vshape_params_unclines.push_back(ss);
 		}
 		else pdf =  (TString(ss[1])).Atoi();
 
@@ -2088,7 +2091,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 
 		tmps+= TString::Format("%8s ", ss[1].c_str());
 		if(pdf==typeGamma && ss[1]!="gmM") tmps+= TString::Format("%8s ", ss[2].c_str());
-		else if(pdf==typeBifurcatedGaussian) {
+		else if(pdf==typeBifurcatedGaussian || pdf==typeFlat) {
 			for(int ii=2; ii<ss.size(); ii++) {tmps+=ss[2]; tmps+=" ";}
 		}
 		else		   tmps+= "         ";
@@ -2281,6 +2284,12 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 				}
 			}
 			bool succes = cms->AddUncertaintyOnShapeParam(indexcorrelation, mean, sigmaL, sigmaR, rangeMin, rangeMax );
+			if(succes)cms->TagUncertaintyFloatInFit(indexcorrelation, bUncIsFloatInFit);
+		}
+		if(pdf==typeFlat){
+			// FIXME add hoc implementation of flat param  uncertainties ....  need to think about also for normalization terms
+			if(ss.size()<2) {cout<<"ERROR: parameter line with type flatParam should have at least two columns "<<endl; exit(1);}
+			bool succes=cms->AddUncertaintyOnShapeParam(indexcorrelation);
 			if(succes)cms->TagUncertaintyFloatInFit(indexcorrelation, bUncIsFloatInFit);
 		}
 

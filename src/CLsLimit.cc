@@ -254,6 +254,9 @@ namespace lands{
 							chisq+= arg*arg*coef;
 							break;
 						}
+					case typeFlat:
+						// do nothing
+						break;
 					default:
 						break;
 				}
@@ -347,6 +350,9 @@ namespace lands{
 						break;
 					case typeBifurcatedGaussian:
 						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, v_paramsUnc[i][3], v_paramsUnc[i][4], ierflg  );
+						break;
+					case typeFlat:
+						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, 0, 1, ierflg  );
 						break;
 					default:
 						cout<<"pdftype not yet defined:  "<<v_pdftype[i]<<", npars="<<npars<<", i="<<i<<endl;
