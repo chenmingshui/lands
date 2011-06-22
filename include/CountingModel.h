@@ -58,6 +58,9 @@ namespace lands{
 			void AddChannel(std::string channel_name, vector<double> num_expected_yields, int signal_processes=1);
 			void AddChannel(std::string channel_name, vector<double> num_expected_signals, vector<double> num_expected_bkgs);
 
+			void TagUncertaintyFloatInFit(string uncname, bool b);
+			void TagUncertaintyFloatInFit(int uncIndex, bool b);
+
 			// LogNormal and TruncatedGaussian 
 			void AddUncertainty(int index_channel, int index_sample, double uncertainty_in_relative_fraction, int pdf_type, std::string uncname );
 			void AddUncertainty(string chname, int index_sample, double uncertainty_in_relative_fraction, int pdf_type, std::string uncname );
@@ -135,6 +138,7 @@ namespace lands{
 
 			vector<double> Get_v_GammaN(){return v_GammaN;};
 			vector<std::string> Get_v_uncname(){return v_uncname;};
+			vector<bool> Get_v_uncFloatInFit(){return v_uncFloatInFit;};
 			void SetDebug(int i){_debug=i;};
 			int GetDebug(){return _debug;};
 			std::string GetChannelName(int i){return v_channelname.at(i);}; //need make check 
@@ -233,7 +237,7 @@ namespace lands{
 			void AddUncertaintyOnShapeNorm(string chname, int index_sample, double rho, double rho_err, double B, int pdf_type, std::string uncname );
 			void AddUncertaintyOnShapeNorm(int index_channel, int index_sample, double rho, double rho_err, double B, int pdf_type, int index_correlation );
 
-			void AddUncertaintyOnShapeParam(string pname, double mean, double sigmaL, double sigmaR, double rangeMin=0, double rangeMax=0 );
+			bool AddUncertaintyOnShapeParam(string pname, double mean, double sigmaL, double sigmaR, double rangeMin=0, double rangeMax=0 );
 
 			void AddUncertaintyAffectingShapeParam(string uname, string pname, double sigmaL, double sigmaR);
 
@@ -274,6 +278,7 @@ namespace lands{
 			vector<double> v_GammaN; // record the number of sideband(or MC raw) events for each uncorrelated source
 
 			vector<std::string> v_uncname; // start from 0,   if take a name for idcorrl, then the indice is idcorrl-1; 
+			vector<bool> v_uncFloatInFit; // start from 0,   if take a name for idcorrl, then the indice is idcorrl-1; 
 			int _debug;
 
 			vector<int> v_sigproc; // number of signal processes in each channel

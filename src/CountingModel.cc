@@ -57,6 +57,7 @@ namespace lands{
 		b_AllowNegativeSignalStrength = 1;
 		v_GammaN.clear();
 		v_uncname.clear();
+		v_uncFloatInFit.clear();
 		v_sigproc.clear();
 		vv_procname.clear();
 		_debug=0;
@@ -146,6 +147,7 @@ namespace lands{
 		v_pdftype.clear();
 		v_GammaN.clear();
 		v_uncname.clear();
+		v_uncFloatInFit.clear();
 		v_sigproc.clear();
 		vv_procname.clear();
 		vvv_shapeuncindex.clear();
@@ -418,6 +420,24 @@ namespace lands{
 		num_expected_signals.push_back(num_expected_signal);
 		AddChannel(channel_name, num_expected_signals, num_expected_bkgs);
 	}	
+	void CountingModel::TagUncertaintyFloatInFit(string uncname, bool b){
+		bool tagged = false;
+		for(int i=0; i<v_uncname.size(); i++){
+			if(v_uncname[i]==uncname){
+				if(v_uncFloatInFit[i]==false and b==true) { cout<<"ERROR: ["<<uncname<<"]  has been tagged [nofloat] before, and there is conflict now"<<endl; exit(1); }
+			       	v_uncFloatInFit[i]=b;
+				tagged = true;
+			}
+		}	
+		if(!tagged) {cout<<"ERROR: in TagUncertaintyFloatInFit, "<<uncname<<" not found, may not added yet "<<endl;
+			for(int i=0; i<v_uncname.size(); i++) cout<<v_uncname[i]<<endl;
+		       	exit(1);}
+	}
+	void CountingModel::TagUncertaintyFloatInFit(int i, bool b){
+		if(i>=v_uncFloatInFit.size() or i<0) { cout<<"ERROR TagUncertaintyFloatInFit index "<<i<<" out of range "<<endl; exit(1); }
+		if(v_uncFloatInFit[i]==false and b==true) { cout<<"ERROR: ["<<i<<"]  has been tagged [nofloat] before, and there is conflict now"<<endl; exit(1); }
+		v_uncFloatInFit[i]=b;	
+	}
 	void CountingModel::AddUncertainty(int index_channel, int index_sample, double uncertainty_in_relative_fraction, int pdf_type, string uncname ){
 		AddUncertainty(index_channel, index_sample, uncertainty_in_relative_fraction, uncertainty_in_relative_fraction, pdf_type, uncname);
 	}
@@ -439,9 +459,9 @@ namespace lands{
 		if(index_correlation<0)  {
 			index_correlation = v_uncname.size()+1;
 			v_uncname.push_back(uncname);
+			v_uncFloatInFit.push_back(1);
 		}
 		AddUncertainty(index_channel, index_sample, uncertainty_in_relative_fraction_down, uncertainty_in_relative_fraction_up, pdf_type, index_correlation );
-
 	}
 	void CountingModel::AddUncertainty(string c, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, string uncname ){
 		int index_channel = -1;
@@ -461,6 +481,7 @@ namespace lands{
 		if(index_correlation<0)  {
 			index_correlation = v_uncname.size()+1;
 			v_uncname.push_back(uncname);
+			v_uncFloatInFit.push_back(1);
 		}
 		AddUncertainty(index_channel, index_sample, npar, par, pdf_type, index_correlation );
 
@@ -483,6 +504,7 @@ namespace lands{
 		if(index_correlation<0)  {
 			index_correlation = v_uncname.size()+1;
 			v_uncname.push_back(uncname);
+			v_uncFloatInFit.push_back(1);
 		}
 		AddUncertainty(index_channel, index_sample, rho, rho_err, B, pdf_type, index_correlation );
 	}
@@ -1359,6 +1381,18 @@ If we need to change it later, it will be easy to do.
 			if(v_pdftype.size()>0) cout	<< v_pdftype[i+1] ;
 			cout<<endl;
 		}
+		cout<<endl;
+		cout<<" [nofloat] nuisances: "<<endl;
+		int nnn = 0;
+		for(int i=0; i<v_uncname.size(); i++){
+			if(v_uncFloatInFit[i]==false){
+				cout<<i+1<<" "<<v_uncname[i]<<"  ";
+				if(v_pdftype.size()>0) cout	<< v_pdftype[i+1] ;
+				cout<<endl;
+				nnn++;
+			}
+		}
+		cout<< " totally "<<nnn<<" nuisances are not float in fit"<<endl;
 		cout<<endl;
 
 		//  more detail print out
@@ -2264,6 +2298,7 @@ If we need to change it later, it will be easy to do.
 		if(index_correlation<0)  {
 			index_correlation = v_uncname.size()+1;
 			v_uncname.push_back(uncname);
+			v_uncFloatInFit.push_back(1);
 		}
 		if(_debug>=10) cout<<" AddUncertaintyOnShapeNorm for "<<index_channel<<"th channel, "<<index_sample<<"th proc,  unc ["<<uncname<<"]"<<endl;
 		AddUncertaintyOnShapeNorm(index_channel, index_sample, uncertainty_in_relative_fraction_down, uncertainty_in_relative_fraction_up, pdf_type, index_correlation );
@@ -2288,6 +2323,7 @@ If we need to change it later, it will be easy to do.
 		if(index_correlation<0)  {
 			index_correlation = v_uncname.size()+1;
 			v_uncname.push_back(uncname);
+			v_uncFloatInFit.push_back(1);
 		}
 		AddUncertaintyOnShapeNorm(index_channel, index_sample, rho, rho_err, B, pdf_type, index_correlation );
 	}
@@ -2390,10 +2426,11 @@ If we need to change it later, it will be easy to do.
 		return ret;
 	}
 
-	void CountingModel::AddUncertaintyOnShapeParam(string pname, double mean, double sigmaL, double sigmaR, double rangeMin, double rangeMax ){
+	bool CountingModel::AddUncertaintyOnShapeParam(string pname, double mean, double sigmaL, double sigmaR, double rangeMin, double rangeMax ){
+		if(_debug>=10)cout<<"In AddUncertaintyOnShapeParam  Adding floating parameter: "<<pname<<endl;
 		if(_w_varied->var(pname.c_str())==NULL) {
 			cout<<" parameter "<<pname<<" not exist in the added channels,   skip it"<<endl;
-			return;
+			return false;
 		}
 
 		int index_correlation = -1; // numeration starts from 1
@@ -2403,12 +2440,13 @@ If we need to change it later, it will be easy to do.
 			if(v_uncname[i]==pname){
 				index_correlation = i+1;	
 				cout<<" There are two shape parameters with same name = "<<pname<<", skip it"<<endl;
-				return;
+				return false;
 			}
 		}
 		if(index_correlation<0)  {
 			index_correlation = v_uncname.size()+1;
 			v_uncname.push_back(pname);
+			v_uncFloatInFit.push_back(1);
 		}
 
 		if(rangeMax==rangeMin){
@@ -2439,6 +2477,8 @@ If we need to change it later, it will be easy to do.
 
 		v_pdfs_floatParamsName.push_back(pname);
 		v_pdfs_floatParamsIndcorr.push_back(index_correlation);
+
+		return true;
 	}
 
 	void CountingModel::AddUncertaintyAffectingShapeParam(string uname, string pname, double sigmaL, double sigmaR ){
@@ -2474,6 +2514,7 @@ If we need to change it later, it will be easy to do.
 		if(index_correlation<0)  {
 			index_correlation = v_uncname.size()+1;
 			v_uncname.push_back(uname);
+			v_uncFloatInFit.push_back(1);
 		}
 
 

@@ -1460,6 +1460,10 @@ bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripp
 
 		//int indexcorrelation = (TString(ss[0])).Atoi();
 		string indexcorrelation = ss[0];
+		TString sTmp=indexcorrelation;
+		bool bUncIsFloatInFit = true;
+		if(sTmp.EndsWith("[nofloat]")) bUncIsFloatInFit=false;
+		indexcorrelation = sTmp.ReplaceAll("[nofloat]","").Data();
 
 		//if(indexcorrelation != (nsyssources-s) ) {
 		//	cout<<"Warning: you are reading in "<<nsyssources-s<<"th nuisanse parameter, but this line start with "<<indexcorrelation<<endl;
@@ -1619,6 +1623,7 @@ bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripp
 			//exit(0);
 		}
 		duplicatingLines.push_back(tmps);
+		cms->TagUncertaintyFloatInFit(indexcorrelation, bUncIsFloatInFit);
 	}
 
 	if(debug) cout<<"filled systematics"<<endl;
@@ -1635,6 +1640,7 @@ bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripp
 
 bool ConfigureModel(CountingModel *cms, double mass, const char* fileName, int debug){
 	TString s = ReadFile(fileName);
+	cout<<"DELETEME model name = "<<fileName<<endl;
 	cms->SetModelName(fileName);
 	return CheckIfDoingShapeAnalysis(cms, mass,  s, debug);
 }
@@ -2057,6 +2063,10 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 		TString tmps; tmps.Form("%s ", ss[0].c_str());
 
 		string indexcorrelation = ss[0];
+		TString sTmp=indexcorrelation;
+		bool bUncIsFloatInFit = true;
+		if(sTmp.EndsWith("[nofloat]")) bUncIsFloatInFit=false;
+		indexcorrelation = sTmp.ReplaceAll("[nofloat]","").Data();
 
 
 		int pdf = 0; 
@@ -2270,13 +2280,20 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 					rangeMax= (TString(asymetricerrors[1])).Atof();  // upside
 				}
 			}
-			cms->AddUncertaintyOnShapeParam(ss[0], mean, sigmaL, sigmaR, rangeMin, rangeMax );
+			bool succes = cms->AddUncertaintyOnShapeParam(indexcorrelation, mean, sigmaL, sigmaR, rangeMin, rangeMax );
+			if(succes)cms->TagUncertaintyFloatInFit(indexcorrelation, bUncIsFloatInFit);
 		}
 
 		duplicatingLines.push_back(tmps);
 	}
 	for(int i=0; i<uncerlinesAffectingShapes.size(); i++){
 		vector<string>	ss = uncerlinesAffectingShapes[i]; 
+		string indexcorrelation = ss[0];
+		TString sTmp=indexcorrelation;
+		bool bUncIsFloatInFit = true;
+		if(sTmp.EndsWith("[nofloat]")) bUncIsFloatInFit=false;
+		indexcorrelation = sTmp.ReplaceAll("[nofloat]","").Data();
+
 		if(ss.size()<6) {
 			cout<<"ERROR format of uncertainty affecting parameters should be as follows"<<endl;
 			cout<<"<systname> affects <bin> <process> <parameter> <effect strength>"<<endl;
@@ -2311,7 +2328,8 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 			}
 		}
 		//cms->AddUncertaintyAffectingShapeParam(ss[0], ss[2], mean, sigmaL, sigmaR, rangeMin, rangeMax );
-		cms->AddUncertaintyAffectingShapeParam(ss[0], ss[4], sigmaL, sigmaR);
+		cms->AddUncertaintyAffectingShapeParam(indexcorrelation, ss[4], sigmaL, sigmaR);
+		cms->TagUncertaintyFloatInFit(indexcorrelation, bUncIsFloatInFit);
 	}
 
 	if(debug) cout<<"filled systematics"<<endl;

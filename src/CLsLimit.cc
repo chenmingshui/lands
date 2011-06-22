@@ -323,6 +323,7 @@ namespace lands{
 			vector<double> v_GammaN = cms_global->Get_v_GammaN();
 			vector< vector<double> > v_paramsUnc = cms_global->Get_v_pdfs_floatParamsUnc();
 			vector<string> v_uncname = cms_global->Get_v_uncname();
+			vector<bool> v_uncFloatInFit= cms_global->Get_v_uncFloatInFit();
 			double maxunc;
 			for(int i=1; i<=npars; i++){
 				TString sname=v_uncname[i-1]; 
@@ -353,6 +354,7 @@ namespace lands{
 						//cms_global->Print(100);
 						exit(0);
 				}
+				if(v_uncFloatInFit[i-1]==false)myMinuit->FixParameter(i);
 			}
 
 			//if(debug>=10) cout<<"DELETEME in MinuitFit    1"<<endl;
