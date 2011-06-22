@@ -471,11 +471,11 @@ namespace lands{
 
 			if(debug || pars){
 				
-				if(debug)printf("  par                 name         fitted_value        input_value\n");
+				if(debug || ierflg )printf("  par                 name         fitted_value        input_value\n");
 				for(int i=0; i<=npars; i++){
 					double tmp, tmpe;
 					myMinuit->GetParameter(i, tmp, tmpe);
-					if(debug) printf("  par %30s      %.6f +/- %.6f      %.6f \n", i>0?v_uncname[i-1].c_str():"signal_strength", tmp, tmpe, _inputNuisances[i]);
+					if(debug || ierflg ) printf("  par %30s      %.6f +/- %.6f      %.6f \n", i>0?v_uncname[i-1].c_str():"signal_strength", tmp, tmpe, _inputNuisances[i]);
 					if(pars && !hasBestFitted)pars[i] = tmp;
 				}
 			}
