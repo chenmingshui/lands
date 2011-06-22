@@ -326,6 +326,7 @@ namespace lands{
 			double maxunc;
 			for(int i=1; i<=npars; i++){
 				TString sname=v_uncname[i-1]; 
+			//	if(debug>=10) cout<<"DELETEME in MinuitFit    "<<sname<<endl;
 				switch (v_pdftype[i]){
 					case typeShapeGaussianLinearMorph:
 					case typeShapeGaussianQuadraticMorph:
@@ -353,6 +354,8 @@ namespace lands{
 						exit(0);
 				}
 			}
+
+			//if(debug>=10) cout<<"DELETEME in MinuitFit    1"<<endl;
 
 			// through fixing the ratio to determine whether fit for S+B(r=1) or B-only (r=0)   Q_tevatron
 			// let the ratio float, then it's Q_atlas
@@ -405,6 +408,8 @@ namespace lands{
 				return 0;
 			}
 
+			//if(debug>=10) cout<<"DELETEME in MinuitFit    2"<<endl;
+			
 			arglist[0] = 1;
 			if(model==101 || model==102)arglist[0] = mu; // ErrorDef for Minos,  just temporaliry using mu ...
 			myMinuit->mnexcm("SET ERR", arglist ,1,ierflg);

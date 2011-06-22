@@ -212,8 +212,8 @@ namespace lands{
 			RooWorkspace * GetWorkSpace(){return _w;};
 
 
-			void AddChannel(string channel_name, RooRealVar* observable, vector<RooAbsPdf*> sigPdfs, vector<double> sigNorms, 
-				       	vector<RooAbsPdf*> bkgPdfs, vector<double> bkgNorms);
+			void AddChannel(string channel_name, RooRealVar* observable, vector<RooAbsPdf*> sigPdfs, vector<double> sigNorms, vector<RooAbsArg*> vsExtraNorm, 
+				       	vector<RooAbsPdf*> bkgPdfs, vector<double> bkgNorms, vector<RooAbsArg*> vbExtraNorm);
 			// need to add names of each parameter .... 
 			double EvaluateLnQ(int ch, int dataOrToy); // for Likelihood ratio
 			double EvaluateChi2(double *par, int bUseBestEstimateToCalcQ=1);          // for Chi2
@@ -243,6 +243,8 @@ namespace lands{
 			double * Get_randomizedPars(){return _randomizedPars;};
 
 			void SetMass(double d);
+
+			vector< vector<TString> > Get_vv_pdfs_extranormNAME() {return vv_pdfs_extranormNAME;};
 		private:
 			VDChannel v_data; // could be pseudo-data for bands
 			VDChannel v_data_real; // real data, not changed during entire run 
@@ -327,6 +329,7 @@ namespace lands{
 
 
 			vector< vector<TString> > vv_pdfs_normNAME;
+			vector< vector<TString> > vv_pdfs_extranormNAME;
 
 			RooWorkspace * _w;
 			RooWorkspace * _w_varied;

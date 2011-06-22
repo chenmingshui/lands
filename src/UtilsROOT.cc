@@ -1999,7 +1999,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 				if(debug)cout<<"* pdf "<<vspdf[i]->GetName()<<endl;
 				if(debug)cout<<"* Normalization in data card = "<<vsnorm[i]<<endl;
 				if(vsExtraNorm[i]) {
-					vsnorm[i]*=((RooAbsReal*)vsExtraNorm[i])->getVal();
+					//vsnorm[i]*=((RooAbsReal*)vsExtraNorm[i])->getVal();
 					if(debug)cout<<"* ExtraNormalization in workspace = "<<((RooAbsReal*)vsExtraNorm[i])->getVal()<<endl;
 				}
 			}
@@ -2007,7 +2007,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 				if(debug)cout<<"* pdf "<<vbpdf[i]->GetName()<<endl;
 				if(debug)cout<<"* Normalization in data card = "<<vbnorm[i]<<endl;
 				if(vbExtraNorm[i]) {
-				       	vbnorm[i]*=((RooAbsReal*)vbExtraNorm[i])->getVal();
+				       	//vbnorm[i]*=((RooAbsReal*)vbExtraNorm[i])->getVal();
 					if(debug)cout<<"* ExtraNormalization in workspace = "<<((RooAbsReal*)vbExtraNorm[i])->getVal()<<endl;
 				}
 			}
@@ -2018,7 +2018,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 				exit(1);
 			}
 			RooRealVar* x = dynamic_cast<RooRealVar*> (data->get()->first());
-			cms->AddChannel(channelnames[c], x, vspdf, vsnorm, vbpdf, vbnorm);
+			cms->AddChannel(channelnames[c], x, vspdf, vsnorm, vsExtraNorm, vbpdf, vbnorm, vbExtraNorm);
 			cms->AddObservedDataSet(channelnames[c], data);
 		}
 	}	

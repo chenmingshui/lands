@@ -101,6 +101,7 @@ namespace lands{
 		v_pdfs_roodataset_real.clear();
 		v_pdfs_roodataset_tmp.clear();
 		vv_pdfs_normNAME.clear();
+		vv_pdfs_extranormNAME.clear();
 		vvv_pdfs_paramsRRV.clear();
 
 		v_pdfs_floatParamsName.clear();
@@ -190,6 +191,7 @@ namespace lands{
 		v_pdfs_roodataset_real.clear();
 		v_pdfs_roodataset_tmp.clear();
 		vv_pdfs_normNAME.clear();
+		vv_pdfs_extranormNAME.clear();
 		vvv_pdfs_paramsRRV.clear();
 		v_pdfs_floatParamsName.clear();
 		v_pdfs_floatParamsIndcorr.clear();
@@ -701,8 +703,9 @@ If we need to change it later, it will be easy to do.
 						} 
 						if(indexcorrl==i && vvv_pdfs_pdftype.at(ch).at(isam).at(iunc)== typeGamma){
 							if(vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(0)>0 && 
-									fabs(vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(0)*vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(2) - vv_pdfs_norm.at(ch).at(isam)) / vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(2)/vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(0)>0.2
+									fabs(vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(0)*vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(2) - vv_pdfs_norm_varied.at(ch).at(isam)) / vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(2)/vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(0)>0.2
 							  ) {
+								// if there is extra norm inside workspace, then probably will not have gmN uncertainty 
 								cout<<"Shape channel "<<ch<<"th, "<<v_pdfs_channelname[ch]<<": process "<<isam<<" using gamma pdf, but rho*B!=b, please check"<<endl; 
 								cout<< "rho="<<vvv_pdfs_normvariation[ch][isam][iunc][0]<<"  B="<<vvv_pdfs_normvariation[ch][isam][iunc][2]<<" b="<<vv_exp_sigbkgs[ch][isam]<<endl;
 								exit(0);
@@ -791,7 +794,7 @@ If we need to change it later, it will be easy to do.
 		if(!b_systematics) {
 			if(bHasParametricShape){
 				//vv_pdfs_params_varied = bUseBestEstimateToCalcQ?vv_pdfs_params:vv_pdfs_params_randomized;
-				if(bUseBestEstimateToCalcQ==1)vv_pdfs_norm_varied = scaled?vv_pdfs_norm_scaled:vv_pdfs_norm;
+				if(bUseBestEstimateToCalcQ==1)vv_pdfs_norm_varied = scaled?vv_pdfs_norm_scaled:vv_pdfs_norm;  //FIXME HGG need account for extraNorm
 				else if(bUseBestEstimateToCalcQ==0) vv_pdfs_norm_varied = scaled?vv_pdfs_norm_randomized_scaled:vv_pdfs_norm_randomized;
 				else vv_pdfs_norm_varied = scaled?vv_pdfs_norm_fitted_scaled:vv_pdfs_norm_fitted;
 				for(int ch=0; ch<vv_pdfs.size(); ch++){
@@ -1122,6 +1125,28 @@ If we need to change it later, it will be easy to do.
 				v_pdfs_floatParamsVaried.push_back(param);
 
 			}
+			for(int ch=0; ch<vv_pdfs.size(); ch++){
+				for(isam=0; isam<vv_pdfs[ch].size(); isam++){
+					double tmp = vv_pdfs_norm_varied[ch][isam];
+					if(_debug>=100) cout<<" **norm varied after all unc (only in datacard)= "<<tmp<<endl;
+					if(vv_pdfs_extranormNAME[ch][isam]!="") {
+						if(_debug>=100){ cout<<vv_pdfs_extranormNAME[ch][isam]<<endl;
+							if(static_cast<RooAbsReal*>(_w_varied->arg(vv_pdfs_extranormNAME[ch][isam]))) cout<<" exist "<<endl;
+							else cout<<" don't exist "<<endl;
+						}
+						if((RooAbsReal*)(_w_varied->arg(vv_pdfs_extranormNAME[ch][isam]))) {
+							tmp *= ((RooAbsReal*)(_w_varied->arg(vv_pdfs_extranormNAME[ch][isam])))->getVal();
+							if(_debug>=100) {
+								cout<<"      extranorm ="<< static_cast<RooAbsReal*>(_w_varied->arg(vv_pdfs_extranormNAME[ch][isam]))->getVal()<<endl;
+								cout<<" **norm varied after all unc (including extranorm)= "<<tmp<<endl;
+							}
+						}
+						vv_pdfs_norm_varied[ch][isam] = tmp;
+					}
+					_w_varied->var(vv_pdfs_normNAME[ch][isam])->setVal(tmp);
+				}
+			}
+
 			if(_debug>=100) {
 				cout<<"FluctuatedNumbers, varied workspace: "<<endl;
 				//_w_varied->Print("V"); // cause crash   ..... at some point
@@ -1395,15 +1420,23 @@ If we need to change it later, it will be easy to do.
 				vv_exp_sigbkgs_scaled[ch][isam]*=_common_signal_strength;
 			}
 		}
+
 		if(bHasParametricShape){
 			vv_pdfs_norm_scaled = vv_pdfs_norm;
 			for(int ch=0; ch<vv_pdfs_norm_scaled.size(); ch++){
 				for(int isam=0; isam<v_pdfs_sigproc[ch]; isam++){
 					vv_pdfs_norm_scaled[ch][isam]*=_common_signal_strength;
-					_w->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_scaled[ch][isam]);
-					_w_varied->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_scaled[ch][isam]);
+
+					//FIXME HGG not sure what the following does ,  need to check and if nothing, then delete it
+					double tmp = vv_pdfs_norm_scaled[ch][isam];
+					if(vv_pdfs_extranormNAME[ch][isam]!="") {
+						tmp *= ((RooAbsReal*)(_w->arg(vv_pdfs_extranormNAME[ch][isam])))->getVal();
+					}
+					_w->var(vv_pdfs_normNAME[ch][isam])->setVal(tmp);
+					_w_varied->var(vv_pdfs_normNAME[ch][isam])->setVal(tmp);
 				}
 			}
+
 		}
 
 		//if(bHasParametricShape)SetTmpDataForUnbinned(v_pdfs_roodataset);// reset to data , need refit for mu=r  //FIXME  need move to somewhere else needed
@@ -1584,23 +1617,27 @@ If we need to change it later, it will be easy to do.
 				tmp_v_uncname = ms[m]->Get_v_uncname();
 				vector< vector<double> > vparamunc = ms[m]->Get_v_pdfs_floatParamsUnc(); // from 0 to max_uncorl
 				vector<int> vparamIndcorr = ms[m]->Get_v_pdfs_floatParamsIndcorr();      // only for params
+				vector< vector<TString> > vvextranormname = ms[m]->Get_vv_pdfs_extranormNAME();
 				for(int ch=0; ch<vsigproc.size(); ch++){
 					int newch = cms->Get_vv_pdfs().size();
 					if(ms[m]->GetDebug()) cout<<"Adding ch = "<<newch<<"th channel from "<<ms[m]->GetModelName()<<endl;
 					vector<RooAbsPdf*> vs, vb;
 					vector<double> vsnorm, vbnorm;
+					vector<RooAbsArg*> vsExtraNorm, vbExtraNorm; 
 					for(int p =0 ; p<vvpdfs[ch].size(); p++){
 						if(p<vsigproc[ch]){
 							vs.push_back(w->pdf(vvpdfs[ch][p].c_str()));
 							vsnorm.push_back(vnorm[ch][p]);
+							vsExtraNorm.push_back((RooAbsArg*)w->arg(vvextranormname[ch][p]));
 						}
 						else{
 							vb.push_back(w->pdf(vvpdfs[ch][p].c_str()));
 							vbnorm.push_back(vnorm[ch][p]);
+							vbExtraNorm.push_back((RooAbsArg*)w->arg(vvextranormname[ch][p]));
 						}
 					}
 					RooRealVar*x=w->var(vobs[ch]);
-					cms->AddChannel(vchnames[ch], x, vs, vsnorm, vb, vbnorm);
+					cms->AddChannel(vchnames[ch], x, vs, vsnorm,vsExtraNorm, vb, vbnorm, vbExtraNorm);
 					if(cms2->GetDebug()) cout<<"  AddChannel "<<endl;
 					cms->AddObservedDataSet(vchnames[ch], vrds[ch]);
 					if(cms2->GetDebug()) cout<<"  AddObservedDataSet"<<endl;
@@ -1728,8 +1765,8 @@ If we need to change it later, it will be easy to do.
 
 
 	// for parametric shapes
-	void CountingModel::AddChannel(string channel_name, RooRealVar* observable, vector<RooAbsPdf*> sigPdfs, vector<double> sigNorms, 
-			vector<RooAbsPdf*> bkgPdfs, vector<double> bkgNorms){
+	void CountingModel::AddChannel(string channel_name, RooRealVar* observable, vector<RooAbsPdf*> sigPdfs, vector<double> sigNorms, vector<RooAbsArg*> vsExtraNorm,
+			vector<RooAbsPdf*> bkgPdfs, vector<double> bkgNorms, vector<RooAbsArg*> vbExtraNorm){
 		int signal_processes = sigPdfs.size();
 		int bkg_processes = bkgPdfs.size();
 		if(signal_processes<=0)  {cout<<"ERROR: you add a channel with number of signal_processes <=0 "<<endl; exit(0);}
@@ -1780,6 +1817,7 @@ If we need to change it later, it will be easy to do.
 		vector<int> vidcorrl; vidcorrl.clear();
 
 		vector<TString> vrrvnorm; vrrvnorm.clear();
+		vector<TString> vextranorm; vextranorm.clear();
 
 		vector<TString> vcoeffs; vcoeffs.clear();
 
@@ -1793,16 +1831,34 @@ If we need to change it later, it will be easy to do.
 
 			vnorms.push_back(sigNorms[i]);
 			TString sn = channel_name; sn+=vproc[i]; sn+="_norm";sn+=i;
-			RooRealVar *rrv = new RooRealVar(sn, "", sigNorms[i]);
+			RooRealVar *rrv = new RooRealVar(sn, "", sigNorms[i]);//FIXME HGG
 			vrrvnorm.push_back(sn);
+
+
+			if(vsExtraNorm[i]) { 
+				_w->import(*vsExtraNorm[i], RecycleConflictNodes());
+				_w_varied->import(*vsExtraNorm[i], RecycleConflictNodes());
+				vextranorm.push_back(vsExtraNorm[i]->GetName());
+				cout<<vextranorm.back()<<endl;
+				if((RooAbsReal*)(_w_varied->arg(vextranorm.back()))) {
+					double tmp = ((RooAbsReal*)(_w_varied->arg(vextranorm.back())))->getVal();
+					if(_debug>=100) cout<<" **extranorm= "<<tmp<<endl;
+				}else{
+					cout<<" don't exist "<<endl;
+				}
+				rrv->setVal(sigNorms[i]*(((RooAbsReal*)(vsExtraNorm[i]))->getVal()));
+			}else{
+				vextranorm.push_back("");
+			}
 
 			_w->import(*rrv);
 			_w->import(*sigPdfs[i], RenameConflictNodes(channel_name.c_str()));
 
 			_w_varied->import(*rrv);
 			_w_varied->import(*sigPdfs[i], RenameConflictNodes(channel_name.c_str()));
-			RooArgSet *rds	= sigPdfs[i]->getParameters(*observable);
+			//RooArgSet *rds	= sigPdfs[i]->getParameters(*observable);
 			// need to store the list of parameters and for future modification, fluctuation 
+
 
 			TString coef;
 			coef = rrv->GetName();
@@ -1819,9 +1875,18 @@ If we need to change it later, it will be easy to do.
 			vnorms.push_back(bkgNorms[i]);
 
 			TString sn = channel_name; sn+=vproc[i+sigNorms.size()]; sn+="_norm";sn+=(i+sigNorms.size());
-			RooRealVar *rrv = new RooRealVar(sn, "", bkgNorms[i]);
+			RooRealVar *rrv = new RooRealVar(sn, "", bkgNorms[i]); // FIXME HGG
 			vrrvnorm.push_back(sn);
 			
+			if(vbExtraNorm[i]) { 
+				_w->import(*vbExtraNorm[i]);
+				_w_varied->import(*vbExtraNorm[i]);
+				vextranorm.push_back(vbExtraNorm[i]->GetName());
+				rrv->setVal(bkgNorms[i]*(((RooAbsReal*)vbExtraNorm[i])->getVal()));
+			}else{
+				vextranorm.push_back("");
+			}
+
 			_w->import(*rrv);
 			_w->import(*bkgPdfs[i], RenameConflictNodes(channel_name.c_str()));
 
@@ -1838,6 +1903,7 @@ If we need to change it later, it will be easy to do.
 		vvv_pdfs_pdftype.push_back(vvpdftype);
 		vvv_pdfs_idcorrl.push_back(vvidcorrl);
 		vv_pdfs_normNAME.push_back(vrrvnorm);
+		vv_pdfs_extranormNAME.push_back(vextranorm);
 		vv_pdfs_norm.push_back(vnorms);
 		vv_pdfs_norm_scaled.push_back(vnorms);
 		vv_pdfs_norm_varied.push_back(vnorms);
@@ -1940,9 +2006,9 @@ If we need to change it later, it will be easy to do.
 		double ret=0;
 
 		double btot = 0, stot=0;
-		for(int i=0; i<vv_pdfs_norm_scaled[ch].size(); i++){
+		for(int i=0; i<vv_pdfs_norm_scaled[ch].size(); i++){  //FIXME HGG   need to multiply the extra norm in the _w 
 			if(i>=v_pdfs_sigproc[ch]) btot+=vv_pdfs_norm_scaled[ch][i];
-			else stot+=vv_pdfs_norm_scaled[ch][i];
+			else stot+=vv_pdfs_norm_scaled[ch][i]; 
 		}
 		RooArgSet vars(*(_w->var(v_pdfs_observables[ch])));
 		if(dataOrToy == 0){
@@ -2029,7 +2095,7 @@ If we need to change it later, it will be easy to do.
 			int ntot = int(v_pdfs_roodataset_tmp[ch]->sumEntries());
 			double tmp=0, retch=0;
 			for(int i=0; i<vv_pdfs_norm_varied[ch].size(); i++){
-				if(i>=v_pdfs_sigproc[ch]) btot+=vv_pdfs_norm_varied[ch][i];
+				if(i>=v_pdfs_sigproc[ch]) btot+=vv_pdfs_norm_varied[ch][i]; // FIXME HGG // already multiplied by extra norm in FluctuatedNumbers
 				else stot+=vv_pdfs_norm_varied[ch][i];
 			}
 			RooArgSet vars(*(_w_varied->var(v_pdfs_observables[ch])));
@@ -2076,13 +2142,14 @@ If we need to change it later, it will be easy to do.
 		return ret;
 	}
 
-	double CountingModel::EvaluateGL(int ch, double xr){ 
+	double CountingModel::EvaluateGL(int ch, double xr){ // deprecated
+		cout<<"Deprecated funtion:  EvaluateGL()"<<endl; exit(1);
 		double ret=0;
 
 		double btot = 0, stot=0;
 		int ntot = int(v_pdfs_roodataset[ch]->sumEntries());
 		double tmp;
-		for(int i=0; i<vv_pdfs_norm_scaled[ch].size(); i++){
+		for(int i=0; i<vv_pdfs_norm_scaled[ch].size(); i++){ //FIXME HGG
 			if(i>=v_pdfs_sigproc[ch]) btot+=vv_pdfs_norm_scaled[ch][i];
 			else stot+=vv_pdfs_norm_scaled[ch][i];
 		}
@@ -2104,7 +2171,7 @@ If we need to change it later, it will be easy to do.
 		if(_debug>=100){
 			cout<<"EvaluateGL in channel ["<<v_pdfs_channelname[ch]<<"]: gl = "<<ret<<endl;
 			cout<<"\n model_sb"<<endl;
-			_w->pdf(v_pdfs_sb[ch])->getParameters(*_w->var(v_pdfs_observables[ch]))->Print("V");
+			_w_varied->pdf(v_pdfs_sb[ch])->getParameters(*_w->var(v_pdfs_observables[ch]))->Print("V");
 		}
 		return ret;
 	}
