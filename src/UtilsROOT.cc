@@ -1621,9 +1621,10 @@ bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripp
 			// cms->AddUncertainty(0, 0, 0, 1, indexcorrelation );
 			//cms->AddUncertainty(0, 0, 0, 1, indexcorrelation ); //FIXME  no need now, because we use name of uncertainties, 
 			//exit(0);
+		}else{
+			cms->TagUncertaintyFloatInFit(indexcorrelation, bUncIsFloatInFit);
 		}
 		duplicatingLines.push_back(tmps);
-		cms->TagUncertaintyFloatInFit(indexcorrelation, bUncIsFloatInFit);
 	}
 
 	if(debug) cout<<"filled systematics"<<endl;
@@ -2214,6 +2215,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 			if(pdf==typeLogNormal||pdf==typeTruncatedGaussian){
 				if(isParametricChannel)cms->AddUncertaintyOnShapeNorm(channelName, subprocess[p], err, errup, pdf, indexcorrelation );
 				else cms->AddUncertainty(channelName, subprocess[p], err, errup, pdf, indexcorrelation );
+			filledThisSource = true;
 			}
 			if(pdf==typeGamma){
 				if(ss[1]=="gmA" or ss[1]=="gmN"){
@@ -2238,17 +2240,19 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 					//we might allow them different and do rescaling 
 				}
 				//if(debug)cout<<"  added  gamma "<<endl;
+			filledThisSource = true;
 			}
 			if(pdf==typeShapeGaussianLinearMorph or pdf==typeShapeGaussianQuadraticMorph){
 				if(isParametricChannel) { cout<< "WARNING  Morph is not working for parametric shape input ,  will skip  this uncertainty" << endl; continue; };
 				cms->AddUncertainty(channelName, subprocess[p], 8, shape, pdf, indexcorrelation );
+			filledThisSource = true;
 			}
 
-			// because when err < 0, AddUncertainty do nothing,  but filledThisSource has been changed to be true
-			filledThisSource = true;
 		}
 		if(!filledThisSource) {
 			cout<<"WARNING: The "<< s+1 <<"th source of uncertainties are all 0. "<<endl;
+		}else{
+			cms->TagUncertaintyFloatInFit(indexcorrelation, bUncIsFloatInFit);
 		}
 
 		if(pdf==typeBifurcatedGaussian){
@@ -2287,6 +2291,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 			if(succes)cms->TagUncertaintyFloatInFit(indexcorrelation, bUncIsFloatInFit);
 		}
 		if(pdf==typeFlat){
+			if(debug)cout<<" typeFlat "<<endl;
 			// FIXME add hoc implementation of flat param  uncertainties ....  need to think about also for normalization terms
 			if(ss.size()<2) {cout<<"ERROR: parameter line with type flatParam should have at least two columns "<<endl; exit(1);}
 			bool succes=cms->AddUncertaintyOnShapeParam(indexcorrelation);

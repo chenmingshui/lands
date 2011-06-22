@@ -427,13 +427,13 @@ namespace lands{
 		for(int i=0; i<v_uncname.size(); i++){
 			if(v_uncname[i]==uncname){
 				if(v_uncFloatInFit[i]==false and b==true) { cout<<"ERROR: ["<<uncname<<"]  has been tagged [nofloat] before, and there is conflict now"<<endl; exit(1); }
-			       	v_uncFloatInFit[i]=b;
+				v_uncFloatInFit[i]=b;
 				tagged = true;
 			}
 		}	
 		if(!tagged) {cout<<"ERROR: in TagUncertaintyFloatInFit, "<<uncname<<" not found, may not added yet "<<endl;
 			for(int i=0; i<v_uncname.size(); i++) cout<<v_uncname[i]<<endl;
-		       	exit(1);}
+			exit(1);}
 	}
 	void CountingModel::TagUncertaintyFloatInFit(int i, bool b){
 		if(i>=v_uncFloatInFit.size() or i<0) { cout<<"ERROR TagUncertaintyFloatInFit index "<<i<<" out of range "<<endl; exit(1); }
@@ -646,7 +646,7 @@ namespace lands{
 			for(int ch=0; ch<vvv_idcorrl.size(); ch++){
 				for(int isam=0; isam<vvv_idcorrl.at(ch).size(); isam++){
 					for(int iunc=0; iunc<vvv_idcorrl.at(ch).at(isam).size(); iunc++){
-					if(_debug>=100)	 cout<< "in counting ConfigUncertaintyPdfs: ch "<<ch<<" isam "<<isam<<" iunc "<<iunc<<endl;
+						if(_debug>=100)	 cout<< "in counting ConfigUncertaintyPdfs: ch "<<ch<<" isam "<<isam<<" iunc "<<iunc<<endl;
 						int indexcorrl = vvv_idcorrl.at(ch).at(isam).at(iunc);
 						if(indexcorrl==i && v_pdftype.back()<0 ){
 							v_pdftype.back()=vvv_pdftype.at(ch).at(isam).at(iunc);
@@ -691,11 +691,11 @@ If we need to change it later, it will be easy to do.
 						}
 						if(indexcorrl==i && v_pdftype.back()>0 ){
 							if( v_pdftype.back()!=vvv_pdftype.at(ch).at(isam).at(iunc)
-							 && ( vvv_pdftype.at(ch).at(isam).at(iunc)!=typeShapeGaussianQuadraticMorph &&
-								 vvv_pdftype.at(ch).at(isam).at(iunc)!=typeShapeGaussianLinearMorph) 
-							 && v_pdftype.back()!=typeShapeGaussianLinearMorph 
-							 && v_pdftype.back()!=typeShapeGaussianQuadraticMorph
-							    ){
+									&& ( vvv_pdftype.at(ch).at(isam).at(iunc)!=typeShapeGaussianQuadraticMorph &&
+										vvv_pdftype.at(ch).at(isam).at(iunc)!=typeShapeGaussianLinearMorph) 
+									&& v_pdftype.back()!=typeShapeGaussianLinearMorph 
+									&& v_pdftype.back()!=typeShapeGaussianQuadraticMorph
+							  ){
 								cout<<" Error:  two uncertainties with 100% correlation must be with same pdftype, exit "<<endl;
 								cout<<" Independant unc "<<indexcorrl<<"th, name "<<v_uncname[indexcorrl-1];
 								cout<<" should be "<<v_pdftype.back()<<", but "<<vvv_pdftype.at(ch).at(isam).at(iunc)<<" for ch"<<ch<<"("<<v_channelname[ch]<<")"
@@ -712,10 +712,10 @@ If we need to change it later, it will be easy to do.
 			for(int ch=0; ch<vvv_pdfs_idcorrl.size(); ch++){
 				if(_debug>=100)cout<<ch<<endl;
 				for(int isam=0; isam<vvv_pdfs_idcorrl.at(ch).size(); isam++){
-				if(_debug>=100)cout<<isam<<endl;
+					if(_debug>=100)cout<<isam<<endl;
 					for(int iunc=0; iunc<vvv_pdfs_idcorrl.at(ch).at(isam).size(); iunc++){
-				if(_debug>=100)cout<<iunc<<endl;
-					if(_debug>=100)	 cout<< "in shape ConfigUncertaintyPdfs: ch "<<v_pdfs_channelname[ch]<<" isam "<<vv_pdfs[ch][isam]<<endl;
+						if(_debug>=100)cout<<iunc<<endl;
+						if(_debug>=100)	 cout<< "in shape ConfigUncertaintyPdfs: ch "<<v_pdfs_channelname[ch]<<" isam "<<vv_pdfs[ch][isam]<<endl;
 						int indexcorrl = vvv_pdfs_idcorrl.at(ch).at(isam).at(iunc);
 						if(_debug>=10) cout<<"      "<<v_uncname[indexcorrl-1]<<endl;
 						if(indexcorrl==i && v_pdftype.back()<0 ){
@@ -739,10 +739,10 @@ If we need to change it later, it will be easy to do.
 						}
 						if(indexcorrl==i && v_pdftype.back()>0 ){
 							if( v_pdftype.back()!=vvv_pdfs_pdftype.at(ch).at(isam).at(iunc)
-							 && ( vvv_pdfs_pdftype.at(ch).at(isam).at(iunc)!=typeShapeGaussianQuadraticMorph &&
-								 vvv_pdfs_pdftype.at(ch).at(isam).at(iunc)!=typeShapeGaussianLinearMorph) 
-							 && v_pdftype.back()!=typeShapeGaussianLinearMorph 
-							 && v_pdftype.back()!=typeShapeGaussianQuadraticMorph
+									&& ( vvv_pdfs_pdftype.at(ch).at(isam).at(iunc)!=typeShapeGaussianQuadraticMorph &&
+										vvv_pdfs_pdftype.at(ch).at(isam).at(iunc)!=typeShapeGaussianLinearMorph) 
+									&& v_pdftype.back()!=typeShapeGaussianLinearMorph 
+									&& v_pdftype.back()!=typeShapeGaussianQuadraticMorph
 							  ){
 								cout<<" Error:  two uncertainties with 100% correlation must be with same pdftype, exit "<<endl;
 								cout<<" Independant unc "<<indexcorrl<<"th, name "<<v_uncname[indexcorrl-1];
@@ -886,7 +886,7 @@ If we need to change it later, it will be easy to do.
 						//vrdm.back()=_rdm->Rndm(bUseBestEstimateToCalcQ!=2?0:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]));
 						vrdm.back() = _rdm->Rndm(); // FIXME HGG  how to toss flat random number around fitted data
 						break;
-						
+
 					case typeControlSampleInferredLogNormal:
 						//dummy
 						cout<<"Error: We haven't implemented the pdf of typeControlSampleInferredLogNormal"<<endl;
@@ -1140,7 +1140,7 @@ If we need to change it later, it will be easy to do.
 				if(_debug>=100)cout<<v_pdfs_floatParamsName[i]<<endl;
 				// additive implementation of multi-sources affecting params
 				double param = vrdm[v_pdfs_floatParamsIndcorr[i]];
-				
+
 				if(v_pdfs_floatParamsType[i]==typeFlat){
 					// for flatParam: vector-->    0  norminal value, 1 max-min,  2 dumy, 3 min, 4 max 
 					param =( v_pdfs_floatParamsUnc[ip][3] + param* v_pdfs_floatParamsUnc[ip][1] );
@@ -1569,6 +1569,7 @@ If we need to change it later, it will be easy to do.
 		VChannelVSampleVUncertainty tmp_vvv_pdftype=cms1->Get_vvv_pdftype();	
 		VChannelVSampleVUncertainty tmp_vvv_idcorrl=cms1->Get_vvv_idcorrl();	
 		vector<string> tmp_v_uncname = cms1->Get_v_uncname();
+		vector<bool> tmp_v_uncFloatInFit = cms1->Get_v_uncFloatInFit();
 		if(cms2->GetDebug())cout<<"DELETEME 1"<<endl;
 		for(int ch=0; ch<cms1->NumOfChannels(); ch++){
 			//cms.AddChannel(cms1->GetExpectedNumber(ch,0),cms1->GetExpectedNumber(ch,1), cms1->GetExpectedNumber(ch,2), cms1->GetExpectedNumber(ch,3),
@@ -1604,6 +1605,7 @@ If we need to change it later, it will be easy to do.
 					}else {
 						cout<<"The pdftype Not implemented yet: "<<tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)<<endl;
 					}
+					cms->TagUncertaintyFloatInFit(tmp_v_uncname[tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)-1], tmp_v_uncFloatInFit[tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)-1]);
 				}
 			}	
 			cms->AddObservedData(ch, cms1->Get_v_data()[ch]);
@@ -1614,6 +1616,7 @@ If we need to change it later, it will be easy to do.
 		tmp_vvv_pdftype=cms2->Get_vvv_pdftype();	
 		tmp_vvv_idcorrl=cms2->Get_vvv_idcorrl();	
 		tmp_v_uncname = cms2->Get_v_uncname();
+		tmp_v_uncFloatInFit = cms2->Get_v_uncFloatInFit();
 		for(int ch=0; ch<cms2->NumOfChannels(); ch++){
 			int newch = cms->NumOfChannels(); // like ++
 			if(cms2->GetDebug()) cout<<"Adding ch = "<<newch<<"th channel from "<<cms2->GetModelName()<<endl;
@@ -1650,6 +1653,7 @@ If we need to change it later, it will be easy to do.
 					}else {
 						cout<<"The pdftype Not implemented yet: "<<tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)<<endl;
 					}
+					cms->TagUncertaintyFloatInFit(tmp_v_uncname[tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)-1], tmp_v_uncFloatInFit[tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)-1]);
 				}
 			}	
 			cms->AddObservedData(newch, cms2->Get_v_data()[ch]);
@@ -1673,8 +1677,10 @@ If we need to change it later, it will be easy to do.
 				tmp_vvv_pdftype=ms[m]->Get_vvv_pdfs_pdftype();	
 				tmp_vvv_idcorrl=ms[m]->Get_vvv_pdfs_idcorrl();	
 				tmp_v_uncname = ms[m]->Get_v_uncname();
+				tmp_v_uncFloatInFit = ms[m]->Get_v_uncFloatInFit();
 				vector< vector<double> > vparamunc = ms[m]->Get_v_pdfs_floatParamsUnc(); // from 0 to max_uncorl
 				vector<int> vparamIndcorr = ms[m]->Get_v_pdfs_floatParamsIndcorr();      // only for params
+				vector<int> tmp_v_pdftype = ms[m]->Get_v_pdftype();
 				vector< vector<TString> > vvextranormname = ms[m]->Get_vv_pdfs_extranormNAME();
 				for(int ch=0; ch<vsigproc.size(); ch++){
 					int newch = cms->Get_vv_pdfs().size();
@@ -1723,6 +1729,7 @@ If we need to change it later, it will be easy to do.
 							}else {
 								cout<<"The pdftype Not implemented yet in shapeNorm: "<<tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)<<endl;
 							}
+							cms->TagUncertaintyFloatInFit(tmp_v_uncname[tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)-1], tmp_v_uncFloatInFit[tmp_vvv_idcorrl.at(ch).at(isamp).at(iunc)-1]);
 						}
 					}
 					if(cms2->GetDebug()) cout<<"  AddUncertaintyOnShapeNorm"<<endl;
@@ -1736,7 +1743,10 @@ If we need to change it later, it will be easy to do.
 					if(cms2->GetDebug()>=10) cout<<" ii =  "<<ii<<endl;
 					int id= vparamIndcorr[ii];
 					if(cms2->GetDebug()>=10) cout<<" id =  "<<id<<endl;
-					cms->AddUncertaintyOnShapeParam(tmp_v_uncname[id-1], vparamunc[id][0], vparamunc[id][1], vparamunc[id][2], vparamunc[id][3], vparamunc[id][4] );
+
+					if(tmp_v_pdftype[id]==typeBifurcatedGaussian)cms->AddUncertaintyOnShapeParam(tmp_v_uncname[id-1], vparamunc[id][0], vparamunc[id][1], vparamunc[id][2], vparamunc[id][3], vparamunc[id][4] );
+					else if (tmp_v_pdftype[id]==typeFlat) cms->AddUncertaintyOnShapeParam(tmp_v_uncname[id-1]);
+
 					if(cms2->GetDebug()) cout<<"  AddUncertaintyOnShapeParam "<<tmp_v_uncname[id-1]<<" "
 						<<vparamunc[id][0] <<" "
 							<<vparamunc[id][1] <<" "
@@ -1744,6 +1754,7 @@ If we need to change it later, it will be easy to do.
 							<<vparamunc[id][3] <<" "
 							<<vparamunc[id][4] <<" "
 							<<endl;
+					cms->TagUncertaintyFloatInFit(tmp_v_uncname[id-1], tmp_v_uncFloatInFit[id-1]);
 				}
 
 				if(cms2->GetDebug()>=10) cout<<" before adding map_param_sources"<<endl;
@@ -1760,7 +1771,8 @@ If we need to change it later, it will be easy to do.
 					if(ms[m]->GetDebug()>=10) cout<<" vv.size = "<<vv.size()<<endl;
 					for(int ii=0; ii<vv.size(); ii++){
 						int id = (int)vv[ii][0];
-						cms->AddUncertaintyAffectingShapeParam(ms[m]->Get_v_uncname()[id-1], iter->first, vv[ii][1], vv[ii][2]);
+						cms->AddUncertaintyAffectingShapeParam(tmp_v_uncname[id-1], iter->first, vv[ii][1], vv[ii][2]);
+						cms->TagUncertaintyFloatInFit(tmp_v_uncname[id-1], tmp_v_uncFloatInFit[id-1]);
 					}
 				}
 				if(cms2->GetDebug()>=10) cout<<" after adding map_param_sources"<<endl;
@@ -1935,7 +1947,7 @@ If we need to change it later, it will be easy to do.
 			TString sn = channel_name; sn+=vproc[i+sigNorms.size()]; sn+="_norm";sn+=(i+sigNorms.size());
 			RooRealVar *rrv = new RooRealVar(sn, "", bkgNorms[i]); // FIXME HGG
 			vrrvnorm.push_back(sn);
-			
+
 			if(vbExtraNorm[i]) { 
 				_w->import(*vbExtraNorm[i]);
 				_w_varied->import(*vbExtraNorm[i]);
@@ -2177,10 +2189,10 @@ If we need to change it later, it will be easy to do.
 				//     (stot+btot)*pdf_sb != stot*pdf_s + btot*pdf_b
 				//	tmp = (stot+btot)*_w_varied->pdf(v_pdfs_sb[ch])->getVal(&vars);// give some error message ... when r<0
 
-					tmp = 0;  ///////////////
-					if(stot!=0) tmp += stot*_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars);  //give some warning message when r=0
-					//if(stot>0) tmp += stot*_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars);  //give some warning message when r=0
-					tmp += btot*_w_varied->pdf(v_pdfs_b[ch])->getVal(&vars);
+				tmp = 0;  ///////////////
+				if(stot!=0) tmp += stot*_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars);  //give some warning message when r=0
+				//if(stot>0) tmp += stot*_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars);  //give some warning message when r=0
+				tmp += btot*_w_varied->pdf(v_pdfs_b[ch])->getVal(&vars);
 
 				if(_debug>=100)cout<<" log(event) = "<<log(tmp)<<endl;
 				retch -= (tmp>0?log(tmp):0);
