@@ -23,6 +23,8 @@ namespace lands{
 	extern double *_minNuisances;
 	extern double *_maxNuisances;
 	extern bool _bPositiveSignalStrength;
+	extern vector<double> _lastParams;
+	extern vector<double> _currParams;
 	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag); 
 	double MinuitFit(int model, double &r, double &er, double mu=0, double *pars=0, bool hasBestFitted = false, int debug=0, int *success=0);
 	bool DoAfit(double mu, vector<double> vdata, vector<RooDataSet*> vrds, double* pars);

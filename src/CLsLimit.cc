@@ -44,6 +44,10 @@ namespace lands{
 	double * _minNuisances = 0; 
 	double * _maxNuisances = 0; 
 	bool _bPositiveSignalStrength = true;
+
+	vector<double> _lastParams;
+	vector<double> _currParams;
+
 	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag){
 		// par[0] for the ratio of cross section, common signal strength ....
 		if(!cms_global)  {
@@ -52,8 +56,17 @@ namespace lands{
 		}
 		f = 0; // fabs(cms_global->GetRdm()->Gaus() ) ;
 
-		if(par[0]<0 && _bPositiveSignalStrength) { f = -99999; return; }
+		if(par[0]<0 && _bPositiveSignalStrength) { f = -9e10; return; }
 		
+		if(_lastParams.size()==0){for(int i=0;i<npar;i++)_lastParams.push_back(par[i]);}
+		else{
+			for(int i=0; i<npar; i++) {
+				if(par[i]!=_lastParams[i]){
+				       	// FlagChannelsWithParamsUpdated(i);
+					_lastParams[i]=par[i];
+				}
+			}
+		}
 		
 		/*
 		for(int i=0;i<npar; i++){
@@ -280,11 +293,13 @@ namespace lands{
 			cout<<"  "<<f<<endl;
 		}
 
+		//UnflagAllChannels();
 
 	}
 
 
 	double MinuitFit(int model, double &r , double &er, double mu /* or ErrorDef for Minos*/, double *pars, bool hasBestFitted, int debug, int *success ){
+		_lastParams.clear();	_currParams.clear();
 
 		_signalScale = cms_global->GetSignalScaleFactor();
 
@@ -495,7 +510,7 @@ namespace lands{
 				for(int i=0; i<=npars; i++){
 					double tmp, tmpe;
 					myMinuit->GetParameter(i, tmp, tmpe);
-					if(debug || ierflg ) printf("  par %30s      %.6f +/- %.6f      %.6f \n", i>0?v_uncname[i-1].c_str():"signal_strength", tmp, tmpe, _startNuisances[i]);
+					if(debug || ierflg ) printf("  par %30s      %.6f +/- %.6f      %.6f \n", i>0?v_uncname[i-1].c_str():"signal_strength", tmp, tmpe, _inputNuisances[i]);
 					if(pars && !hasBestFitted)pars[i] = tmp;
 				}
 			}

@@ -1524,20 +1524,21 @@ If we need to change it later, it will be easy to do.
 			f.Close();
 		}
 
+		/*
 		//if allow signal strength to be non-positive, then please make sure sig+bkgs >=0 in each channel 
 		if(b_AllowNegativeSignalStrength){
 			for(int ch=0; ch<vv_exp_sigbkgs_scaled.size(); ch++){
 				double tot = 0;
 				for(int p=0; p<vv_exp_sigbkgs_scaled[ch].size(); p++)	tot+=vv_exp_sigbkgs_scaled[ch][p];
-				/*if(tot<0) {
+				if(tot<0) {
 				  cout<<"Error: negative tot yield in channel "<<ch+1<<endl;
 				  cout<<"Please SetAllowNegativeSignalStrength(false)"<<endl;
 				  cout<<"Or we can think about setting a lower bound for the strength.."<<endl;
 				  return;
 				  }
-				  */
 			}
 		}
+		*/
 	};
 	void CountingModel::UseAsimovData(int b){  // 0 for background only, 1 for s+b hypothesis
 		if(b==0){
