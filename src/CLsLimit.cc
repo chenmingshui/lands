@@ -49,22 +49,19 @@ namespace lands{
 		}
 		f = 0; // fabs(cms_global->GetRdm()->Gaus() ) ;
 
-
 		if(par[0]<0 && _bPositiveSignalStrength) { f = -99999; return; }
 
-		VChannelVSampleVUncertainty vvv_idcorrl = (cms_global->Get_vvv_idcorrl());
-		VChannelVSampleVUncertainty vvv_pdftype = (cms_global->Get_vvv_pdftype());
-		VChannelVSampleVUncertaintyVParameter vvvv_uncpar = cms_global->Get_vvvv_uncpar();
+		const VChannelVSampleVUncertainty &vvv_idcorrl = (cms_global->Get_vvv_idcorrl());
+		const VChannelVSampleVUncertainty &vvv_pdftype = (cms_global->Get_vvv_pdftype());
+		const VChannelVSampleVUncertaintyVParameter &vvvv_uncpar = cms_global->Get_vvvv_uncpar();
 
 		cms_global->SetSignalScaleFactor(par[0]); // scale the norminal set of signal normalizations 
 
-		VChannelVSample vv_sigbks; 
-		vv_sigbks= cms_global -> Get_vv_exp_sigbkgs(); 
+		const VChannelVSample &vv_sigbks = cms_global->Get_vv_exp_sigbkgs(); 
 
-
-		vector<int> v_pdftype = cms_global->Get_v_pdftype();
-		vector<double> v_GammaN = cms_global->Get_v_GammaN();
-		vector< vector<double> > v_paramsUnc = cms_global->Get_v_pdfs_floatParamsUnc();
+		const vector<int> &v_pdftype = cms_global->Get_v_pdftype();
+		const vector<double> &v_GammaN = cms_global->Get_v_GammaN();
+		const vector< vector<double> > &v_paramsUnc = cms_global->Get_v_pdfs_floatParamsUnc();
 
 		Double_t chisq = 0;
 		int nchs = cms_global->NumOfChannels();
@@ -79,7 +76,7 @@ namespace lands{
 		double tmp, tmp2,  ran, h, tmprand;
 		int ipar;
 		int nsigproc = 1;	
-		double *uncpars;
+		const double *uncpars;
 		bool added = false;
 		int indexcorrl, pdftype;
 		double norminal = 0;

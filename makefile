@@ -1,41 +1,48 @@
-LIB = lands.so
-EXEC = 	test/CLs.exe \
+LIB  := lands.so
+EXEC :=	test/CLs.exe \
 	test/Bayesian.exe \
 	test/lands.exe
 
-SOURCES = $(wildcard src/*.cc)
-COMPONENTS = $(patsubst src%.cc,bin%.o,$(SOURCES))
+SOURCES := $(wildcard src/*.cc)
+OBJECTS := $(patsubst src/%.cc, bin/%.o, $(SOURCES))
 
 ifdef ROOFITSYS
-    RF_CFLAGS = -I ${ROOFITSYS}/include
-    RF_LINKERFLAGS = -L ${ROOFITSYS}/lib
+    RF_CFLAGS      := -I${ROOFITSYS}/include
+    RF_LINKERFLAGS := -L${ROOFITSYS}/lib
 endif
 
+CXX      := g++
+CXXFLAGS := -O2 -g -fPIC -Iinclude $(shell root-config --cflags) ${RF_CFLAGS}
 
-
-CC = g++
-CFLAGS = -fPIC $(shell root-config --cflags)  -I ./include -I ${ROOTSYS}/include ${RF_CFLAGS}
-
-LINKER = g++
-LINKERFLAGS = $(shell root-config --libs --ldflags) -lMinuit -lRooFit -lRooFitCore -lFoam ${RF_LINKERFLAGS}
-
+LD       := g++
+LDFLAGS  := $(shell root-config --libs --ldflags) -lMathMore -lMinuit -lRooFit -lRooFitCore -lFoam ${RF_LINKERFLAGS}
 
 ifeq ($(shell root-config --platform),macosx)
-	MACOSXFLAGS = -dynamiclib -undefined dynamic_lookup -Wl,-x -O -Xlinker -bind_at_load -flat_namespace
+	MACOSXFLAGS = -dynamiclib -undefined dynamic_lookup -Wl,-x -Xlinker -bind_at_load -flat_namespace
 endif
+
+# Enable CPU profiling of... requires google performance tools.
+# You also need to set CPUPROFILE enviroanment variable.
+# PROFILE=1
+ifdef PROFILE
+  CXXFLAGS += -DLANDS_PROFILE
+  LDFLAGS  += -lprofiler
+endif
+
 
  # stop removing intermediate files
 .SECONDARY:
 
-bin/%.o: src/%.cc
-	$(CC) $(CFLAGS)  $< -c -o $@
-%.so: ${COMPONENTS}
-	$(LINKER) $(LINKERFLAGS) $(MACOSXFLAGS) -shared  $(COMPONENTS) -o $@
-
 all: $(LIB) $(EXEC)
 
-%.exe: %.cc $(COMPONENTS)
-	$(LINKER) $(CFLAGS) $(LINKERFLAGS) -o $@ $< ${COMPONENTS}
+bin/%.o: src/%.cc
+	$(CXX) $(CXXFLAGS)  $< -c -o $@
+
+${LIB}: ${OBJECTS}
+	$(LD) $(LDFLAGS) $(MACOSXFLAGS) -shared  ${OBJECTS} -o $@
+
+%.exe: %.cc ${OBJECTS}
+	$(LD) $(CXXFLAGS) $(LDFLAGS) -o $@ $< ${OBJECTS}
 
 #for MSSMA
 drawMSSMA: test/drawMSSMA.exe

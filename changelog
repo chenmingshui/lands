@@ -1,0 +1,26 @@
+2011-06-22  Matevz Tadel  <matevz.tadel@cern.ch>
+
+	First pass of optimizations - focused on Dima's use-case.
+	Note that retrieval of vectors from CountingModel should be fixed
+	in other places, too.
+
+	* makefile:
+	Enable -O2 optimization by default. Also enable debug infromation
+	as with gcc this does not slow down the execution.
+	Add options for compiling with profiling information.
+	Use standard variable names for compiler, linker and flags.
+
+	* include/CountingModel.h
+	Return most vectors by const reference.
+	Remove unnecessary semi-colons after inline methods.
+
+	* src/CLsLimit.cc
+	in function void Chisquare(...) store vectors from CountingModel
+	into const references to avoid unnecessary creation, copying and
+	destruction.
+
+	* test/lands.cc
+	Add profiling instrumentation.
+
+	* changelog
+	New file for documenting changes.

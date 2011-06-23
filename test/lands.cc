@@ -19,6 +19,10 @@
 #include "TFile.h"
 #include "RooMsgService.h"
 
+#ifdef LANDS_PROFILE
+  #include <google/profiler.h>
+#endif
+
 using namespace std;
 using namespace lands;
 using namespace RooFit;
@@ -176,6 +180,14 @@ int main(int argc, const char*argv[]){
 	// common results
 	double rmean;
 	vector<double> difflimits;
+
+#ifdef LANDS_PROFILE
+	if (gSystem->Getenv("CPUPROFILE"))
+	{
+	  printf("Starting profiling into '%s'\n", gSystem->Getenv("CPUPROFILE"));
+	  ProfilerStart(gSystem->Getenv("CPUPROFILE"));
+	}
+#endif
 
 	TPaveText *pt = SetTPaveText(0.2, 0.7, 0.3, 0.9);
 	if(calcsignificance==0){// calc limits
@@ -975,6 +987,15 @@ int main(int argc, const char*argv[]){
 			plotRvsP.draw();
 		}
 	}
+
+#ifdef LANDS_PROFILE
+	if (gSystem->Getenv("CPUPROFILE"))
+	{
+	  ProfilerStop();
+	  printf("Finished profiling into '%s'\n", gSystem->Getenv("CPUPROFILE"));
+	}
+#endif
+
 	watch.Print();
 	return 1;
 }
