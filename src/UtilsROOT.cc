@@ -896,7 +896,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 		vector<TString> vs_unc; vs_unc.clear();
 		for(int u=0; u<nsyssources; u++) {
 			vector<string>	ss1 = uncerlines[u]; 
-			if(ss1[1]=="shapeN") ss1[1]="lnN";
+			if(ss1[1]=="shapeN") ss1[1]="lnN"; 
 			TString s = ""; s+=ss1[0].c_str(); s+=" "; s+=ss1[1].c_str(); s+=" "; 
 			if(ss1[1]=="gmA" or ss1[1]=="gmN"){
 				s+=ss1[2]; s+=" ";
@@ -1018,7 +1018,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 							if(uncertypes[u]=="param" or uncertypes[u]=="flatParam") continue;
 							if(1){
 								if(debug>=100) cout<<"debug "<<uncertypes[u]<<endl;
-								if(uncertypes[u]=="shape" or uncertypes[u]=="shapeL" or uncertypes[u]=="shapeQ" or uncertypes[u]=="shapeN"){
+								if(uncertypes[u]=="shape" or uncertypes[u]=="shapeL" or uncertypes[u]=="shapeQ" or uncertypes[u]=="shapeN" or uncertypes[u]=="shapeStat"){
 									TString unc = GetUncertainy(c, t, vv_procnames, uncerlines[u]);
 									if(unc.IsFloat() && unc.Atof()>0){ // number should be > 0
 										double down = hunc_dn_norm[t][u]->GetBinContent(r);
@@ -1029,7 +1029,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 										double norm_up = hunc_up[t][u]->Integral();
 										double norm_norminal = hn[t]->Integral();
 										TString stmp;
-										if(uncertypes[u]=="shapeN"){
+										if(uncertypes[u]=="shapeN" or uncertypes[u]=="shapeStat"){
 											vs_unc[u]+=(norminal==0?1:down/norminal); vs_unc[u] += "/";
 											stmp.Form("%g",(norminal==0?1:up/norminal));
 											//vs_unc[u]+=(norminal==0?1:up/norminal); vs_unc[u] += " ";
@@ -1462,7 +1462,7 @@ bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripp
 		string indexcorrelation = ss[0];
 		TString sTmp=indexcorrelation;
 		bool bUncIsFloatInFit = true;
-		if(sTmp.EndsWith("[nofloat]")) bUncIsFloatInFit=false;
+		if(sTmp.Contains("[nofloat]")) bUncIsFloatInFit=false;
 		indexcorrelation = sTmp.ReplaceAll("[nofloat]","").Data();
 
 		//if(indexcorrelation != (nsyssources-s) ) {
@@ -1474,7 +1474,7 @@ bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripp
 		if(ss[1]=="lnN") pdf=typeLogNormal;   // typeLogNormal
 		else if(ss[1]=="trG") pdf=typeTruncatedGaussian; // typeTruncatedGaussian
 		else if(ss[1]=="gmA" or ss[1]=="gmN" or ss[1]=="gmM") pdf=typeGamma; // typeControlSampleInferredLogNormal;  gmA was chosen randomly, while in gmN, N stands for yield in control sample;  gmM stands for Multiplicative gamma distribution, it implies using a Gamma distribution not for a yield but for a multiplicative correction
-		else if(ss[1]=="shapeN") pdf=typeLogNormal;
+		else if(ss[1]=="shapeN" or ss[1]=="shapeStat") pdf=typeLogNormal;
 		else if(ss[1]=="shape" or ss[1]=="shapeQ") pdf=typeShapeGaussianQuadraticMorph;
 		else if(ss[1]=="shapeL" ) pdf=typeShapeGaussianLinearMorph;
 		else pdf =  (TString(ss[1])).Atoi();
@@ -1495,8 +1495,13 @@ bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripp
 				if(TString(ss[p+2]).Contains("/")){
 					vector<string> asymetricerrors; asymetricerrors.clear();
 					StringSplit(asymetricerrors, ss[p+2], "/");
-					if((TString(asymetricerrors[0])).Atof()<=0) { cout<<"ERROR:  Kappa can't be <=0 "<<endl; exit(0); };
+					if((TString(asymetricerrors[0])).Atof()<=0) {//{ cout<<"ERROR:  Kappa can't be <=0 "<<":  "<<asymetricerrors[0]<<endl; exit(0); };
+						err = 1;
+					}else
 					err= 1./(TString(asymetricerrors[0])).Atof()-1.0; // downside 
+					if((TString(asymetricerrors[1])).Atof()<=0) {//{ cout<<"ERROR:  Kappa can't be <=0 "<<":  "<<asymetricerrors[0]<<endl; exit(0); };
+						errup = 1;
+					}else
 					errup= (TString(asymetricerrors[1])).Atof()-1.0;  // upside
 				}else {
 					err= (TString(ss[p+2])).Atof()-1.0;
@@ -1587,7 +1592,16 @@ bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripp
 				}
 			}
 			//cout<<"delete me: c="<<binnumber[p]-1<<" s="<< subprocess[p]<<endl;
-			if(pdf==typeLogNormal||pdf==typeTruncatedGaussian)cms->AddUncertainty(binnumber[p]-1, subprocess[p], err, errup, pdf, indexcorrelation );
+			if(pdf==typeLogNormal||pdf==typeTruncatedGaussian){
+				if(ss[1]=="shapeStat"){
+					TString stmpunc = indexcorrelation; stmpunc+=binnumber[p]; stmpunc+=subprocess[p];
+					cms->AddUncertainty(binnumber[p]-1, subprocess[p], err, errup, pdf, stmpunc.Data() );
+					cms->TagUncertaintyFloatInFit(stmpunc.Data(), bUncIsFloatInFit);
+				}else {
+					cms->AddUncertainty(binnumber[p]-1, subprocess[p], err, errup, pdf, indexcorrelation );
+					cms->TagUncertaintyFloatInFit(indexcorrelation, bUncIsFloatInFit);
+				}
+			}
 			if(pdf==typeGamma){
 				if(ss[1]=="gmA" or ss[1]=="gmN"){
 					double N = (TString(ss[2]).Atof()); // your input should be Most Probable Value,  while mean value is N+1
@@ -1622,7 +1636,7 @@ bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripp
 			//cms->AddUncertainty(0, 0, 0, 1, indexcorrelation ); //FIXME  no need now, because we use name of uncertainties, 
 			//exit(0);
 		}else{
-			cms->TagUncertaintyFloatInFit(indexcorrelation, bUncIsFloatInFit);
+			if(pdf!=typeLogNormal)cms->TagUncertaintyFloatInFit(indexcorrelation, bUncIsFloatInFit);
 		}
 		duplicatingLines.push_back(tmps);
 	}
@@ -2066,7 +2080,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 		string indexcorrelation = ss[0];
 		TString sTmp=indexcorrelation;
 		bool bUncIsFloatInFit = true;
-		if(sTmp.EndsWith("[nofloat]")) bUncIsFloatInFit=false;
+		if(sTmp.Contains("[nofloat]")) bUncIsFloatInFit=false;
 		indexcorrelation = sTmp.ReplaceAll("[nofloat]","").Data();
 
 
@@ -2075,7 +2089,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 		if(ss[1]=="lnN") pdf=typeLogNormal;   // typeLogNormal
 		else if(ss[1]=="trG") pdf=typeTruncatedGaussian; // typeTruncatedGaussian
 		else if(ss[1]=="gmA" or ss[1]=="gmN" or ss[1]=="gmM") pdf=typeGamma; // typeControlSampleInferredLogNormal;  gmA was chosen randomly, while in gmN, N stands for yield in control sample;  gmM stands for Multiplicative gamma distribution, it implies using a Gamma distribution not for a yield but for a multiplicative correction
-		else if(ss[1]=="shapeN") pdf=typeLogNormal;
+		else if(ss[1]=="shapeN" or ss[1]=="shapeStat") pdf=typeLogNormal;
 		else if(ss[1]=="shape" or ss[1]=="shapeQ") pdf=typeShapeGaussianQuadraticMorph;
 		else if(ss[1]=="shapeL" ) pdf=typeShapeGaussianLinearMorph;
 		else if(ss[1]=="param" ) {
@@ -2118,9 +2132,13 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 				if(TString(ss[p+2]).Contains("/")){
 					vector<string> asymetricerrors; asymetricerrors.clear();
 					StringSplit(asymetricerrors, ss[p+2], "/");
-					if((TString(asymetricerrors[0])).Atof()<=0) { cout<<"ERROR:  Kappa can't be <=0 "<<endl; exit(0); };
-					err= 1./(TString(asymetricerrors[0])).Atof()-1.0; // downside 
-					errup= (TString(asymetricerrors[1])).Atof()-1.0;  // upside
+					if((TString(asymetricerrors[0])).Atof()<=0) { //cout<<"ERROR:  Kappa can't be <=0 "<<endl; exit(0); ;
+						err = 1;
+					}else	err= 1./(TString(asymetricerrors[0])).Atof()-1.0; // downside 
+					
+					if((TString(asymetricerrors[0])).Atof()<=0) { //cout<<"ERROR:  Kappa can't be <=0 "<<endl; exit(0); ;
+						errup =1;
+					}else errup= (TString(asymetricerrors[1])).Atof()-1.0;  // upside
 				}else {
 					err= (TString(ss[p+2])).Atof()-1.0;
 					errup = err;
@@ -2214,8 +2232,16 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 
 			if(pdf==typeLogNormal||pdf==typeTruncatedGaussian){
 				if(isParametricChannel)cms->AddUncertaintyOnShapeNorm(channelName, subprocess[p], err, errup, pdf, indexcorrelation );
-				else cms->AddUncertainty(channelName, subprocess[p], err, errup, pdf, indexcorrelation );
-			filledThisSource = true;
+				else {
+					if(ss[1]=="shapeStat"){
+						TString stmpunc = indexcorrelation; stmpunc+=channelName; stmpunc+=subprocess[p];
+						cms->AddUncertainty(channelName, subprocess[p], err, errup, pdf, stmpunc.Data() );
+						cms->TagUncertaintyFloatInFit(stmpunc.Data(), bUncIsFloatInFit);
+					}else{	cms->AddUncertainty(channelName, subprocess[p], err, errup, pdf, indexcorrelation );
+						cms->TagUncertaintyFloatInFit(indexcorrelation, bUncIsFloatInFit);
+					}
+				}
+				filledThisSource = true;
 			}
 			if(pdf==typeGamma){
 				if(ss[1]=="gmA" or ss[1]=="gmN"){
@@ -2252,7 +2278,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 		if(!filledThisSource) {
 			cout<<"WARNING: The "<< s+1 <<"th source of uncertainties are all 0. "<<endl;
 		}else{
-			cms->TagUncertaintyFloatInFit(indexcorrelation, bUncIsFloatInFit);
+			if(pdf!=typeLogNormal)cms->TagUncertaintyFloatInFit(indexcorrelation, bUncIsFloatInFit);
 		}
 
 		if(pdf==typeBifurcatedGaussian){
@@ -2305,7 +2331,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 		string indexcorrelation = ss[0];
 		TString sTmp=indexcorrelation;
 		bool bUncIsFloatInFit = true;
-		if(sTmp.EndsWith("[nofloat]")) bUncIsFloatInFit=false;
+		if(sTmp.Contains("[nofloat]")) bUncIsFloatInFit=false;
 		indexcorrelation = sTmp.ReplaceAll("[nofloat]","").Data();
 
 		if(ss.size()<6) {
