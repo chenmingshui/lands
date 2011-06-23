@@ -908,6 +908,7 @@ int main(int argc, const char*argv[]){
 			double m2lnQ = MinuitFit(3,tmp, tmp) - x2;
 			double sig_data = sqrt(fabs(m2lnQ));
 			cout<<"Observed significance using PLR method = "<<sig_data<<endl;
+			if(sig_data>=4) cout<<"WARNING: please contact mschen@cern.ch for a potential issue on the nuisances' range. Needs change from [-5,5] to larger one"<<endl;
 
 			if(debug>=10) { // show a plot for   -log(Lambda(mu)) vs. mu ...
 				for(double r=0; r<2; r+=0.1){

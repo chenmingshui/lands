@@ -40,6 +40,9 @@ namespace lands{
 	TF1 * fitToRvsCL_expo = new TF1("fitToRvsCL_expo","[0]*exp([1]*(x-[2]))", 0, 0);
 	double _signalScale=0;
 	double * _inputNuisances = 0;	
+	double * _startNuisances = 0;	
+	double * _minNuisances = 0; 
+	double * _maxNuisances = 0; 
 	bool _bPositiveSignalStrength = true;
 	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag){
 		// par[0] for the ratio of cross section, common signal strength ....
@@ -50,6 +53,14 @@ namespace lands{
 		f = 0; // fabs(cms_global->GetRdm()->Gaus() ) ;
 
 		if(par[0]<0 && _bPositiveSignalStrength) { f = -99999; return; }
+		
+		
+		/*
+		for(int i=0;i<npar; i++){
+			if(par[i]>_maxNuisances[i] or par[i]<_minNuisances[i]) { f=-99999; return; }
+		}
+		*/
+
 
 		const VChannelVSampleVUncertainty &vvv_idcorrl = (cms_global->Get_vvv_idcorrl());
 		const VChannelVSampleVUncertainty &vvv_pdftype = (cms_global->Get_vvv_pdftype());
@@ -260,15 +271,20 @@ namespace lands{
 		}
 		// to be identical with ATLAS TDR description, for limit only
 		f=chisq;
+
+		bool bprint = false;
+		if(bprint){
+			for(int i=0; i<npar; i++){
+				printf(" %.6f ", par[i]);
+			}
+			cout<<"  "<<f<<endl;
+		}
+
+
 	}
 
 
 	double MinuitFit(int model, double &r , double &er, double mu /* or ErrorDef for Minos*/, double *pars, bool hasBestFitted, int debug, int *success ){
-
-
-
-
-
 
 		_signalScale = cms_global->GetSignalScaleFactor();
 
@@ -324,6 +340,7 @@ namespace lands{
 			vector<string> v_uncname = cms_global->Get_v_uncname();
 			vector<bool> v_uncFloatInFit= cms_global->Get_v_uncFloatInFit();
 			double maxunc;
+			
 			for(int i=1; i<=npars; i++){
 				TString sname=v_uncname[i-1]; 
 			//	if(debug>=10) cout<<"DELETEME in MinuitFit    "<<sname<<endl;
@@ -331,18 +348,25 @@ namespace lands{
 					case typeShapeGaussianLinearMorph:
 					case typeShapeGaussianQuadraticMorph:
 					case typeLogNormal:
-						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, -20, 20,ierflg); // was 5,  causing problem with significance larger than > 7 
+						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, -20, 20,ierflg);
+						// range was -5 to 5,  causing problem with significance larger than > 7 
+						// FIXME need to be smart here ,  when calc significance, if the S > 5 at the end, print out the WARNING message to change the range setting here 
+						// or try to get the option of significance from main program 
+						// but now [-20, 20] cause some problem in minuit fitting for non-signifcant deviation .... 
+						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, -5, 5,ierflg); // was 5,  causing problem with significance larger than > 7 
 						break;
 					case typeTruncatedGaussian :
 						maxunc = v_TG_maxUnc[i];	
 						if(maxunc>0.2) maxunc = -1./maxunc;
 						else maxunc = -5;   // FIXME is hear also need to be extended to -20  ?
-						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, maxunc, 20,ierflg); // was 5
+						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, maxunc, 20,ierflg); // was 5
+						// FIXME need to be smart here ,  when calc significance, if the S > 5 at the end, print out the WARNING message to change the range setting here 
+						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, maxunc, 5,ierflg); // was 5
 						break;
 					case typeGamma:
 						//myMinuit->mnparm(i, sname, v_GammaN[i], 0.5, 0, 100000, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
-						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, 0, (v_GammaN[i]+1)*5, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
-						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], 1, 0, (v_GammaN[i]+1)*5, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
+						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, 0, (v_GammaN[i]+1)*5, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
+						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], 1, 0, v_GammaN[i]+4*sqrt(v_GammaN[i]+1), ierflg); // FIXME,  could be smarter in +/-5sigma stat range
 						break;
 					case typeBifurcatedGaussian:
 						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, v_paramsUnc[i][3], v_paramsUnc[i][4], ierflg  );
@@ -353,7 +377,6 @@ namespace lands{
 					default:
 						cout<<"pdftype not yet defined:  "<<v_pdftype[i]<<", npars="<<npars<<", i="<<i<<endl;
 						cout<<"**********"<<endl;
-						//cms_global->Print(100);
 						exit(0);
 				}
 				if(v_uncFloatInFit[i-1]==false)myMinuit->FixParameter(i);
@@ -377,6 +400,7 @@ namespace lands{
 				_bPositiveSignalStrength = false;
 			}
 			else if(model==21 || model==101 || model==102){ // S+B,  float r
+				//myMinuit->mnparm(0, "ratio", _startNuisances[0], minuitStep, 0.0, 300, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
 				myMinuit->mnparm(0, "ratio", 1, minuitStep, 0.0, 300, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
 				_bPositiveSignalStrength = true;
 			}
@@ -413,7 +437,7 @@ namespace lands{
 			}
 
 			//if(debug>=10) cout<<"DELETEME in MinuitFit    2"<<endl;
-			
+
 			arglist[0] = 1;
 			if(model==101 || model==102)arglist[0] = mu; // ErrorDef for Minos,  just temporaliry using mu ...
 			myMinuit->mnexcm("SET ERR", arglist ,1,ierflg);
@@ -443,7 +467,7 @@ namespace lands{
 			}
 
 			myMinuit->GetParameter(0, r, er);
-			cout<<"DELETEME before calc error,  r="<<r<<"+/-"<<er<<endl;
+			if(debug)cout<<"DELETEME before calc error,  r="<<r<<"+/-"<<er<<endl;
 
 			// Print results
 			Double_t amin,edm,errdef;
@@ -452,11 +476,11 @@ namespace lands{
 			Double_t errUp, errLow, errParab=0, gcor=0; 
 			myMinuit->mnerrs(0, errUp, errLow, errParab, gcor);
 
-			cout<<"DELETEME errUp="<<errUp<<" errLow="<<errLow<<" errParab="<<errParab<<" gcor="<<gcor<<endl;
+			if(debug)cout<<"DELETEME errUp="<<errUp<<" errLow="<<errLow<<" errParab="<<errParab<<" gcor="<<gcor<<endl;
 
 			double l = myMinuit->fAmin;
 			myMinuit->GetParameter(0, r, er);
-			cout<<"DELETEME r="<<r<<"+/-"<<er<<" fMin="<<l<<endl;
+			if(debug)cout<<"DELETEME r="<<r<<"+/-"<<er<<" fMin="<<l<<endl;
 
 			if(debug and UseMinos) cout<<" signal_strength :  [ "<<r+errLow<<"  "<<r+errUp<<" ] "<<endl;
 			if(model==101 or model==102) {
@@ -466,12 +490,12 @@ namespace lands{
 			}
 
 			if(debug || pars || ierflg){
-				
+
 				if(debug || ierflg )printf("  par                 name         fitted_value        input_value\n");
 				for(int i=0; i<=npars; i++){
 					double tmp, tmpe;
 					myMinuit->GetParameter(i, tmp, tmpe);
-					if(debug || ierflg ) printf("  par %30s      %.6f +/- %.6f      %.6f \n", i>0?v_uncname[i-1].c_str():"signal_strength", tmp, tmpe, _inputNuisances[i]);
+					if(debug || ierflg ) printf("  par %30s      %.6f +/- %.6f      %.6f \n", i>0?v_uncname[i-1].c_str():"signal_strength", tmp, tmpe, _startNuisances[i]);
 					if(pars && !hasBestFitted)pars[i] = tmp;
 				}
 			}
@@ -541,7 +565,7 @@ namespace lands{
 		if(sbANDb_bOnly_sbOnly!=1)BuildM2lnQ_sb(nexps);
 
 		printM2LnQInfo(sbANDb_bOnly_sbOnly);	
-		
+
 		return true;
 	}
 	void CLsBase::ProcessM2lnQ(){
@@ -1864,6 +1888,9 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys){  // 0 for sbANDb,
 					//generate nuisance around b^hat_0 
 					VChannelVSample vv =  _model->FluctuatedNumbers(0, false, 2); // toss nuisance around fitted b_hat_0 in data  
 					_inputNuisances = _model->Get_randomizedPars();	
+					for(int itmp=0; itmp<_model->Get_v_pdftype().size(); itmp++){
+						if(_model->Get_v_pdftype()[itmp]==typeGamma) _inputNuisances[itmp]+=1;
+					}
 				}
 
 				break;
@@ -2126,6 +2153,9 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys){
 				if(!_model->UseBestEstimateToCalcQ()){
 					VChannelVSample vv =  _model->FluctuatedNumbers(0, true, 2); // toss nuisance around fitted b_hat_mu in data 
 					_inputNuisances = _model->Get_randomizedPars();	
+					for(int itmp=0; itmp<_model->Get_v_pdftype().size(); itmp++){
+						if(_model->Get_v_pdftype()[itmp]==typeGamma) _inputNuisances[itmp]+=1;
+					}
 				}
 
 				break;

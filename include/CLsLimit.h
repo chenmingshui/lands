@@ -19,6 +19,9 @@ namespace lands{
 	extern TF1* fitToRvsCL_expo;
 	extern double _significances;
 	extern double *_inputNuisances;
+	extern double *_startNuisances; // _xxxxNuisances[0] is the POI signal strength
+	extern double *_minNuisances;
+	extern double *_maxNuisances;
 	extern bool _bPositiveSignalStrength;
 	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag); 
 	double MinuitFit(int model, double &r, double &er, double mu=0, double *pars=0, bool hasBestFitted = false, int debug=0, int *success=0);
