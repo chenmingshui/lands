@@ -89,19 +89,14 @@ namespace lands{
 
 			const VChannelVSample& Get_vv_exp_sigbkgs_nonscaled() {return vv_exp_sigbkgs;}
 			const VChannelVSample& Get_vv_exp_sigbkgs()           {return vv_exp_sigbkgs_scaled;}
-
 			void Set_vv_randomized_sigbkgs(const VChannelVSample& vv){vv_randomized_sigbkgs=vv;}
 			const VChannelVSample& Get_vv_randomized_sigbkgs(){return vv_randomized_sigbkgs_scaled;}
-
-			void Set_vv_fitted_sigbkgs(VChannelVSample vv){vv_fitted_sigbkgs=vv;}
+			void Set_vv_fitted_sigbkgs(const VChannelVSample& vv){vv_fitted_sigbkgs=vv;}
 			const VChannelVSample& Get_vv_fitted_sigbkgs(){return vv_fitted_sigbkgs;}
-
-			void Set_vv_fitted_sigbkgs_scaled(VChannelVSample vv){vv_fitted_sigbkgs_scaled=vv;}
+			void Set_vv_fitted_sigbkgs_scaled(const VChannelVSample& vv){vv_fitted_sigbkgs_scaled=vv;}
 			const VChannelVSample& Get_vv_fitted_sigbkgs_scaled(){return vv_fitted_sigbkgs_scaled;}
-
 			const VDChannel& Get_v_data(){return v_data;}
 			const VDChannel& Get_v_data_real(){return v_data_real;}
-
 			const VDChannel& Get_v_exp_sigbkgs(int channel){return vv_exp_sigbkgs_scaled[channel];}
 
 			double GetExpectedNumber(int index_channel, int index_sample);
@@ -179,36 +174,36 @@ namespace lands{
 
 			// start to add parametric shape into model
 			bool hasParametricShape(){return bHasParametricShape;}
-			vector< vector<string> > Get_vv_pdfs(){return vv_pdfs;}
-			vector< vector<double *> > Get_vv_pdfs_params(){return vv_pdfs_params;} //nominal parameters for each pdf
-			vector< vector<double> > Get_vv_pdfs_norm_nonscaled(){return vv_pdfs_norm;} //normalization of each pdf, i.e. expected number of events in each process 
-			vector< vector<int> > Get_vv_pdfs_npar(){return vv_pdfs_npar;} // number of parameters for each pdf
-			vector< int > Get_v_pdfs_nbin(){return v_pdfs_nbin;} // need for throwing random numbers,  should consistent for all pdfs in a channel, by default 100 
-			vector< double > Get_v_pdfs_xmin(){return v_pdfs_xmin;}
-			vector< double > Get_v_pdfs_xmax(){return v_pdfs_xmax;}
-			vector< vector<double> > Get_vv_pdfs_data(){return vv_pdfs_data;} // in each channel, it has a list of events
+			const vector< vector<string> >& Get_vv_pdfs(){return vv_pdfs;}
+			const vector< vector<double *> >& Get_vv_pdfs_params(){return vv_pdfs_params;} //nominal parameters for each pdf
+			const vector< vector<double> >& Get_vv_pdfs_norm_nonscaled(){return vv_pdfs_norm;} //normalization of each pdf, i.e. expected number of events in each process 
+			const vector< vector<int> >& Get_vv_pdfs_npar(){return vv_pdfs_npar;} // number of parameters for each pdf
+			const vector< int >& Get_v_pdfs_nbin(){return v_pdfs_nbin;} // need for throwing random numbers,  should consistent for all pdfs in a channel, by default 100 
+			const vector< double >& Get_v_pdfs_xmin(){return v_pdfs_xmin;}
+			const vector< double >& Get_v_pdfs_xmax(){return v_pdfs_xmax;}
+			const vector< vector<double> >& Get_vv_pdfs_data(){return vv_pdfs_data;} // in each channel, it has a list of events
 			// uncertainties ....   each source affects parameters  -->  two additional sets of parameters
-			vector< vector< vector<int> > > Get_vvv_pdfs_idcorrl(){return vvv_pdfs_idcorrl;}
-			vector< vector< vector<int> > > Get_vvv_pdfs_pdftype(){return vvv_pdfs_pdftype;}
+			const vector< vector< vector<int> > >& Get_vvv_pdfs_idcorrl(){return vvv_pdfs_idcorrl;}
+			const vector< vector< vector<int> > >& Get_vvv_pdfs_pdftype(){return vvv_pdfs_pdftype;}
 			// three types of uncertainties: 1. only affect shape;  2. only affect normalization; 3. affect both 
-			vector< vector< vector<int> > > Get_vvv_pdfs_unctype(){return vvv_pdfs_unctype;}
-			vector< vector< vector<double*> > > Get_vvv_pdfs_params_up(){return vvv_pdfs_params_up;} // correponding to up shift of the uncertainty source, e.g. jet energy scale
-			vector< vector< vector<double*> > > Get_vvv_pdfs_params_down(){return vvv_pdfs_params_down;} //  correponding to down shift of the uncertainty source, e.g. jet energy scale
-			vector< vector< vector< vector<double> > > > Get_vvv_pdfs_normvariation(){return vvv_pdfs_normvariation;} // correponding to normalization changes of the uncertainty source
-			vector< vector<double *> > Get_vv_pdfs_params_varied(){return vv_pdfs_params_varied;} //nominal parameters for each pdf
-			vector< vector<double> > Get_vv_pdfs_norm_varied(){return vv_pdfs_norm_varied;} //normalization of each pdf, i.e. expected number of events in each process 
-			vector< vector<double> > Get_vv_pdfs_norm_scaled(){return vv_pdfs_norm_scaled;} //normalization of each pdf, i.e. expected number of events in each process 
-			vector< vector<double> > Get_vv_pdfs_data_toy(){return vv_pdfs_data_toy;} // in each channel, it has a list of events
-			void Set_vv_pdfs_norm_randomized(VChannelVSample vv){vv_pdfs_norm_randomized=vv;}
-			VChannelVSample Get_vv_pdfs_norm_randomized(){return vv_pdfs_norm_randomized_scaled;}
-			void Set_vv_pdfs_norm_fitted(VChannelVSample vv){vv_pdfs_norm_fitted=vv;}
-			VChannelVSample Get_vv_pdfs_norm_fitted(){return vv_pdfs_norm_fitted;}
-			void Set_vv_pdfs_norm_fitted_scaled(VChannelVSample vv){vv_pdfs_norm_fitted_scaled=vv;}
-			VChannelVSample Get_vv_pdfs_norm_fitted_scaled(){return vv_pdfs_norm_fitted_scaled;}
-			vector<int> Get_v_pdfs_sigproc(){return v_pdfs_sigproc;}
-			vector< RooDataSet* > Get_v_pdfs_roodataset();
-			vector< RooDataSet* > Get_v_pdfs_roodataset_toy(){return v_pdfs_roodataset_toy;} // in each channel, it has a list of events
-			vector< RooDataSet* > Get_v_pdfs_roodataset_real(){return v_pdfs_roodataset_real;} // in each channel, it has a list of events
+			const vector< vector< vector<int> > >& Get_vvv_pdfs_unctype(){return vvv_pdfs_unctype;}
+			const vector< vector< vector<double*> > >& Get_vvv_pdfs_params_up(){return vvv_pdfs_params_up;} // correponding to up shift of the uncertainty source, e.g. jet energy scale
+			const vector< vector< vector<double*> > >& Get_vvv_pdfs_params_down(){return vvv_pdfs_params_down;} //  correponding to down shift of the uncertainty source, e.g. jet energy scale
+			const vector< vector< vector< vector<double> > > >& Get_vvv_pdfs_normvariation(){return vvv_pdfs_normvariation;} // correponding to normalization changes of the uncertainty source
+			const vector< vector<double *> >& Get_vv_pdfs_params_varied(){return vv_pdfs_params_varied;} //nominal parameters for each pdf
+			const vector< vector<double> >& Get_vv_pdfs_norm_varied(){return vv_pdfs_norm_varied;} //normalization of each pdf, i.e. expected number of events in each process 
+			const vector< vector<double> >& Get_vv_pdfs_norm_scaled(){return vv_pdfs_norm_scaled;} //normalization of each pdf, i.e. expected number of events in each process 
+			const vector< vector<double> >& Get_vv_pdfs_data_toy(){return vv_pdfs_data_toy;} // in each channel, it has a list of events
+			void Set_vv_pdfs_norm_randomized(const VChannelVSample& vv){vv_pdfs_norm_randomized=vv;}
+			const VChannelVSample& Get_vv_pdfs_norm_randomized(){return vv_pdfs_norm_randomized_scaled;}
+			void Set_vv_pdfs_norm_fitted(const VChannelVSample& vv){vv_pdfs_norm_fitted=vv;}
+			const VChannelVSample& Get_vv_pdfs_norm_fitted(){return vv_pdfs_norm_fitted;}
+			void Set_vv_pdfs_norm_fitted_scaled(const VChannelVSample& vv){vv_pdfs_norm_fitted_scaled=vv;}
+			const VChannelVSample& Get_vv_pdfs_norm_fitted_scaled(){return vv_pdfs_norm_fitted_scaled;}
+			const vector<int>& Get_v_pdfs_sigproc(){return v_pdfs_sigproc;}
+			const vector< RooDataSet* >& Get_v_pdfs_roodataset();
+			const vector< RooDataSet* >& Get_v_pdfs_roodataset_toy(){return v_pdfs_roodataset_toy;} // in each channel, it has a list of events
+			const vector< RooDataSet* >& Get_v_pdfs_roodataset_real(){return v_pdfs_roodataset_real;} // in each channel, it has a list of events
 			const vector< double >& Get_v_pdfs_floatParamsVaried(){return v_pdfs_floatParamsVaried;}
 			const vector< vector< double > >& Get_v_pdfs_floatParamsUnc(){ return v_pdfs_floatParamsUnc;}
 			const vector<int>& Get_v_pdfs_floatParamsIndcorr() {return v_pdfs_floatParamsIndcorr;}      // only for params
@@ -248,14 +243,14 @@ namespace lands{
 
 			void AddUncertaintyAffectingShapeParam(string uname, string pname, double sigmaL, double sigmaR);
 
-			MapStrVV Get_map_param_sources(){return map_param_sources;}
+			const MapStrVV& Get_map_param_sources(){return map_param_sources;}
 
 			double * Get_norminalPars(){return _norminalPars;}
 			double * Get_randomizedPars(){return _randomizedPars;}
 
 			void SetMass(double d);
 
-			vector< vector<TString> > Get_vv_pdfs_extranormNAME() {return vv_pdfs_extranormNAME;};
+			const vector< vector<TString> >& Get_vv_pdfs_extranormNAME() {return vv_pdfs_extranormNAME;}
 		private:
 			VDChannel v_data; // could be pseudo-data for bands
 			VDChannel v_data_real; // real data, not changed during entire run 
@@ -375,5 +370,5 @@ namespace lands{
 			MapStrVV map_param_sources; // map <paramName, vector< idcorrl, sigmaL, sigmaR > > 
 	};
 	CountingModel* CombineModels(CountingModel *cms1, CountingModel *cms2);
-};
+}
 #endif   /* ----- #ifndef CountingModel_H----- */

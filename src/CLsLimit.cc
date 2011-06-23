@@ -81,7 +81,6 @@ namespace lands{
 		int indexcorrl, pdftype;
 		double norminal = 0;
 		double normalization = 0;
-		vector<int> shapeuncs;
 		for(c=0; c<nchs; c++){
 			nsigproc = cms_global->GetNSigprocInChannel(c);	
 			tc=0; 
@@ -89,7 +88,7 @@ namespace lands{
 				bs = vv_sigbks[c][s];	
 				if(cms_global->IsUsingSystematicsErrors()){
 					if(cms_global->GetMoveUpShapeUncertainties()){
-						shapeuncs = cms_global->GetListOfShapeUncertainties(c, s);
+						const vector<int> &shapeuncs = cms_global->GetListOfShapeUncertainties(c, s);
 						h=0;
 						added = false;
 						for(int i = 0; i<shapeuncs.size(); i++){

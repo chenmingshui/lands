@@ -2618,7 +2618,7 @@ If we need to change it later, it will be easy to do.
 		}
 		if(_debug)cout<<"DELETEME: map_param_sources.size = "<<map_param_sources.size()<<endl;
 	}
-	vector< RooDataSet* > CountingModel::Get_v_pdfs_roodataset(){
+	const vector< RooDataSet* >& CountingModel::Get_v_pdfs_roodataset(){
 		//cout<<"in Get_v_pdfs_roodataset"<<endl;
 		//cout<<" v_pdfs_roodataset.size =  "<<v_pdfs_roodataset.size()<<endl;
 		//v_pdfs_roodataset[0]->Print();

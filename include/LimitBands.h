@@ -14,27 +14,27 @@ namespace lands{
 			void Bands(double alpha, int noutcome, bool doCLs, int ntoysM2lnQ, bool doBys, int ntoysBys);
 			void CLsLimitBands(double alpha=0.05, int noutcome=1000, int ntoysM2lnQ=100000);
 			void BysLimitBands(double alpha=0.05, int noutcome=1000, int ntoysBys=20000);
-			double GetCLsLimit(int i){return _rcls[i+2];}; // -2, -1, 0, 1, 2
-			double GetBysLimit(int i){return _rbys[i+2];}; // -2, -1, 0, 1, 2
-			double GetCLsLimitMean(){return _rcls[5];};
-			double GetBysLimitMean(){return _rbys[5];};
+			double GetCLsLimit(int i){return _rcls[i+2];} // -2, -1, 0, 1, 2
+			double GetBysLimit(int i){return _rbys[i+2];} // -2, -1, 0, 1, 2
+			double GetCLsLimitMean(){return _rcls[5];}
+			double GetBysLimitMean(){return _rbys[5];}
 
-			void SetDebug(int d) {_debug=d;};
-			void SetAlpha(double a){fAlpha=a; fConfidenceLevel-fAlpha;};
-			void SetCLs(CLsLimit* clslimit, CLsBase* frequentist) {_clslimit=clslimit; _frequentist=frequentist;};
-			void SetBys(BayesianBase * bys ){_byslimit=bys;};
-			void SetModel(CountingModel* cms){_cms=cms;};
-			void SetTossPseudoDataConvention(int i){_tossPseudoDataConvention=i;};
+			void SetDebug(int d) {_debug=d;}
+			void SetAlpha(double a){fAlpha=a; fConfidenceLevel-fAlpha;}
+			void SetCLs(CLsLimit* clslimit, CLsBase* frequentist) {_clslimit=clslimit; _frequentist=frequentist;}
+			void SetBys(BayesianBase * bys ){_byslimit=bys;}
+			void SetModel(CountingModel* cms){_cms=cms;}
+			void SetTossPseudoDataConvention(int i){_tossPseudoDataConvention=i;}
 
-			vector<double> GetDifferentialLimitsCLs(){return _difrcls;};
-			vector<double> GetDifferentialLimitsBys(){return _difrbys;};
-			void IsM2lnQGridPreComputed(bool b, TString s){bM2lnQGridPreComputed=b; sFileM2lnQGrid=s;};
-			void SetPlotLevel(int i){_plotLevel = i;};
+			const vector<double>& GetDifferentialLimitsCLs(){return _difrcls;}
+			const vector<double>& GetDifferentialLimitsBys(){return _difrbys;}
+			void IsM2lnQGridPreComputed(bool b, TString s){bM2lnQGridPreComputed=b; sFileM2lnQGrid=s;}
+			void SetPlotLevel(int i){_plotLevel = i;}
 
-			void Set_bOnlyEvalCL_forVR(bool b){bOnlyEvalCL_forVR=b;};
-			void Set_vR_toEval(vector<double> v){_vR_toEval = v;};
-			vector< vector<double> > Get_vvCL_forVR(){return _vvCL_forVR;};
-			vector<double>  Get_vR_toEval(){return _vR_toEval;};
+			void Set_bOnlyEvalCL_forVR(bool b){bOnlyEvalCL_forVR=b;}
+			void Set_vR_toEval(const vector<double>& v){_vR_toEval = v;}
+			const vector<vector<double> >& Get_vvCL_forVR(){return _vvCL_forVR;}
+			const vector<double>& Get_vR_toEval(){return _vR_toEval;}
 
 		private:
 			void Bands();
@@ -64,6 +64,6 @@ namespace lands{
 			vector< vector<double> > _vvCL_forVR;
 			
 	};
-};
+}
 #endif   /* ----- #ifndef LIMITBANDS_H  ----- */
 

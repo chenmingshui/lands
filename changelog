@@ -1,5 +1,26 @@
 2011-06-22  Matevz Tadel  <matevz.tadel@cern.ch>
 
+	Second pass of return vectors by const-ref optimizations:
+	now all getters in CountingModel.h and LimitBands.h are converted.
+
+	What remains to be done:
+	- convert getters in other .h files;
+	- trace down code in .cc files that uses all these getters;
+	- inspect / improve usage of vectors as function arguments.
+
+	* include/CountingModel.h
+	* src/CountingModel.cc
+	Return vectors by const-ref in all remaining functions.
+
+	* include/LimitBands.h
+	Return vectors by const-ref in all functions.
+	Remove unnecessary semi-colons after inline methods.
+
+	* src/CLsLimit.cc
+	Move one declaration into scope to allow usage of refs.
+
+2011-06-22  Matevz Tadel  <matevz.tadel@cern.ch>
+
 	First pass of optimizations - focused on Dima's use-case.
 	Note that retrieval of vectors from CountingModel should be fixed
 	in other places, too.
