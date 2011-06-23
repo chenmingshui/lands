@@ -7,13 +7,13 @@ namespace lands{
 			SignificanceBands(CLsBase *cb, CountingModel* cms);
 			~SignificanceBands();
 			void Bands(int noutcome);
-			double GetSignificance(int i){return _rcls[i+2];}; // -2, -1, 0, 1, 2
-			double GetSignificanceMean(){return _rcls[5];};
+			double GetSignificance(int i){return _rcls[i+2];} // -2, -1, 0, 1, 2
+			double GetSignificanceMean(){return _rcls[5];}
 
-			void SetDebug(int d) {_debug=d;};
-			void SetModel(CountingModel* cms){_cms=cms;};
+			void SetDebug(int d) {_debug=d;}
+			void SetModel(CountingModel* cms){_cms=cms;}
 
-			vector<double> GetDifferentialSignificances(){return _difrcls;};
+			const vector<double>& GetDifferentialSignificances(){return _difrcls;}
 		private:
 			void Bands();
 			int _noutcomes;
@@ -24,6 +24,6 @@ namespace lands{
 			double _rcls[6];
 			
 	};
-};
+}
 #endif   /* ----- #ifndef SIGNIFICANCEBANDS_H  ----- */
 

@@ -23,25 +23,25 @@ namespace lands{
 			//single channel counting experiment, limit in average which is with mathmatical meaning
 			double LimitMeanInMath(); 
 
-			void SetAlpha(double alpha){fAlpha=alpha;fConfidenceLevel=1-fAlpha;};
-			void SetDebug(int debug){_debug=debug;};
-			void SetNumToys(int ntoys) {_nexps_to_averageout_sys=ntoys;};
+			void SetAlpha(double alpha){fAlpha=alpha;fConfidenceLevel=1-fAlpha;}
+			void SetDebug(int debug){_debug=debug;}
+			void SetNumToys(int ntoys) {_nexps_to_averageout_sys=ntoys;}
 			void GenToys();
 			double AverageIntegral(double rlow);
 			double glintegral(double xlow, int iexps); 
-			double GetAlpha(){return fAlpha;};
-			double GetLimit(){return _limit;};
+			double GetAlpha(){return fAlpha;}
+			double GetLimit(){return _limit;}
 			double Likelihood(double r);
 			double PosteriorPdf(int bins=100, double rmin=0, double rmax=0); 
 			// will return computational error on the r due to iteration cutout, the fPrecision,  in case of no systematics
 			double ErrorOnR_DueToPrecision();
 			double ErrorOnR_DueToFiniteToys(int ntrials, double& mean);
-			vector<double> GetVR(){return _vr;};
-			vector<double> GetVP(){return _vp;};
-			void SetCrossSectionPrior(PRIOR prior){_prior=prior;};			
-			PRIOR GetCrossSectionPrior(){return _prior;};			
+			const vector<double>& GetVR(){return _vr;}
+			const vector<double>& GetVP(){return _vp;}
+			void SetCrossSectionPrior(PRIOR prior){_prior=prior;}			
+			PRIOR GetCrossSectionPrior(){return _prior;}			
 			int EvaluateNormReduction();
-			void SetPreToys(int n){_preToys = n;};
+			void SetPreToys(int n){_preToys = n;}
 		private:
 			double fPrecision;
 			double fAlpha;
@@ -72,6 +72,6 @@ namespace lands{
 			int _NormReduction; // during evaluating exp(k), when k>700, the result is "inf".  NEED to avoid that ...
 			int _preToys;
 	};
-};
+}
 
 #endif //#ifndef BAYESIANBASE_H

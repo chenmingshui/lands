@@ -1549,16 +1549,16 @@ void CLsLimit::DoingStatisticalBandsForLimit(CountingModel *cms, CLsBase *freque
 	}
 void CLsLimit::SetAlpha(double alpha) {_alpha=alpha;} // Confidence Level = 1 - alpha
 double CLsLimit::GetLimit(){return _r95;}
-vector<double> CLsLimit::GetvTestedScaleFactors(){return _vR;} //
-vector<double> CLsLimit::GetvTestedCLs(){return _vCLs;}//	
+const vector<double>& CLsLimit::GetvTestedScaleFactors(){return _vR;} //
+const vector<double>& CLsLimit::GetvTestedCLs(){return _vCLs;}//	
 double CLsLimit::Limit_mean(){return _r95Projected[5];} //return average value mathmatically.....
-vector<double> CLsLimit::GetDifferentialLimits(){return _differentialR95s;}
-vector<double> CLsLimit::GetvLimits(){return _vR95;} // corresponding to all possible outcomes  ,  cummulative
-vector<double> CLsLimit::GetvLimits_CP(){return _vR95_CP;} // corresponding to all possible outcomes
+const vector<double>& CLsLimit::GetDifferentialLimits(){return _differentialR95s;}
+const vector<double>& CLsLimit::GetvLimits(){return _vR95;} // corresponding to all possible outcomes  ,  cummulative
+const vector<double>& CLsLimit::GetvLimits_CP(){return _vR95_CP;} // corresponding to all possible outcomes
 double CLsLimit::CLs_mean(){return _CLsProjected[5];} //return average value mathmatically.....
-vector<double> CLsLimit::GetDifferentialCLsReq1(){return _differentialCLs_Req1;}
-vector<double> CLsLimit::GetvCLsReq1(){return _vCLs_Req1;} // corresponding to all possible outcomes
-vector<double> CLsLimit::GetvCLsReq1_CP(){return _vCLs_Req1_CP;} // corresponding to all possible outcomes
+const vector<double>& CLsLimit::GetDifferentialCLsReq1(){return _differentialCLs_Req1;}
+const vector<double>& CLsLimit::GetvCLsReq1(){return _vCLs_Req1;} // corresponding to all possible outcomes
+const vector<double>& CLsLimit::GetvCLsReq1_CP(){return _vCLs_Req1_CP;} // corresponding to all possible outcomes
 void CLsLimit::SetDebug(int debug){_debug=debug;}
 CLsBase* CLsLimit::GetFrequentist(){return _frequentist;}
 void CLsLimit::SetCLsTolerance(double tolerance){_clstolerance=tolerance;}

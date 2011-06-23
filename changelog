@@ -1,6 +1,22 @@
 2011-06-22  Matevz Tadel  <matevz.tadel@cern.ch>
 
-	Second pass of return vectors by const-ref optimizations:
+	Last pass of "return member vectors by const-ref" optimizations:
+	all getters are converted now.
+	See previous entry about two more steps that need to be done.
+
+	* include/CountingModel.h
+	One last missed vector.
+
+	* include/BayesianBase.h
+	* include/CLsLimit.h
+	* include/SignificanceBands.h
+	* src/CLsLimit.cc
+	Return member vectors via const-ref.
+	Remove unnecessary semi-colons after inline methods.
+
+2011-06-22  Matevz Tadel  <matevz.tadel@cern.ch>
+
+	Second pass of "return member vectors by const-ref" optimizations:
 	now all getters in CountingModel.h and LimitBands.h are converted.
 
 	What remains to be done:

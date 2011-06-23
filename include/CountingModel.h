@@ -146,9 +146,9 @@ namespace lands{
 
 			void SetProcessNames(int ch, vector<std::string> vproc); //need make check
 			void SetProcessNames(string ch, vector<std::string> vproc); //need make check
-			vector<std::string> GetProcessNames(int ch){return vv_procname[ch];}  //need make check
-			void SetModelName(std::string s){_modelName = s;}
-			std::string GetModelName(){return _modelName;}
+			const vector<std::string>& GetProcessNames(int ch){return vv_procname[ch];}  //need make check
+			void SetModelName(const std::string& s){_modelName = s;}
+			const std::string& GetModelName(){return _modelName;}
 			void MakeListOfShapeUncertainties();
 			const vector<int>& GetListOfShapeUncertainties(int c, int p){ return vvv_shapeuncindex[c][p]; } // need make check
 			void SetMoveUpShapeUncertainties(bool b){bMoveUpShapeUncertainties=b;}

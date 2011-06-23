@@ -28,7 +28,7 @@ namespace lands{
 		public:
 			CLsBase();
 			~CLsBase();
-			void SetModel(CountingModel *model){_model=model; cms_global = model;};
+			void SetModel(CountingModel *model){_model=model; cms_global = model;}
 			bool BuildM2lnQ(int ntoys=100000, int sbANDb_bOnly_sbOnly=0, bool reUsePreviousToys=false);
 			bool BuildM2lnQ_b(int ntoys=100000, bool reUsePreviousToys=false);
 			bool BuildM2lnQ_sb(int ntoys=100000, bool reUsePreviousToys=false);
@@ -64,9 +64,9 @@ namespace lands{
 			void SetLogQ_data(double lnQ_data);	
 
 			void SetTestStatistics(int ts = 1);
-			int GetTestStatistics(){return test_statistics;};
+			int GetTestStatistics(){return test_statistics;}
 
-			int GetNexps(){return _nexps;};
+			int GetNexps(){return _nexps;}
 
 			void printM2LnQInfo(int sbANDb_bOnly_sbOnly);
 			void checkFittedParsInData(bool bReadPars=false, bool bWritePars=false, TString sfilename="");
@@ -97,29 +97,29 @@ namespace lands{
 	class CLsLimit
 	{
 		public:
-			CLsLimit(){_debug=0; _alpha = 0.05; _clstolerance=0.001; _rule = 1; bAdaptiveSampling=false; fAdditionalNToysFactor=1.;};  // by default, we use CLs instead of CLsb
-			~CLsLimit(){}; 	
+			CLsLimit(){_debug=0; _alpha = 0.05; _clstolerance=0.001; _rule = 1; bAdaptiveSampling=false; fAdditionalNToysFactor=1.;}  // by default, we use CLs instead of CLsb
+			~CLsLimit(){} 	
 			void SetAlpha(double alpha); // Confidence Level = 1 - alpha
 
 			double LimitOnSignalScaleFactor(CountingModel *cms, CLsBase *frequentist, int nexps=100000);
 			double LimitOnSignalScaleFactor(CountingModel *cms, double minRtoScan, double maxRtoScan, CLsBase *frequentist, int nexps=100000, int nsteps = 10);
 			double GetLimit();
-			vector<double> GetvTestedScaleFactors(); //
-			vector<double> GetvTestedCLs();//	
+			const vector<double>& GetvTestedScaleFactors(); //
+			const vector<double>& GetvTestedCLs();//	
 
 			void DoingStatisticalBandsForLimit(CountingModel *cms, CLsBase *frequentist, int nexps_to_buildM2lnQ=100000, int nexps_to_doStatisticalBands=1000);
 			double Limit_sigma(int nsigma); // return limit at -2sigma, -1sigma, median(50%), 1sigma, 2sigma
 			double Limit_mean(); //return average value mathmatically.....
-			vector<double> GetDifferentialLimits();
-			vector<double> GetvLimits(); // corresponding to all possible outcomes  ,  cummulative
-			vector<double> GetvLimits_CP(); // corresponding to all possible outcomes
+			const vector<double>& GetDifferentialLimits();
+			const vector<double>& GetvLimits(); // corresponding to all possible outcomes  ,  cummulative
+			const vector<double>& GetvLimits_CP(); // corresponding to all possible outcomes
 
 			void DoingStatisticalBandsForCLs(vector<double> vsb, vector<double> vb);
 			double CLs_sigma(int nsigma); // return CLs at -2sigma, -1sigma, median(50%), 1sigma, 2sigma
 			double CLs_mean(); //return average value mathmatically.....
-			vector<double> GetDifferentialCLsReq1();
-			vector<double> GetvCLsReq1(); // corresponding to all possible outcomes
-			vector<double> GetvCLsReq1_CP(); // corresponding to all possible outcomes
+			const vector<double>& GetDifferentialCLsReq1();
+			const vector<double>& GetvCLsReq1(); // corresponding to all possible outcomes
+			const vector<double>& GetvCLsReq1_CP(); // corresponding to all possible outcomes
 
 			void SetDebug(int debug);
 			CLsBase* GetFrequentist();
@@ -127,13 +127,13 @@ namespace lands{
 			void SetCLsTolerance(double tolerance = 0.001 );
 			void SetRule(int rule = 1);
 
-			double LimitErr(){return _r95err;};
+			double LimitErr(){return _r95err;}
 
 
 			double FeldmanCousins(CountingModel *cms, double minRtoScan, double maxRtoScan, CLsBase *frequentist, int nexps=100000, int nsteps = 10);
-			vector< vector<double> > GetFCconstruction(){return _FCconstruction;};
-			void SetAdaptiveSampling(bool b){bAdaptiveSampling=b;};
-			void SetAdditionalNToysFactor(double d){fAdditionalNToysFactor=d;};
+			const vector< vector<double> >& GetFCconstruction(){return _FCconstruction;}
+			void SetAdaptiveSampling(bool b){bAdaptiveSampling=b;}
+			void SetAdditionalNToysFactor(double d){fAdditionalNToysFactor=d;}
 
 		private:
 			vector<double> _vR;
@@ -165,6 +165,6 @@ namespace lands{
 			double fAdditionalNToysFactor; // allow user to require more toys when doing adaptive sampling. 
 	};
 
-};
+}
 #endif   /* ----- #ifndef CLsLIMIT_H  ----- */
 
