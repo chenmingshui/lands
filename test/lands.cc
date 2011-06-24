@@ -106,8 +106,6 @@ double HiggsMass = -1;
 int nTries = 1;
 
 int main(int argc, const char*argv[]){
-	TStopwatch watch;  
-	watch.Start();
 	processParameters(argc, argv);
 
 
@@ -163,10 +161,10 @@ int main(int argc, const char*argv[]){
 	if(debug)cms->Print();
 	CRandom *rdm = new CRandom(seed);  //initilize a random generator
 	cms->SetRdm(rdm);
-	cms->SetUseSystematicErrors(systematics);
 	//cms->RemoveChannelsWithExpectedSignal0orBkg0();
 	int nch_removed = cms->RemoveChannelsWithExpectedSignal0orBkg0(0); // 0: remove only bins with total bkg<=0,  1: remove bins with total sig<=0,  2: both
 	if(debug and nch_removed )cms->Print();
+	if(nch_removed)cms->SetUseSystematicErrors(systematics);//need reconfig,  otherwise crash
 	//cms->SetAllowNegativeSignalStrength(false);
 	if(dataset == "asimov_b")cms->UseAsimovData(0);
 	else if(dataset == "asimov_sb")cms->UseAsimovData(1);
@@ -180,6 +178,9 @@ int main(int argc, const char*argv[]){
 	// common results
 	double rmean;
 	vector<double> difflimits;
+
+	TStopwatch watch;  
+	watch.Start();
 
 #ifdef LANDS_PROFILE
 	if (gSystem->Getenv("CPUPROFILE"))

@@ -104,7 +104,7 @@ namespace lands{
 			void Print(int printLevel=0);
 			bool Check();
 
-			VChannelVSample FluctuatedNumbers(double *pars = NULL, bool scaled=true, int bUseBestEstimateToCalcQ=1); 
+			VChannelVSample FluctuatedNumbers(double *pars = NULL, bool scaled=true, int bUseBestEstimateToCalcQ=1, bool includeCountingParts=true); 
 			// 0 use randomized set,  1 use best estimates a priori, 2 use fitted posterior (after looking at data)
 			
 			VIChannel GetToyData_H0(double *pars=NULL);// background only hypothesis
@@ -221,7 +221,7 @@ namespace lands{
 				       	vector<RooAbsPdf*> bkgPdfs, vector<double> bkgNorms, vector<RooAbsArg*> vbExtraNorm);
 			// need to add names of each parameter .... 
 			double EvaluateLnQ(int ch, int dataOrToy); // for Likelihood ratio
-			double EvaluateChi2(double *par, int bUseBestEstimateToCalcQ=1);          // for Chi2
+			double EvaluateChi2(double *par, vector< vector< vector<float> > >& vvv_cachPdfValues, int bUseBestEstimateToCalcQ=1);          // for Chi2
 			double EvaluateGL(int ch, double xr); // for bayesian 
 			double EvaluateGL(vector< vector<double> > vvnorms, vector<double> vparams, double xr, VChannelVSample& vvs, VChannelVSample&vvb); // for bayesian 
 			void AddObservedDataSet(int index_channel, RooDataSet* rds);
@@ -251,6 +251,11 @@ namespace lands{
 			void SetMass(double d);
 
 			const vector< vector<TString> >& Get_vv_pdfs_extranormNAME() {return vv_pdfs_extranormNAME;}
+
+			void FlagChannelsWithParamsUpdated(int i);
+			void UnFlagAllChannels(bool b);
+			void FlagAllChannels();
+			const vector< vector<bool> > & Get_vv_statusUpdated(){return vv_statusUpdated;};
 		private:
 			VDChannel v_data; // could be pseudo-data for bands
 			VDChannel v_data_real; // real data, not changed during entire run 
@@ -368,6 +373,13 @@ namespace lands{
 			vector< vector<string> > vv_pdfs_procname;
 
 			MapStrVV map_param_sources; // map <paramName, vector< idcorrl, sigmaL, sigmaR > > 
+
+
+			vector< vector< bool > > vv_pdfs_statusUpdated;// monitoring if nuisances belonging to it(each pdf/process) updated
+			vector< vector< bool > > vv_statusUpdated;  // 
+			vector< vector<std::pair<int, int> > > vvp_pdfs_connectNuisBinProc;// keep in memory:  a nuisance affects a list of [channel, process]
+			vector< vector<std::pair<int, int> > > vvp_connectNuisBinProc;// keep in memory:  a nuisance affects a list of [channel, process]
+
 	};
 	CountingModel* CombineModels(CountingModel *cms1, CountingModel *cms2);
 }
