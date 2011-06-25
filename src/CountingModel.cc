@@ -30,11 +30,11 @@
 #include "RooBifurGauss.h"
 #include "RooWorkspace.h"
 #include "RooHistFunc.h"
-#include "RooStats/RooStatsUtils.h"
+//#include "RooStats/RooStatsUtils.h"
 
 using namespace std;
 using namespace RooFit;
-using namespace RooStats;
+//using namespace RooStats;
 namespace lands{
 	CountingModel::CountingModel(){
 		v_data.clear();
@@ -886,6 +886,7 @@ If we need to change it later, it will be easy to do.
 
 	}
 	VChannelVSample CountingModel::FluctuatedNumbers(double *par, bool scaled, int bUseBestEstimateToCalcQ, bool includeCountingParts){
+		RooRealVar *tmprrv;
 		// FIXME  need to think about what's vv_pdfs_norm_varied,  where it's changed,  and whether to replace it with vv_pdfs_norm_randomized_scaled .... ? 
 		if(_rdm==NULL) {cout<<"Model random gen engine not set yet, exit "<<endl; exit(0);}
 		if(!b_systematics) {
@@ -943,7 +944,10 @@ If we need to change it later, it will be easy to do.
 						{
 							// FIXME need to think about this .. .
 							if(_debug>=100) cout<<" generating new value for parameter "<<v_uncname[i-1]<<endl;
-							_w_varied->var(TString::Format("%s_mean",v_uncname[i-1].c_str()))->setVal(bUseBestEstimateToCalcQ!=2?v_pdfs_floatParamsUnc[i][0]:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]));
+							tmprrv = _w_varied->var(TString::Format("%s_mean",v_uncname[i-1].c_str()));
+							//tmprrv->setDirtyInhibit(0);
+							tmprrv->setVal(bUseBestEstimateToCalcQ!=2?v_pdfs_floatParamsUnc[i][0]:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]));
+
 							RooDataSet *tmpRDS =  _w_varied->pdf(TString::Format("%s_bfg",v_uncname[i-1].c_str()))
 								->generate(RooArgSet(*_w_varied->var(TString::Format("%s_x", v_uncname[i-1].c_str()))), 1);
 							vrdm.back()= dynamic_cast<RooRealVar*> ( tmpRDS->get(0)->first() )->getVal();
@@ -1198,7 +1202,9 @@ If we need to change it later, it will be easy to do.
 						}
 					}
 					if(_debug>=100) cout<<" **norm varied after all unc = "<<vv_pdfs_norm_varied[ch][isam]<<endl;
-					_w_varied->var(vv_pdfs_normNAME[ch][isam])->setVal(vv_pdfs_norm_varied[ch][isam]);
+					tmprrv = _w_varied->var(vv_pdfs_normNAME[ch][isam]);
+					//tmprrv->setDirtyInhibit(1);
+					tmprrv->setVal(vv_pdfs_norm_varied[ch][isam]);
 				}
 			}
 
@@ -1238,7 +1244,9 @@ If we need to change it later, it will be easy to do.
 
 				if(_debug>=100)cout<<"DELETEME: param after range check: "<<param<<"  in ["<<v_pdfs_floatParamsUnc[ip][3]<<", "<<v_pdfs_floatParamsUnc[ip][4]<<"]"<<endl;
 				if(_debug>=100) cout<<" setting new value for parameter "<<v_pdfs_floatParamsName[i]<<": "<<param<<endl;
-				_w_varied->var(v_pdfs_floatParamsName[i].c_str())->setVal(param);
+				tmprrv = _w_varied->var(v_pdfs_floatParamsName[i].c_str());
+				//tmprrv->setDirtyInhibit(1);
+				tmprrv->setVal(param);
 				v_pdfs_floatParamsVaried.push_back(param);
 
 			}
@@ -1260,7 +1268,9 @@ If we need to change it later, it will be easy to do.
 						}
 						vv_pdfs_norm_varied[ch][isam] = tmp;
 					}
-					_w_varied->var(vv_pdfs_normNAME[ch][isam])->setVal(tmp);
+					tmprrv=_w_varied->var(vv_pdfs_normNAME[ch][isam]);
+					//tmprrv->setDirtyInhibit(1);
+					tmprrv->setVal(tmp);
 				}
 			}
 
@@ -1551,6 +1561,7 @@ If we need to change it later, it will be easy to do.
 		}
 
 		if(bHasParametricShape){
+			RooRealVar*tmprrv;
 			vv_pdfs_norm_scaled = vv_pdfs_norm;
 			for(int ch=0; ch<vv_pdfs_norm_scaled.size(); ch++){
 				for(int isam=0; isam<v_pdfs_sigproc[ch]; isam++){
@@ -1561,8 +1572,12 @@ If we need to change it later, it will be easy to do.
 					if(vv_pdfs_extranormNAME[ch][isam]!="") {
 						tmp *= ((RooAbsReal*)(_w->arg(vv_pdfs_extranormNAME[ch][isam])))->getVal();
 					}
-					_w->var(vv_pdfs_normNAME[ch][isam])->setVal(tmp);
-					_w_varied->var(vv_pdfs_normNAME[ch][isam])->setVal(tmp);
+					tmprrv=_w->var(vv_pdfs_normNAME[ch][isam]);
+					//tmprrv->setDirtyInhibit(1);
+					tmprrv->setVal(tmp);
+					tmprrv=_w_varied->var(vv_pdfs_normNAME[ch][isam]);
+					//tmprrv->setDirtyInhibit(1);
+					tmprrv->setVal(tmp);
 				}
 			}
 
@@ -1943,8 +1958,8 @@ If we need to change it later, it will be easy to do.
 		//observable->SetName(TString(channel_name)+observable->GetName());
 		//_w->import(*observable, Rename(TString::Format("%s_%s", channel_name.c_str(), observable->GetName())));
 		//_w_varied->import(*observable, Rename(TString::Format("%s_%s", channel_name.c_str(), observable->GetName())));
-		_w->import(*observable);
-		_w_varied->import(*observable);
+		_w->import(*observable, RecycleConflictNodes());
+		_w_varied->import(*observable, RecycleConflictNodes());
 		v_pdfs_observables.push_back(observable->GetName());
 
 
@@ -1981,7 +1996,7 @@ If we need to change it later, it will be easy to do.
 				_w->import(*vsExtraNorm[i], RecycleConflictNodes());
 				_w_varied->import(*vsExtraNorm[i], RecycleConflictNodes());
 				vextranorm.push_back(vsExtraNorm[i]->GetName());
-				cout<<vextranorm.back()<<endl;
+				//cout<<vextranorm.back()<<endl;
 				if((RooAbsReal*)(_w_varied->arg(vextranorm.back()))) {
 					double tmp = ((RooAbsReal*)(_w_varied->arg(vextranorm.back())))->getVal();
 					if(_debug>=100) cout<<" **extranorm= "<<tmp<<endl;
@@ -2232,6 +2247,8 @@ If we need to change it later, it will be easy to do.
 
 		FluctuatedNumbers(par, true, bUseBestEstimateToCalcQ, false);
 
+		RooRealVar * tmprrv;
+
 		if(vvv_cachPdfValues.size()==0){
 			vvv_cachPdfValues.resize(vv_pdfs.size());
 			for(int ch=0; ch<vv_pdfs.size(); ch++){
@@ -2267,7 +2284,9 @@ If we need to change it later, it will be easy to do.
 			   }
 			   */
 			for(int i=0; i<ntot; i++){
-				_w_varied->var(v_pdfs_observables[ch])->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset_tmp[ch]->get(i)->first()))->getVal());
+				tmprrv=_w_varied->var(v_pdfs_observables[ch]);
+				//tmprrv->setDirtyInhibit(1);
+				tmprrv->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset_tmp[ch]->get(i)->first()))->getVal());
 				tmp = 0;  
 				for(int p=0; p<vv_pdfs[ch].size();p++){
 					if(vv_pdfs_norm_varied[ch][p]!=0){

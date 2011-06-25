@@ -319,6 +319,7 @@ namespace lands{
 	}
 
 	double MinuitFit(int model, double &r , double &er, double mu /* or ErrorDef for Minos*/, double *pars, bool hasBestFitted, int debug, int *success ){
+		RooAbsArg::setDirtyInhibit(1);
 		_lastParams.clear();	_currParams.clear();
 		vvv_cachPdfValues.clear();
 		vv_cachCountingParts.clear();
@@ -538,6 +539,7 @@ namespace lands{
 			}
 
 			cms_global->SetSignalScaleFactor(_signalScale);
+			RooAbsArg::setDirtyInhibit(0);
 			return l;
 		}else{
 			double par[1];
@@ -552,6 +554,7 @@ namespace lands{
 			return l;
 		}
 		cms_global->SetSignalScaleFactor(_signalScale);
+		RooAbsArg::setDirtyInhibit(0);
 		return 0.0;
 	}	
 
@@ -1868,6 +1871,7 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys){  // 0 for sbANDb,
 
 	int nsbi, nbi;
 	int tenth = _nexps/10;
+	if(tenth<1) tenth=1;
 	int ntemp = _nexps*_nchannels;
 	if(_debug >=10 ) cout<<"ntemp="<<ntemp<<endl;
 	if(test_statistics!=1 && test_statistics!=4){
@@ -2134,6 +2138,7 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys){
 
 	int nsbi, nbi;
 	int tenth = _nexps/10;
+	if(tenth<1) tenth=1;
 	int ntemp = _nexps*_nchannels;
 	if(_debug >=10 ) cout<<"ntemp="<<ntemp<<endl;
 	if(test_statistics!=1 && test_statistics!=4){
@@ -2263,7 +2268,7 @@ double CLsBase::M2lnQ(int checkFailure, int dataOrToy){
 			_model->Print();
 		}
 		int success[1];
-		minchi2tmp = MinuitFit(21, tmp1, tmp2, 0, 0, false, checkFailure?_debug:0, success);  // MinuitFit(mode, r, err_r)
+		minchi2tmp = MinuitFit(21, tmp1, tmp2, 0, 0, false, checkFailure?_debug:(_debug?1:0), success);  // MinuitFit(mode, r, err_r)
 		if(success[0]!=0 and checkFailure) { 
 			cout<<"ERROR WARNING data fit failed, try to dump info:  this failure sometimes related to ROOT versions, potential bugs in TMinuit. "<<endl;
 			cout<<"ERROR WARNING I had experienced that 5.28.00b gave failure while 5.26 didn't on the following data card (V2011-04-21): "<<endl;
@@ -2287,7 +2292,7 @@ double CLsBase::M2lnQ(int checkFailure, int dataOrToy){
 		if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(0, tmp1, tmp2);  // MinuitFit(mode, r, err_r),  want r to be >=0
 		if(test_statistics==5){ // for evaluating one-sided limit 
 			if(fitted_r>=_model->GetSignalScaleFactor()) q=0;
-			else q = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor()) - minchi2tmp);
+			else q = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor(), 0, false, _debug?1:0) - minchi2tmp);
 		}else if(test_statistics==6){// for evaluating significance
 			q = -(MinuitFit(3, tmp1, tmp1, 0/*fixed at mu=0*/) - minchi2tmp);
 		}

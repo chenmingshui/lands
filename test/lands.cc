@@ -18,6 +18,7 @@
 #include "RooDataSet.h"
 #include "TFile.h"
 #include "RooMsgService.h"
+#include "TMath.h"
 
 #ifdef LANDS_PROFILE
   #include <google/profiler.h>
@@ -175,6 +176,9 @@ int main(int argc, const char*argv[]){
 
 	cms->SetMass(HiggsMass);
 
+	//**********************  setValueDirty() takes a lot of timing ************************
+	//RooAbsArg::setDirtyInhibit(0);
+
 	// common results
 	double rmean;
 	vector<double> difflimits;
@@ -287,10 +291,10 @@ int main(int argc, const char*argv[]){
 				if(!bNotCalcQdata)frequentist.BuildM2lnQ_data();
 				if(nToysForCLsb<=0) nToysForCLsb=toysHybrid;
 				if(nToysForCLb<=0) nToysForCLb=toysHybrid;
-				frequentist.BuildM2lnQ_b(nToysForCLb);
-				vb = frequentist.Get_m2logQ_b();
 				frequentist.BuildM2lnQ_sb(nToysForCLsb);
 				vsb = frequentist.Get_m2logQ_sb();
+				frequentist.BuildM2lnQ_b(nToysForCLb);
+				vb = frequentist.Get_m2logQ_b();
 			}
 			if(makeCLsBands>=2){
 				if(debug) cout<<"MakeCLsValues from precomputed file = "<<sFileM2lnQGrid<<endl;
@@ -904,11 +908,23 @@ int main(int argc, const char*argv[]){
 			cms_global= cms;
 			vdata_global=cms->Get_v_data();
 
-			double x2 =  MinuitFit(2, tmp, tmperr);
+			double sig_data;
+			double m2lnQ;
+			double x2;
+			/*
+			   x2 =  MinuitFit(2, tmp, tmperr); // allow mu<0
+			   cout<<"fitted r = "<<tmp<<endl;
+			   m2lnQ = MinuitFit(3,tmp, tmp) - x2; // mu=0
+			   double sig_data = sqrt(fabs(m2lnQ));
+			   cout<<"Observed significance using PLR method = "<<sig_data<<endl;
+			   cout<<"Observed p-value = "<<1-TMath::Erf(sig_data)<<endl;
+			   */
+			x2 =  MinuitFit(21, tmp, tmperr); // allow mu<0
 			cout<<"fitted r = "<<tmp<<endl;
-			double m2lnQ = MinuitFit(3,tmp, tmp) - x2;
-			double sig_data = sqrt(fabs(m2lnQ));
+			m2lnQ = MinuitFit(3,tmp, tmp) - x2; // mu=0
+			sig_data = sqrt(fabs(m2lnQ));
 			cout<<"Observed significance using PLR method = "<<sig_data<<endl;
+			cout<<"Observed p-value = "<<ROOT::Math::normal_cdf_c(sig_data)<<endl;
 			if(sig_data>=4) cout<<"WARNING: please contact mschen@cern.ch for a potential issue on the nuisances' range. Needs change from [-5,5] to larger one"<<endl;
 
 			if(debug>=10) { // show a plot for   -log(Lambda(mu)) vs. mu ...
@@ -993,8 +1009,8 @@ int main(int argc, const char*argv[]){
 #ifdef LANDS_PROFILE
 	if (gSystem->Getenv("CPUPROFILE"))
 	{
-	  ProfilerStop();
-	  printf("Finished profiling into '%s'\n", gSystem->Getenv("CPUPROFILE"));
+		ProfilerStop();
+		printf("Finished profiling into '%s'\n", gSystem->Getenv("CPUPROFILE"));
 	}
 #endif
 
