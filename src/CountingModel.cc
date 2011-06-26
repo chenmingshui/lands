@@ -755,9 +755,11 @@ If we need to change it later, it will be easy to do.
 									fabs(vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(0)*vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(2) - vv_pdfs_norm_varied.at(ch).at(isam)) / vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(2)/vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(0)>0.2
 							  ) {
 								// if there is extra norm inside workspace, then probably will not have gmN uncertainty 
-								cout<<"Shape channel "<<ch<<"th, "<<v_pdfs_channelname[ch]<<": process "<<isam<<" using gamma pdf, but rho*B!=b, please check"<<endl; 
-								cout<< "rho="<<vvv_pdfs_normvariation[ch][isam][iunc][0]<<"  B="<<vvv_pdfs_normvariation[ch][isam][iunc][2]<<" b="<<vv_exp_sigbkgs[ch][isam]<<endl;
-								exit(0);
+								cout<<"SHOULD BE FATAL: Shape channel "<<ch<<"th, "<<v_pdfs_channelname[ch]<<": process "<<isam<<" using gamma pdf, but rho*B!=b, please check"<<endl; 
+								cout<<"rho="<<vvv_pdfs_normvariation[ch][isam][iunc][0]<<"  B="<<vvv_pdfs_normvariation[ch][isam][iunc][2]<<" b="<<vv_pdfs_norm[ch][isam]<<endl;
+								cout<<"to proceed, rho are modified. "<<endl;
+								vvv_pdfs_normvariation[ch][isam][iunc][0] = vv_pdfs_norm[ch][isam]/vvv_pdfs_normvariation[ch][isam][iunc][2];
+									//exit(0);
 							}	
 							v_GammaN.back()=vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(2)+1;	
 
@@ -775,7 +777,7 @@ If we need to change it later, it will be easy to do.
 									<<" isam"<<isam<<"("<<vv_pdfs[ch][isam]<<")"
 									<<" iunc"<<iunc<<"("<<v_uncname[indexcorrl-1]<<")"<<endl;
 								cout<<" The conflict unc at above process is for "<<vvv_pdfs_idcorrl[ch][isam][iunc]
-									<<"th source, name "<<v_uncname[vvv_idcorrl[ch][isam][iunc]-1]<<endl;
+									<<"th source, name "<<v_uncname[vvv_pdfs_idcorrl[ch][isam][iunc]-1]<<endl;
 								exit(0);
 							}
 						}

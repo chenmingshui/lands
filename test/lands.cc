@@ -224,6 +224,7 @@ int main(int argc, const char*argv[]){
 				for(int i=0; i<nTries; i++) errR+= (rtries[i]-avgR)*(rtries[i]-avgR); errR = sqrt(errR)/(float)nTries;
 
 				cout<<"------------------------------------------------------------"<<endl;
+				if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
 				cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<avgR;
 				if(nTries>1)cout<<" +/- "<<errR<<endl;
 				else cout<<endl;
@@ -323,6 +324,7 @@ int main(int argc, const char*argv[]){
 				clsr95.DoingStatisticalBandsForCLs(vsb, vb);	
 				double cls, errs;
 				GetCLs(qdata, tsb, tb, cls, errs);
+				if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
 				cout<<"Observed CLs = "<<cls<<" +/- "<<errs<<endl;
 
 				return 0;
@@ -338,8 +340,11 @@ int main(int argc, const char*argv[]){
 				double clsb = frequentist.CLsb(errsb);
 				double clb = frequentist.CLb(errb);
 				cout<<"---------------testing at signal strength r = "<<cms->GetSignalScaleFactor()<<"-------------------------"<<endl;
+				if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
 				cout<<"Observed CLs = "<<cls<<" +/- "<<errs<<endl;
+				if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
 				cout<<"Observed CLsb = "<<clsb<<" +/- "<<errsb<<endl;
+				if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
 				cout<<"Observed CLb = "<<clb<<" +/- "<<errb<<endl;
 				cout<<"------------------------------------------------------------"<<endl;
 			}
@@ -426,8 +431,11 @@ int main(int argc, const char*argv[]){
 				double clsb = frequentist.CLsb(errsb);
 				double clb = frequentist.CLb(errb);
 				cout<<"---------------testing at signal strength r = "<<cmsClone->GetSignalScaleFactor()<<"-------------------------"<<endl;
+				if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
 				cout<<"Observed CLs = "<<cls<<" +/- "<<errs<<endl;
+				if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
 				cout<<"Observed CLsb = "<<clsb<<" +/- "<<errsb<<endl;
+				if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
 				cout<<"Observed CLb = "<<clb<<" +/- "<<errb<<endl;
 				cout<<"------------------------------------------------------------"<<endl;
 
@@ -510,6 +518,7 @@ int main(int argc, const char*argv[]){
 
 				}
 				cout<<"------------------------------------------------------------"<<endl;
+				if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
 				cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<rtmp<<" +/- "<<clsr95.LimitErr()<<endl;
 				cout<<"------------------------------------------------------------"<<endl;
 
@@ -643,6 +652,7 @@ int main(int argc, const char*argv[]){
 			if(debug) cout <<"95\% CL upper limit by FC: "<<r95_fc<<",   use bys: "<<rtmp<<endl;
 
 			cout<<"------------------------------------------------------------"<<endl;
+			if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
 			cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<r95_fc<<endl;
 			cout<<"------------------------------------------------------------"<<endl;
 
@@ -804,6 +814,7 @@ int main(int argc, const char*argv[]){
 			}
 
 			cout<<"------------------------------------------------------------"<<endl;
+			if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
 			cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<r95<<endl;
 			cout<<"------------------------------------------------------------"<<endl;
 
@@ -867,6 +878,7 @@ int main(int argc, const char*argv[]){
 			}
 			cout<<"------------NO INTERPOLATION--------------------------------"<<endl;
 			cout<<"BandsNoInterpolation R@95%CL (from -2sigma -1sigma  mean  +1sigma  +2sigma,  median) : "<<endl;
+			if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
 			printf("BANDS %10.5f %10.5f %10.5f %10.5f %10.5f %10.5f\n", rm2s2, rm1s2, rmean, rp1s2, rp2s2, rmedian2);
 			cout<<"------------------------------------------------------------"<<endl;
 
@@ -923,7 +935,9 @@ int main(int argc, const char*argv[]){
 			cout<<"fitted r = "<<tmp<<endl;
 			m2lnQ = MinuitFit(3,tmp, tmp) - x2; // mu=0
 			sig_data = sqrt(fabs(m2lnQ));
+			if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
 			cout<<"Observed significance using PLR method = "<<sig_data<<endl;
+			if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
 			cout<<"Observed p-value = "<<ROOT::Math::normal_cdf_c(sig_data)<<endl;
 			if(sig_data>=4) cout<<"WARNING: please contact mschen@cern.ch for a potential issue on the nuisances' range. Needs change from [-5,5] to larger one"<<endl;
 
@@ -973,6 +987,7 @@ int main(int argc, const char*argv[]){
 			}
 
 			cout<<"------------------------------------------------------------"<<endl;
+			if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
 			cout<<" Observed Significance for the data = "<<signi<<endl;
 			cout<<"------------------------------------------------------------"<<endl;
 
