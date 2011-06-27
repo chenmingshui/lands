@@ -194,6 +194,8 @@ int main(int argc, const char*argv[]){
 	}
 #endif
 
+	cms_global= cms;
+	cms_global->SetDebug(debug);
 	TPaveText *pt = SetTPaveText(0.2, 0.7, 0.3, 0.9);
 	if(calcsignificance==0){// calc limits
 		if(method == "Bayesian"){
@@ -215,13 +217,16 @@ int main(int argc, const char*argv[]){
 				for(int i=1; i<nTries; i++){
 					rtmp = bys.Limit(1-CL, hint);
 					cout<<"try "<<i+1<<": R at 95\% CL = "<<rtmp<<endl;
-					rtries.push_back(rtmp);
-					avgR=0;
-					for(int j=0; j<rtries.size(); j++) avgR+=rtries[j]; avgR/=(float)(i+1);	
-					hint = avgR;
+					if(rtmp<=0) cout<<"  - -- ---- r is meaningless, skipped "<<endl;
+					else{
+						rtries.push_back(rtmp);
+						avgR=0;
+						for(int j=0; j<rtries.size(); j++) avgR+=rtries[j]; avgR/=(float)(i+1);	
+						hint = avgR;
+					}
 				}
 				if(nTries<=1) avgR=rtmp;
-				for(int i=0; i<nTries; i++) errR+= (rtries[i]-avgR)*(rtries[i]-avgR); errR = sqrt(errR)/(float)nTries;
+				for(int i=0; i<rtries.size(); i++) errR+= (rtries[i]-avgR)*(rtries[i]-avgR); errR = sqrt(errR)/(float)nTries;
 
 				cout<<"------------------------------------------------------------"<<endl;
 				if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
@@ -715,6 +720,7 @@ int main(int argc, const char*argv[]){
 
 			cms_global= cms;
 			vdata_global=cms->Get_v_data();
+			cms_global->SetDebug(debug);
 
 			double r95;
 			double tmp;
@@ -727,13 +733,21 @@ int main(int argc, const char*argv[]){
 			if(PLalgorithm == "Minos"){
 				double upperL=0, lowerL=0; 
 				double y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, false, debug) ;
+				if(upperL==lowerL){
+				       	cout<<"WARNING: First Attempt Fails, try one more time with different set of starting values"<<endl;
+					y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, true, debug) ;
+					if(upperL==lowerL){
+						cout<<"ERROR: need to be investigate --> two attempts fails "<<endl;
+					}
+				}
 				r95 = upperL;
 			}else if(PLalgorithm == "Migrad"){
-				double y0_1 =  MinuitFit(3, tmp, tmperr, 0, 0, false, debug);
-				if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
 				double tmpr = 0;
 				double y0_2 =  MinuitFit(2, tmpr, tmperr, 0, pars, false, debug) ;
 				if(debug)	cout<<y0_2<<" fitter u="<<tmpr<<" +/- "<<tmperr<<endl;
+
+				double y0_1 =  MinuitFit(3, tmp, tmperr, 0, pars, false, debug);
+				if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
 
 				double x1 =0, x2 =1;
 				double y0 = y0_1;  
@@ -778,17 +792,17 @@ int main(int argc, const char*argv[]){
 				//              bisection search ...
 				//              y1 always > y0
 
-				double y =  MinuitFit(3, tmp, tmp, x2, 0, false, debug );
+				double y =  MinuitFit(3, tmp, tmp, x2, pars, false, debug );
 				if(fabs((y-y0)/2. - CI) > precision ){
 					//first, got a number > 1.921,  otherwise increase it by a factor of 10 ...
 					while( (y-y0)/2. < CI ){
 						x1 =  x2;
 						x2 *=10.;
-						y =  MinuitFit(3, tmp, tmp, x2, 0, false, debug );
+						y =  MinuitFit(3, tmp, tmp, x2, pars, false, debug );
 						if(debug) cout<<" NLL = "<<y<<" r="<<pars[0]<<endl;
 						nsearched++;
 					}
-					y = MinuitFit(3, tmp, tmp, (x1+x2)/2., 0, false, debug );
+					y = MinuitFit(3, tmp, tmp, (x1+x2)/2., pars, false, debug );
 					if(debug) cout<<" NLL = "<<y<<" r="<<pars[0]<<endl;
 					if(debug) cout<< " r="<<(x1+x2)/2.<<" NLL = "<<y<<endl;
 					while( fabs((y-y0)/2. - CI)/CI > precision ){
@@ -820,14 +834,14 @@ int main(int argc, const char*argv[]){
 
 
 			if(bPlots){ // show a plot for  -log(Lambda(mu)) vs. mu 
-				double x0 =  MinuitFit(21, tmp, tmperr, 0, 0, false, debug);
+				double x0 =  MinuitFit(21, tmp, tmperr, 0, pars, true, debug);
 				//double x0 = y0;
 				cout<<" x0 = "<<x0<<" optimized r="<<tmp<<endl;
 				vector<double> vrxsec, vmlnq; 
 				vrxsec.clear(); vmlnq.clear();
 				for(double r=0; r<=2*r95; r+=r95/10.){
 					vrxsec.push_back(r);
-					double x3 = MinuitFit(3,tmp, tmp, r, 0, false, debug) ;
+					double x3 = MinuitFit(3,tmp, tmp, r, pars, true, debug) ;
 					cout<<"r= "<<r<<", x3 = "<<x3<<endl;
 					double m2lnQ = x3 - x0;
 					cout<<"Profiled:  r ="<<r<<"	m2lnQ="<<m2lnQ<<endl;
