@@ -225,7 +225,7 @@ int main(int argc, const char*argv[]){
 					else{
 						rtries.push_back(rtmp);
 						avgR=0;
-						for(int j=0; j<rtries.size(); j++) avgR+=rtries[j]; avgR/=(float)(i+1);	
+						for(int j=0; j<rtries.size(); j++) avgR+=rtries[j]; avgR/=float(rtries.size());	
 						hint = avgR;
 						errR=0;
 						for(int i=0; i<rtries.size(); i++) errR+= (rtries[i]-avgR)*(rtries[i]-avgR); errR = sqrt(errR)/(float)(rtries.size());

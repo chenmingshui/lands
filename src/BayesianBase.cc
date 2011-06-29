@@ -117,6 +117,7 @@ namespace lands{
 
 		//NOTE: don't use const v<v<double>> &  here, because it will be changed in the following code
 		vector< vector<double> > vvparamunc = _cms->Get_v_pdfs_floatParamsUnc();
+		VChannelVSampleVUncertaintyVParameter vvvv_uncpar_tmp=_cms->Get_vvvv_uncpar();
 		if(bHasFlatPriorNuisance && bsys){
 			if(bdofit){
 				cms_global= _cms;
@@ -139,11 +140,9 @@ namespace lands{
 
 				errUp = pe; errLow=-pe;
 				if(vtype[i]==typeFlat) {
-					//cout<<" flat param: ["<<_cms->Get_v_uncname()[i-1]<<"] fitted "<<pars[i]<<" \"+\" "<<errUp<<" \"-\" "<<errLow<<endl;
-					//cout<<" flat param: ["<<_cms->Get_v_uncname()[i-1]<<"] fitted "<<pars[i]<<" \"+\" "<<errUp<<" \"-\" "<<errLow<<endl;
-					//cout<<" flat param: ["<<_cms->Get_v_uncname()[i-1]<<"] fitted "<<p<<" \"+\" "<<errUp<<" \"-\" "<<errLow<<endl;
-					if(_debug)cout<<" FITTEDflatParam: ["<<_cms->Get_v_uncname()[i-1]<<"] fitted "<<vvparamunc[i][1]*p+vvparamunc[i][3]<<" min "<< vvparamunc[i][1]*(p+5*errLow)+vvparamunc[i][3] <<" max "<< vvparamunc[i][1]*(p+5*errUp)+vvparamunc[i][3]<<endl;;
-					_cms->SetFlatParameterRange(i, vvparamunc[i][1]*p+vvparamunc[i][3], vvparamunc[i][1]*(p+5*errLow)+vvparamunc[i][3], vvparamunc[i][1]*(p+5*errUp)+vvparamunc[i][3]);
+					if(vvparamunc.size()>i)_cms->SetFlatParameterRange(i, vvparamunc[i][1]*p+vvparamunc[i][3], vvparamunc[i][1]*(p+5*errLow)+vvparamunc[i][3], vvparamunc[i][1]*(p+5*errUp)+vvparamunc[i][3]);
+					if(_debug)cout<<" FITTEDflatParam: "<<_cms->Get_v_uncname()[i-1]<<" param "<<vvparamunc[i][1]*p+vvparamunc[i][3]<<"  "<<vvparamunc[i][1]*errUp<<endl;;
+					_cms->SetFlatNormalizationRange(i, p+5*errLow, p+5*errUp);
 				}
 			}	
 			//change the range of flat parameters ;
@@ -205,7 +204,10 @@ namespace lands{
 			// resume the memory
 			//_cms->SetUseSystematicErrors(bsys);
 			_nexps_to_averageout_sys=ntoys;
-			if(_nexps_to_averageout_sys<=_preToys) { _limit=ret; _cms->Set_v_pdfs_floatParamsUnc(vvparamunc); return ret;}
+			if(_nexps_to_averageout_sys<=_preToys) { 
+				_limit=ret; _cms->Set_v_pdfs_floatParamsUnc(vvparamunc); 
+				_cms->Set_vvvv_uncpar(vvvv_uncpar_tmp);
+				return ret;}
 			_nexps_to_averageout_sys=ntoys;
 			GenToys();
 
@@ -218,6 +220,7 @@ namespace lands{
 			rmid = hint;
 		}
 		_cms->Set_v_pdfs_floatParamsUnc(vvparamunc); 
+		_cms->Set_vvvv_uncpar(vvvv_uncpar_tmp);
 		//cout<<"DELETEME 1"<<endl;
 
 		// try to get p<fAlpha 

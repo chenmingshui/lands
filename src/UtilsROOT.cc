@@ -1472,6 +1472,7 @@ bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripp
 		int pdf = 0; 
 		// see CountingModel.h
 		if(ss[1]=="lnN") pdf=typeLogNormal;   // typeLogNormal
+		else if(ss[1]=="flat") pdf=typeFlat;   // typeFlat
 		else if(ss[1]=="trG") pdf=typeTruncatedGaussian; // typeTruncatedGaussian
 		else if(ss[1]=="gmA" or ss[1]=="gmN" or ss[1]=="gmM") pdf=typeGamma; // typeControlSampleInferredLogNormal;  gmA was chosen randomly, while in gmN, N stands for yield in control sample;  gmM stands for Multiplicative gamma distribution, it implies using a Gamma distribution not for a yield but for a multiplicative correction
 		else if(ss[1]=="shapeN" or ss[1]=="shapeStat") pdf=typeLogNormal;
@@ -1513,6 +1514,29 @@ bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripp
 					exit(0);
 				}
 				if(err == 0. && errup==0.) continue;
+			}
+			else if(pdf==typeFlat){
+				if(ss[p+2]=="-") {
+					tmps+= "    -   ";
+					continue;
+				}
+				if(TString(ss[p+2]).Contains("/")){
+					vector<string> asymetricerrors; asymetricerrors.clear();
+					StringSplit(asymetricerrors, ss[p+2], "/");
+					if((TString(asymetricerrors[0])).Atof()<0) {
+						err = 1;
+					}else
+						err= (TString(asymetricerrors[0])).Atof(); // downside 
+					if((TString(asymetricerrors[1])).Atof()<0) {
+						errup = 1;
+					}else
+						errup= (TString(asymetricerrors[1])).Atof();  // upside
+				}else {
+					tmps+= TString(ss[p+2]);
+					cout<<"WARNING: flat uncertainty on normalization need to use \"/\" to separate min and max factors.  being skiped"<<endl;
+					continue;
+				}
+				tmps+= TString(ss[p+2]);
 			}
 			else if(pdf==typeTruncatedGaussian){
 				if(ss[p+2]=="-"){
@@ -1625,6 +1649,9 @@ bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripp
 				cms->AddUncertainty(binnumber[p]-1, subprocess[p], 8, shape, pdf, indexcorrelation );
 			}
 
+			if(pdf==typeFlat){
+					cms->AddUncertainty(binnumber[p]-1, subprocess[p], err, errup, pdf, indexcorrelation );
+			}
 			// because when err < 0, AddUncertainty do nothing,  but filledThisSource has been changed to be true
 			filledThisSource = true;
 		}
@@ -2087,6 +2114,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 		int pdf = 0; 
 		// see CountingModel.h
 		if(ss[1]=="lnN") pdf=typeLogNormal;   // typeLogNormal
+		else if(ss[1]=="flat") pdf=typeFlat; // typeFlat
 		else if(ss[1]=="trG") pdf=typeTruncatedGaussian; // typeTruncatedGaussian
 		else if(ss[1]=="gmA" or ss[1]=="gmN" or ss[1]=="gmM") pdf=typeGamma; // typeControlSampleInferredLogNormal;  gmA was chosen randomly, while in gmN, N stands for yield in control sample;  gmM stands for Multiplicative gamma distribution, it implies using a Gamma distribution not for a yield but for a multiplicative correction
 		else if(ss[1]=="shapeN" or ss[1]=="shapeStat") pdf=typeLogNormal;
@@ -2149,6 +2177,29 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 					exit(0);
 				}
 				if(err == 0. && errup==0.) continue;
+			}
+			else if(pdf==typeFlat && ss[1]=="flat"){
+				if(ss[p+2]=="-") {
+					tmps+= "    -   ";
+					continue;
+				}
+				if(TString(ss[p+2]).Contains("/")){
+					vector<string> asymetricerrors; asymetricerrors.clear();
+					StringSplit(asymetricerrors, ss[p+2], "/");
+					if((TString(asymetricerrors[0])).Atof()<0) {
+						err = 1;
+					}else
+						err= (TString(asymetricerrors[0])).Atof(); // downside 
+					if((TString(asymetricerrors[1])).Atof()<0) {
+						errup = 1;
+					}else
+						errup= (TString(asymetricerrors[1])).Atof();  // upside
+				}else {
+					tmps+= TString(ss[p+2]);
+					cout<<"WARNING: flat uncertainty on normalization need to use \"/\" to separate min and max factors.  being skiped"<<endl;
+					continue;
+				}
+				tmps+= TString(ss[p+2]);
 			}
 			else if(pdf==typeTruncatedGaussian){
 				if(ss[p+2]=="-"){
@@ -2230,7 +2281,8 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 
 			//if(debug)cout<<" To add unc"<<endl;
 
-			if(pdf==typeLogNormal||pdf==typeTruncatedGaussian){
+			cout<<" DELETEME 1 pdftype: "<<pdf<<endl;
+			if(pdf==typeLogNormal||pdf==typeTruncatedGaussian || (pdf==typeFlat && ss[1]=="flat")){
 				if(isParametricChannel)cms->AddUncertaintyOnShapeNorm(channelName, subprocess[p], err, errup, pdf, indexcorrelation );
 				else {
 					if(ss[1]=="shapeStat"){
@@ -2316,7 +2368,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 			bool succes = cms->AddUncertaintyOnShapeParam(indexcorrelation, mean, sigmaL, sigmaR, rangeMin, rangeMax );
 			if(succes)cms->TagUncertaintyFloatInFit(indexcorrelation, bUncIsFloatInFit);
 		}
-		if(pdf==typeFlat){
+		if(pdf==typeFlat && ss[1]=="flatParam"){
 			if(debug)cout<<" typeFlat "<<endl;
 			// FIXME add hoc implementation of flat param  uncertainties ....  need to think about also for normalization terms
 			if(ss.size()<2) {cout<<"ERROR: parameter line with type flatParam should have at least two columns "<<endl; exit(1);}

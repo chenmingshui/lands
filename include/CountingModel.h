@@ -123,6 +123,7 @@ namespace lands{
 
 
 			const VChannelVSampleVUncertaintyVParameter& Get_vvvv_uncpar(){return vvvv_uncpar;}
+			void Set_vvvv_uncpar(const VChannelVSampleVUncertaintyVParameter& vvvv){vvvv_uncpar=vvvv;}
 			const VChannelVSampleVUncertainty& Get_vvv_pdftype(){return vvv_pdftype;}
 			const VChannelVSampleVUncertainty& Get_vvv_idcorrl(){return vvv_idcorrl;}
 
@@ -208,6 +209,7 @@ namespace lands{
 			const vector< vector< double > >& Get_v_pdfs_floatParamsUnc(){ return v_pdfs_floatParamsUnc;}
 			void Set_v_pdfs_floatParamsUnc(const vector< vector< double > >& vv ){ v_pdfs_floatParamsUnc = vv;}
 			void SetFlatParameterRange(int id, double middle, double errLow, double errUp);
+			void SetFlatNormalizationRange(int id, double errLow, double errUp);
 			const vector<int>& Get_v_pdfs_floatParamsIndcorr() {return v_pdfs_floatParamsIndcorr;}      // only for params
 			const vector<int>& Get_v_pdfs_floatParamsType() {return v_pdfs_floatParamsType;}      // only for params
 

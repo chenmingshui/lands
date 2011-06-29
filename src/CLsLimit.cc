@@ -226,6 +226,9 @@ namespace lands{
 										bs*=(ran/v_GammaN[ipar]);
 									}
 									break;	
+								case typeFlat:
+									bs*=(*uncpars + (*(uncpars+1) - *uncpars)*ran);
+									break;
 								default:
 									cout<<"pdf_type = "<<vvv_pdftype[c][s][u]<<" not defined yet"<<endl;
 									exit(0);
@@ -513,11 +516,12 @@ namespace lands{
 			// Print results
 			Double_t amin,edm,errdef;
 			Int_t nvpar,nparx,icstat;
-			myMinuit->mnstat(amin,edm,errdef,nvpar,nparx,icstat);
 			Double_t errUp, errLow, errParab=0, gcor=0; 
-			myMinuit->mnerrs(0, errUp, errLow, errParab, gcor);
-
-			if(debug)cout<<"DELETEME errUp="<<errUp<<" errLow="<<errLow<<" errParab="<<errParab<<" gcor="<<gcor<<endl;
+			if(model==101 or model==102){
+				myMinuit->mnstat(amin,edm,errdef,nvpar,nparx,icstat);
+				myMinuit->mnerrs(0, errUp, errLow, errParab, gcor);
+				if(debug)cout<<"DELETEME errUp="<<errUp<<" errLow="<<errLow<<" errParab="<<errParab<<" gcor="<<gcor<<endl;
+			}
 
 			double l = myMinuit->fAmin;
 			myMinuit->GetParameter(0, r, er);

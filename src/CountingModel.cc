@@ -540,8 +540,8 @@ namespace lands{
 			if(pdf_type==typeTruncatedGaussian) {}; //fine
 			if( (uncertainty_in_relative_fraction_down <-1 or uncertainty_in_relative_fraction_up <-1) && pdf_type==typeLogNormal) { cout<<"logNormal type uncertainties can't have kappa < 0, exit"<<endl; exit(0);}; //fine
 		} 
-		if(pdf_type!=typeLogNormal && pdf_type!= typeTruncatedGaussian && pdf_type!=typeGamma ) {
-			cout<<"Error: Currently only implemented LogNormal, Gamma and TruncatedGaussian. Your input "<<pdf_type<<" haven't been implemented, exit"<<endl;
+		if(pdf_type!=typeLogNormal && pdf_type!= typeTruncatedGaussian && pdf_type!=typeGamma && pdf_type!=typeFlat) {
+			cout<<"Error: Currently only implemented LogNormal, Gamma and TruncatedGaussian, flat. Your input "<<pdf_type<<" haven't been implemented, exit"<<endl;
 			exit(0);
 		}
 		if(index_correlation <= 0) { 
@@ -851,7 +851,8 @@ If we need to change it later, it will be easy to do.
 					_norminalPars[i]=v_pdfs_floatParamsUnc[i][0];
 					break;
 				case typeFlat:
-					_norminalPars[i]=(v_pdfs_floatParamsUnc[i][0]-v_pdfs_floatParamsUnc[i][3])/v_pdfs_floatParamsUnc[i][1];
+					if(v_pdfs_floatParamsUnc.size()>=i && v_pdfs_floatParamsType[i]==typeFlat)_norminalPars[i]=(v_pdfs_floatParamsUnc[i][0]-v_pdfs_floatParamsUnc[i][3])/v_pdfs_floatParamsUnc[i][1];
+					else _norminalPars[i] = 0.5;
 					break;
 				default:
 					cout<<"pdftype not yet defined:  "<<v_pdftype[i]<<endl;
@@ -1098,7 +1099,11 @@ If we need to change it later, it will be easy to do.
 								// FIXME
 								break;
 							case typeFlat:
-								cout<<"WARNING: typeFlat pdf on normalization not yet implemented, skip it "<<endl;
+								//cout<<"Rndm = "<<ran<<endl;
+								vv[ch][isam]*=( vvvv_uncpar[ch][isam][iunc][0] + (vvvv_uncpar[ch][isam][iunc][1]-vvvv_uncpar[ch][isam][iunc][0])*ran );
+								//cout<<"Rndm -> b = "<<vv[ch][isam]<<endl;
+								// 0: min,  1: max, 2: range
+								//cout<<"WARNING: typeFlat pdf on normalization not yet implemented, skip it "<<endl;
 								break;
 							case typeShapeGaussianLinearMorph:
 								if(!bMoveUpShapeUncertainties){
@@ -2827,6 +2832,13 @@ If we need to change it later, it will be easy to do.
 		}
 	}
 	void CountingModel::SetFlatParameterRange(int id, double middle, double errLow, double errUp){
+		if(id>= v_pdfs_floatParamsUnc.size()) return;
+		for(int ip=0; ip<v_pdfs_floatParamsIndcorr.size(); ip++){
+			if(v_pdfs_floatParamsIndcorr[ip]==id) {
+				if(v_pdfs_floatParamsType[ip]!=typeFlat) return;
+			}
+		}
+
 		// for flatParam: vector-->    0  norminal value, 1 max-min,  2 dumy, 3 min, 4 max 
 		if(_debug>=10)cout<<" beginning: middle "<<v_pdfs_floatParamsUnc[id][0]<<", delta "<<v_pdfs_floatParamsUnc[id][1]<<", min "<<v_pdfs_floatParamsUnc[id][3]<<", max "<<v_pdfs_floatParamsUnc[id][4]<<endl;
 		v_pdfs_floatParamsUnc[id][0] = middle;
@@ -2834,5 +2846,22 @@ If we need to change it later, it will be easy to do.
 		if(errUp<v_pdfs_floatParamsUnc[id][4]) v_pdfs_floatParamsUnc[id][4]=errUp;
 		v_pdfs_floatParamsUnc[id][1] = v_pdfs_floatParamsUnc[id][4]-v_pdfs_floatParamsUnc[id][3];
 		if(_debug>=10)cout<<" ending: middle "<<v_pdfs_floatParamsUnc[id][0]<<", delta "<<v_pdfs_floatParamsUnc[id][1]<<", min "<<v_pdfs_floatParamsUnc[id][3]<<", max "<<v_pdfs_floatParamsUnc[id][4]<<endl;
+	}
+	void CountingModel::SetFlatNormalizationRange(int id, double errLow, double errUp){
+		for(int c=0; c< vvv_pdftype.size(); c++){
+			for(int s=0; s<vvv_pdftype[c].size(); s++){
+				for(int u=0; u<vvv_pdftype[c][s].size(); u++){
+					if(vvv_idcorrl[c][s][u]==id && vvv_pdftype[c][s][u]!=typeFlat) return;
+					if(vvv_idcorrl[c][s][u]==id && vvv_pdftype[c][s][u]==typeFlat) {
+						double range = vvvv_uncpar[c][s][u][1]-vvvv_uncpar[c][s][u][0];
+						double oldmin = vvvv_uncpar[c][s][u][0];
+						double oldmax = vvvv_uncpar[c][s][u][1];
+						if(errLow>0) vvvv_uncpar[c][s][u][0]=errLow*range + oldmin;
+						if(errUp>0 && (errUp>=errLow) && errUp<1 ) vvvv_uncpar[c][s][u][1]=errUp*range + oldmin;
+					}
+				}
+			}
+		}
+
 	}
 };
