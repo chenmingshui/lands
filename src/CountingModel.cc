@@ -1222,8 +1222,11 @@ If we need to change it later, it will be easy to do.
 
 				if(v_pdfs_floatParamsType[i]==typeFlat){
 					// for flatParam: vector-->    0  norminal value, 1 max-min,  2 dumy, 3 min, 4 max 
+					//cout<<" flat "<<v_pdfs_floatParamsName[i]<<": "<<v_pdfs_floatParamsUnc[ip][0]<<" ["<<v_pdfs_floatParamsUnc[ip][3]<<","<<v_pdfs_floatParamsUnc[ip][4]<<"], "<< v_pdfs_floatParamsUnc[ip][1]<<", rdm= "<<param<<endl;
 					param =( v_pdfs_floatParamsUnc[ip][3] + param* v_pdfs_floatParamsUnc[ip][1] );
+					//cout<<" flat "<<v_pdfs_floatParamsUnc[ip][0]<<" --> "<<param<<endl;
 				}
+
 
 				if(_debug>=100)cout<<"DELETEME: param norminal value: "<<v_pdfs_floatParamsUnc[ip][0]<<endl;
 				if(_debug>=100)cout<<"DELETEME: param only fitunc "<<param<<endl;
@@ -2822,5 +2825,14 @@ If we need to change it later, it will be easy to do.
 			for(int p=0; p<vv_statusUpdated[ch].size(); p++)
 				vv_statusUpdated[ch][p]=true;
 		}
+	}
+	void CountingModel::SetFlatParameterRange(int id, double middle, double errLow, double errUp){
+		// for flatParam: vector-->    0  norminal value, 1 max-min,  2 dumy, 3 min, 4 max 
+		if(_debug>=10)cout<<" beginning: middle "<<v_pdfs_floatParamsUnc[id][0]<<", delta "<<v_pdfs_floatParamsUnc[id][1]<<", min "<<v_pdfs_floatParamsUnc[id][3]<<", max "<<v_pdfs_floatParamsUnc[id][4]<<endl;
+		v_pdfs_floatParamsUnc[id][0] = middle;
+		if(errLow>v_pdfs_floatParamsUnc[id][3]) v_pdfs_floatParamsUnc[id][3]=errLow;
+		if(errUp<v_pdfs_floatParamsUnc[id][4]) v_pdfs_floatParamsUnc[id][4]=errUp;
+		v_pdfs_floatParamsUnc[id][1] = v_pdfs_floatParamsUnc[id][4]-v_pdfs_floatParamsUnc[id][3];
+		if(_debug>=10)cout<<" ending: middle "<<v_pdfs_floatParamsUnc[id][0]<<", delta "<<v_pdfs_floatParamsUnc[id][1]<<", min "<<v_pdfs_floatParamsUnc[id][3]<<", max "<<v_pdfs_floatParamsUnc[id][4]<<endl;
 	}
 };

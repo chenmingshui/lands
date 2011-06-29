@@ -332,6 +332,7 @@ namespace lands{
 		int UseMinos = 0;
 		if(model == 102) UseMinos = 2; // PL approximation method using Minos ....  with migrad 
 		if(model == 101) UseMinos = 1; // PL approximation method using Minos ....  without migrad
+		if(model == 1001) UseMinos = 2; // PL approximation method using Minos ....  with migrad 
 
 		double minuitStep = 0.1;
 
@@ -430,7 +431,7 @@ namespace lands{
 				myMinuit->mnparm(0, "ratio", 1, minuitStep, 0, 300, ierflg);
 				myMinuit->FixParameter(0);
 			}
-			else if(model==0){ // B-only, fix r
+			else if(model==0 || model==1001){ // B-only, fix r
 				myMinuit->mnparm(0, "ratio", 0.0, minuitStep, -1, 300, ierflg);
 				myMinuit->FixParameter(0);
 			}
@@ -479,7 +480,7 @@ namespace lands{
 			//if(debug>=10) cout<<"DELETEME in MinuitFit    2"<<endl;
 
 			arglist[0] = 1;
-			if(model==101 || model==102)arglist[0] = mu; // ErrorDef for Minos,  just temporaliry using mu ...
+			if(model==101 || model==102 || model==1001)arglist[0] = mu; // ErrorDef for Minos,  just temporaliry using mu ...
 			myMinuit->mnexcm("SET ERR", arglist ,1,ierflg);
 			// Now ready for minimization step
 			arglist[0] = 5000; // to be good at minization, need set this number to be 5000 (from experience of hgg+hww+hzz combination)
@@ -2311,7 +2312,7 @@ double CLsBase::M2lnQ(int checkFailure, int dataOrToy){
 			}
 			if(_debug>=100) cout<<" end of data fit"<<endl;
 		}
-
+		if(fittedPars)delete [] fittedPars;
 	}
 	if(_debug>=100) cout<<"-2lnQ = "<<q<<endl;
 	return q;

@@ -206,7 +206,11 @@ int main(int argc, const char*argv[]){
 			bys.SetCrossSectionPrior(prior);
 			double rtmp;
 			if(bCalcObservedLimit){
-				rtmp = bys.Limit(1-CL);
+				double *parsFitted, *parsErrLow, *parsErrUp;
+				parsFitted = new double[cms->Get_max_uncorrelation()+1];
+				parsErrUp= new double[cms->Get_max_uncorrelation()+1];
+				parsErrLow = new double[cms->Get_max_uncorrelation()+1];
+				rtmp = bys.Limit(1-CL, -99999., true, parsFitted, parsErrLow, parsErrUp);
 
 				if(nTries>1)cout<<"try "<<1<<": R at 95\% CL = "<<rtmp<<endl;
 
@@ -215,7 +219,7 @@ int main(int argc, const char*argv[]){
 				rtries.push_back(rtmp);
 				double avgR=0, errR=0;
 				for(int i=1; i<nTries; i++){
-					rtmp = bys.Limit(1-CL, hint);
+					rtmp = bys.Limit(1-CL, hint, false, parsFitted, parsErrLow, parsErrUp);
 					cout<<"try "<<i+1<<": R at 95\% CL = "<<rtmp<<endl;
 					if(rtmp<=0) cout<<"  - -- ---- r is meaningless, skipped "<<endl;
 					else{
@@ -223,10 +227,14 @@ int main(int argc, const char*argv[]){
 						avgR=0;
 						for(int j=0; j<rtries.size(); j++) avgR+=rtries[j]; avgR/=(float)(i+1);	
 						hint = avgR;
+						errR=0;
+						for(int i=0; i<rtries.size(); i++) errR+= (rtries[i]-avgR)*(rtries[i]-avgR); errR = sqrt(errR)/(float)(rtries.size());
+						cout<<"try current arg = "<<avgR<<" +/- "<<errR<<endl;
 					}
 				}
 				if(nTries<=1) avgR=rtmp;
-				for(int i=0; i<rtries.size(); i++) errR+= (rtries[i]-avgR)*(rtries[i]-avgR); errR = sqrt(errR)/(float)nTries;
+				errR=0;
+				for(int i=0; i<rtries.size(); i++) errR+= (rtries[i]-avgR)*(rtries[i]-avgR); errR = sqrt(errR)/(float)(rtries.size());
 
 				cout<<"------------------------------------------------------------"<<endl;
 				if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";

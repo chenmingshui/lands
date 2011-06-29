@@ -9,8 +9,10 @@
 // my include
 #include "BayesianBase.h"
 #include "Utilities.h"
+#include "CLsLimit.h"
 
 #include "RooDataSet.h"
+#include "TMath.h"
 
 //----------------need implementing a super good technique to do integration
 
@@ -87,7 +89,7 @@ namespace lands{
 		_cms=cms;	
 		return Limit();
 	}
-	double BayesianBase::Limit(double alpha, double hint){
+	double BayesianBase::Limit(double alpha, double hint, bool bdofit, double *parsFitted, double *parsErrLow, double *parsErrUp){
 		fAlpha = alpha;
 		fConfidenceLevel = 1-fAlpha;
 
@@ -105,8 +107,52 @@ namespace lands{
 		if(!bsys) _nexps_to_averageout_sys=1;	
 		else _nexps_to_averageout_sys=_preToys;	
 
+
+		// check whether there is any flat-prior nuisance
+		const vector<int>& vtype = _cms->Get_v_pdftype() ;
+		bool bHasFlatPriorNuisance = false;
+		for(int i=0; i<vtype.size(); i++) {
+			if(vtype[i]==typeFlat) {bHasFlatPriorNuisance=true; break;}
+		}
+
+		//NOTE: don't use const v<v<double>> &  here, because it will be changed in the following code
+		vector< vector<double> > vvparamunc = _cms->Get_v_pdfs_floatParamsUnc();
+		if(bHasFlatPriorNuisance && bsys){
+			if(bdofit){
+				cms_global= _cms;
+				vdata_global=_cms->Get_v_data();
+				_inputNuisances = _cms->Get_norminalPars();
+				double ErrorDef = TMath::ChisquareQuantile(0.68 , 1);// (confidenceLevel, ndf)
+				double upperL=0, lowerL=0; 
+				double y0_2 =  MinuitFit(1001, upperL, lowerL, ErrorDef, 0, false, _debug) ;
+			}
+			for(int i=1; i<=_cms->Get_max_uncorrelation(); i++){
+				Double_t errUp, errLow, errParab=0, gcor=0; 
+				//myMinuit->mnerrs(i, errUp, errLow, errParab, gcor);
+				double p, pe;
+				if(bdofit){
+					myMinuit->GetParameter(i, p, pe);
+					parsFitted[i]=p; parsErrLow[i]=pe;
+				}else{
+					p=parsFitted[i]; pe=parsErrLow[i];
+				}
+
+				errUp = pe; errLow=-pe;
+				if(vtype[i]==typeFlat) {
+					//cout<<" flat param: ["<<_cms->Get_v_uncname()[i-1]<<"] fitted "<<pars[i]<<" \"+\" "<<errUp<<" \"-\" "<<errLow<<endl;
+					//cout<<" flat param: ["<<_cms->Get_v_uncname()[i-1]<<"] fitted "<<pars[i]<<" \"+\" "<<errUp<<" \"-\" "<<errLow<<endl;
+					//cout<<" flat param: ["<<_cms->Get_v_uncname()[i-1]<<"] fitted "<<p<<" \"+\" "<<errUp<<" \"-\" "<<errLow<<endl;
+					if(_debug)cout<<" FITTEDflatParam: ["<<_cms->Get_v_uncname()[i-1]<<"] fitted "<<vvparamunc[i][1]*p+vvparamunc[i][3]<<" min "<< vvparamunc[i][1]*(p+5*errLow)+vvparamunc[i][3] <<" max "<< vvparamunc[i][1]*(p+5*errUp)+vvparamunc[i][3]<<endl;;
+					_cms->SetFlatParameterRange(i, vvparamunc[i][1]*p+vvparamunc[i][3], vvparamunc[i][1]*(p+5*errLow)+vvparamunc[i][3], vvparamunc[i][1]*(p+5*errUp)+vvparamunc[i][3]);
+				}
+			}	
+			//change the range of flat parameters ;
+			//and change it back at the end ;
+		}
+
 		double rmid = 10;
 		if(hint<-10000){
+			
 
 			GenToys();
 
@@ -159,7 +205,7 @@ namespace lands{
 			// resume the memory
 			//_cms->SetUseSystematicErrors(bsys);
 			_nexps_to_averageout_sys=ntoys;
-			if(_nexps_to_averageout_sys<=_preToys) { _limit=ret; return ret;}
+			if(_nexps_to_averageout_sys<=_preToys) { _limit=ret; _cms->Set_v_pdfs_floatParamsUnc(vvparamunc); return ret;}
 			_nexps_to_averageout_sys=ntoys;
 			GenToys();
 
@@ -171,7 +217,7 @@ namespace lands{
 			if(_debug) cout<<"  _NormReduction = "<<_NormReduction<<endl;
 			rmid = hint;
 		}
-
+		_cms->Set_v_pdfs_floatParamsUnc(vvparamunc); 
 		//cout<<"DELETEME 1"<<endl;
 
 		// try to get p<fAlpha 

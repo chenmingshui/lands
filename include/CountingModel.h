@@ -206,6 +206,8 @@ namespace lands{
 			const vector< RooDataSet* >& Get_v_pdfs_roodataset_real(){return v_pdfs_roodataset_real;} // in each channel, it has a list of events
 			const vector< double >& Get_v_pdfs_floatParamsVaried(){return v_pdfs_floatParamsVaried;}
 			const vector< vector< double > >& Get_v_pdfs_floatParamsUnc(){ return v_pdfs_floatParamsUnc;}
+			void Set_v_pdfs_floatParamsUnc(const vector< vector< double > >& vv ){ v_pdfs_floatParamsUnc = vv;}
+			void SetFlatParameterRange(int id, double middle, double errLow, double errUp);
 			const vector<int>& Get_v_pdfs_floatParamsIndcorr() {return v_pdfs_floatParamsIndcorr;}      // only for params
 			const vector<int>& Get_v_pdfs_floatParamsType() {return v_pdfs_floatParamsType;}      // only for params
 
