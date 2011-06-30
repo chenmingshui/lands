@@ -243,6 +243,8 @@ int main(int argc, const char*argv[]){
 				else cout<<endl;
 				cout<<"------------------------------------------------------------"<<endl;
 
+				SaveResults(jobname+"_bysObsLimit", HiggsMass, avgR, errR, 0, 0, 0, 0, 0, 0, 0, 0);
+
 				if(bPlots)	{
 					bys.PosteriorPdf();
 					//start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_BayesianLimit ppdf: "<< (cur_time - start_time)/1000. << " millisec\n";
@@ -340,11 +342,17 @@ int main(int argc, const char*argv[]){
 				if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
 				cout<<"Observed CLs = "<<cls<<" +/- "<<errs<<endl;
 
+				double * clsbands = clsr95.Get_CLsProjected();
+				SaveResults(jobname+"_clsbands", HiggsMass, cls, errs, 0, 0, clsbands[0], clsbands[1], clsbands[2], clsbands[5], clsbands[3], clsbands[4]);
 				return 0;
 			}
 
 			if(!bSkipM2lnQ && makeCLsBands==1){
 				clsr95.DoingStatisticalBandsForCLs(vsb, vb);	
+				double errs;
+				double cls = frequentist.CLs(errs);
+				double * clsbands = clsr95.Get_CLsProjected();
+				SaveResults(jobname+"_clsbands", HiggsMass, cls, errs, 0, 0, clsbands[0], clsbands[1], clsbands[2], clsbands[5], clsbands[3], clsbands[4]);
 			}
 
 			if(!bNotCalcCLssbb && !bSkipM2lnQ){
@@ -535,7 +543,9 @@ int main(int argc, const char*argv[]){
 				cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<rtmp<<" +/- "<<clsr95.LimitErr()<<endl;
 				cout<<"------------------------------------------------------------"<<endl;
 
+				SaveResults(jobname+"_freqObsLimit", HiggsMass, rtmp, clsr95.LimitErr(), 0, 0, 0, 0, 0, 0, 0, 0);
 			}
+
 
 			if(doExpectation && sFileLimitsDistribution==""){
 				cms->SetSignalScaleFactor(1.);
@@ -669,6 +679,7 @@ int main(int argc, const char*argv[]){
 			cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<r95_fc<<endl;
 			cout<<"------------------------------------------------------------"<<endl;
 
+			SaveResults(jobname+"_fcObsLimit", HiggsMass, r95_fc, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
 			if(bPlots){
 				// for plots...
@@ -840,6 +851,7 @@ int main(int argc, const char*argv[]){
 			cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<r95<<endl;
 			cout<<"------------------------------------------------------------"<<endl;
 
+			SaveResults(jobname+"_plrObsLimit", HiggsMass, r95, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
 			if(bPlots){ // show a plot for  -log(Lambda(mu)) vs. mu 
 				double x0 =  MinuitFit(21, tmp, tmperr, 0, pars, true, debug);
@@ -904,6 +916,7 @@ int main(int argc, const char*argv[]){
 			printf("BANDS %10.5f %10.5f %10.5f %10.5f %10.5f %10.5f\n", rm2s2, rm1s2, rmean, rp1s2, rp2s2, rmedian2);
 			cout<<"------------------------------------------------------------"<<endl;
 
+			SaveResults(jobname+"_limitbands", HiggsMass, 0, 0, 0, 0, rm2s2, rm1s2, rmedian2, rmean, rp1s2, rp2s2);
 			if(bPlots){
 				TCanvas *c=new TCanvas("cme","cme");
 				c->SetLogy(1);
@@ -960,9 +973,11 @@ int main(int argc, const char*argv[]){
 			if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
 			cout<<"Observed significance using PLR method = "<<sig_data<<endl;
 			if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
-			cout<<"Observed p-value = "<<ROOT::Math::normal_cdf_c(sig_data)<<endl;
+			double pvalue = ROOT::Math::normal_cdf_c(sig_data);
+			cout<<"Observed p-value = "<<pvalue<<endl;
 			if(sig_data>=4) cout<<"WARNING: please contact mschen@cern.ch for a potential issue on the nuisances' range. Needs change from [-5,5] to larger one"<<endl;
 
+			SaveResults(jobname+"_plrObsPvalue", HiggsMass, 0, 0, sig_data, pvalue, 0, 0, 0, 0, 0, 0);
 			if(debug>=10) { // show a plot for   -log(Lambda(mu)) vs. mu ...
 				for(double r=0; r<2; r+=0.1){
 					m2lnQ = MinuitFit(3,tmp, tmp, r) -x2; 
@@ -1013,6 +1028,8 @@ int main(int argc, const char*argv[]){
 			cout<<" Observed Significance for the data = "<<signi<<endl;
 			cout<<"------------------------------------------------------------"<<endl;
 
+			pvalue = ROOT::Math::normal_cdf_c(signi);
+			SaveResults(jobname+"_frqObsPvalue", HiggsMass, 0, 0, signi, pvalue, 0, 0, 0, 0, 0, 0);
 			if(doExpectation){
 				// FIXME
 			}

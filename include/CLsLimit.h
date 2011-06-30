@@ -141,6 +141,7 @@ namespace lands{
 			const vector< vector<double> >& GetFCconstruction(){return _FCconstruction;}
 			void SetAdaptiveSampling(bool b){bAdaptiveSampling=b;}
 			void SetAdditionalNToysFactor(double d){fAdditionalNToysFactor=d;}
+			double * Get_CLsProjected(){return _CLsProjected;};
 
 		private:
 			vector<double> _vR;

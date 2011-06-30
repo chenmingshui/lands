@@ -22,6 +22,7 @@
 #include <cmath>
 #include <memory>
 #include "TF1.h"
+#include "TCanvas.h"
 #include "TFile.h"
 #include "TH1F.h"
 #include "RooAbsPdf.h"
@@ -2227,13 +2228,55 @@ If we need to change it later, it will be easy to do.
 		if(_debug>=10){
 			TString s = "data_"; s+= v_pdfs_channelname[ch]; s+=".root";
 			TFile f(s, "RECREATE") ;
-			TH1F h("data","data", 100, _w->var(v_pdfs_observables[ch])->getMin(), _w->var(v_pdfs_observables[ch])->getMax() );
+			double xmin = _w->var(v_pdfs_observables[ch])->getMin();
+			double xmax = _w->var(v_pdfs_observables[ch])->getMax();
+			TH1F hs("s","s", 100, xmin, xmax);
+			TH1F hb("b","b", 100,  xmin, xmax);
+			TH1F hsb("sb","sb", 100,  xmin, xmax);
+			TH1F h("data","data", 100, xmin, xmax);
+			double binwidth = (xmax-xmin)/100.;
+			RooArgSet vars(*(_w->var(v_pdfs_observables.back() ) ) );
+			for(int x = 1; x<=100; x++){
+				_w->var(v_pdfs_observables.back())->setVal((xmax-xmin)/100.*(x-1)+xmin); 
+				hs.SetBinContent(x, _w->pdf(v_pdfs_s.back())->getVal(&vars));
+				hb.SetBinContent(x, _w->pdf(v_pdfs_b.back())->getVal(&vars));
+				hsb.SetBinContent(x, _w->pdf(v_pdfs_sb.back())->getVal(&vars));
+			}
+
+			hs.Write();
+			hb.Write();
+			hsb.Write();
 
 			for(int i=0; i<v_pdfs_roodataset[ch]->sumEntries(); i++){
 				_w->var(v_pdfs_observables[ch])->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal());
 				h.Fill(_w->var(v_pdfs_observables[ch])->getVal());
 			}
 			f.WriteTObject(&h);
+
+			TCanvas canvas("can","can",800, 800);
+			canvas.cd();
+			h.Draw("histe");
+			double normS = 0, normB=0;
+			for(int i=0; i<vv_pdfs_norm_varied[ch].size(); i++) {
+				if(i<v_pdfs_sigproc[ch]) normS+=vv_pdfs_norm_varied[ch][i];
+				else normB+=vv_pdfs_norm_varied[ch][i];
+			}
+			h.SetLineWidth(2);
+			hs.SetLineWidth(2);
+			hb.SetLineWidth(2);
+			hsb.SetLineWidth(2);
+			cout<<"normS = "<<normS<<", normB = "<<normB<<endl;
+			hs.Scale(normS*binwidth);
+			hs.SetLineColor(kBlue);
+			hs.Draw("same");
+			hb.Scale(normB*binwidth);
+			hb.SetLineColor(kRed);
+			hb.Draw("same");
+			hsb.Scale((normS+normB)*binwidth);
+			hsb.SetLineColor(6);
+			hsb.Draw("same");
+			f.WriteTObject(&canvas);
+
 			f.Close();
 		}
 		if(_debug>=10){

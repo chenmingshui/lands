@@ -22,6 +22,7 @@ inline Double_t Significance(Double_t pvalue){
 */
 // FIXME make a few trees which save all important numbers, so we can easily remake plots 
 // and parallel running .....,  combine them at the final step
+void SaveResults(TString sfile, double mH, double limit, double limitErr, double significance, double pvalue, double rm2s, double rm1s, double rmedian, double rmean, double rp1s, double rp2s);
 void FillTree(TString sfile, vector<double> array, TString treeName="");
 void FillTree(TString sfile, vector<int> array);
 void FillTree(TString sfile, double * array, int nsize=100000);

@@ -7,6 +7,25 @@
 #include "TDirectory.h"
 #include "TKey.h"
 #include "RooDataSet.h"
+void SaveResults(TString sfile, double mH, double limit, double limitErr, double significance, double pvalue, double rm2s, double rm1s, double rmedian, double rmean, double rp1s, double rp2s){
+	TFile fTrees(sfile+".root", "RECREATE");
+	TTree *tree = new TTree("T","T"); 
+	tree->Branch("mH", &mH, "mH/D");
+	tree->Branch("limit", &limit, "limit/D");
+	tree->Branch("limitErr", &limitErr, "limitErr/D");
+	tree->Branch("significance", &significance, "significance/D");
+	tree->Branch("pvalue", &pvalue, "pvalue/D");
+	tree->Branch("rm2s", &rm2s, "rm2s/D");
+	tree->Branch("rm1s", &rm1s, "rm1s/D");
+	tree->Branch("rmedian", &rmedian, "rmedian/D");
+	tree->Branch("rmean", &rmean, "rmean/D");
+	tree->Branch("rp1s", &rp1s, "rp1s/D");
+	tree->Branch("rp2s", &rp2s, "rp2s/D");
+	tree->Fill();
+
+	fTrees.Write();
+	fTrees.Close();
+}
 TH1F* GetHisto(string filename, string histoname){
 
 	//cout<<filename<<", "<<histoname<<endl;
@@ -2281,7 +2300,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 
 			//if(debug)cout<<" To add unc"<<endl;
 
-			cout<<" DELETEME 1 pdftype: "<<pdf<<endl;
+			//cout<<" DELETEME 1 pdftype: "<<pdf<<endl;
 			if(pdf==typeLogNormal||pdf==typeTruncatedGaussian || (pdf==typeFlat && ss[1]=="flat")){
 				if(isParametricChannel)cms->AddUncertaintyOnShapeNorm(channelName, subprocess[p], err, errup, pdf, indexcorrelation );
 				else {
