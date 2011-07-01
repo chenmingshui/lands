@@ -963,7 +963,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 						double tmp_rate = GetRate(channelnames[c], channelnames, vv_procnames[c][t], vv_procnames, ss_old_rate);
 						if(tmp_rate<0) {} //don't check normalization of histogram,  users' responsibility 
 						else{ 
-							if(fabs(tmp_rate-hn[t]->Integral())/hn[t]->Integral() > 0.1){ // if difference > 10%, then put Error and exit
+							if(fabs(tmp_rate-hn[t]->Integral())/hn[t]->Integral() > 1){ // if difference > 100%, then put Error and exit
 								cout<<"ERROR: in channel ["<<channelnames[c]<<"] process ["<<vv_procnames[c][t]<<"], ";
 								cout<<" declared rate in data card = "<< tmp_rate<<", not consistent with the integral of input histogram,";
 							        cout<<" which is "<<hn[t]->Integral()<<endl;
