@@ -858,3 +858,60 @@ void DrawPdfRLikelihood::draw(){
 	DrawCMS();
 	Save(cCanvas,_ssave);
 }
+
+void GetLimits(TTree *tree, vector<double>& inputMH, vector<double>& inputLimits ){	
+   // Declaration of leaf types
+   Double_t        mH;
+   Double_t        limit;
+   Double_t        limitErr;
+   Double_t        significance;
+   Double_t        pvalue;
+   Double_t        rm2s;
+   Double_t        rm1s;
+   Double_t        rmedian;
+   Double_t        rmean;
+   Double_t        rp1s;
+   Double_t        rp2s;
+
+   // List of branches
+   TBranch        *b_mH;   //!
+   TBranch        *b_limit;   //!
+   TBranch        *b_limitErr;   //!
+   TBranch        *b_significance;   //!
+   TBranch        *b_pvalue;   //!
+   TBranch        *b_rm2s;   //!
+   TBranch        *b_rm1s;   //!
+   TBranch        *b_rmedian;   //!
+   TBranch        *b_rmean;   //!
+   TBranch        *b_rp1s;   //!
+   TBranch        *b_rp2s;   //!
+
+   TTree *fChain = tree;
+   if(tree->GetBranch("mH")){
+	   fChain->SetBranchAddress("mH", &mH, &b_mH);
+   }
+   if(tree->GetBranch("mh")){
+	   fChain->SetBranchAddress("mh", &mH, &b_mH);
+   }
+
+   fChain->SetBranchAddress("limit", &limit, &b_limit);
+   fChain->SetBranchAddress("limitErr", &limitErr, &b_limitErr);
+   fChain->SetBranchAddress("significance", &significance, &b_significance);
+   fChain->SetBranchAddress("pvalue", &pvalue, &b_pvalue);
+   fChain->SetBranchAddress("rm2s", &rm2s, &b_rm2s);
+   fChain->SetBranchAddress("rm1s", &rm1s, &b_rm1s);
+   fChain->SetBranchAddress("rmedian", &rmedian, &b_rmedian);
+   fChain->SetBranchAddress("rmean", &rmean, &b_rmean);
+   fChain->SetBranchAddress("rp1s", &rp1s, &b_rp1s);
+   fChain->SetBranchAddress("rp2s", &rp2s, &b_rp2s);
+
+   Long64_t nentries = tree->GetEntries();
+
+   //Long64_t nbytes = 0, nb = 0;
+   for (Long64_t jentry=0; jentry<nentries;jentry++) {
+	   Long64_t ientry = tree->GetEntry(jentry);
+	   if (ientry < 0) break;
+	   inputLimits.push_back(limit);
+	   inputMH.push_back(mH);
+   }
+}

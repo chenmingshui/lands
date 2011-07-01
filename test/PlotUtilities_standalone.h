@@ -10,6 +10,7 @@
 #include <TF1.h>
 #include <TCanvas.h>
 #include <TArrow.h>
+#include <TTree.h>
 
 using namespace std;
 
@@ -347,5 +348,5 @@ class DrawPdfRLikelihood{
 		double *_par;
 		int _npar;
 };
+void GetLimits(TTree *tree, vector<double>& inputMH, vector<double>& inputLimits );
 #endif   /* ----- #ifndef PLOTUTILITIES_H  ----- */
-
