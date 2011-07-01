@@ -757,10 +757,13 @@ int main(int argc, const char*argv[]){
 					y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, true, debug) ;
 					if(upperL==lowerL){
 						cout<<"ERROR: need to be investigate --> two attempts fails "<<endl;
+						cout<<" -----> trying Migrad"<<endl;
+						PLalgorithm = "Migrad";
 					}
 				}
 				r95 = upperL;
-			}else if(PLalgorithm == "Migrad"){
+			}
+			if(PLalgorithm == "Migrad"){
 				double tmpr = 0;
 				double y0_2 =  MinuitFit(2, tmpr, tmperr, 0, pars, false, debug) ;
 				if(debug)	cout<<y0_2<<" fitter u="<<tmpr<<" +/- "<<tmperr<<endl;
