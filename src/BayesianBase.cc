@@ -140,7 +140,7 @@ namespace lands{
 
 				errUp = pe; errLow=-pe;
 				if(vtype[i]==typeFlat) {
-					if(vvparamunc.size()>i)_cms->SetFlatParameterRange(i, vvparamunc[i][1]*p+vvparamunc[i][3], vvparamunc[i][1]*(p+5*errLow)+vvparamunc[i][3], vvparamunc[i][1]*(p+5*errUp)+vvparamunc[i][3]);
+					if(vvparamunc.size()>i)_cms->SetFlatParameterRange(i, vvparamunc[i][1]*p+vvparamunc[i][3], vvparamunc[i][1]*(p+3*errLow)+vvparamunc[i][3], vvparamunc[i][1]*(p+3*errUp)+vvparamunc[i][3]);
 					if(_debug)cout<<" FITTEDflatParam: "<<_cms->Get_v_uncname()[i-1]<<" param "<<vvparamunc[i][1]*p+vvparamunc[i][3]<<"  "<<vvparamunc[i][1]*errUp<<endl;;
 					_cms->SetFlatNormalizationRange(i, p+5*errLow, p+5*errUp);
 				}

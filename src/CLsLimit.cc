@@ -369,7 +369,8 @@ namespace lands{
 
 			}
 
-			arglist[0] = 0; // set to be 0 (was default 1), reduce lots of function calls, ---> speed up by a factor of 6 
+			arglist[0] = cms_global->Get_minuitSTRATEGY(); // set to be 0 (was default 1), reduce lots of function calls, ---> speed up by a factor of 6 
+			if(debug)cout<<" SET STRATEGY "<<arglist[0]<<endl;
 			myMinuit->mnexcm("SET STRATEGY", arglist ,1,ierflg);
 			//myMinuit -> mnexcm("SET NOG", arglist, 1, ierflg); // no gradiants required of FCN
 
@@ -486,7 +487,8 @@ namespace lands{
 			if(model==101 || model==102 || model==1001)arglist[0] = mu; // ErrorDef for Minos,  just temporaliry using mu ...
 			myMinuit->mnexcm("SET ERR", arglist ,1,ierflg);
 			// Now ready for minimization step
-			arglist[0] = 5000; // to be good at minization, need set this number to be 5000 (from experience of hgg+hww+hzz combination)
+			arglist[0] = cms_global->Get_maximumFunctionCallsInAFit(); // to be good at minization, need set this number to be 5000 (from experience of hgg+hww+hzz combination)
+			if(debug)cout<<" Maximum Function Calls="<<arglist[0]<<endl;
 			arglist[1] = 1.;
 			if(!UseMinos)myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
 			if(UseMinos==2)myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);

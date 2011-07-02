@@ -260,6 +260,11 @@ namespace lands{
 			void UnFlagAllChannels(bool b);
 			void FlagAllChannels();
 			const vector< vector<bool> > & Get_vv_statusUpdated(){return vv_statusUpdated;};
+
+			void Set_minuitSTRATEGY(int i){minuitSTRATEGY=i;};
+			int Get_minuitSTRATEGY(){return minuitSTRATEGY;};
+			void Set_maximumFunctionCallsInAFit(int i){maximumFunctionCallsInAFit=i;};
+			int Get_maximumFunctionCallsInAFit(){return maximumFunctionCallsInAFit;};
 		private:
 			VDChannel v_data; // could be pseudo-data for bands
 			VDChannel v_data_real; // real data, not changed during entire run 
@@ -383,6 +388,9 @@ namespace lands{
 			vector< vector< bool > > vv_statusUpdated;  // 
 			vector< vector<std::pair<int, int> > > vvp_pdfs_connectNuisBinProc;// keep in memory:  a nuisance affects a list of [channel, process]
 			vector< vector<std::pair<int, int> > > vvp_connectNuisBinProc;// keep in memory:  a nuisance affects a list of [channel, process]
+
+			int minuitSTRATEGY;
+			int maximumFunctionCallsInAFit;
 
 	};
 	CountingModel* CombineModels(CountingModel *cms1, CountingModel *cms2);

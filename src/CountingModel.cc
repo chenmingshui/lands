@@ -135,6 +135,9 @@ namespace lands{
 		vv_statusUpdated.clear();
 		vvp_connectNuisBinProc.clear();
 		vvp_pdfs_connectNuisBinProc.clear();
+
+		minuitSTRATEGY = 0; 
+		maximumFunctionCallsInAFit=5000;
 	}
 	CountingModel::~CountingModel(){
 		v_data.clear();

@@ -106,6 +106,9 @@ double HiggsMass = -1;
 
 int nTries = 1;
 
+int maximumFunctionCallsInAFit = 5000;
+int minuitSTRATEGY = 0;
+
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
 
@@ -196,6 +199,8 @@ int main(int argc, const char*argv[]){
 
 	cms_global= cms;
 	cms_global->SetDebug(debug);
+	cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
+	cms_global->Set_maximumFunctionCallsInAFit(maximumFunctionCallsInAFit);
 	TPaveText *pt = SetTPaveText(0.2, 0.7, 0.3, 0.9);
 	if(calcsignificance==0){// calc limits
 		if(method == "Bayesian"){
@@ -1450,6 +1455,14 @@ void processParameters(int argc, const char* argv[]){
 		bSkipM2lnQ = 1; doExpectation = 0;
 	}
 
+	tmpv = options["--minuitSTRATEGY"]; 
+	if( tmpv.size()!=1 ) { minuitSTRATEGY= 0; }
+	else { minuitSTRATEGY = tmpv[0].Atoi(); }
+
+	tmpv = options["--maximumFunctionCallsInAFit"]; 
+	if( tmpv.size()!=1 ) { maximumFunctionCallsInAFit= 5000; }
+	else { maximumFunctionCallsInAFit = tmpv[0].Atoi(); }
+
 	printf("\n\n[ Summary of configuration in this job: ]\n");
 	cout<<"  Calculating "<<(calcsignificance?"significance":"limit")<<" with "<<method<<" method "<<endl;
 	if(HiggsMass>0) cout<<" higgs mass = "<<HiggsMass<<endl;
@@ -1525,6 +1538,8 @@ void processParameters(int argc, const char* argv[]){
 		cout<<"    custom libraries to be loaded: "<<endl;
 		for(int i=0; i<librariesToBeLoaded.size(); i++) cout<<" "<<librariesToBeLoaded[i]<<endl;
 	}
+	cout<<"  minuitSTRATEGY="<<minuitSTRATEGY<<endl;
+	cout<<"  maximumFunctionCallsInAFit="<<maximumFunctionCallsInAFit<<endl;
 	cout<<endl<<endl;
 
 	fflush(stdout);	
@@ -1603,6 +1618,8 @@ void PrintHelpMessage(){
 	printf("ProfiledLikelihood specific options: \n"); 
 	printf("--OneOrTwoSided arg (=2)              1 sided limit -lnL = 1.345;  2 sided limit -lnL = 1.921 \n"); 
 	printf("--PLalgorithm arg (=Minos)            algorithms for ProfileLikelihood approximation: Minos, Migrad \n"); 
+	printf("--minuitSTRATEGY arg (=0)             0: no calculation of secondary derivative, 1: yes \n"); 
+	printf("--maximumFunctionCallsInAFit arg (=5000)  \n"); 
 
 	printf(" \n");
 	printf("------------------some comand lines-----------------------------------------------\n");
