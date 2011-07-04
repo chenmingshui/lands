@@ -53,12 +53,14 @@ void runLHC(){
 	gSystem->Exec("rm -f m2lnq_*root");
 	gSystem->Exec("rm log1 -f");
 	int n =0;
-	for(double r = 0.1; r<10; r+=(0.05*r)){
+	for(double r = 0.1; r<1; r+=(0.05*r)){
 		cout<<r<<" ";
 		n++;
 	}
 	cout<<endl;
 	cout<<n<<endl;
+
+	return;
 
 	double err;
 	vector<double> vR, vCLs, vCLserr;
