@@ -36,6 +36,8 @@ namespace lands{
 			const vector<vector<double> >& Get_vvCL_forVR(){return _vvCL_forVR;}
 			const vector<double>& Get_vR_toEval(){return _vR_toEval;}
 
+			void SetQuickEstimateInitialLimit(bool b){bQuickEstimateInitialLimit = b;}; // if set it true, you have to provide  initialRmax and initialRmin, and steps
+			void SetInitialR(double rmin, double rmax, int nstep=3){initialRmin=rmin; initialRmax=rmax; nSteps = nstep;}; // effect for every single limit 
 		private:
 			void Bands();
 			bool _doCLs, _doBys;
@@ -62,7 +64,12 @@ namespace lands{
 			vector<double> _vR_toEval;
 			bool bOnlyEvalCL_forVR;
 			vector< vector<double> > _vvCL_forVR;
-			
+
+			bool bQuickEstimateInitialLimit; // for CLs type , using bayesian as a pre-calculation // for charged higgs, bayesian doesn't work ...
+			double initialRmin, initialRmax;
+			int nSteps;
+
+
 	};
 }
 #endif   /* ----- #ifndef LIMITBANDS_H  ----- */

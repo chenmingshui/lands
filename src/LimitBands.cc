@@ -6,24 +6,33 @@
 #include "TTree.h"
 #include <map>
 #include "UtilsROOT.h"
+#include "PlotUtilities.h"
 
 using namespace RooFit;
 namespace lands{
 	LimitBands::LimitBands(){
 		_frequentist=0;	_clslimit=0; _byslimit=0; _cms=0;
 		_doCLs=0; _doBys=0; _debug=0; _plotLevel=0;bOnlyEvalCL_forVR = 0;
+		bQuickEstimateInitialLimit = false;
+		initialRmin = 0.01; initialRmax=1; nSteps=3;
 	}
 	LimitBands::LimitBands(CLsLimit *cl, CLsBase *cb, CountingModel* cms){
 		_frequentist=cb;	_clslimit=cl;  _byslimit=0; _cms=cms;
 		_doCLs=0; _doBys=0; _debug=0;  _plotLevel=0; bOnlyEvalCL_forVR = 0;
+		bQuickEstimateInitialLimit = false;
+		initialRmin = 0.01; initialRmax=1; nSteps=3;
 	}
 	LimitBands::LimitBands(BayesianBase *bb, CountingModel* cms){
 		_frequentist=0;	_clslimit=0; _byslimit=bb; _cms=cms;
 		_doCLs=0; _doBys=0; _debug=0;  _plotLevel=0; bOnlyEvalCL_forVR = 0;
+		bQuickEstimateInitialLimit = false;
+		initialRmin = 0.01; initialRmax=1; nSteps=3;
 	}
 	LimitBands::LimitBands(CLsLimit *cl, CLsBase *cb, BayesianBase *bb, CountingModel* cms){
 		_frequentist=cb;	_clslimit=cl;  _byslimit=bb; _cms=cms; bb->SetModel(cms);
 		_doCLs=0; _doBys=0; _debug=0;  _plotLevel=0; bOnlyEvalCL_forVR = 0;
+		bQuickEstimateInitialLimit = false;
+		initialRmin = 0.01; initialRmax=1; nSteps=3;
 	}
 	LimitBands::~LimitBands(){}
 	void LimitBands::CLsLimitBands(double alpha, int noutcome, int ntoysM2lnQ){
@@ -191,8 +200,11 @@ namespace lands{
 					continue;
 				}
 				//--------------calc r95% with (s,b,n) by throwing pseudo experiments and using the fits to get r95% at CLs=5
-				if(!bM2lnQGridPreComputed)r=_clslimit->LimitOnSignalScaleFactor(_cms, _frequentist, _ntoysM2lnQ);
-				else {
+				if(!bM2lnQGridPreComputed){
+					if(bQuickEstimateInitialLimit) r=_clslimit->LimitOnSignalScaleFactor(_cms, _frequentist, _ntoysM2lnQ);
+					else r= _clslimit->LimitOnSignalScaleFactor(_cms, initialRmin, initialRmax, _frequentist, _ntoysM2lnQ, nSteps);
+
+				}else {
 					int ii = 0;
 					for (std::map<double, TTree *>::iterator itg = gridCLsb.begin(), edg = gridCLsb.end(); itg != edg; ++itg) {
 						double rVal = itg->first;
@@ -223,6 +235,12 @@ namespace lands{
 				}
 				if(_debug)cout<<"n="<<n<<" cls_r= "<<r<<" p= "<<p<<" repeated "<<nentries_for_thisR<<endl;
 				if(_debug) { start_time=cur_time; cur_time=clock(); cout << "\t\t\t TIME_in_BAND, doCLs "<< n << " took " <<(cur_time - start_time)/1000000. << " sec\n"; }
+				if(_plotLevel>=10){
+					TPaveText *pt = SetTPaveText(0.2, 0.7, 0.3, 0.9);
+					DrawEvolution2D d2d(_clslimit->GetvTestedScaleFactors(), _clslimit->GetvTestedCLs(), "; r ; CLs", TString::Format("expectation_r_vs_cl_%d", n).Data(), pt);
+					d2d.draw();
+					d2d.save();
+				}
 			}
 			if(_doBys){
 				_cms->SetSignalScaleFactor(1.);

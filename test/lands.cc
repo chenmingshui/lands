@@ -109,6 +109,8 @@ int nTries = 1;
 int maximumFunctionCallsInAFit = 5000;
 int minuitSTRATEGY = 0;
 
+TString sPhysicsModel = "StandardModelHiggs";
+
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
 
@@ -196,6 +198,8 @@ int main(int argc, const char*argv[]){
 	  ProfilerStart(gSystem->Getenv("CPUPROFILE"));
 	}
 #endif
+
+	if(sPhysicsModel=="ChargedHiggs") cms->SetPhysicsModel(typeChargedHiggs);
 
 	cms_global= cms;
 	cms_global->SetDebug(debug);
@@ -555,6 +559,8 @@ int main(int argc, const char*argv[]){
 			if(doExpectation && sFileLimitsDistribution==""){
 				cms->SetSignalScaleFactor(1.);
 				LimitBands lb(&clsr95, &frequentist, cms);	
+				lb.SetQuickEstimateInitialLimit(bQuickEstimateInitialLimit);
+				lb.SetInitialR(initialRmin, initialRmax);
 				lb.SetTossPseudoDataConvention(tossPseudoDataConvention);
 				lb.SetDebug(debug);
 				lb.SetPlotLevel(bPlots);
@@ -1196,6 +1202,12 @@ void processParameters(int argc, const char* argv[]){
 		dataset = tmpv[0];
 		if(dataset!="data_obs" and dataset!="asimov_sb" and dataset!="asimov_b"){cout<<"ERROR: dataset option must be one of data_obs, asimov_sb and asimov_b"<<endl; exit(0);}
 	}
+	tmpv = options["--PhysicsModel"];
+	if( tmpv.size()!=1 ) { sPhysicsModel = "StandardModelHiggs"; }
+	else {
+		sPhysicsModel = tmpv[0];
+		if(sPhysicsModel!="StandardModelHiggs" and sPhysicsModel!="ChargedHiggs")  {cout<<"ERROR --PhysicsModel can only be StandardModelHiggs or ChargedHiggs as arg"<<endl; exit(0);}
+	}
 
 	tmpv = options["--doExpectation"]; 
 	if( tmpv.size()!=1 ) { doExpectation = 0; }
@@ -1466,6 +1478,7 @@ void processParameters(int argc, const char* argv[]){
 	else { maximumFunctionCallsInAFit = tmpv[0].Atoi(); }
 
 	printf("\n\n[ Summary of configuration in this job: ]\n");
+	if(sPhysicsModel=="ChargedHiggs")cout<<" PhysicsModel:  Charged Higgs"<<endl;
 	cout<<"  Calculating "<<(calcsignificance?"significance":"limit")<<" with "<<method<<" method "<<endl;
 	if(HiggsMass>0) cout<<" higgs mass = "<<HiggsMass<<endl;
 	if(!bCalcObservedLimit) cout<<" not calc observed one"<<endl;
@@ -1556,6 +1569,7 @@ void PrintHelpMessage(){
 	printf("-v [ --verbose ] arg (=0)             Verbosity level \n"); 
 	printf("-L [ --LoadLibraries]                 custom libs to be loaded \n"); 
 	printf("--plot 	                              make plots when appropriate \n");
+	printf("--PhysicsModel arg (=StandardModelHiggs) could be StandardModelHiggs or ChargedHiggs \n");
 	printf("-n [ --name ] arg                     Name of the job,  default is \"datacard\"+\"method\" \n"); 
 	printf("-d [ --datacards ] args               Datacard files,  can contain \"*, ?\" \n"); 
 	printf("-D [ --dataset ] arg (=data_obs)      Dataset for observed limit,  data_obs,  asimov_b, asimov_sb \n"); 

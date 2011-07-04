@@ -42,6 +42,8 @@ namespace lands{
 	// for uncertainties only affecting Shape, we can choose different morphing algorithm.  in commom, user must provide three templates:  norminal,  shift_1sigma_up, shift_1sigma_down
 	// i.e. 3 parameters for each shape uncertainty in each bin .... ,  the interface alway do normalization (to unity) for all three templates.
 	
+	enum enumPhysicsModel {typeStandardModel=1, typeChargedHiggs=2};
+
 	class CountingModel
 	{ 
 		public:
@@ -265,6 +267,9 @@ namespace lands{
 			int Get_minuitSTRATEGY(){return minuitSTRATEGY;};
 			void Set_maximumFunctionCallsInAFit(int i){maximumFunctionCallsInAFit=i;};
 			int Get_maximumFunctionCallsInAFit(){return maximumFunctionCallsInAFit;};
+
+			void SetPhysicsModel(int i){_PhysicsModel=i; if(i!=1 && i!=2){ cout<<"ERROR: we only support typeStandardModel and typeChargedHiggs"<<endl; exit(1);}};
+			int GetPhysicsModel(){return _PhysicsModel;};
 		private:
 			VDChannel v_data; // could be pseudo-data for bands
 			VDChannel v_data_real; // real data, not changed during entire run 
@@ -391,6 +396,9 @@ namespace lands{
 
 			int minuitSTRATEGY;
 			int maximumFunctionCallsInAFit;
+
+
+			int _PhysicsModel;
 
 	};
 	CountingModel* CombineModels(CountingModel *cms1, CountingModel *cms2);

@@ -138,6 +138,8 @@ namespace lands{
 
 		minuitSTRATEGY = 0; 
 		maximumFunctionCallsInAFit=5000;
+
+		_PhysicsModel = typeStandardModel;
 	}
 	CountingModel::~CountingModel(){
 		v_data.clear();
@@ -1353,12 +1355,38 @@ If we need to change it later, it will be easy to do.
 
 		VIChannel v; v.clear();
 		double tmp;
+		double br = GetSignalScaleFactor();
 		for(int ch=0; ch<vv.size(); ch++){
 			tmp=0;
 			for(int isam=0; isam<vv[ch].size(); isam++){
 				//start from 0, add signal
 				tmp+=vv[ch][isam];	
 			}
+
+			if(_PhysicsModel == typeChargedHiggs){
+				//****************** start ---  for charged higgs
+				tmp=0;
+				for(int isam=v_sigproc[ch]; isam<vv[ch].size(); isam++){
+					//start from 1,  don't add signal
+					tmp+=vv[ch][isam];	
+				}
+
+				// genelized for all channels
+				// HH_ltau
+				tmp +=  (br*br*vv[ch][0]); // HH -> r^2 * HH
+				// WH_ltau
+				tmp +=  (2*br*(1-br)*vv[ch][1]); //WH -> 2*r*(1-r)*WH
+				// WW_ltau (tt->ltau, real tau) 
+				tmp +=  ((1-br)*(1-br)*vv[ch][2]); //WW -> (1-r)*(1-r)*WW
+				// WW_ltau (tt~->ll, also part of WW, one lepton fakes as tau) 
+				tmp +=  ((1-br)*(1-br)*vv[ch][3]); //WW -> (1-r)*(1-r)*WW
+
+				tmp -= vv[ch][2];
+				tmp -= vv[ch][3];
+
+				//********************** end --  for charged higgs
+			}
+
 			v.push_back(_rdm->Poisson(tmp));
 		}
 
@@ -1568,9 +1596,14 @@ If we need to change it later, it will be easy to do.
 		_common_signal_strength=r;
 
 		vv_exp_sigbkgs_scaled = vv_exp_sigbkgs;
-		for(int ch=0; ch<vv_exp_sigbkgs_scaled.size(); ch++){
-			for(int isam=0; isam<v_sigproc[ch]; isam++){
-				vv_exp_sigbkgs_scaled[ch][isam]*=_common_signal_strength;
+
+		if(_PhysicsModel==typeChargedHiggs){
+			// do nothing....   scaling signal will be done in somewhere else
+		}else{
+			for(int ch=0; ch<vv_exp_sigbkgs_scaled.size(); ch++){
+				for(int isam=0; isam<v_sigproc[ch]; isam++){
+					vv_exp_sigbkgs_scaled[ch][isam]*=_common_signal_strength;
+				}
 			}
 		}
 

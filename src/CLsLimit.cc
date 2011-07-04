@@ -1076,6 +1076,13 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 
 	vector<double> vCLsErr; vCLsErr.clear();
 
+	if(cms->GetPhysicsModel()==typeChargedHiggs) {
+		if(minRtoScan == maxRtoScan or  minRtoScan<0 or maxRtoScan>1) {
+			cout<<"ERROR: for Charged Higgs searches, please provide initial Br range via \" --minRtoScan xxx --maxRtoScan yyy\", where 0 < xxx < yyy < 1 " <<endl; 
+			exit(1);
+		}
+	}
+
 	if(minRtoScan!=maxRtoScan) {
 
 		if(minRtoScan>=maxRtoScan ||(cms->AllowNegativeSignalStrength()==false && minRtoScan <=0) ) {
@@ -1211,6 +1218,13 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 		// ---------
 		rmid=LogLinearInterpolation(r0,cl0,r1,cl1,_alpha);
 
+		if(cms->GetPhysicsModel()==typeChargedHiggs){
+			// ****************** for charged higgs
+			if(rmid<0) rmid=0;
+			if(rmid>1) rmid=1;
+			// ****************** end for charged higgs
+		}
+
 		_r95err = LogLinearInterpolationErr(r0, cl0, errs0, r1, cl1, errs1, _alpha);
 
 		if(_rule ==1 && rmid<0) rmid=-rmid;  // for CLs limit, constrain r to be > 0,    not for CLsb
@@ -1287,6 +1301,14 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 				if(!hasCLsLT05) {
 					if(rmid>0)rmid *= 1.05; //FIXME this number should more smart 
 					if(rmid<0)rmid *= 0.95; //FIXME this number should more smart 
+
+					if(cms->GetPhysicsModel()==typeChargedHiggs){
+						// ****************** for charged higgs
+						if(rmid<0) rmid=0;
+						if(rmid>1) rmid=1;
+						// ****************** end for charged higgs
+					}
+
 					cms->SetSignalScaleFactor(rmid);
 					if(cms->GetTossToyConvention()==1) {
 						DoAfit(rmid, cms->Get_v_data_real(), cms->Get_v_pdfs_roodataset_real(), cms->Get_fittedParsInData_sb());
@@ -1305,6 +1327,14 @@ double CLsLimit::LimitOnSignalScaleFactor(CountingModel *cms,
 				if(!hasCLsGT05) {
 					if(rmid<0)rmid *= 1.05; //FIXME this number should more smart 
 					if(rmid>0)rmid *= 0.95; //FIXME this number should more smart 
+
+					if(cms->GetPhysicsModel()==typeChargedHiggs){
+						// ****************** for charged higgs
+						if(rmid<0) rmid=0;
+						if(rmid>1) rmid=1;
+						// ****************** end for charged higgs
+					}
+
 					cms->SetSignalScaleFactor(rmid);
 					if(cms->GetTossToyConvention()==1){
 						DoAfit(rmid, cms->Get_v_data_real(), cms->Get_v_pdfs_roodataset_real(), cms->Get_fittedParsInData_sb());
@@ -2373,6 +2403,8 @@ void CLsBase::prepareLogNoverB(){ // only necessary when evaluating LEP type sta
 	vector<double> vs, vb, vd; 
 	vs.clear(); vb.clear(); vd.clear();
 	_nchannels = _model->NumOfChannels();
+	double br = _model->GetSignalScaleFactor();
+	const VChannelVSample & vv = _model->Get_vv_exp_sigbkgs();
 	for(int i=0; i<_nchannels; i++){
 		double totbkg = 0, totsig=0;
 		for(int isamp = 0; isamp<(_model->Get_vv_exp_sigbkgs())[i].size(); isamp++){
@@ -2380,6 +2412,27 @@ void CLsBase::prepareLogNoverB(){ // only necessary when evaluating LEP type sta
 			if(isamp<_model->GetNSigprocInChannel(i)) totsig+= (_model->Get_vv_exp_sigbkgs())[i][isamp];
 			else totbkg+=(_model->Get_vv_exp_sigbkgs())[i][isamp];
 		}
+
+		if(_model->GetPhysicsModel()==typeChargedHiggs){
+			// ************** for charged higgs    generalized for all channels
+			double tmp = 0;
+			// HH_ltau
+			tmp +=  (br*br*vv[i][0]); // HH -> r^2 * HH
+			// WH_ltau
+			tmp +=  (2*br*(1-br)*vv[i][1]); //WH -> 2*r*(1-r)*WH
+			// WW_ltau (tt->ltau, real tau) 
+			tmp +=  ((1-br)*(1-br)*vv[i][2]); //WW -> (1-r)*(1-r)*WW
+			// WW_ltau (tt~->ll, also part of WW, one lepton fakes as tau) 
+			tmp +=  ((1-br)*(1-br)*vv[i][3]); //WW -> (1-r)*(1-r)*WW
+
+			tmp -= vv[i][2];
+			tmp -= vv[i][3];
+
+			totsig = tmp;
+			// -----------------end  for charged higgs
+		}
+
+
 		vs.push_back(totsig);
 		vb.push_back(totbkg);
 		vd.push_back((_model->Get_v_data())[i]);
@@ -2397,7 +2450,8 @@ void CLsBase::prepareLogNoverB(){ // only necessary when evaluating LEP type sta
 			n=vs[i]+vb[i];
 			noverb=n/vb[i];
 			_lognoverb[i]= ( n>0 ?log(noverb):0 );
-			_lognoverb[i]=fabs(_lognoverb[i]); // FIXME  treat downward fluctuation properly for excess/deficit signal. for SM higgs, we look for excess, while for Charged higgs, they may look for deficit, please take the fabs out
+			if(_model->GetPhysicsModel()==typeStandardModel)_lognoverb[i]=fabs(_lognoverb[i]); // FIXME  treat downward fluctuation properly for excess/deficit signal. for SM higgs, we look for excess, while for Charged higgs, they may look for deficit, please take the fabs out
+			if(_model->GetPhysicsModel()==typeChargedHiggs)_lognoverb[i]=_lognoverb[i]; // FIXME  treat downward fluctuation properly for excess/deficit signal. for SM higgs, we look for excess, while for Charged higgs, they may look for deficit, please take the fabs out
 		}else{
 			_lognoverb[i]=0;
 		}
