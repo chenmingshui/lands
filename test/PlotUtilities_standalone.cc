@@ -859,7 +859,7 @@ void DrawPdfRLikelihood::draw(){
 	Save(cCanvas,_ssave);
 }
 
-void GetLimits(TTree *tree, vector<double>& inputMH, vector<double>& inputLimits ){	
+void GetLimits(TTree *tree, vector<double>& inputMH, vector<double>& inputLimits, vector<double> & inputLimitErrs){	
    // Declaration of leaf types
    Double_t        mH;
    Double_t        limit;
@@ -907,11 +907,75 @@ void GetLimits(TTree *tree, vector<double>& inputMH, vector<double>& inputLimits
 
    Long64_t nentries = tree->GetEntries();
 
+   vector< vector<double> > vv_sameMH; vv_sameMH.clear();
    //Long64_t nbytes = 0, nb = 0;
    for (Long64_t jentry=0; jentry<nentries;jentry++) {
 	   Long64_t ientry = tree->GetEntry(jentry);
 	   if (ientry < 0) break;
-	   inputLimits.push_back(limit);
-	   inputMH.push_back(mH);
+	   vector<double>::iterator id = std::find(inputMH.begin(), inputMH.end(), mH); 
+	   if(id!=inputMH.end()){
+		   vv_sameMH[id-inputMH.begin()].push_back(limit);
+	   }else{
+		   vector<double> v; v.clear();
+		   v.push_back(limit);vv_sameMH.push_back(v);
+		   inputLimits.push_back(limit);
+		   inputLimitErrs.push_back(limitErr);
+		   inputMH.push_back(mH);
+	   }
    }
+   for(int i=0; i<vv_sameMH.size();i++){ 
+	   if(vv_sameMH[i].size()!=1) {
+		   double avr=0, avrerr=0;
+		   for(int j=0; j<vv_sameMH[i].size(); j++){
+			   avr+=vv_sameMH[i][j];
+		   }
+		   avr/=(float)(vv_sameMH[i].size());
+		   
+		   for(int j=0; j<vv_sameMH[i].size(); j++){
+			   avrerr+=(vv_sameMH[i][j]-avr)*(vv_sameMH[i][j]-avr);
+		   }
+		   avrerr = TMath::Sqrt(avrerr)/float(vv_sameMH[i].size());
+		   inputLimits[i]=avr;
+		   inputLimitErrs[i]=avrerr;
+	   }
+   }
+}
+void GetPValues(TTree *tree, vector<double>& inputMH, vector<double>& inputLimits ){	
+	// Declaration of leaf types
+	Double_t        mH;
+	Double_t        limit;
+	Double_t        limitErr;
+	Double_t        significance;
+	Double_t        pvalue;
+
+	// List of branches
+	TBranch        *b_mH;   //!
+	TBranch        *b_limit;   //!
+	TBranch        *b_limitErr;   //!
+	TBranch        *b_significance;   //!
+	TBranch        *b_pvalue;   //!
+
+	TTree *fChain = tree;
+	if(tree->GetBranch("mH")){
+		fChain->SetBranchAddress("mH", &mH, &b_mH);
+		fChain->SetBranchAddress("pvalue", &pvalue, &b_pvalue);
+	}
+	if(tree->GetBranch("mh")){
+		fChain->SetBranchAddress("mh", &mH, &b_mH);
+		fChain->SetBranchAddress("limit", &pvalue, &b_limit);
+	}
+
+	//   fChain->SetBranchAddress("limit", &limit, &b_limit);
+	//   fChain->SetBranchAddress("limitErr", &limitErr, &b_limitErr);
+	//   fChain->SetBranchAddress("significance", &significance, &b_significance);
+
+	Long64_t nentries = tree->GetEntries();
+
+	//Long64_t nbytes = 0, nb = 0;
+	for (Long64_t jentry=0; jentry<nentries;jentry++) {
+		Long64_t ientry = tree->GetEntry(jentry);
+		if (ientry < 0) break;
+		inputLimits.push_back(pvalue);
+		inputMH.push_back(mH);
+	}
 }

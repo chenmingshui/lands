@@ -348,5 +348,6 @@ class DrawPdfRLikelihood{
 		double *_par;
 		int _npar;
 };
-void GetLimits(TTree *tree, vector<double>& inputMH, vector<double>& inputLimits );
+void GetLimits(TTree *tree, vector<double>& inputMH, vector<double>& inputLimits, vector<double> & inputLimitErrs );
+void GetPValues(TTree *tree, vector<double>& inputMH, vector<double>& inputLimits );
 #endif   /* ----- #ifndef PLOTUTILITIES_H  ----- */
