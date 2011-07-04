@@ -2327,7 +2327,7 @@ If we need to change it later, it will be easy to do.
 				if(i>=v_pdfs_sigproc[ch]) btot+=vv_pdfs_norm_varied[ch][i]; // FIXME HGG // already multiplied by extra norm in FluctuatedNumbers
 				else stot+=vv_pdfs_norm_varied[ch][i];
 			}
-			sbtot=stot+btot; if(sbtot<=0) {cout<<"ERROR: evaluateCh2:  s+b <= 0: "<<sbtot<<endl; exit(1); }
+			sbtot=stot+btot; if(sbtot<=0) {continue;} //cout<<"ERROR: evaluateCh2:  s+b <= 0: "<<sbtot<<endl; exit(1); }
 			RooArgSet vars(*(_w_varied->var(v_pdfs_observables[ch])));
 
 			/*

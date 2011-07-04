@@ -123,9 +123,11 @@ namespace lands{
 				cms_global= _cms;
 				vdata_global=_cms->Get_v_data();
 				_inputNuisances = _cms->Get_norminalPars();
+				_startNuisances = _cms->Get_norminalPars();
 				double ErrorDef = TMath::ChisquareQuantile(0.68 , 1);// (confidenceLevel, ndf)
 				double upperL=0, lowerL=0; 
-				double y0_2 =  MinuitFit(1001, upperL, lowerL, ErrorDef, 0, false, _debug) ;
+				//double y0_2 =  MinuitFit(1001, upperL, lowerL, ErrorDef, 0, false, _debug) ;
+				double y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, 0, false, _debug) ;
 			}
 			for(int i=1; i<=_cms->Get_max_uncorrelation(); i++){
 				Double_t errUp, errLow, errParab=0, gcor=0; 

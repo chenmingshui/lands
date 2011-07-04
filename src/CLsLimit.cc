@@ -398,7 +398,8 @@ namespace lands{
 						// FIXME need to be smart here ,  when calc significance, if the S > 5 at the end, print out the WARNING message to change the range setting here 
 						// or try to get the option of significance from main program 
 						// but now [-20, 20] cause some problem in minuit fitting for non-signifcant deviation .... 
-						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, -5, 5,ierflg); // was 5,  causing problem with significance larger than > 7 
+						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, -5, 5,ierflg); // was 5,  causing problem with significance larger than > 7 
+						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_startNuisances[i], minuitStep, -5, 5,ierflg); // was 5,  causing problem with significance larger than > 7 
 						break;
 					case typeTruncatedGaussian :
 						maxunc = v_TG_maxUnc[i];	
@@ -406,18 +407,22 @@ namespace lands{
 						else maxunc = -5;   // FIXME is hear also need to be extended to -20  ?
 						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, maxunc, 20,ierflg); // was 5
 						// FIXME need to be smart here ,  when calc significance, if the S > 5 at the end, print out the WARNING message to change the range setting here 
-						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, maxunc, 5,ierflg); // was 5
+						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, maxunc, 5,ierflg); // was 5
+						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_startNuisances[i], minuitStep, maxunc, 5,ierflg); // was 5
 						break;
 					case typeGamma:
 						//myMinuit->mnparm(i, sname, v_GammaN[i], 0.5, 0, 100000, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
-						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, 0, (v_GammaN[i]+1)*5, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
+						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, 0, (v_GammaN[i]+1)*5, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
+						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_startNuisances[i], minuitStep, 0, (v_GammaN[i]+1)*5, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
 						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], 1, 0, v_GammaN[i]+4*sqrt(v_GammaN[i]+1), ierflg); // FIXME,  could be smarter in +/-5sigma stat range
 						break;
 					case typeBifurcatedGaussian:
-						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, v_paramsUnc[i][3], v_paramsUnc[i][4], ierflg  );
+						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, v_paramsUnc[i][3], v_paramsUnc[i][4], ierflg  );
+						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_startNuisances[i], minuitStep, v_paramsUnc[i][3], v_paramsUnc[i][4], ierflg  );
 						break;
 					case typeFlat:
-						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, 0, 1, ierflg  );
+						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, 0, 1, ierflg  );
+						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_startNuisances[i], minuitStep, 0, 1, ierflg  );
 						break;
 					default:
 						cout<<"pdftype not yet defined:  "<<v_pdftype[i]<<", npars="<<npars<<", i="<<i<<endl;
@@ -538,11 +543,11 @@ namespace lands{
 
 			if(debug || pars || ierflg){
 
-				if(debug || ierflg )printf("  par                 name         fitted_value        input_value\n");
+				if(debug || ierflg )printf("  par                 name         fitted_value        input_value        start_value\n");
 				for(int i=0; i<=npars; i++){
 					double tmp, tmpe;
 					myMinuit->GetParameter(i, tmp, tmpe);
-					if(debug || ierflg ) printf("  par %30s      %.6f +/- %.6f      %.6f \n", i>0?v_uncname[i-1].c_str():"signal_strength", tmp, tmpe, _inputNuisances[i]);
+					if(debug || ierflg ) printf("  par %30s      %.6f +/- %.6f      %.6f     %.6f\n", i>0?v_uncname[i-1].c_str():"signal_strength", tmp, tmpe, _inputNuisances[i], _startNuisances[i]);
 					if(pars && !hasBestFitted)pars[i] = tmp;
 					//if(pars)pars[i] = tmp;
 				}
@@ -1837,6 +1842,7 @@ double CLsLimit::FeldmanCousins(CountingModel *cms,
 
 bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys){  // 0 for sbANDb, 1 for bOnly, 2 for sbOnly, 3 for data only 
 	_inputNuisances = _model->Get_norminalPars();	
+	_startNuisances= _model->Get_norminalPars();	
 	// effort for adaptive sampling
 	int oldNexps = _nexps;// need to be changed   to two parts :   sb toys,  b toys 
 	vector<double> tmpQb;
@@ -1939,6 +1945,7 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys){  // 0 for sbANDb,
 					//generate nuisance around b^hat_0 
 					VChannelVSample vv =  _model->FluctuatedNumbers(0, false, 2); // toss nuisance around fitted b_hat_0 in data  
 					_inputNuisances = _model->Get_randomizedPars();	
+					_startNuisances = _model->Get_fittedParsInData_b();
 					for(int itmp=0; itmp<_model->Get_v_pdftype().size(); itmp++){
 						if(_model->Get_v_pdftype()[itmp]==typeGamma) _inputNuisances[itmp]+=1;
 					}
@@ -1950,7 +1957,14 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys){  // 0 for sbANDb,
 
 		}
 		int checkFailure = (_debug>=10?1:0);
-		Q_b[i] = M2lnQ(checkFailure);
+		bool success = true;
+		Q_b[i] = M2lnQ(success, checkFailure);
+		if(success==false) {
+			// skip this toy and regenerate it   --> any bias ? 
+			// caveat: it may go to infinite loop if all toys fails
+			i-=1;
+			cout<<"WARNING: skip a failed toy"<<endl;
+		}
 	}
 
 	if(_debug) { start_time=cur_time; cur_time=clock(); 
@@ -1997,6 +2011,7 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys){  // 0 for sbANDb,
 
 void CLsBase::checkFittedParsInData(bool bReadPars, bool bWritePars, TString sfilename){
 	_inputNuisances = _model->Get_norminalPars();	
+	_startNuisances = _model->Get_norminalPars();	
 	TH1D *hParsB, *hParsSB; TFile *fToWrite;
 	if(bReadPars and bWritePars) { cout<<"ERROR: checkFittedParsInData():  bReadPars and bWritePars can't be both true "<<endl; exit(1); }
 	if(bReadPars){
@@ -2092,9 +2107,11 @@ bool CLsBase::BuildM2lnQ_data(){
 	   */
 
 	_inputNuisances = _model->Get_norminalPars();	
+	_startNuisances = _model->Get_norminalPars();	
 
 	int checkFailure = 1;
-	Q_b_data = M2lnQ(checkFailure, 0); // 0 for data, 1 for toy
+	bool success = true;
+	Q_b_data = M2lnQ(success, checkFailure, 0); // 0 for data, 1 for toy
 	if(_debug)cout<<"* BuildM2lnQ_data: end "<<Q_b_data<<endl;
 	return true;
 }
@@ -2102,6 +2119,7 @@ bool CLsBase::BuildM2lnQ_data(){
 bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys){  
 
 	_inputNuisances = _model->Get_norminalPars();	
+	_startNuisances = _model->Get_norminalPars();	
 
 	// effort for adaptive sampling
 	int oldNexps = _nexps;
@@ -2205,6 +2223,7 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys){
 				if(!_model->UseBestEstimateToCalcQ()){
 					VChannelVSample vv =  _model->FluctuatedNumbers(0, true, 2); // toss nuisance around fitted b_hat_mu in data 
 					_inputNuisances = _model->Get_randomizedPars();	
+					_startNuisances = _model->Get_fittedParsInData_sb();
 					for(int itmp=0; itmp<_model->Get_v_pdftype().size(); itmp++){
 						if(_model->Get_v_pdftype()[itmp]==typeGamma) _inputNuisances[itmp]+=1;
 					}
@@ -2216,7 +2235,14 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys){
 
 		}
 		int checkFailure = (_debug>=10?1:0);
-		Q_sb[i] = M2lnQ(checkFailure);
+		bool success = true;
+		Q_sb[i] = M2lnQ(success, checkFailure);
+		if(success==false) {
+			// skip this toy and regenerate it   --> any bias ? 
+			// caveat: it may go to infinite loop if all toys fails
+			i-=1;
+			cout<<"WARNING: skip a failed toy"<<endl;
+		}
 	}
 
 	if(_debug) { start_time=cur_time; cur_time=clock(); cout << "\t\t\t TIME in RunMCExps run_"<<_nexps<<"_pseudo exps: " << (cur_time - start_time)/1000. << " millisec\n"; }
@@ -2225,7 +2251,7 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys){
 	return true;
 }
 
-double CLsBase::M2lnQ(int checkFailure, int dataOrToy){
+double CLsBase::M2lnQ(bool & successful, int checkFailure, int dataOrToy){
 	double q = 0;
 	double tmp1, tmp2, minchi2tmp;
 	if(test_statistics==1){
@@ -2277,9 +2303,13 @@ double CLsBase::M2lnQ(int checkFailure, int dataOrToy){
 
 			_model->Print();
 		}
-		int success[1];
+		int success[1];success[0]=0;
+		int success2[1];success2[0]=0;
 		double * fittedPars = new double[_model->Get_max_uncorrelation()+1];
 		minchi2tmp = MinuitFit(21, tmp1, tmp2, 0, fittedPars, false, checkFailure?_debug:(_debug?1:0), success);  // MinuitFit(mode, r, err_r)
+		if(success[0]!=0){
+			minchi2tmp = MinuitFit(21, tmp1, tmp2, 0, _model->Get_norminalPars(), true, checkFailure?_debug:(_debug?1:0), success);  // MinuitFit(mode, r, err_r)
+		}
 		if(success[0]!=0 and checkFailure) { 
 			cout<<"ERROR WARNING data fit failed, try to dump info:  this failure sometimes related to ROOT versions, potential bugs in TMinuit. "<<endl;
 			cout<<"ERROR WARNING I had experienced that 5.28.00b gave failure while 5.26 didn't on the following data card (V2011-04-21): "<<endl;
@@ -2300,12 +2330,21 @@ double CLsBase::M2lnQ(int checkFailure, int dataOrToy){
 		}
 
 		double fitted_r = tmp1;
-		if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(0, tmp1, tmp2);  // MinuitFit(mode, r, err_r),  want r to be >=0
+		if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(0, tmp1, tmp2, 0, fittedPars, true);  // MinuitFit(mode, r, err_r),  want r to be >=0
 		if(test_statistics==5){ // for evaluating one-sided limit 
 			if(fitted_r>=_model->GetSignalScaleFactor()) q=0;
-			else q = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor(), fittedPars, true, _debug?1:0) - minchi2tmp);
+			else {
+				q = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor(), fittedPars, true, _debug?1:0, success2) - minchi2tmp);
+				if(success2[0]!=0){
+					q = -(MinuitFit(3, tmp1, tmp2, _model->GetSignalScaleFactor(), _model->Get_norminalPars(), true, _debug?1:0, success2) - minchi2tmp);
+				}
+			}
+
 		}else if(test_statistics==6){// for evaluating significance
-			q = -(MinuitFit(3, tmp1, tmp1, 0/*fixed at mu=0*/, fittedPars, true) - minchi2tmp);
+			q = -(MinuitFit(3, tmp1, tmp1, 0/*fixed at mu=0*/, fittedPars, true, _debug?1:0, success2) - minchi2tmp);
+			if(success2[0]!=0){
+				q = -(MinuitFit(3, tmp1, tmp2, 0, _model->Get_norminalPars(), true, _debug?1:0, success2) - minchi2tmp);
+			}
 		}
 		if(_debug>=100)cout<<" testStat["<<test_statistics<<"]: q = "<<q<<" fitted_r="<<fitted_r<<" minchi2tmp="<<minchi2tmp<<" tmp1="<<tmp1<<endl;
 
@@ -2319,6 +2358,12 @@ double CLsBase::M2lnQ(int checkFailure, int dataOrToy){
 			if(_debug>=100) cout<<" end of data fit"<<endl;
 		}
 		if(fittedPars)delete [] fittedPars;
+
+		if((success2[0]!=0 or success[0]!=0) && !checkFailure) cout<<"FAILED_TOY : fit unconverged"<<endl;
+		if((success2[0]!=0 or success[0]!=0) && checkFailure) cout<<"FAILED_DATA : fit unconverged"<<endl;
+		if((success2[0]==0 and success[0]==0) && !checkFailure && _debug) cout<<"SUCCESSFUL_TOY : fit converged"<<endl;
+		if((success2[0]==0 and success[0]==0) && checkFailure && _debug) cout<<"SUCCESSFUL_DATA : fit converged"<<endl;
+		if(success[0]!=0 or success2[0]!=0) successful = false;
 	}
 	if(_debug>=100) cout<<"-2lnQ = "<<q<<endl;
 	return q;

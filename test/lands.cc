@@ -116,7 +116,7 @@ int main(int argc, const char*argv[]){
 	if(debug<2)RooMsgService::instance().getStream(1).removeTopic(ObjectHandling) ;
 	if(debug<10)RooMsgService::instance().getStream(1).removeTopic(NumIntegration) ;
 	if(debug<10)RooMsgService::instance().getStream(1).removeTopic(Caching) ;
-
+	if(debug<2)RooMsgService::instance().setGlobalKillBelow(RooFit::FATAL);
 
 	for(int i=0; i<librariesToBeLoaded.size(); i++){
 		gSystem->Load(librariesToBeLoaded[i]);
@@ -752,6 +752,7 @@ int main(int argc, const char*argv[]){
 			double *pars = new double[cms->Get_max_uncorrelation()+1]; // nsys + r
 
 			_inputNuisances = cms->Get_norminalPars();
+			_startNuisances = cms->Get_norminalPars();
 
 			double ErrorDef = TMath::ChisquareQuantile(CL , 1);// (confidenceLevel, ndf)
 			if(PLalgorithm == "Minos"){
@@ -960,6 +961,7 @@ int main(int argc, const char*argv[]){
 		if(method == "ProfiledLikelihood" or method=="ProfileLikelihood"){
 			
 			_inputNuisances = cms->Get_norminalPars();
+			_startNuisances = cms->Get_norminalPars();
 			cms_global= cms;
 			vdata_global=cms->Get_v_data();
 

@@ -77,7 +77,7 @@ namespace lands{
 
 			void printM2LnQInfo(int sbANDb_bOnly_sbOnly);
 			void checkFittedParsInData(bool bReadPars=false, bool bWritePars=false, TString sfilename="");
-			double M2lnQ(int checkFailure=0, int dataOrToy=1);
+			double M2lnQ(bool& success, int checkFailure=0, int dataOrToy=1);
 			void prepareLogNoverB();
 
 			double FindLimitFromTGE(TGraphErrors *tge, double alpha, double &limit, double & limitErr, TString plotName="");
