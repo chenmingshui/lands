@@ -860,6 +860,7 @@ void DrawPdfRLikelihood::draw(){
 }
 
 void GetLimits(TTree *tree, vector<double>& inputMH, vector<double>& inputLimits, vector<double> & inputLimitErrs){	
+	printf("DELETEME 0\n");
    // Declaration of leaf types
    Double_t        mH;
    Double_t        limit;
@@ -886,6 +887,7 @@ void GetLimits(TTree *tree, vector<double>& inputMH, vector<double>& inputLimits
    TBranch        *b_rp1s;   //!
    TBranch        *b_rp2s;   //!
 
+	printf("DELETEME 01\n");
    TTree *fChain = tree;
    if(tree->GetBranch("mH")){
 	   fChain->SetBranchAddress("mH", &mH, &b_mH);
@@ -907,6 +909,8 @@ void GetLimits(TTree *tree, vector<double>& inputMH, vector<double>& inputLimits
 
    Long64_t nentries = tree->GetEntries();
 
+	printf("DELETEME 1\n");
+
    vector< vector<double> > vv_sameMH; vv_sameMH.clear();
    //Long64_t nbytes = 0, nb = 0;
    for (Long64_t jentry=0; jentry<nentries;jentry++) {
@@ -923,18 +927,20 @@ void GetLimits(TTree *tree, vector<double>& inputMH, vector<double>& inputLimits
 		   inputMH.push_back(mH);
 	   }
    }
+   printf("DELETEME 2\n");
    for(int i=0; i<vv_sameMH.size();i++){ 
-	   if(vv_sameMH[i].size()!=1) {
+	   if(vv_sameMH[i].size()>1) {
+		   printf("DELETEME 4\n");
 		   double avr=0, avrerr=0;
 		   for(int j=0; j<vv_sameMH[i].size(); j++){
 			   avr+=vv_sameMH[i][j];
 		   }
 		   avr/=(float)(vv_sameMH[i].size());
-		   
+
 		   for(int j=0; j<vv_sameMH[i].size(); j++){
 			   avrerr+=(vv_sameMH[i][j]-avr)*(vv_sameMH[i][j]-avr);
 		   }
-		   avrerr = TMath::Sqrt(avrerr)/float(vv_sameMH[i].size());
+		   avrerr = TMath::Sqrt(avrerr)/TMath::Sqrt( vv_sameMH[i].size() * (vv_sameMH[i].size()-1) );
 		   inputLimits[i]=avr;
 		   inputLimitErrs[i]=avrerr;
 	   }
