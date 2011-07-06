@@ -89,7 +89,7 @@ namespace lands{
 		_cms=cms;	
 		return Limit();
 	}
-	double BayesianBase::Limit(double alpha, double hint, bool bdofit, double *parsFitted, double *parsErrLow, double *parsErrUp){
+	double BayesianBase::Limit(double alpha, double hint, bool bdofit, double *parsFitted, double *parsErrLow, double *parsErrUp, double cropNsigma){
 		fAlpha = alpha;
 		fConfidenceLevel = 1-fAlpha;
 
@@ -142,7 +142,7 @@ namespace lands{
 
 				errUp = pe; errLow=-pe;
 				if(vtype[i]==typeFlat) {
-					if(vvparamunc.size()>i)_cms->SetFlatParameterRange(i, vvparamunc[i][1]*p+vvparamunc[i][3], vvparamunc[i][1]*(p+3*errLow)+vvparamunc[i][3], vvparamunc[i][1]*(p+3*errUp)+vvparamunc[i][3]);
+					if(vvparamunc.size()>i)_cms->SetFlatParameterRange(i, vvparamunc[i][1]*p+vvparamunc[i][3], vvparamunc[i][1]*(p+cropNsigma*errLow)+vvparamunc[i][3], vvparamunc[i][1]*(p+cropNsigma*errUp)+vvparamunc[i][3]);
 					if(_debug)cout<<" FITTEDflatParam: "<<_cms->Get_v_uncname()[i-1]<<" param "<<vvparamunc[i][1]*p+vvparamunc[i][3]<<"  "<<vvparamunc[i][1]*errUp<<endl;;
 					_cms->SetFlatNormalizationRange(i, p+5*errLow, p+5*errUp);
 				}
