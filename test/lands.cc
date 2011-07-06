@@ -109,6 +109,8 @@ int nTries = 1;
 int maximumFunctionCallsInAFit = 5000;
 int minuitSTRATEGY = 0;
 
+double flatPriorCropNsigma = 3;
+
 TString sPhysicsModel = "StandardModelHiggs";
 
 int main(int argc, const char*argv[]){
@@ -219,7 +221,7 @@ int main(int argc, const char*argv[]){
 				parsFitted = new double[cms->Get_max_uncorrelation()+1];
 				parsErrUp= new double[cms->Get_max_uncorrelation()+1];
 				parsErrLow = new double[cms->Get_max_uncorrelation()+1];
-				rtmp = bys.Limit(1-CL, -99999., true, parsFitted, parsErrLow, parsErrUp);
+				rtmp = bys.Limit(1-CL, -99999., true, parsFitted, parsErrLow, parsErrUp, flatPriorCropNsigma);
 
 				if(nTries>1)cout<<"try "<<1<<": R at 95\% CL = "<<rtmp<<endl;
 
@@ -228,7 +230,7 @@ int main(int argc, const char*argv[]){
 				rtries.push_back(rtmp);
 				double avgR=0, errR=0;
 				for(int i=1; i<nTries; i++){
-					rtmp = bys.Limit(1-CL, hint, false, parsFitted, parsErrLow, parsErrUp);
+					rtmp = bys.Limit(1-CL, hint, false, parsFitted, parsErrLow, parsErrUp, flatPriorCropNsigma);
 					cout<<"try "<<i+1<<": R at 95\% CL = "<<rtmp<<endl;
 					if(rtmp<=0) cout<<"  - -- ---- r is meaningless, skipped "<<endl;
 					else{
@@ -1263,6 +1265,9 @@ void processParameters(int argc, const char* argv[]){
 		if(nTries<0) nTries= 1;
 	}
 
+	tmpv = options["--flatPriorCropNsigma"]; 
+	if( tmpv.size()!=1 ) { flatPriorCropNsigma= 3; }
+	else { flatPriorCropNsigma = tmpv[0].Atof(); }
 
 	// FeldmanCousins specific options
 	tmpv = options["--lowerLimit"]; 
@@ -1509,6 +1514,8 @@ void processParameters(int argc, const char* argv[]){
 
 		cout<<"  toysPreBayesian = "<<toysPreBayesian<<endl;
 		cout<<"  toysBayesian = "<<toysBayesian<<endl;
+
+		if(flatPriorCropNsigma!=3) cout<<" flatPriorCropNsigma: "<<flatPriorCropNsigma<<endl;
 	}else if(method=="ProfiledLikelihood" or method=="ProfileLikelihood"){
 		if(!calcsignificance)cout<<(oneside==1?"  one sided":"  two sided")<<endl;
 		cout<<"  algorithm to extract limit: "<<PLalgorithm<<endl;
@@ -1592,7 +1599,8 @@ void PrintHelpMessage(){
 	printf("--prior arg (=flat)            	      Prior to use: \'flat\' (default), \'1/sqrt(r)\', \'corr\' \n"); 
 	printf("-tB [ --toysBayesian ] arg (=10000)   number of toys used to average out nuisance paramereters in Bayesian method     \n"); 
 	printf("-tPB [ --toysPreBayesian ] arg (=100)   number of toys used to average out nuisance paramereters in Bayesian pre-estimation \n"); 
-	printf("--tries arg (=1)                      number of tries for observed limit, if more than 1, will print out the average value and standard deviation of those tries");
+	printf("--tries arg (=1)                      number of tries for observed limit, if more than 1, will print out the average value and standard deviation of those tries\n");
+	printf("--flatPriorCropNsigma arg (=3)        fit to data and crop the flat prior range by Nsigma\n");
 	printf(" \n"); 
 	printf("FeldmanCousins specific options: \n"); 
 	printf("--lowerLimit arg (=0)                 Compute the lower limit instead of the upper limit \n"); 
