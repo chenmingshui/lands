@@ -408,15 +408,16 @@ namespace lands{
 		double ret=0;
 		for(int i=0; i<_nexps_to_averageout_sys; i++){
 			ret += glintegral(rlow, i);
-	//		cout<<"DELETEME 5"<<endl;
+			//cout<<"DELETEME  i "<<i<<": sum="<<ret<<endl;
 		}
 		ret/=(double)_nexps_to_averageout_sys;
-	//	cout<<"DELETEME 5 "<<ret<<endl;
+		//cout<<"DELETEME AverageIntegral ret = "<<ret<<",  _nexps_to_averageout_sys = "<<_nexps_to_averageout_sys<<endl;
 		return ret;
 	}
 	double BayesianBase::glintegral(double rlow, int iexps ) {
 		int i,k;
 		double sum=0, rstot;
+		double tmp=0;
 		if(_stot[iexps]<=0){ cout<<"total signal <= 0 ,exit "<<endl; exit(0); }
 		rstot=1./_stot[iexps];
 
@@ -426,8 +427,10 @@ namespace lands{
 			const double xr = _xgl[k]*rstot + rlow;
 			double t = -rlow * _stot[iexps]  - _btot[iexps] + _logscale , v;
 			for(i=0;i<_nchannels;++i)
-				if(_d[i]>0)
-					t += _d[i] * log( xr*_vs[iexps][i] + _vb[iexps][i] );
+				if(_d[i]>0){
+					tmp = xr*_vs[iexps][i] + _vb[iexps][i] ;
+					if(tmp>0)t += _d[i] * log( tmp );
+				}
 			t+=_cms->EvaluateGL(_vNorms_forShapeChannels[iexps], _vParams_forShapeChannels[iexps], xr, vvs, vvb);
 			if(_prior == prior_1overSqrtS)t -= 0.5*log(_xgl[k] + rlow * _stot[iexps] );
 
@@ -446,13 +449,16 @@ namespace lands{
 		if (r<0) {cout<< " r <0, exit" <<endl; exit(0);}
 		if (_norm<=0)  {cout<< " _norm <=0, i.e. likelihood norm of posterior pdf is very unlikeli. exit  " << _norm <<endl; exit(0);}
 		double ret=0;
+		double tmp=0;
 		int i, c;
 		double t;
 		for(i=0; i<_nexps_to_averageout_sys; i++){
 			t= -_btot[i] - r*_stot[i]+ _logscale;
 			for(c=0; c<_nchannels; c++)
-				if(_d[c]>0) 
-					t += _d[c] * log( _vb[i][c] + r*_vs[i][c] );
+				if(_d[c]>0) {
+					tmp =  _vb[i][c] + r*_vs[i][c] ;
+					if(tmp>0)	t += _d[c] * log(tmp);
+				}
 
 			VChannelVSample vvs, vvb; vvs.clear(); vvb.clear();
 			t+=_cms->EvaluateGL(_vNorms_forShapeChannels[i], _vParams_forShapeChannels[i], r, vvs, vvb);
@@ -534,9 +540,9 @@ namespace lands{
 				if(_d[i]>0)
 					t += _d[i] * log( xr*_vs[iexps][i] + _vb[iexps][i] );
 
-//			cout<<"DELETEME 2"<<endl;
+			//			cout<<"DELETEME 2"<<endl;
 			t+=_cms->EvaluateGL(_vNorms_forShapeChannels[iexps], _vParams_forShapeChannels[iexps], xr, vvs, vvb);
-//			cout<<"DELETEME 3"<<endl;
+			//			cout<<"DELETEME 3"<<endl;
 			if(_prior == prior_1overSqrtS)t -= 0.5*log(_xgl[k] + rlow * _stot[iexps] );
 
 			double tmp =  _lwgl[k]+t; 
