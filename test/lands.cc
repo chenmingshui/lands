@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <vector>
 #include <iostream>
+#include <algorithm>
 #include <TSystem.h>
 #include "CountingModel.h"
 #include "BayesianBase.h"
@@ -113,6 +114,9 @@ double flatPriorCropNsigma = 3;
 
 TString sPhysicsModel = "StandardModelHiggs";
 
+bool bRunOnlyWithBestFittedNuisances_bayesian = false;
+double inputMu_bayesian = 0;
+
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
 
@@ -221,7 +225,7 @@ int main(int argc, const char*argv[]){
 				parsFitted = new double[cms->Get_max_uncorrelation()+1];
 				parsErrUp= new double[cms->Get_max_uncorrelation()+1];
 				parsErrLow = new double[cms->Get_max_uncorrelation()+1];
-				rtmp = bys.Limit(1-CL, -99999., true, parsFitted, parsErrLow, parsErrUp, flatPriorCropNsigma);
+				rtmp = bys.Limit(1-CL, -99999., true, parsFitted, parsErrLow, parsErrUp, flatPriorCropNsigma, bRunOnlyWithBestFittedNuisances_bayesian, inputMu_bayesian);
 
 				if(nTries>1)cout<<"try "<<1<<": R at 95\% CL = "<<rtmp<<endl;
 
@@ -246,6 +250,11 @@ int main(int argc, const char*argv[]){
 				if(nTries<=1) avgR=rtmp;
 				errR=0;
 				for(int i=0; i<rtries.size(); i++) errR+= (rtries[i]-avgR)*(rtries[i]-avgR); errR = sqrt(errR)/(float)(rtries.size());
+
+				std::sort(rtries.begin(), rtries.end());
+				int idmedian = int(rtries.size()*0.5); if(idmedian>=rtries.size()) idmedian=rtries.size()-1;
+				if(idmedian>0)cout<<"  median value of all tries = "<<rtries[idmedian]<<endl;
+				
 
 				cout<<"------------------------------------------------------------"<<endl;
 				if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
@@ -1269,6 +1278,12 @@ void processParameters(int argc, const char* argv[]){
 	if( tmpv.size()!=1 ) { flatPriorCropNsigma= 3; }
 	else { flatPriorCropNsigma = tmpv[0].Atof(); }
 
+	if(isWordInMap("--bysRunFit", options)) bRunOnlyWithBestFittedNuisances_bayesian = true;
+
+	tmpv = options["--bysInputMu"]; 
+	if( tmpv.size()!=1 ) {}
+	else { inputMu_bayesian = tmpv[0].Atof(); }
+
 	// FeldmanCousins specific options
 	tmpv = options["--lowerLimit"]; 
 	if( tmpv.size()!=1 ) { lowerLimit = false; }
@@ -1601,6 +1616,7 @@ void PrintHelpMessage(){
 	printf("-tPB [ --toysPreBayesian ] arg (=100)   number of toys used to average out nuisance paramereters in Bayesian pre-estimation \n"); 
 	printf("--tries arg (=1)                      number of tries for observed limit, if more than 1, will print out the average value and standard deviation of those tries\n");
 	printf("--flatPriorCropNsigma arg (=3)        fit to data and crop the flat prior range by Nsigma\n");
+	printf("--bysRunFit --bysInputMu [double] \n");
 	printf(" \n"); 
 	printf("FeldmanCousins specific options: \n"); 
 	printf("--lowerLimit arg (=0)                 Compute the lower limit instead of the upper limit \n"); 
