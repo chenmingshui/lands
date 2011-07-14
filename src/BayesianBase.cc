@@ -89,7 +89,7 @@ namespace lands{
 		_cms=cms;	
 		return Limit();
 	}
-	double BayesianBase::Limit(double alpha, double hint, bool bdofit, double *parsFitted, double *parsErrLow, double *parsErrUp, double cropNsigma){
+	double BayesianBase::Limit(double alpha, double hint, bool bdofit, double *parsFitted, double *parsErrLow, double *parsErrUp, double cropNsigma, bool bRunOnlyWithBestFittedNuisances, double inputMu){
 		fAlpha = alpha;
 		fConfidenceLevel = 1-fAlpha;
 
@@ -108,54 +108,73 @@ namespace lands{
 		else _nexps_to_averageout_sys=_preToys;	
 
 
-		// check whether there is any flat-prior nuisance
-		const vector<int>& vtype = _cms->Get_v_pdftype() ;
-		bool bHasFlatPriorNuisance = false;
-		for(int i=0; i<vtype.size(); i++) {
-			if(vtype[i]==typeFlat) {bHasFlatPriorNuisance=true; break;}
-		}
+		//bool bRunOnlyWithBestFittedNuisances = false;
+		if(bRunOnlyWithBestFittedNuisances) _nexps_to_averageout_sys = 1;
 
 		//NOTE: don't use const v<v<double>> &  here, because it will be changed in the following code
 		vector< vector<double> > vvparamunc = _cms->Get_v_pdfs_floatParamsUnc();
 		VChannelVSampleVUncertaintyVParameter vvvv_uncpar_tmp=_cms->Get_vvvv_uncpar();
-		if(bHasFlatPriorNuisance && bsys){
-			if(bdofit){
-				cms_global= _cms;
-				vdata_global=_cms->Get_v_data();
-				_inputNuisances = _cms->Get_norminalPars();
-				_startNuisances = _cms->Get_norminalPars();
-				double ErrorDef = TMath::ChisquareQuantile(0.68 , 1);// (confidenceLevel, ndf)
-				double upperL=0, lowerL=0; 
-				//double y0_2 =  MinuitFit(1001, upperL, lowerL, ErrorDef, 0, false, _debug) ;
-				double y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, 0, false, _debug) ;
+
+		double *fitedPars;
+		if(bRunOnlyWithBestFittedNuisances==false){
+
+			// check whether there is any flat-prior nuisance
+			const vector<int>& vtype = _cms->Get_v_pdftype() ;
+			bool bHasFlatPriorNuisance = false;
+			for(int i=0; i<vtype.size(); i++) {
+				if(vtype[i]==typeFlat) {bHasFlatPriorNuisance=true; break;}
 			}
-			for(int i=1; i<=_cms->Get_max_uncorrelation(); i++){
-				Double_t errUp, errLow, errParab=0, gcor=0; 
-				//myMinuit->mnerrs(i, errUp, errLow, errParab, gcor);
-				double p, pe;
+
+			if(bHasFlatPriorNuisance && bsys){
 				if(bdofit){
-					myMinuit->GetParameter(i, p, pe);
-					parsFitted[i]=p; parsErrLow[i]=pe;
-				}else{
-					p=parsFitted[i]; pe=parsErrLow[i];
+					cms_global= _cms;
+					vdata_global=_cms->Get_v_data();
+					_inputNuisances = _cms->Get_norminalPars();
+					_startNuisances = _cms->Get_norminalPars();
+					double ErrorDef = TMath::ChisquareQuantile(0.68 , 1);// (confidenceLevel, ndf)
+					double upperL=0, lowerL=0; 
+					//double y0_2 =  MinuitFit(1001, upperL, lowerL, ErrorDef, 0, false, _debug) ;
+					double y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, 0, false, _debug) ;
 				}
+				for(int i=1; i<=_cms->Get_max_uncorrelation(); i++){
+					Double_t errUp, errLow, errParab=0, gcor=0; 
+					//myMinuit->mnerrs(i, errUp, errLow, errParab, gcor);
+					double p, pe;
+					if(bdofit){
+						myMinuit->GetParameter(i, p, pe);
+						parsFitted[i]=p; parsErrLow[i]=pe;
+					}else{
+						p=parsFitted[i]; pe=parsErrLow[i];
+					}
 
-				errUp = pe; errLow=-pe;
-				if(vtype[i]==typeFlat) {
-					if(vvparamunc.size()>i)_cms->SetFlatParameterRange(i, vvparamunc[i][1]*p+vvparamunc[i][3], vvparamunc[i][1]*(p+cropNsigma*errLow)+vvparamunc[i][3], vvparamunc[i][1]*(p+cropNsigma*errUp)+vvparamunc[i][3]);
-					if(_debug)cout<<" FITTEDflatParam: "<<_cms->Get_v_uncname()[i-1]<<" param "<<vvparamunc[i][1]*p+vvparamunc[i][3]<<"  "<<vvparamunc[i][1]*errUp<<endl;;
-					_cms->SetFlatNormalizationRange(i, p+5*errLow, p+5*errUp);
-				}
-			}	
-			//change the range of flat parameters ;
-			//and change it back at the end ;
+					errUp = pe; errLow=-pe;
+					if(vtype[i]==typeFlat) {
+						if(vvparamunc.size()>i)_cms->SetFlatParameterRange(i, vvparamunc[i][1]*p+vvparamunc[i][3], vvparamunc[i][1]*(p+cropNsigma*errLow)+vvparamunc[i][3], vvparamunc[i][1]*(p+cropNsigma*errUp)+vvparamunc[i][3]);
+						if(_debug)cout<<" FITTEDflatParam: "<<_cms->Get_v_uncname()[i-1]<<" param "<<vvparamunc[i][1]*p+vvparamunc[i][3]<<"  "<<vvparamunc[i][1]*errUp<<endl;;
+						_cms->SetFlatNormalizationRange(i, p+5*errLow, p+5*errUp);
+					}
+				}	
+				//change the range of flat parameters ;
+				//and change it back at the end ;
+			}
+		}else{
+			fitedPars	= new double[_cms->Get_max_uncorrelation()+1];
+			cms_global= _cms;
+			vdata_global=_cms->Get_v_data();
+			_inputNuisances = _cms->Get_norminalPars();
+			_startNuisances = _cms->Get_norminalPars();
+			double ErrorDef = TMath::ChisquareQuantile(0.68 , 1);// (confidenceLevel, ndf)
+			double upperL=0, lowerL=0; 
+			//double y0_2 =  MinuitFit(1001, upperL, lowerL, ErrorDef, 0, false, _debug) ;
+			//double y0_2 =  MinuitFit(1001, upperL, lowerL, ErrorDef, fitedPars, false, _debug) ;
+			double y0_2 =  MinuitFit(3, upperL, lowerL, inputMu, fitedPars, false, _debug) ;
+
 		}
-
 		double rmid = 10;
 		if(hint<-10000){
-			
 
-			GenToys();
+
+			GenToys(fitedPars);
 
 			_NormReduction = EvaluateNormReduction();
 			if(_debug) cout<<"  _NormReduction = "<<_NormReduction<<endl;
@@ -202,6 +221,12 @@ namespace lands{
 				_limit=ret;
 				return ret;
 			}
+
+			if(bRunOnlyWithBestFittedNuisances){
+				_limit=ret;
+				return ret;
+			}
+
 			if(_debug)cout<<"\t limit starts at = "<<ret<<endl;
 			// resume the memory
 			//_cms->SetUseSystematicErrors(bsys);
@@ -210,8 +235,8 @@ namespace lands{
 				_limit=ret; _cms->Set_v_pdfs_floatParamsUnc(vvparamunc); 
 				_cms->Set_vvvv_uncpar(vvvv_uncpar_tmp);
 				return ret;}
-			_nexps_to_averageout_sys=ntoys;
-			GenToys();
+				_nexps_to_averageout_sys=ntoys;
+				GenToys();
 
 		}else{
 			//_cms->SetUseSystematicErrors(bsys);
@@ -299,7 +324,7 @@ namespace lands{
 		   return r_avr;
 		   */
 	}
-	void BayesianBase::GenToys(){
+	void BayesianBase::GenToys(double *fittedPars){
 		if(_debug >= 100) _cms->Print();
 		clock_t start_time=clock(), cur_time=clock(); // timing
 		for(int i=0; i<_vs.size(); i++){
@@ -364,7 +389,7 @@ namespace lands{
 		vector<int> v_sigproc = _cms->Get_v_sigproc();
 		for(int i=0; i<_nexps_to_averageout_sys; i++){
 			if(_debug>=100)cout<<" _nexps_to_averageout_sys: "<<i<<endl;
-			vv = _cms->FluctuatedNumbers();
+			vv = _cms->FluctuatedNumbers(fittedPars);
 			if(_debug>=100)cout<<" after fluctuation: "<<i<<endl;
 			double *s = new double[_nchannels];
 			double *b = new double[_nchannels];
@@ -408,7 +433,6 @@ namespace lands{
 		double ret=0;
 		for(int i=0; i<_nexps_to_averageout_sys; i++){
 			ret += glintegral(rlow, i);
-			//cout<<"DELETEME  i "<<i<<": sum="<<ret<<endl;
 		}
 		ret/=(double)_nexps_to_averageout_sys;
 		//cout<<"DELETEME AverageIntegral ret = "<<ret<<",  _nexps_to_averageout_sys = "<<_nexps_to_averageout_sys<<endl;
