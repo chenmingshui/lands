@@ -349,7 +349,7 @@ namespace lands{
 			cms_global->SetSignalScaleFactor(_signalScale);
 			return l;
 		}
-		if( (cms_global->IsUsingSystematicsErrors() && npars>0 )  || model ==2 or model==101 or model==102 ){
+		if( (cms_global->IsUsingSystematicsErrors() && npars>0 )  || model ==2 or model==21 or model==101 or model==102 ){
 
 			//FIXME temporarily solution:  when reading a source with all error = 0,  then assign it to be logNormal, error =0,  in UtilsROOT.cc 
 			//good solution: redefine npars here, count only sources with definded pdf. 
@@ -2430,6 +2430,7 @@ void CLsBase::prepareLogNoverB(){ // only necessary when evaluating LEP type sta
 
 			totsig = tmp;
 			// -----------------end  for charged higgs
+			cout<<" BRANCH ratio = "<<br<<" totsig in channel ["<<i<<"]:  totsig = "<<totsig<<endl;
 		}
 
 
