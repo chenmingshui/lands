@@ -17,7 +17,8 @@ namespace lands{
 			~BayesianBase();
 
 			double Limit(CountingModel *cms);
-			double Limit(double alpha=0.05, double hint=-99999., bool bdofit = false, double *parsFitted=0, double *parsErrLow=0, double *parsErrUp=0, double cropNsigma = 3);
+			double Limit(double alpha=0.05, double hint=-99999., bool bdofit = false, double *parsFitted=0, double *parsErrLow=0, double *parsErrUp=0, 
+					double cropNsigma = 3, bool bRunOnlyWithBestFittedNuisances=false, double inputMu=0);
 			void SetModel(CountingModel *cms);
 
 			//single channel counting experiment, limit in average which is with mathmatical meaning
@@ -26,7 +27,7 @@ namespace lands{
 			void SetAlpha(double alpha){fAlpha=alpha;fConfidenceLevel=1-fAlpha;}
 			void SetDebug(int debug){_debug=debug;}
 			void SetNumToys(int ntoys) {_nexps_to_averageout_sys=ntoys;}
-			void GenToys();
+			void GenToys(double *fittedPars = 0);
 			double AverageIntegral(double rlow);
 			double glintegral(double xlow, int iexps); 
 			double GetAlpha(){return fAlpha;}
