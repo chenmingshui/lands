@@ -1043,7 +1043,11 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 										double down = hunc_dn_norm[t][u]->GetBinContent(r);
 										if(debug) cout<<"down "<<down<<endl;
 										double up = hunc_up_norm[t][u]->GetBinContent(r);
-										double norminal = hnorm[t]->GetBinContent(r);
+										double norminal = hnorm[t]->GetBinContent(r); 
+										if(norminal<0){ 
+											cout<<"WARNING: channel ["<<channelnames[c]<<"] process ["<<vv_procnames[c][t]<<" has bin with content < 0 : "<<norminal<<".   we set it to be 0"<<endl; 
+											norminal=0;
+										}
 										double norm_down = hunc_dn[t][u]->Integral();
 										double norm_up = hunc_up[t][u]->Integral();
 										double norm_norminal = hn[t]->Integral();
@@ -1077,7 +1081,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 									if(uncertypes[u]=="gmA" or uncertypes[u]=="gmN"){
 										if(debug>=10)cout<<" binned histo: gamma "<<tmp<<endl;
 										if(TString(tmp).IsFloat()){
-											float tmpd = TString(tmp).Atof()*hnorm[t]->GetBinContent(r);
+											float tmpd = TString(tmp).Atof()*(hnorm[t]->GetBinContent(r)<0?0:hnorm[t]->GetBinContent(r));
 											TString tmps; 
 											tmps.Form("%g",tmpd);
 											tmp = tmps.Data();

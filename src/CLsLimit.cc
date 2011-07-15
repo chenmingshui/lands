@@ -400,6 +400,7 @@ namespace lands{
 						// but now [-20, 20] cause some problem in minuit fitting for non-signifcant deviation .... 
 						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, -5, 5,ierflg); // was 5,  causing problem with significance larger than > 7 
 						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_startNuisances[i], minuitStep, -5, 5,ierflg); // was 5,  causing problem with significance larger than > 7 
+						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_startNuisances[i], minuitStep, -10, 10,ierflg); // was 5,  causing problem with significance larger than > 7 
 						break;
 					case typeTruncatedGaussian :
 						maxunc = v_TG_maxUnc[i];	

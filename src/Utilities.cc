@@ -908,6 +908,7 @@ CASE4:
 		double z=0;
 
 		for(i=0;i<n;++i) {
+			//cout<<"DELETEME in gausslaguerre "<<i<<" of n="<<n<<endl;
 			int j=0, k=2, nscale=0;
 			double dz=0.0, p1=0, p2=0;
 			if(i==0) {
@@ -947,6 +948,7 @@ CASE4:
 				dz = p1*z/(n*p1-(n+alpha)*p2);
 				//cout<<"DELETEME dz="<<dz<<" z="<<z<<endl;
 				if(fabs(dz)<1.0e-10*z)--k;
+				//cout<< " DELETEME k "<<k<< "  dz="<<dz<<"  z="<<z<<endl;
 			}
 			x[i]=z;
 			lw[i] = log(z/(p2*p2)) - 2*nshift*nscale*M_LN2 ;

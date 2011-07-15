@@ -115,7 +115,7 @@ namespace lands{
 		vector< vector<double> > vvparamunc = _cms->Get_v_pdfs_floatParamsUnc();
 		VChannelVSampleVUncertaintyVParameter vvvv_uncpar_tmp=_cms->Get_vvvv_uncpar();
 
-		double *fitedPars;
+		double *fitedPars =0;
 		if(bRunOnlyWithBestFittedNuisances==false){
 
 			// check whether there is any flat-prior nuisance
@@ -354,7 +354,8 @@ namespace lands{
 		for(int ch=0; ch<_nchannels; ch++){	
 			_d[ch]=_cms->Get_v_data()[ch];
 			dtot+=_d[ch];
-			_logscale-=lgamma(_d[ch]+1);
+			if(_d[ch]+1>0) 	_logscale-=lgamma(_d[ch]+1);
+			else {cout<<" channel "<<ch<<" data = "<<_d[ch]<<endl;}
 		}
 		if(_debug>=100)cout<<"DELETEME 4"<<endl;
 		if(_debug>=100)cout<<"v_pdfs_roodataset.size = "<<_cms->Get_v_pdfs_roodataset().size()<<endl;
@@ -376,6 +377,7 @@ namespace lands{
 			if(_prior == flat || _prior==corr)_ngl = 1 + (int)dtot/2;
 			//if(_prior == prior_1overSqrtS)_ngl = 1 + (int)((dtot-0.5)/2);
 			if(_prior == prior_1overSqrtS)_ngl = 1 + (int)(dtot/2) + 1000; // +100  is for more accurate, otherwise for lower fluctuation, the results are not good 
+			if(_debug) cout<<" _ngl (1+dtot/2) = "<<_ngl<<endl;
 			if(_ngl>7175) {
 				cout<<"_ngl "<<_ngl<<" > 7175"<<" -->  change to 7175"<<endl;
 				_ngl = 7175; // because when _ngl >= 14352, it will go into infinite loop
@@ -403,6 +405,7 @@ namespace lands{
 				double totsig = 0; 
 				for(int isamp=v_sigproc[ch]; isamp<vv[ch].size(); isamp++){
 					totbkg+=vv[ch][isamp];
+					//cout<<"DELETEME ch="<<ch<<" isamp="<<isamp<<" totbkg="<<vv[ch][isamp]<<endl;
 				}
 				for(int isamp=0; isamp<v_sigproc[ch]; isamp++){
 					totsig+=vv[ch][isamp];
@@ -439,7 +442,7 @@ namespace lands{
 			ret += glintegral(rlow, i);
 		}
 		ret/=(double)_nexps_to_averageout_sys;
-		//cout<<"DELETEME AverageIntegral ret = "<<ret<<",  _nexps_to_averageout_sys = "<<_nexps_to_averageout_sys<<endl;
+		if(_debug>=100)cout<<"DELETEME AverageIntegral ret = "<<ret<<",  _nexps_to_averageout_sys = "<<_nexps_to_averageout_sys<<endl;
 		return ret;
 	}
 	double BayesianBase::glintegral(double rlow, int iexps ) {
@@ -462,9 +465,9 @@ namespace lands{
 			t+=_cms->EvaluateGL(_vNorms_forShapeChannels[iexps], _vParams_forShapeChannels[iexps], xr, vvs, vvb);
 			if(_prior == prior_1overSqrtS)t -= 0.5*log(_xgl[k] + rlow * _stot[iexps] );
 
-			//cout<< " _lwgl["<<k<<"]="<< _lwgl[k] <<" + t="<<t <<" = "<<_lwgl[k]+t<<endl;
+			if(_debug>=100)cout<< " _lwgl["<<k<<"]="<< _lwgl[k] <<" + t="<<t <<" = "<<_lwgl[k]+t<<endl;
 			sum += v = exp(_lwgl[k]+t - _NormReduction);
-			//cout<< " exp of above = "<<v<<endl;
+			if(_debug>=100)cout<< " exp of above = "<<v<<" sum="<<sum<<endl;
 			if(v<DBL_EPSILON*sum) break;
 
 			if(k==7174 && _debug) cout<<" glintegral :   _ngl ="<<  _ngl <<"   k= "<<k<<endl; 
@@ -559,6 +562,7 @@ namespace lands{
 		int iexps=0; double rlow = 0;
 		int i,k;
 		double sum=0, rstot;
+		double tmp;
 		if(_stot[iexps]<=0){ cout<<"total signal <= 0 ,exit "<<endl; exit(0); }
 		rstot=1./_stot[iexps];
 
@@ -566,18 +570,23 @@ namespace lands{
 		for(k=0;k<_ngl;++k) {
 			const double xr = _xgl[k]*rstot + rlow;
 			double t = -rlow * _stot[iexps]  - _btot[iexps] + _logscale , v;
+			//cout<<" DELETME 0 t="<<t<<endl;
 			for(i=0;i<_nchannels;++i)
-				if(_d[i]>0)
-					t += _d[i] * log( xr*_vs[iexps][i] + _vb[iexps][i] );
+				if(_d[i]>0){
+					tmp = xr*_vs[iexps][i] + _vb[iexps][i];
+					if(tmp>0) t += _d[i] * log( tmp );
+					//			cout<<" DELETME 0 t="<<t<<endl;
+				}
 
 			//			cout<<"DELETEME 2"<<endl;
 			t+=_cms->EvaluateGL(_vNorms_forShapeChannels[iexps], _vParams_forShapeChannels[iexps], xr, vvs, vvb);
+			//cout<<" DELETME 1 t="<<t<<endl;
 			//			cout<<"DELETEME 3"<<endl;
 			if(_prior == prior_1overSqrtS)t -= 0.5*log(_xgl[k] + rlow * _stot[iexps] );
 
-			double tmp =  _lwgl[k]+t; 
+			tmp =  _lwgl[k]+t; 
 
-			if(_debug>=100) cout<<" k="<<k<<": _lwgl="<<_lwgl[k]<<" tmp="<<tmp<<endl;
+			if(_debug>=100) cout<<" k="<<k<<": _lwgl="<<_lwgl[k]<<" t="<<t<<" tmp="<<tmp<<" _logscale="<<_logscale<<endl;
 
 			if(fabs(tmp)>fabs(ret)) ret = tmp;
 
