@@ -376,6 +376,10 @@ namespace lands{
 			if(_prior == flat || _prior==corr)_ngl = 1 + (int)dtot/2;
 			//if(_prior == prior_1overSqrtS)_ngl = 1 + (int)((dtot-0.5)/2);
 			if(_prior == prior_1overSqrtS)_ngl = 1 + (int)(dtot/2) + 1000; // +100  is for more accurate, otherwise for lower fluctuation, the results are not good 
+			if(_ngl>7175) {
+				cout<<"_ngl "<<_ngl<<" > 7175"<<" -->  change to 7175"<<endl;
+				_ngl = 7175; // because when _ngl >= 14352, it will go into infinite loop
+			}
 			if(_xgl) delete [] _xgl;
 			if(_lwgl) delete [] _lwgl;
 			_xgl = new double[_ngl];
@@ -462,6 +466,8 @@ namespace lands{
 			sum += v = exp(_lwgl[k]+t - _NormReduction);
 			//cout<< " exp of above = "<<v<<endl;
 			if(v<DBL_EPSILON*sum) break;
+
+			if(k==7174 && _debug) cout<<" glintegral :   _ngl ="<<  _ngl <<"   k= "<<k<<endl; 
 		}
 		if(_prior==flat )// PRIOR flat
 			sum *= rstot;
@@ -578,6 +584,7 @@ namespace lands{
 			tmp -= 300*(int)(tmp/300);
 			sum += v = exp( tmp );
 			if(v<DBL_EPSILON*sum) break;
+			if(k==7174 && _debug) cout<<" EvaluateNormReduction :   _ngl =" << _ngl <<"   k= "<<k<<endl; 
 		}
 
 		ret = 300*(int)(ret/300);

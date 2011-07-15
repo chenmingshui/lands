@@ -929,6 +929,7 @@ CASE4:
 					15.0*x[i-4] + 6.0*x[i-5] - x[i-6];
 			}
 			while(k>0) {
+				// when n >=7175,  it goes into infinite loop
 				p1=1;
 				p2=0;
 				nscale=0;
@@ -944,6 +945,7 @@ CASE4:
 					}
 				}
 				dz = p1*z/(n*p1-(n+alpha)*p2);
+				//cout<<"DELETEME dz="<<dz<<" z="<<z<<endl;
 				if(fabs(dz)<1.0e-10*z)--k;
 			}
 			x[i]=z;
