@@ -316,12 +316,37 @@ int main(int argc, const char*argv[]){
 				watch.Print();
 				return 0;
 			}
-
 			//frequentist.checkFittedParsInData(true, false, "fittedPars.root");
 			if(tossToyConvention==1)frequentist.checkFittedParsInData(bReadPars, bWritePars, fileFittedPars);
 
-			//frequentist.BuildM2lnQ(toysHybrid);
+
 			vector<double> vb, vsb;
+			if(scanRs && vR_toEval.size()>0){
+				for(int i=0; i<vR_toEval.size(); i++){
+					cout<<" running with signal stength = "<<vR_toEval[i]<<endl;
+					cms->SetSignalScaleFactor(vR_toEval[i]);
+					if(testStat==1)frequentist.prepareLogNoverB();
+					if(nToysForCLsb<=0) nToysForCLsb=toysHybrid;
+					if(nToysForCLb<=0) nToysForCLb=toysHybrid;
+					frequentist.BuildM2lnQ_sb(nToysForCLsb);
+					vsb = frequentist.Get_m2logQ_sb();
+					frequentist.BuildM2lnQ_b(nToysForCLb);
+					vb = frequentist.Get_m2logQ_b();
+					frequentist.BuildM2lnQ_data();
+					double qdata = frequentist.Get_m2lnQ_data();
+					cout<<" Q[mu="<<vR_toEval[i]<<"] ="<<qdata <<endl;
+					TString s_r; s_r.Form("TESTED_R%.5f", cms->GetSignalScaleFactor());
+					TString s_qdata; s_qdata.Form("DATA_R%.5f_Q%.5f", cms->GetSignalScaleFactor(), qdata);
+					TString s_sb = "SAMPLING_SB_"; s_sb+=s_r;
+					TString s_b = "SAMPLING_B_"; s_b+=s_r;
+					TString fileM2lnQ = jobname; fileM2lnQ+="_m2lnQ.root";
+					TString option = (i==0?"RECREATE":"UPDATE");
+					FillTree(fileM2lnQ, cms->GetSignalScaleFactor(), qdata, vsb, vb, s_r, s_qdata, s_sb, s_b, option);
+				}
+				return 0;
+			}
+
+			//frequentist.BuildM2lnQ(toysHybrid);
 			if(!bSkipM2lnQ){
 				if(testStat==1)frequentist.prepareLogNoverB();
 				if(!bNotCalcQdata)frequentist.BuildM2lnQ_data();
@@ -332,6 +357,7 @@ int main(int argc, const char*argv[]){
 				frequentist.BuildM2lnQ_b(nToysForCLb);
 				vb = frequentist.Get_m2logQ_b();
 			}
+
 			if(makeCLsBands>=2){
 				if(debug) cout<<"MakeCLsValues from precomputed file = "<<sFileM2lnQGrid<<endl;
 				std::map<double, TTree*> gridCLsb; //r, <clsb, clserr>
@@ -1670,7 +1696,7 @@ void PrintHelpMessage(){
 	printf("            *calculate p-value from merged file contains -2lnQ of b-only toys*\n");
 	printf("lands.exe --significance 1 -M Hybrid --testStat PL/LEP --calcPValueFromFile fileContains_-2lnQ@bonly.root\n");
 	printf("            *prepare grid of -2lnQ *\n");
-	printf("lands.exe -M Hybrid --freq --bNotCalcCLssbb --bSaveM2lnQ --nToysForCLsb 1000 --nToysForCLb 500 --singlePoint rValue  -n JobName -s Seed -d cards*.txt\n");
+	printf("lands.exe -M Hybrid --freq --bNotCalcCLssbb --bSaveM2lnQ --nToysForCLsb 1500 --nToysForCLb 500 --singlePoint rValue  -n JobName -s Seed -d cards*.txt\n");
 	printf("            *make limit bands with throwing pseudo data, \n");
 	printf("            *for each pseudo data, evaluate testStat for all available grid Rs from grid file*\n");
 	printf("lands.exe -d datacards*txt -M Hybrid --freq --bCalcObservedLimit 0  --M2lnQGridFile grid.root  --doExpectation 1 -t XXX --bSkipM2lnQ 1\n");

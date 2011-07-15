@@ -88,6 +88,7 @@ void run(TString inFileName, TString plotName, TString sfile="bands", double mH 
 	double dat_err = limitErr;
 
 	cout<<"EXPECTED LIMIT BANDS from(-2s,-1s,median,1s,2s): "<<m2s<<" "<<m1s<<" "<<med<<" "<<p1s<<" "<<p2s<<endl;
+	cout<<"Observed data limit: "<<dat<<endl;
 	cout<<"Observed data limit: "<<dat<<" +/- "<<dat_err<<endl;
 	cout<<"expected median limit: "<<med<<" +/- "<<med_err<<endl;
 	SaveResults(sfile, mH, dat, dat_err, 0, 0, m2s, m1s, med, 0, p1s, p2s);
@@ -175,14 +176,6 @@ double extractLimitAtQuantile(TString inFileName, TString plotName, double d_qua
 		TCanvas *c1 = new TCanvas("c1","c1");
 		limitPlot_->Sort();
 		limitPlot_->SetLineWidth(2);
-		/*
-		   double xmin = 0, xmax = 10; //FIXME
-		   for (int j = 0; j < limitPlot_->GetN(); ++j) {
-		   if (limitPlot_->GetY()[j] > 1.4*clsTarget || limitPlot_->GetY()[j] < 0.6*clsTarget) continue;
-		   xmin = std::min(limitPlot_->GetX()[j], xmin);
-		   xmax = std::max(limitPlot_->GetX()[j], xmax);
-		   }
-		   */
 		double rMinBound, rMaxBound; expoFit->GetRange(rMinBound, rMaxBound);
 		if(bPlotInFittedRange){
 			limitPlot_->GetXaxis()->SetRangeUser(rMinBound, rMaxBound);
@@ -200,6 +193,7 @@ double extractLimitAtQuantile(TString inFileName, TString plotName, double d_qua
 	}
 
 	std::cout << "\n -- Hybrid New -- \n";
+	if(limit<0) { limit=0; cout<<"  WARNING: fitted limit <0,   need more toys and more points of signal strength"<<endl; }
 	std::cout << "Limit: r" << " < " << limit << " +/- " << limitErr << " @ " << (1-clsTarget) * 100 << "% CL\n";
 	return limit;
 }
@@ -237,21 +231,23 @@ void readAllToysFromFile(TGraphErrors*tge, TFile*f, double d_quantile) {
 	}
 
 	int i = 0, n = gridCLsb.size();
-	cout<<" grid size = "<<n<<endl;
+	if(_debug)cout<<" grid size = "<<n<<endl;
 	int n_valid = 0;
 	for (std::map<double, TTree *>::iterator itg = gridCLsb.begin(), edg = gridCLsb.end(); itg != edg; ++itg) {
 		double cls, clserr;
 		GetCLs(gridQdata[itg->first], itg->second, gridCLb[itg->first], cls, clserr, d_quantile);
 		//if(itg->first != 1.74 && itg->first != 1.95) continue;
-		if((cls!=1 and clserr==0) or cls<1e-10)continue;
+		if(cls!=1 and clserr==0)continue;
+		if(cls>0.9) continue;
+		if(cls<0.0001) continue;
 		n_valid+=1;
 		tge->Set(n_valid);
 		tge->SetPoint(     n_valid-1, itg->first, cls   ); 
 		tge->SetPointError(n_valid-1, 0,          clserr);
-		cout<<" input grid:  r="<<itg->first<<" cls="<<cls<<"+/-"<<clserr<<endl;
+		if(_debug)cout<<" input grid:  r="<<itg->first<<" cls="<<cls<<"+/-"<<clserr<<endl;
 		i++;
 	}
-	cout<<"tge->N = "<<tge->GetN()<<endl;
+	if(_debug)cout<<"tge->N = "<<tge->GetN()<<endl;
 }
 bool GetCLs(double qdata, TTree* tsb, TTree*tb,  double &cls, double &err, double d_quantile){
 	vector<double> vqsb, vqb; vqsb.clear(); vqb.clear();

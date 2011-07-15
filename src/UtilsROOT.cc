@@ -98,8 +98,8 @@ void FillTree(TString sfile, vector<int> array){
 	//	if(tree) delete tree;
 	//	cout<<"delete me here 6"<<endl;
 }
-void FillTree(TString sfile, double d1, double d2, vector<double> array1,  vector<double> array2, TString d1Name, TString d2Name, TString array1Name, TString array2Name){
-	TFile fTrees(sfile, "RECREATE");
+void FillTree(TString sfile, double d1, double d2, vector<double> array1,  vector<double> array2, TString d1Name, TString d2Name, TString array1Name, TString array2Name, TString option ){
+	TFile fTrees(sfile, option);
 	Double_t brT;
 	TTree *tree1 = new TTree(array1Name, array1Name); 
 	tree1->Branch("brT", &brT, "brT/D");
