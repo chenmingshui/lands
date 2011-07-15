@@ -58,16 +58,39 @@ bool bPlotInFittedRange = false;
 double extractLimitAtQuantile(TString inFileName, TString plotName, double d_quantile = -1 );
 void fitRvsCLs(){
 }
-void run(TString inFileName, TString plotName){
+void SaveResults(TString sfile, double mH, double _limit, double _limitErr, double significance, double pvalue, double rm2s, double rm1s, double rmedian, double rmean, double rp1s, double rp2s){
+	TFile fTrees(sfile+".root", "RECREATE");
+	TTree *tree = new TTree("T","T"); 
+	tree->Branch("mH", &mH, "mH/D");
+	tree->Branch("limit", &_limit, "limit/D");
+	tree->Branch("limitErr", &_limitErr, "limitErr/D");
+	tree->Branch("significance", &significance, "significance/D");
+	tree->Branch("pvalue", &pvalue, "pvalue/D");
+	tree->Branch("rm2s", &rm2s, "rm2s/D");
+	tree->Branch("rm1s", &rm1s, "rm1s/D");
+	tree->Branch("rmedian", &rmedian, "rmedian/D");
+	tree->Branch("rmean", &rmean, "rmean/D");
+	tree->Branch("rp1s", &rp1s, "rp1s/D");
+	tree->Branch("rp2s", &rp2s, "rp2s/D");
+	tree->Fill();
+
+	fTrees.Write();
+	fTrees.Close();
+}
+void run(TString inFileName, TString plotName, TString sfile="bands", double mH = -1){
 	double m2s =	extractLimitAtQuantile(inFileName, plotName+"_-2sigma", 0.0275 );
 	double m1s =	extractLimitAtQuantile(inFileName, plotName+"_-1sigma", 0.16 );
 	double med =	extractLimitAtQuantile(inFileName, plotName+"_median", 0.5 );
+	double med_err = limitErr;
 	double p1s =	extractLimitAtQuantile(inFileName, plotName+"_1sigma", 0.84 );
 	double p2s =	extractLimitAtQuantile(inFileName, plotName+"_2sigma", 0.975 );
 	double dat =	extractLimitAtQuantile(inFileName, plotName+"_observed", -1 );
+	double dat_err = limitErr;
 
 	cout<<"EXPECTED LIMIT BANDS from(-2s,-1s,median,1s,2s): "<<m2s<<" "<<m1s<<" "<<med<<" "<<p1s<<" "<<p2s<<endl;
-	cout<<"Observed data limit: "<<dat<<endl;
+	cout<<"Observed data limit: "<<dat<<" +/- "<<dat_err<<endl;
+	cout<<"expected median limit: "<<med<<" +/- "<<med_err<<endl;
+	SaveResults(sfile, mH, dat, dat_err, 0, 0, m2s, m1s, med, 0, p1s, p2s);
 }
 double extractLimitAtQuantile(TString inFileName, TString plotName, double d_quantile ){
 	TFile *f = TFile::Open(inFileName);
@@ -88,6 +111,7 @@ double extractLimitAtQuantile(TString inFileName, TString plotName, double d_qua
 	clsMax.first=0;
 	clsMax.second=0;
 
+	limit = 0; limitErr = 0;
 	for (int i = 0; i < n; ++i) {
 		double x = limitPlot_->GetX()[i], y = limitPlot_->GetY()[i], ey = limitPlot_->GetErrorY(i);
 		if (_debug > 0) std::cout << "  r " << x << ", CLs = " << y << " +/- " << ey << std::endl;
