@@ -79,15 +79,24 @@ void SaveResults(TString sfile, double mH, double _limit, double _limitErr, doub
 }
 void run(TString inFileName, TString plotName, TString sfile="bands", double mH = -1){
 	double m2s =	extractLimitAtQuantile(inFileName, plotName+"_-2sigma", 0.0275 );
+	double m2s_err = limitErr;
 	double m1s =	extractLimitAtQuantile(inFileName, plotName+"_-1sigma", 0.16 );
+	double m1s_err = limitErr;
 	double med =	extractLimitAtQuantile(inFileName, plotName+"_median", 0.5 );
 	double med_err = limitErr;
 	double p1s =	extractLimitAtQuantile(inFileName, plotName+"_1sigma", 0.84 );
+	double p1s_err = limitErr;
 	double p2s =	extractLimitAtQuantile(inFileName, plotName+"_2sigma", 0.975 );
+	double p2s_err = limitErr;
 	double dat =	extractLimitAtQuantile(inFileName, plotName+"_observed", -1 );
 	double dat_err = limitErr;
 
-	cout<<"EXPECTED LIMIT BANDS from(-2s,-1s,median,1s,2s): "<<m2s<<" "<<m1s<<" "<<med<<" "<<p1s<<" "<<p2s<<endl;
+	cout<<"EXPECTED LIMIT BANDS from(obs, -2s,-1s,median,1s,2s) mass= "<<mH<<": ";
+	cout<<dat<<"+/-"<<dat_err<<", ";
+	cout<<m2s<<"+/-"<<m2s_err<<", "<<m1s<<"+/-"<<m1s_err<<", ";
+	cout<<med<<"+/-"<<med_err<<", ";
+	cout<<p1s<<"+/-"<<p1s_err<<", "<<p2s<<"+/-"<<p2s_err<<endl;
+
 	cout<<"Observed data limit: "<<dat<<endl;
 	cout<<"Observed data limit: "<<dat<<" +/- "<<dat_err<<endl;
 	cout<<"expected median limit: "<<med<<" +/- "<<med_err<<endl;
@@ -106,6 +115,7 @@ double extractLimitAtQuantile(TString inFileName, TString plotName, double d_qua
 	double minDist=1e3;
 	int n= limitPlot_->GetN();
 	cout<<" Number of points in limitPlot_ : "<<n<<endl;
+	if(n<=0) return 0;
 
 	clsMin.first=0;
 	clsMin.second=0;
