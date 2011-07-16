@@ -944,7 +944,7 @@ void GetLimits(TTree *tree, vector<double>& inputMH, vector<double>& inputLimits
 	   }
    }
 }
-void GetPValues(TTree *tree, vector<double>& inputMH, vector<double>& inputLimits ){	
+void GetPValues(TTree *tree, vector<double>& inputMH, vector<double>& inputLimits, vector<double> & inputLimitErrs_m2s, vector<double> & inputLimitErrs_m1s, vector<double>&inputLimitErrs_p1s, vector<double>&inputLimitErrs_p2s ){
 	// Declaration of leaf types
 	Double_t        mH;
 	Double_t        limit;
@@ -975,11 +975,109 @@ void GetPValues(TTree *tree, vector<double>& inputMH, vector<double>& inputLimit
 
 	Long64_t nentries = tree->GetEntries();
 
-	//Long64_t nbytes = 0, nb = 0;
-	for (Long64_t jentry=0; jentry<nentries;jentry++) {
-		Long64_t ientry = tree->GetEntry(jentry);
-		if (ientry < 0) break;
-		inputLimits.push_back(pvalue);
-		inputMH.push_back(mH);
-	}
+
+   vector< vector<double> > vv_sameMH; vv_sameMH.clear();
+   //Long64_t nbytes = 0, nb = 0;
+   for (Long64_t jentry=0; jentry<nentries;jentry++) {
+	   Long64_t ientry = tree->GetEntry(jentry);
+	   if (ientry < 0) break;
+	   vector<double>::iterator id = std::find(inputMH.begin(), inputMH.end(), mH); 
+	   if(id!=inputMH.end()){
+		   vv_sameMH[id-inputMH.begin()].push_back(pvalue);
+	   }else{
+		   vector<double> v; v.clear();
+		   v.push_back(pvalue);vv_sameMH.push_back(v);
+		   inputLimits.push_back(pvalue);
+		   inputLimitErrs_m2s.push_back(pvalue);
+		   inputLimitErrs_m1s.push_back(pvalue);
+		   inputLimitErrs_p2s.push_back(pvalue);
+		   inputLimitErrs_p1s.push_back(pvalue);
+		   inputMH.push_back(mH);
+	   }
+   }
+   for(int i=0; i<vv_sameMH.size();i++){ 
+	   if(vv_sameMH[i].size()>1) {
+		   std::sort(vv_sameMH[i].begin(), vv_sameMH[i].end());
+		   double avr=0, avrerr=0;
+		   for(int j=0; j<vv_sameMH[i].size(); j++){
+			   avr+=vv_sameMH[i][j];
+		   }
+		   avr/=(float)(vv_sameMH[i].size());
+
+		   for(int j=0; j<vv_sameMH[i].size(); j++){
+			   avrerr+=(vv_sameMH[i][j]-avr)*(vv_sameMH[i][j]-avr);
+		   }
+		   avrerr = TMath::Sqrt(avrerr)/TMath::Sqrt( vv_sameMH[i].size() * (vv_sameMH[i].size()-1) );
+		   //inputLimits[i]=avr;
+		   inputLimits[i]=vv_sameMH[i][(int)(vv_sameMH[i].size()*0.5)];
+		   inputLimitErrs_m2s[i]=vv_sameMH[i][(int)(vv_sameMH[i].size()*0.0275)];
+		   inputLimitErrs_m1s[i]=vv_sameMH[i][(int)(vv_sameMH[i].size()*0.16)];
+		   inputLimitErrs_p2s[i]=vv_sameMH[i][(int)(vv_sameMH[i].size()*0.975)];
+		   inputLimitErrs_p1s[i]=vv_sameMH[i][(int)(vv_sameMH[i].size()*0.84)];
+		   //inputLimitErrs[i]=avrerr;
+	   }
+   }
+}
+
+void GetLimitBands(TTree *tree, vector<double>& inputMH, vector<double>& inputLimits, vector<double> & inputLimitsM2S, vector<double>& inputLimitsM1S, 
+		vector<double>& inputLimitsMEDIAN, vector<double>& inputLimitsP1S, vector<double>& inputLimitsP2S){	
+   // Declaration of leaf types
+   Double_t        mH;
+   Double_t        limit;
+   Double_t        limitErr;
+   Double_t        significance;
+   Double_t        pvalue;
+   Double_t        rm2s;
+   Double_t        rm1s;
+   Double_t        rmedian;
+   Double_t        rmean;
+   Double_t        rp1s;
+   Double_t        rp2s;
+
+   // List of branches
+   TBranch        *b_mH;   //!
+   TBranch        *b_limit;   //!
+   TBranch        *b_limitErr;   //!
+   TBranch        *b_significance;   //!
+   TBranch        *b_pvalue;   //!
+   TBranch        *b_rm2s;   //!
+   TBranch        *b_rm1s;   //!
+   TBranch        *b_rmedian;   //!
+   TBranch        *b_rmean;   //!
+   TBranch        *b_rp1s;   //!
+   TBranch        *b_rp2s;   //!
+
+   TTree *fChain = tree;
+   if(tree->GetBranch("mH")){
+	   fChain->SetBranchAddress("mH", &mH, &b_mH);
+   }
+   if(tree->GetBranch("mh")){
+	   fChain->SetBranchAddress("mh", &mH, &b_mH);
+   }
+
+   fChain->SetBranchAddress("limit", &limit, &b_limit);
+   fChain->SetBranchAddress("limitErr", &limitErr, &b_limitErr);
+   fChain->SetBranchAddress("significance", &significance, &b_significance);
+   fChain->SetBranchAddress("pvalue", &pvalue, &b_pvalue);
+   fChain->SetBranchAddress("rm2s", &rm2s, &b_rm2s);
+   fChain->SetBranchAddress("rm1s", &rm1s, &b_rm1s);
+   fChain->SetBranchAddress("rmedian", &rmedian, &b_rmedian);
+   fChain->SetBranchAddress("rmean", &rmean, &b_rmean);
+   fChain->SetBranchAddress("rp1s", &rp1s, &b_rp1s);
+   fChain->SetBranchAddress("rp2s", &rp2s, &b_rp2s);
+
+   Long64_t nentries = tree->GetEntries();
+
+   //Long64_t nbytes = 0, nb = 0;
+   for (Long64_t jentry=0; jentry<nentries;jentry++) {
+	   Long64_t ientry = tree->GetEntry(jentry);
+	   if (ientry < 0) break;
+	   inputLimits.push_back(limit);
+	   inputMH.push_back(mH);
+	   inputLimitsM2S.push_back(rm2s);
+	   inputLimitsM1S.push_back(rm1s);
+	   inputLimitsP2S.push_back(rp2s);
+	   inputLimitsP1S.push_back(rp1s);
+	   inputLimitsMEDIAN.push_back(rmedian);
+   }
 }

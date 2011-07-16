@@ -115,14 +115,31 @@ double extractLimitAtQuantile(TString inFileName, TString plotName, double d_qua
 	limit = 0; limitErr = 0;
 	for (int i = 0; i < n; ++i) {
 		double x = limitPlot_->GetX()[i], y = limitPlot_->GetY()[i], ey = limitPlot_->GetErrorY(i);
-		if (_debug > 0) std::cout << "  r " << x << ", CLs = " << y << " +/- " << ey << std::endl;
-		if (y-3*ey >= clsTarget) { rMin = x; clsMin = CLs_t(y,ey); }
-		if (y+3*ey <= clsTarget) { rMax = x; clsMax = CLs_t(y,ey); }
 		if (fabs(y-clsTarget) < minDist) { limit = x; minDist = fabs(y-clsTarget); }
 	}
-	if((clsMin.first==0 and clsMin.second==0) || (clsMax.first==0 and clsMax.second==0))
+	int ntmp =0;
+	for (int j = 0; j < n; ++j) {
+		int i = n-j-1;
+		double x = limitPlot_->GetX()[i], y = limitPlot_->GetY()[i], ey = limitPlot_->GetErrorY(i);
+		if (y-3*ey >= clsTarget && ntmp<=2) { 
+			rMin = x; clsMin = CLs_t(y,ey); 
+			ntmp ++ ;
+		}
+	}
+	ntmp =0;
+	for (int i = 0; i < n; ++i) {
+		double x = limitPlot_->GetX()[i], y = limitPlot_->GetY()[i], ey = limitPlot_->GetErrorY(i);
+		if (y+3*ey <= clsTarget && ntmp<=2) {
+		       	rMax = x; clsMax = CLs_t(y,ey);
+			ntmp ++ ;
+		}
+	}
+	if((clsMin.first==0 and clsMin.second==0) )
 	{
 		rMin = limitPlot_->GetX()[0]; clsMin=CLs_t(limitPlot_->GetY()[0], limitPlot_->GetErrorY(0)); 
+	}
+	if((clsMax.first==0 and clsMax.second==0))
+	{
 		rMax = limitPlot_->GetX()[n-1]; clsMax=CLs_t(limitPlot_->GetY()[n-1], limitPlot_->GetErrorY(n-1));
 	}
 
