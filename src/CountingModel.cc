@@ -113,7 +113,7 @@ namespace lands{
 		v_pdfs_floatParamsUnc.clear();
 
 
-		_w = new RooWorkspace();
+		_w = new RooWorkspace("w");
 		_w_varied = new RooWorkspace();
 
 

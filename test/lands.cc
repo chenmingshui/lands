@@ -117,6 +117,8 @@ TString sPhysicsModel = "StandardModelHiggs";
 bool bRunOnlyWithBestFittedNuisances_bayesian = false;
 double inputMu_bayesian = 0;
 
+bool bWriteToys = false;
+
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
 
@@ -352,7 +354,7 @@ int main(int argc, const char*argv[]){
 				if(!bNotCalcQdata)frequentist.BuildM2lnQ_data();
 				if(nToysForCLsb<=0) nToysForCLsb=toysHybrid;
 				if(nToysForCLb<=0) nToysForCLb=toysHybrid;
-				frequentist.BuildM2lnQ_sb(nToysForCLsb);
+				frequentist.BuildM2lnQ_sb(nToysForCLsb, false, bWriteToys);
 				vsb = frequentist.Get_m2logQ_sb();
 				frequentist.BuildM2lnQ_b(nToysForCLb);
 				vb = frequentist.Get_m2logQ_b();
@@ -1452,6 +1454,7 @@ void processParameters(int argc, const char* argv[]){
 	if(isWordInMap("--bSaveM2lnQ", options)) bSaveM2lnQ = true;
 	if(isWordInMap("--bSkipM2lnQ", options)) bSkipM2lnQ = true;
 	if(isWordInMap("--bOnlyEvaluateQdata", options)) bOnlyEvaluateQdata= true;
+	if(isWordInMap("--bWriteToys", options)) bWriteToys = true;
 
 	tmpv = options["--nToysForCLsb"];
 	if( tmpv.size()!=1 ) { nToysForCLsb = -1; }
@@ -1666,6 +1669,7 @@ void PrintHelpMessage(){
 	printf("--freq                                shorcut to the configuration of LHC-type frequestist method \n");
 	printf("                                      (i.e. --tossToyConvention 1 --UseBestEstimateToCalcQ 0  --tossPseudoDataConvention 1 --testStat LHC) \n");
 
+	printf("--bWriteToys (=0)\n");
 	printf("--bReadPars (=0)\n");
 	printf("--bWritePars (=0)\n");
 	printf("--bNotCalcQdata (=0)\n");

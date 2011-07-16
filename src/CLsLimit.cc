@@ -2147,7 +2147,7 @@ bool CLsBase::BuildM2lnQ_data(){
 	return true;
 }
 
-bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys){  
+bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys){  
 
 	_inputNuisances = _model->Get_norminalPars();	
 	_startNuisances = _model->Get_norminalPars();	
@@ -2250,6 +2250,12 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys){
 				vdata_global = (VDChannel)_model->GetToyData_H1(_model->Get_fittedParsInData_sb());
 				if(_model->hasParametricShape()){
 					_model->SetTmpDataForUnbinned(_model->Get_v_pdfs_roodataset_toy());
+					if(bWriteToys){
+						for(int ii=0; ii<_model->Get_v_pdfs_roodataset_toy().size(); ii++){
+							TString stmp = _model->Get_v_pdfs_roodataset_toy()[ii]->GetName(); stmp+="_"; stmp+=i;
+							_model->GetWorkSpace()->import(*(_model->Get_v_pdfs_roodataset_toy()[ii]), RooFit::Rename(stmp.Data()));
+						}
+					}
 				}
 				if(!_model->UseBestEstimateToCalcQ()){
 					VChannelVSample vv =  _model->FluctuatedNumbers(0, true, 2); // toss nuisance around fitted b_hat_mu in data 
@@ -2267,7 +2273,8 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys){
 		}
 		int checkFailure = (_debug>=10?1:0);
 		bool success = true;
-		Q_sb[i] = M2lnQ(success, checkFailure);
+		if(bWriteToys) Q_sb[i]=0;
+		else Q_sb[i] = M2lnQ(success, checkFailure);
 		if(success==false) {
 			// skip this toy and regenerate it   --> any bias ? 
 			// caveat: it may go to infinite loop if all toys fails
@@ -2276,6 +2283,13 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys){
 		}
 	}
 
+	if(bWriteToys){
+		TFile *f = new TFile("PseudoData_sb.root", "RECREATE");
+		f->WriteTObject(_model->GetWorkSpace());
+		f->Close();
+		return true;
+	}
+	
 	if(_debug) { start_time=cur_time; cur_time=clock(); cout << "\t\t\t TIME in RunMCExps run_"<<_nexps<<"_pseudo exps: " << (cur_time - start_time)/1000. << " millisec\n"; }
 
 	Sort(_nexps, Q_sb, iq_sb, 0);
