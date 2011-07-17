@@ -1023,6 +1023,7 @@ int main(int argc, const char*argv[]){
 			   */
 			x2 =  MinuitFit(21, tmp, tmperr); // allow mu<0
 			cout<<"fitted r = "<<tmp<<endl;
+			double mu_hat = tmp;
 			m2lnQ = MinuitFit(3,tmp, tmp) - x2; // mu=0
 			sig_data = sqrt(fabs(m2lnQ));
 			if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
@@ -1032,7 +1033,7 @@ int main(int argc, const char*argv[]){
 			cout<<"Observed p-value = "<<pvalue<<endl;
 			if(sig_data>=4) cout<<"WARNING: please contact mschen@cern.ch for a potential issue on the nuisances' range. Needs change from [-5,5] to larger one"<<endl;
 
-			SaveResults(jobname+"_plrObsPvalue", HiggsMass, 0, 0, sig_data, pvalue, 0, 0, 0, 0, 0, 0);
+			SaveResults(jobname+"_plrObsPvalue", HiggsMass, 0, 0, sig_data, pvalue, 0, 0, 0, mu_hat, 0, 0);
 			if(debug>=10) { // show a plot for   -log(Lambda(mu)) vs. mu ...
 				for(double r=0; r<2; r+=0.1){
 					m2lnQ = MinuitFit(3,tmp, tmp, r) -x2; 
