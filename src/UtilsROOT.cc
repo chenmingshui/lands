@@ -1044,6 +1044,15 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 										if(debug) cout<<"down "<<down<<endl;
 										double up = hunc_up_norm[t][u]->GetBinContent(r);
 										double norminal = hnorm[t]->GetBinContent(r); 
+										if(down>-9999999 && down<9999999 && up>-9999999 && up<99999999 && norminal>-9999999 && norminal<99999999) {
+											// ok
+										}else{
+											cout<<" input not ok:  bin content is crazy : "<<endl;
+											cout<<"down = "<<down<<endl;
+											cout<<"up   = "<<up<<endl;
+											cout<<"norminal = "<<norminal<<endl;
+											exit(1);
+										}
 										if(norminal<0){ 
 											// make sure no negativae bin content
 											cout<<"WARNING: channel ["<<channelnames[c]<<"] process ["<<vv_procnames[c][t]<<" has bin with content < 0 : "<<norminal<<".   we set it to be 0"<<endl; 
@@ -1074,6 +1083,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 											vs_unc[u]+=unc; vs_unc[u] += " ";
 											if(debug>=10)cout<<vs_unc[u]<<endl;
 										}
+										//cout<<vs_unc[u]<<endl;
 									}else{
 										vs_unc[u]+=" - ";
 									}

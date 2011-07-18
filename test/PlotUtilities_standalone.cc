@@ -1081,3 +1081,32 @@ void GetLimitBands(TTree *tree, vector<double>& inputMH, vector<double>& inputLi
 	   inputLimitsMEDIAN.push_back(rmedian);
    }
 }
+void GetMuHat(TTree *tree, vector<double>& inputMH, vector<double>& inputLimits ){
+	// Declaration of leaf types
+	Double_t        mH;
+	Double_t        limit;
+
+	// List of branches
+	TBranch        *b_mH;   //!
+	TBranch        *b_limit;   //!
+
+	TTree *fChain = tree;
+	if(tree->GetBranch("mH")){
+		fChain->SetBranchAddress("mH", &mH, &b_mH);
+		fChain->SetBranchAddress("rmean", &limit, &b_limit);
+	}
+	if(tree->GetBranch("mh")){
+		fChain->SetBranchAddress("mh", &mH, &b_mH);
+		fChain->SetBranchAddress("rmean", &limit, &b_limit);
+	}
+
+
+	Long64_t nentries = tree->GetEntries();
+
+	for (Long64_t jentry=0; jentry<nentries;jentry++) {
+		Long64_t ientry = tree->GetEntry(jentry);
+		if (ientry < 0) break;
+		inputLimits.push_back(limit);
+		inputMH.push_back(mH);
+	}
+}
