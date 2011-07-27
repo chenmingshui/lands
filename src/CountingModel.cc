@@ -1296,7 +1296,7 @@ If we need to change it later, it will be easy to do.
 			}
 		}
 
-		if(bUseBestEstimateToCalcQ==2)for(int i=1; i<=max_uncorrelation; i++) _randomizedPars[i] = vrdm[i]; // only for LHC-type test statistics evaluation
+		for(int i=1; i<=max_uncorrelation; i++) _randomizedPars[i] = vrdm[i]; // only for LHC-type test statistics evaluation
 
 		return vv;
 	}	

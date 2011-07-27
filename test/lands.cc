@@ -176,7 +176,7 @@ int main(int argc, const char*argv[]){
 	CRandom *rdm = new CRandom(seed);  //initilize a random generator
 	cms->SetRdm(rdm);
 	//cms->RemoveChannelsWithExpectedSignal0orBkg0();
-	int nch_removed = cms->RemoveChannelsWithExpectedSignal0orBkg0(0); // 0: remove only bins with total bkg<=0,  1: remove bins with total sig<=0,  2: both
+	int nch_removed =0 ;// = cms->RemoveChannelsWithExpectedSignal0orBkg0(0); // 0: remove only bins with total bkg<=0,  1: remove bins with total sig<=0,  2: both
 	if(debug and nch_removed )cms->Print();
 	if(nch_removed)cms->SetUseSystematicErrors(systematics);//need reconfig,  otherwise crash
 	//cms->SetAllowNegativeSignalStrength(false);
@@ -345,6 +345,7 @@ int main(int argc, const char*argv[]){
 					TString option = (i==0?"RECREATE":"UPDATE");
 					FillTree(fileM2lnQ, cms->GetSignalScaleFactor(), qdata, vsb, vb, s_r, s_qdata, s_sb, s_b, option);
 				}
+				watch.Print();
 				return 0;
 			}
 
@@ -1021,10 +1022,30 @@ int main(int argc, const char*argv[]){
 			   cout<<"Observed significance using PLR method = "<<sig_data<<endl;
 			   cout<<"Observed p-value = "<<1-TMath::Erf(sig_data)<<endl;
 			   */
-			x2 =  MinuitFit(21, tmp, tmperr); // allow mu<0
+			//x2 =  MinuitFit(21, tmp, tmperr); // mu>0
+			//x2 =  MinuitFit(2, tmp, tmperr); // allow mu<0
+			double * fittedPars = new double[cms->Get_max_uncorrelation()+1];
+			int success[1];success[0]=0;
+			x2 = MinuitFit(2, tmp, tmperr, 0, fittedPars, false, debug, success);  // MinuitFit(mode, r, err_r)
+			/*
+			int ntmp = 0;
+			while(success[0]!=0 && ntmp < 10){
+				cms->FluctuatedNumbers(); // toss nuisance around fitted b_hat_0 in data  
+				_startNuisances = cms->Get_randomizedPars();	
+				x2 = MinuitFit(2, tmp, tmperr, 0, fittedPars, false, 0, success);  // MinuitFit(mode, r, err_r)
+				ntmp++;
+			}
+			if(ntmp>0)cout<<" after "<<ntmp+1<<" tries: fit "<<(success[0]?"fails":"successful")<<endl;
+			*/
+			if(success[0])x2 =  MinuitFit(21, tmp, tmperr, 0, fittedPars, false, debug, success); // mu>0
 			cout<<"fitted r = "<<tmp<<endl;
 			double mu_hat = tmp;
-			m2lnQ = MinuitFit(3,tmp, tmp) - x2; // mu=0
+			if(mu_hat<=0) {
+				cout<<" fitted r <=0 at maximum likelihood ratio ,  signicance = 0"<<endl;
+				m2lnQ = 0;
+			}else{
+				m2lnQ = MinuitFit(3,tmp, tmp, 0, fittedPars, true, debug, success) - x2; // mu=0
+			}
 			sig_data = sqrt(fabs(m2lnQ));
 			if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
 			cout<<"Observed significance using PLR method = "<<sig_data<<endl;
