@@ -56,6 +56,7 @@ double rAbsAccuracy_ = 0.01;
 double rRelAccuracy_ = 0.02;
 bool bPlotInFittedRange = false;
 double extractLimitAtQuantile(TString inFileName, TString plotName, double d_quantile = -1 );
+double _m2s = 0, _m1s=0;
 void fitRvsCLs(){
 }
 void SaveResults(TString sfile, double mH, double _limit, double _limitErr, double significance, double pvalue, double rm2s, double rm1s, double rmedian, double rmean, double rp1s, double rp2s){
@@ -101,6 +102,8 @@ void run(TString inFileName, TString plotName, TString sfile="bands", double mH 
 	cout<<"Observed data limit: "<<dat<<" +/- "<<dat_err<<endl;
 	cout<<"expected median limit: "<<med<<" +/- "<<med_err<<endl;
 	SaveResults(sfile, mH, dat, dat_err, 0, 0, m2s, m1s, med, 0, p1s, p2s);
+
+	_m2s = m2s; _m1s=m1s;
 }
 double extractLimitAtQuantile(TString inFileName, TString plotName, double d_quantile ){
 	TFile *f = TFile::Open(inFileName);
