@@ -595,10 +595,12 @@ void DrawCMS(string cms, double x1, double y1, double x2, double y2, double txts
 }
 void Save(TCanvas *cCanvas, string _ssave){
 	string seps = _ssave+".eps";
+	string spdf = _ssave+".pdf";
 	string sgif = _ssave+".gif";
 	string sroot = _ssave+".root";
 	cCanvas->Print(sroot.c_str());
 	cCanvas->Print(seps.c_str());
+	cCanvas->Print(spdf.c_str());
 	cCanvas->Print(sgif.c_str());
 }
 DrawPdfM2logQ::DrawPdfM2logQ(vector<double> vPdfM2logQ_sb, vector<double> vPdfM2logQ_b, 
