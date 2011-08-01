@@ -359,6 +359,10 @@ int main(int argc, const char*argv[]){
 				vsb = frequentist.Get_m2logQ_sb();
 				frequentist.BuildM2lnQ_b(nToysForCLb, false, bWriteToys);
 				vb = frequentist.Get_m2logQ_b();
+				if(bWriteToys){
+					watch.Print();
+				       	return 0;
+				}
 			}
 
 			if(makeCLsBands>=2){
