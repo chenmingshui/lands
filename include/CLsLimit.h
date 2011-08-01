@@ -37,7 +37,7 @@ namespace lands{
 			~CLsBase();
 			void SetModel(CountingModel *model){_model=model; cms_global = model;}
 			bool BuildM2lnQ(int ntoys=100000, int sbANDb_bOnly_sbOnly=0, bool reUsePreviousToys=false);
-			bool BuildM2lnQ_b(int ntoys=100000, bool reUsePreviousToys=false);
+			bool BuildM2lnQ_b(int ntoys=100000, bool reUsePreviousToys=false, bool bWriteToys = false);
 			bool BuildM2lnQ_sb(int ntoys=100000, bool reUsePreviousToys=false, bool bWriteToys = false);
 			bool BuildM2lnQ_data();
 			bool BuildM2lnQ(CountingModel *model, int ntoys=100000, int sbANDb_bOnly_sbOnly=0, bool reUsePreviousToys=false);// 0 for sbANDb, 1 for bOnly, 2 for sbOnly

@@ -54,6 +54,7 @@ class CRandom{
 	Int_t Poisson(double mean);
 	double Gaus(double mean=0, double sigma=1);
 	double Gamma(double mean=0);
+	UInt_t GetSeed(){return fSeed;};
 	
 	private:
 	Int_t fCount624;

@@ -1871,7 +1871,7 @@ double CLsLimit::FeldmanCousins(CountingModel *cms,
 	return _r95;
 }
 
-bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys){  // 0 for sbANDb, 1 for bOnly, 2 for sbOnly, 3 for data only 
+bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys, bool bWriteToys){  // 0 for sbANDb, 1 for bOnly, 2 for sbOnly, 3 for data only 
 	_inputNuisances = _model->Get_norminalPars();	
 	_startNuisances= _model->Get_norminalPars();	
 	// effort for adaptive sampling
@@ -1964,6 +1964,12 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys){  // 0 for sbANDb,
 				vdata_global =  _model->GetToyData_H0();
 				if(_model->hasParametricShape()){
 					_model->SetTmpDataForUnbinned(_model->Get_v_pdfs_roodataset_toy());
+					if(bWriteToys){
+						for(int ii=0; ii<_model->Get_v_pdfs_roodataset_toy().size(); ii++){
+							TString stmp = _model->Get_v_pdfs_roodataset_toy()[ii]->GetName(); stmp+="_"; stmp+=i;
+							_model->GetWorkSpace()->import(*(_model->Get_v_pdfs_roodataset_toy()[ii]), RooFit::Rename(stmp.Data()));
+						}
+					}
 				}
 				break;
 			case 5:
@@ -1971,6 +1977,12 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys){  // 0 for sbANDb,
 				vdata_global = (VDChannel)_model->GetToyData_H0(_model->Get_fittedParsInData_b());
 				if(_model->hasParametricShape()){
 					_model->SetTmpDataForUnbinned(_model->Get_v_pdfs_roodataset_toy());
+					if(bWriteToys){
+						for(int ii=0; ii<_model->Get_v_pdfs_roodataset_toy().size(); ii++){
+							TString stmp = _model->Get_v_pdfs_roodataset_toy()[ii]->GetName(); stmp+="_"; stmp+=i;
+							_model->GetWorkSpace()->import(*(_model->Get_v_pdfs_roodataset_toy()[ii]), RooFit::Rename(stmp.Data()));
+						}
+					}
 				}
 				if(!_model->UseBestEstimateToCalcQ()){
 					//generate nuisance around b^hat_0 
@@ -1989,13 +2001,22 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys){  // 0 for sbANDb,
 		}
 		int checkFailure = (_debug>=10?1:0);
 		bool success = true;
-		Q_b[i] = M2lnQ(success, checkFailure);
+		if(bWriteToys) Q_b[i]=0;
+		else Q_b[i] = M2lnQ(success, checkFailure);
 		if(success==false) {
 			// skip this toy and regenerate it   --> any bias ? 
 			// caveat: it may go to infinite loop if all toys fails
 			i-=1;
 			cout<<"WARNING: skip a failed toy"<<endl;
 		}
+	}
+
+	if(bWriteToys){
+		TString stmp = "PseudoData_b_seed"; stmp+=_model->GetRdm()->GetSeed(); stmp+=".root";
+		TFile *f = new TFile(stmp, "RECREATE");
+		f->WriteTObject(_model->GetWorkSpace());
+		f->Close();
+		return true;
 	}
 
 	if(_debug) { start_time=cur_time; cur_time=clock(); 
@@ -2243,6 +2264,12 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys){
 				vdata_global =  _model->GetToyData_H1();
 				if(_model->hasParametricShape()){
 					_model->SetTmpDataForUnbinned(_model->Get_v_pdfs_roodataset_toy());
+					if(bWriteToys){
+						for(int ii=0; ii<_model->Get_v_pdfs_roodataset_toy().size(); ii++){
+							TString stmp = _model->Get_v_pdfs_roodataset_toy()[ii]->GetName(); stmp+="_"; stmp+=i;
+							_model->GetWorkSpace()->import(*(_model->Get_v_pdfs_roodataset_toy()[ii]), RooFit::Rename(stmp.Data()));
+						}
+					}
 				}
 				break;
 			case 5:
@@ -2284,7 +2311,8 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys){
 	}
 
 	if(bWriteToys){
-		TFile *f = new TFile("PseudoData_sb.root", "RECREATE");
+		TString stmp = "PseudoData_sb_seed"; stmp+=_model->GetRdm()->GetSeed(); stmp+=".root";
+		TFile *f = new TFile(stmp, "RECREATE");
 		f->WriteTObject(_model->GetWorkSpace());
 		f->Close();
 		return true;

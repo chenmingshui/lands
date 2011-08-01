@@ -357,7 +357,7 @@ int main(int argc, const char*argv[]){
 				if(nToysForCLb<=0) nToysForCLb=toysHybrid;
 				frequentist.BuildM2lnQ_sb(nToysForCLsb, false, bWriteToys);
 				vsb = frequentist.Get_m2logQ_sb();
-				frequentist.BuildM2lnQ_b(nToysForCLb);
+				frequentist.BuildM2lnQ_b(nToysForCLb, false, bWriteToys);
 				vb = frequentist.Get_m2logQ_b();
 			}
 
