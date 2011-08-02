@@ -1324,11 +1324,15 @@ If we need to change it later, it will be easy to do.
 				vector<double> vtmp;vtmp.clear();
 				if(_debug>=100)cout<<" in GetToyData_H0, bHasParametricShape: ch = "<<ch<<endl;
 				v_pdfs_roodataset_toy.push_back( _w_varied->pdf(v_pdfs_b[ch])->generate(RooArgSet(*_w->var(v_pdfs_observables[ch])), Extended()));
-				if(v_pdfs_roodataset_toy[ch]->GetName()=="emptyData") {
+				if(TString(v_pdfs_roodataset_toy[ch]->GetName())=="emptyData") {
+					if(_debug>=100)cout<<"changing toy name "<<endl;
 					v_pdfs_roodataset_toy[ch]->SetName( TString(v_pdfs_b[ch]+"Data").Data() );
 				}
 
-				if(_debug>=1000)v_pdfs_roodataset_toy[ch]->Print("V");
+				if(_debug>=100){
+					v_pdfs_roodataset_toy[ch]->Print("V");
+					cout<<"toy name = "<<v_pdfs_roodataset_toy[ch]->GetName()<<endl;
+				}
 
 				if(_debug>=1000){
 					TString s = "H0_"; s+= (int)(10000000*_rdm->Rndm()); s+=".root";
@@ -1412,8 +1416,8 @@ If we need to change it later, it will be easy to do.
 				if(_debug>=100)cout<<" in GetToyData_H1, bHasParametricShape: ch = "<<ch<<endl;
 				v_pdfs_roodataset_toy.push_back(_w_varied->pdf(v_pdfs_sb[ch])->generate(RooArgSet(*_w->var(v_pdfs_observables[ch])), Extended()));
 				// if generated events = 0, then the name of dataset will be emptyData, need to be changed
-				if(v_pdfs_roodataset_toy.back()->GetName()=="emptyData") {
-					v_pdfs_roodataset_toy.back()->SetName( TString(v_pdfs_sb[ch]+"Data").Data() );
+				if(TString(v_pdfs_roodataset_toy[ch]->GetName())=="emptyData") {
+					v_pdfs_roodataset_toy[ch]->SetName( TString(v_pdfs_sb[ch]+"Data").Data() );
 				}
 
 				if(_debug>=100)v_pdfs_roodataset_toy[ch]->Print("V");
