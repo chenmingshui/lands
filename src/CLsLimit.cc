@@ -1966,7 +1966,7 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys, bool bWriteToys){ 
 					_model->SetTmpDataForUnbinned(_model->Get_v_pdfs_roodataset_toy());
 					if(bWriteToys){
 						for(int ii=0; ii<_model->Get_v_pdfs_roodataset_toy().size(); ii++){
-							TString stmp = _model->Get_v_pdfs_roodataset()[ii]->GetName(); stmp+="_"; stmp+=i;
+							TString stmp = _model->Get_v_pdfs_roodataset_toy()[ii]->GetName(); stmp+="_"; stmp+=i;
 							_model->GetWorkSpace()->import(*(_model->Get_v_pdfs_roodataset_toy()[ii]), RooFit::Rename(stmp.Data()));
 						}
 					}
@@ -1979,7 +1979,7 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys, bool bWriteToys){ 
 					_model->SetTmpDataForUnbinned(_model->Get_v_pdfs_roodataset_toy());
 					if(bWriteToys){
 						for(int ii=0; ii<_model->Get_v_pdfs_roodataset_toy().size(); ii++){
-							TString stmp = _model->Get_v_pdfs_roodataset()[ii]->GetName(); stmp+="_"; stmp+=i;
+							TString stmp = _model->Get_v_pdfs_roodataset_toy()[ii]->GetName(); stmp+="_"; stmp+=i;
 							_model->GetWorkSpace()->import(*(_model->Get_v_pdfs_roodataset_toy()[ii]), RooFit::Rename(stmp.Data()));
 						}
 					}
@@ -2266,7 +2266,7 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys){
 					_model->SetTmpDataForUnbinned(_model->Get_v_pdfs_roodataset_toy());
 					if(bWriteToys){
 						for(int ii=0; ii<_model->Get_v_pdfs_roodataset_toy().size(); ii++){
-							TString stmp = _model->Get_v_pdfs_roodataset()[ii]->GetName(); stmp+="_"; stmp+=i;
+							TString stmp = _model->Get_v_pdfs_roodataset_toy()[ii]->GetName(); stmp+="_"; stmp+=i;
 							_model->GetWorkSpace()->import(*(_model->Get_v_pdfs_roodataset_toy()[ii]), RooFit::Rename(stmp.Data()));
 						}
 					}
@@ -2279,7 +2279,7 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys){
 					_model->SetTmpDataForUnbinned(_model->Get_v_pdfs_roodataset_toy());
 					if(bWriteToys){
 						for(int ii=0; ii<_model->Get_v_pdfs_roodataset_toy().size(); ii++){
-							TString stmp = _model->Get_v_pdfs_roodataset()[ii]->GetName(); stmp+="_"; stmp+=i;
+							TString stmp = _model->Get_v_pdfs_roodataset_toy()[ii]->GetName(); stmp+="_"; stmp+=i;
 							_model->GetWorkSpace()->import(*(_model->Get_v_pdfs_roodataset_toy()[ii]), RooFit::Rename(stmp.Data()));
 						}
 					}
