@@ -29,6 +29,7 @@
 
 
 #include "RooDataSet.h"
+#include "RooWorkspace.h"
 
 using std::cout;
 using std::endl;
@@ -1872,6 +1873,7 @@ double CLsLimit::FeldmanCousins(CountingModel *cms,
 }
 
 bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys, bool bWriteToys){  // 0 for sbANDb, 1 for bOnly, 2 for sbOnly, 3 for data only 
+	RooWorkspace * wtmp = new RooWorkspace("w");
 	_inputNuisances = _model->Get_norminalPars();	
 	_startNuisances= _model->Get_norminalPars();	
 	// effort for adaptive sampling
@@ -1967,7 +1969,8 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys, bool bWriteToys){ 
 					if(bWriteToys){
 						for(int ii=0; ii<_model->Get_v_pdfs_roodataset_toy().size(); ii++){
 							TString stmp = _model->Get_v_pdfs_roodataset_toy()[ii]->GetName(); stmp+="_"; stmp+=i;
-							_model->GetWorkSpace()->import(*(_model->Get_v_pdfs_roodataset_toy()[ii]), RooFit::Rename(stmp.Data()));
+							//_model->GetWorkSpace()->import(*(_model->Get_v_pdfs_roodataset_toy()[ii]), RooFit::Rename(stmp.Data()));
+							wtmp->import(*(_model->Get_v_pdfs_roodataset_toy()[ii]), RooFit::Rename(stmp.Data()));
 						}
 					}
 				}
@@ -1980,7 +1983,8 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys, bool bWriteToys){ 
 					if(bWriteToys){
 						for(int ii=0; ii<_model->Get_v_pdfs_roodataset_toy().size(); ii++){
 							TString stmp = _model->Get_v_pdfs_roodataset_toy()[ii]->GetName(); stmp+="_"; stmp+=i;
-							_model->GetWorkSpace()->import(*(_model->Get_v_pdfs_roodataset_toy()[ii]), RooFit::Rename(stmp.Data()));
+							//_model->GetWorkSpace()->import(*(_model->Get_v_pdfs_roodataset_toy()[ii]), RooFit::Rename(stmp.Data()));
+							wtmp->import(*(_model->Get_v_pdfs_roodataset_toy()[ii]), RooFit::Rename(stmp.Data()));
 						}
 					}
 				}
@@ -2014,7 +2018,8 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys, bool bWriteToys){ 
 	if(bWriteToys){
 		TString stmp = "PseudoData_b_seed"; stmp+=_model->GetRdm()->GetSeed(); stmp+=".root";
 		TFile *f = new TFile(stmp, "RECREATE");
-		f->WriteTObject(_model->GetWorkSpace());
+		//f->WriteTObject(_model->GetWorkSpace());
+		f->WriteTObject(wtmp);
 		f->Close();
 		return true;
 	}
