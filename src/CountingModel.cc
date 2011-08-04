@@ -27,6 +27,7 @@
 #include "TH1F.h"
 #include "RooAbsPdf.h"
 #include "RooDataSet.h"
+#include "RooDataHist.h"
 #include "RooRealVar.h"
 #include "RooBifurGauss.h"
 #include "RooWorkspace.h"
@@ -103,6 +104,7 @@ namespace lands{
 		v_pdfs_roodataset.clear();
 		v_pdfs_roodataset_real.clear();
 		v_pdfs_roodataset_tmp.clear();
+		v_pdfs_roodataset_asimovb.clear();
 		vv_pdfs_normNAME.clear();
 		vv_pdfs_extranormNAME.clear();
 		vvv_pdfs_paramsRRV.clear();
@@ -205,6 +207,7 @@ namespace lands{
 		v_pdfs_roodataset.clear();
 		v_pdfs_roodataset_real.clear();
 		v_pdfs_roodataset_tmp.clear();
+		v_pdfs_roodataset_asimovb.clear();
 		vv_pdfs_normNAME.clear();
 		vv_pdfs_extranormNAME.clear();
 		vvv_pdfs_paramsRRV.clear();
@@ -1684,6 +1687,27 @@ If we need to change it later, it will be easy to do.
 		}
 		*/
 	};
+	VDChannel CountingModel::Get_AsimovData(int b){ // 0 for background only, 1 for s+b hypothesis
+		VDChannel vtmpdata = v_data; // could be pseudo-data for bands
+		if(b==0){
+			if(_debug)cout<<"		Get Asimov dataset: background only hypothesis"<<endl;
+			for(int i=0; i<v_data.size(); i++){
+				vtmpdata[i]=0;
+				for(int b=v_sigproc[i]; b<vv_exp_sigbkgs.at(i).size(); b++){
+					vtmpdata[i]+= vv_exp_sigbkgs.at(i).at(b);
+				}
+			}
+		}else if(b==1){
+			if(_debug)cout<<"		Get Asimov dataset: sig+bkg hypothesis"<<endl;
+			for(int i=0; i<v_data.size(); i++){
+				vtmpdata[i]=0;
+				for(int b=0; b<vv_exp_sigbkgs.at(i).size(); b++){
+					vtmpdata[i]+= vv_exp_sigbkgs.at(i).at(b);
+				}
+			}
+		}
+		return vtmpdata;
+	}
 	void CountingModel::UseAsimovData(int b){  // 0 for background only, 1 for s+b hypothesis
 		if(b==0){
 			cout<<"		Using Asimov dataset: background only hypothesis"<<endl;
@@ -1695,6 +1719,8 @@ If we need to change it later, it will be easy to do.
 					v_data_real[i]+= vv_exp_sigbkgs.at(i).at(b);
 				}
 			}
+			v_pdfs_roodataset = v_pdfs_roodataset_asimovb;
+			v_pdfs_roodataset_tmp = v_pdfs_roodataset_asimovb;
 		}else if(b==1){
 			cout<<"		Using Asimov dataset: sig+bkg hypothesis"<<endl;
 			for(int i=0; i<v_data.size(); i++){
@@ -2167,10 +2193,36 @@ If we need to change it later, it will be easy to do.
 		v_pdfs_b.push_back(s);	
 		//if(_debug) _w->pdf(s)->Print("V");
 
+		
+		if(_w->var("wgttmp") == NULL)_w->factory("wgttmp[0,10000000]");
 		RooDataSet * rds = _w->pdf(v_pdfs_b.back()) -> generate(*observable, Extended());
 		v_pdfs_roodataset.push_back(rds);
 		v_pdfs_roodataset_tmp.push_back(rds);
 		v_pdfs_roodataset_real.push_back(rds);
+		RooDataHist *rdh_asimovb = _w->pdf(v_pdfs_b.back()) -> generateBinned(*observable,ExpectedData());
+
+		
+		RooArgSet * rastmp = new RooArgSet(*observable, *(_w->var("wgttmp")));
+		RooDataSet *rds_asimovb = new RooDataSet(TString("rds_asimovb")+channel_name.c_str(), "rds_asimovb", *rastmp, "wgttmp");
+		if(_debug)cout<<" rdh_asimovb["<<channel_name<<"]->bins = "<<rdh_asimovb->numEntries()<<endl;
+		for(int i=0; i<rdh_asimovb->numEntries(); i++){
+			if(_debug && i==0)cout<<" DELETEME 3 "<<i<<" weight = "<<rdh_asimovb->weight()<<endl;	
+			rds_asimovb->add(*rdh_asimovb->get(i), rdh_asimovb->weight());
+		}
+		if(_debug>=10){
+			cout<<" *** DELETEME : "<<endl;
+			rds_asimovb->Print("v");
+			cout<<" sumEntries = "<<rds_asimovb->sumEntries()<<endl;
+		}
+		v_pdfs_roodataset_asimovb.push_back(rds_asimovb);
+		
+		double dtmp = 0;
+		for(int i=0; i<rds_asimovb->numEntries(); i++){
+			rds_asimovb->get(i); 
+			dtmp+=rds_asimovb->weight();
+		}
+		if(_debug>=10)cout<<" from numEntries and weight,  sumEntries  = "<<dtmp<<endl;
+
 		//v_pdfs_roodataset_toy.push_back(rds);
 		//cout<<"H0, number of events generated for channel "<<ch<<": "<<v_pdfs_roodataset_toy[ch]->sumEntries()<<endl;
 		if(_debug) 	rds->Print("V");
@@ -2353,7 +2405,7 @@ If we need to change it later, it will be easy to do.
 			vvv_cachPdfValues.resize(vv_pdfs.size());
 			for(int ch=0; ch<vv_pdfs.size(); ch++){
 				vvv_cachPdfValues[ch].resize(vv_pdfs[ch].size());
-				int ntot = int(v_pdfs_roodataset_tmp[ch]->sumEntries());
+				int ntot = int(v_pdfs_roodataset_tmp[ch]->numEntries());
 				for(int p=0; p<vv_pdfs[ch].size();p++){
 					vvv_cachPdfValues[ch][p].resize(ntot);
 				}
@@ -2363,10 +2415,11 @@ If we need to change it later, it will be easy to do.
 		double btot = 0, stot=0, sbtot=0;
 		double tmp=0, tmp2=0, tmp3=0, retch=0;
 		int ntot;
+		double weight=1;
 		for(int ch=0; ch<vv_pdfs.size(); ch++){
 			btot = 0; stot=0;
 			tmp=0; retch=0;
-			ntot = int(v_pdfs_roodataset_tmp[ch]->sumEntries());
+			ntot = int(v_pdfs_roodataset_tmp[ch]->numEntries());
 			for(int i=0; i<vv_pdfs_norm_varied[ch].size(); i++){
 				if(i>=v_pdfs_sigproc[ch]) btot+=vv_pdfs_norm_varied[ch][i]; // FIXME HGG // already multiplied by extra norm in FluctuatedNumbers
 				else stot+=vv_pdfs_norm_varied[ch][i];
@@ -2383,10 +2436,13 @@ If we need to change it later, it will be easy to do.
 			   retch -= (tmp>0?log(tmp):0);
 			   }
 			   */
+
 			for(int i=0; i<ntot; i++){
 				tmprrv=_w_varied->var(v_pdfs_observables[ch]);
 				//tmprrv->setDirtyInhibit(1);
 				tmprrv->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset_tmp[ch]->get(i)->first()))->getVal());
+				weight = v_pdfs_roodataset_tmp[ch]->weight();
+				if(_debug>=10 && i==0) cout<<"channel "<<ch<<",  event "<<i<<": weight = "<<weight<<endl;
 				tmp = 0;  
 				for(int p=0; p<vv_pdfs[ch].size();p++){
 					if(vv_pdfs_norm_varied[ch][p]!=0){
@@ -2412,12 +2468,13 @@ If we need to change it later, it will be easy to do.
 						tmp +=tmp2;
 					}
 				}
-				retch -= (tmp>0?log(tmp):0);
+				retch -= (tmp>0?log(tmp):0)*weight;
 			}
 
 			retch+=stot;
 			retch+=btot;
-			retch-=ntot;
+			retch-= (v_pdfs_roodataset_tmp[ch]->sumEntries());
+			if(_debug >= 10) cout<<" DELETEME sumEntries ="<<v_pdfs_roodataset_tmp[ch]->sumEntries()<<endl;;
 			if(_debug>=10){
 				cout<<"EvaluateChi2 in channel ["<<v_pdfs_channelname[ch]<<"]: lnQ= "<<retch<<endl;
 				cout<<"\n model_sb"<<endl;

@@ -98,6 +98,7 @@ namespace lands{
 			void Set_vv_fitted_sigbkgs_scaled(const VChannelVSample& vv){vv_fitted_sigbkgs_scaled=vv;}
 			const VChannelVSample& Get_vv_fitted_sigbkgs_scaled(){return vv_fitted_sigbkgs_scaled;}
 			const VDChannel& Get_v_data(){return v_data;}
+			VDChannel Get_AsimovData(int b);
 			const VDChannel& Get_v_data_real(){return v_data_real;}
 			const VDChannel& Get_v_exp_sigbkgs(int channel){return vv_exp_sigbkgs_scaled[channel];}
 
@@ -207,6 +208,7 @@ namespace lands{
 			const vector< RooDataSet* >& Get_v_pdfs_roodataset();
 			const vector< RooDataSet* >& Get_v_pdfs_roodataset_toy(){return v_pdfs_roodataset_toy;} // in each channel, it has a list of events
 			const vector< RooDataSet* >& Get_v_pdfs_roodataset_real(){return v_pdfs_roodataset_real;} // in each channel, it has a list of events
+			const vector< RooDataSet* >& Get_v_pdfs_roodataset_asimovb(){return v_pdfs_roodataset_asimovb;} // in each channel, it has a list of events
 			const vector< double >& Get_v_pdfs_floatParamsVaried(){return v_pdfs_floatParamsVaried;}
 			const vector< vector< double > >& Get_v_pdfs_floatParamsUnc(){ return v_pdfs_floatParamsUnc;}
 			void Set_v_pdfs_floatParamsUnc(const vector< vector< double > >& vv ){ v_pdfs_floatParamsUnc = vv;}
@@ -352,6 +354,7 @@ namespace lands{
 			vector<RooDataSet*>  v_pdfs_roodataset; // could be pseudo-data for bands
 			vector<RooDataSet*>  v_pdfs_roodataset_real; // real data, not changed during entire run 
 			vector<RooDataSet*>  v_pdfs_roodataset_tmp;
+			vector<RooDataSet*>  v_pdfs_roodataset_asimovb; // b-only  asimov dataset
 
 
 			vector< vector<TString> > vv_pdfs_normNAME;

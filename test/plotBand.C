@@ -115,6 +115,4 @@
 	lb2.getObsGraph()->SetLineWidth(2);
 	lb2.getObsGraph()->Draw("l");
 	lb.save();	
-
-
 }

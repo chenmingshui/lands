@@ -447,7 +447,8 @@ namespace lands{
 				myMinuit->FixParameter(0);
 			}
 			else if(model==2){ // S+B,  float r
-				myMinuit->mnparm(0, "ratio", 1, minuitStep, -100, 300, ierflg); // andrey's suggestion, alow mu hat < 0
+				myMinuit->mnparm(0, "ratio", 1, minuitStep, -100, 300, ierflg); // andrey's suggestion, alow mu hat < 0   
+				// mu fitting range maybe need to be configurable via command line. 
 				//myMinuit->mnparm(0, "ratio", 1, 0.1, 0, 100, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
 				_bPositiveSignalStrength = false;
 			}

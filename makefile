@@ -23,7 +23,7 @@ endif
 
 # Enable CPU profiling of... requires google performance tools.
 # You also need to set CPUPROFILE enviroanment variable.
-# PROFILE=1
+#PROFILE=1
 ifdef PROFILE
   CXXFLAGS += -DLANDS_PROFILE
   LDFLAGS  += -lprofiler
