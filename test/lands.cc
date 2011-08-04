@@ -1035,7 +1035,7 @@ int main(int argc, const char*argv[]){
 				vdata_global = cms->Get_v_data();
 				cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
 				if(debug) cout<<" fitting data with MinuitFit(2)"<<endl;
-				double L_data_glbmin =  MinuitFit(2, tmpr, tmperr, 0, pars, false, debug) ;
+				double L_data_glbmin =  MinuitFit(2, tmpr, tmperr, 1, pars, false, debug) ;
 
 				cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
 				vdata_global = cms->Get_AsimovData(0);
@@ -1210,7 +1210,7 @@ int main(int argc, const char*argv[]){
 			//x2 =  MinuitFit(2, tmp, tmperr); // allow mu<0
 			double * fittedPars = new double[cms->Get_max_uncorrelation()+1];
 			int success[1];success[0]=0;
-			x2 = MinuitFit(2, tmp, tmperr, 0, fittedPars, false, debug, success);  // MinuitFit(mode, r, err_r)
+			x2 = MinuitFit(2, tmp, tmperr, 1, fittedPars, false, debug, success);  // MinuitFit(mode, r, err_r)
 			/*
 			int ntmp = 0;
 			while(success[0]!=0 && ntmp < 10){
