@@ -132,7 +132,7 @@ namespace lands{
 					_inputNuisances = _cms->Get_norminalPars();
 					_startNuisances = _cms->Get_norminalPars();
 					double ErrorDef = TMath::ChisquareQuantile(0.68 , 1);// (confidenceLevel, ndf)
-					double upperL=0, lowerL=0; 
+					double upperL=1, lowerL=0; 
 					//double y0_2 =  MinuitFit(1001, upperL, lowerL, ErrorDef, 0, false, _debug) ;
 					double y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, 0, false, _debug) ;
 				}

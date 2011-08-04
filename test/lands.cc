@@ -806,7 +806,8 @@ int main(int argc, const char*argv[]){
 
 			double ErrorDef = TMath::ChisquareQuantile(CL , 1);// (confidenceLevel, ndf)
 			if(PLalgorithm == "Minos"){
-				double upperL=0, lowerL=0; 
+				double upperL=1, lowerL=0; 
+				if(dataset=="asimov_b") upperL = 0.000001; // the starting mu value in the global fit
 				double y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, false, debug) ;
 				if(upperL==lowerL){
 				       	cout<<"WARNING: First Attempt Fails, try one more time with different set of starting values"<<endl;
@@ -957,7 +958,8 @@ int main(int argc, const char*argv[]){
 			double ErrorDef = TMath::ChisquareQuantile(CL , 1);// (confidenceLevel, ndf)
 			if(1){ // first get hint of the limit from  PLR method, wrong asymptotic formula
 				PLalgorithm = "";
-				double upperL=0, lowerL=0; 
+				double upperL=1, lowerL=0; 
+				if(dataset=="asimov_b") upperL = 0.000001; // the starting mu value in the global fit
 				double y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, false, debug) ;
 				if(upperL==lowerL){
 				       	cout<<"WARNING: First Attempt Fails, try one more time with different set of starting values"<<endl;

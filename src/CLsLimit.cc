@@ -456,6 +456,7 @@ namespace lands{
 			else if(model==21 || model==101 || model==102){ // S+B,  float r
 				//myMinuit->mnparm(0, "ratio", _startNuisances[0], minuitStep, 0.0, 300, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
 				myMinuit->mnparm(0, "ratio", 1, minuitStep, 0.0, 300, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
+				if(model==102) myMinuit->mnparm(0, "ratio", r, minuitStep, 0.0, 300, ierflg); //make starting r configurable
 				_bPositiveSignalStrength = true;
 			}
 			else if(model==3){ // profile mu
