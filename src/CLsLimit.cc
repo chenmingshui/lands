@@ -504,6 +504,11 @@ namespace lands{
 			if(UseMinos==2)myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
 			if(debug || ierflg)cout <<" MIGRAD Number of function calls in Minuit: " << myMinuit->fNfcn << endl;
 			if(debug || ierflg)cout <<" MIGRAD return errflg = "<<ierflg<<endl;
+			if(debug || ierflg)cout <<" MinuitFit("<<model<<")"<<endl;
+			if(debug || ierflg) {
+				if(model==2)cout<<" starting mu = "<<mu<<endl;
+				if(model==102)cout<<" starting mu = "<<r<<endl;
+			}
 
 			//	myMinuit->mnexcm("MINI", arglist ,2,ierflg);
 			//	myMinuit->mnexcm("IMPROVE", arglist ,2,ierflg);

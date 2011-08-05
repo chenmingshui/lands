@@ -953,6 +953,8 @@ int main(int argc, const char*argv[]){
 			_inputNuisances = cms->Get_norminalPars();
 			_startNuisances = cms->Get_norminalPars();
 
+			double starting_mu_for_globalFit = 1; // for data
+
 			// for expected median limit,  asimov data set
 			//double ErrorDef = TMath::NormQuantile(0.975)*TMath::NormQuantile(0.975); 
 			double ErrorDef = TMath::ChisquareQuantile(CL , 1);// (confidenceLevel, ndf)
@@ -961,6 +963,7 @@ int main(int argc, const char*argv[]){
 				double upperL=1, lowerL=0; 
 				if(dataset=="asimov_b") upperL = 0.000001; // the starting mu value in the global fit
 				double y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, false, debug) ;
+				starting_mu_for_globalFit = pars[0];
 				if(upperL==lowerL){
 				       	cout<<"WARNING: First Attempt Fails, try one more time with different set of starting values"<<endl;
 					y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, true, debug) ;
@@ -1037,7 +1040,7 @@ int main(int argc, const char*argv[]){
 				vdata_global = cms->Get_v_data();
 				cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
 				if(debug) cout<<" fitting data with MinuitFit(2)"<<endl;
-				double L_data_glbmin =  MinuitFit(2, tmpr, tmperr, 1, pars, false, debug) ;
+				double L_data_glbmin =  MinuitFit(2, tmpr, tmperr, starting_mu_for_globalFit, pars, false, debug) ;
 
 				cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
 				vdata_global = cms->Get_AsimovData(0);
