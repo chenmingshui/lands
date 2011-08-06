@@ -1040,12 +1040,36 @@ int main(int argc, const char*argv[]){
 				vdata_global = cms->Get_v_data();
 				cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
 				if(debug) cout<<" fitting data with MinuitFit(2)"<<endl;
-				double L_data_glbmin =  MinuitFit(2, tmpr, tmperr, starting_mu_for_globalFit, pars, false, debug) ;
+				int success[1] = {0};
+				double L_data_glbmin =  MinuitFit(2, tmpr, tmperr, starting_mu_for_globalFit, pars, false, debug, success) ;
+				int minuitSTRATEGY_old=minuitSTRATEGY;
+				while(success[0] and minuitSTRATEGY<2) {
+					cout<<" failed global fit of data with minuitSTRATEGY = "<<minuitSTRATEGY<<endl;
+					minuitSTRATEGY +=2 ; 
+					cout<<" try minuitSTRATEGY = "<<minuitSTRATEGY<<endl;
+					cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
+					L_data_glbmin =  MinuitFit(2, tmpr, tmperr, starting_mu_for_globalFit+0.1, pars, false, debug, success) ;
+				}
+				minuitSTRATEGY = minuitSTRATEGY_old;
+				cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
 
 				cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
 				vdata_global = cms->Get_AsimovData(0);
 				if(debug) cout<<" fitting asimovb with MinuitFit(2)"<<endl;
-				double L_asimovb_glbmin =  MinuitFit(2, tmpr, tmperr, 0, pars, false, debug) ;
+				double L_asimovb_glbmin =  MinuitFit(2, tmpr, tmperr, 0, pars, false, debug, success) ;
+				minuitSTRATEGY_old=minuitSTRATEGY;
+				while(success[0] and minuitSTRATEGY<2) {
+					cout<<" failed global fit of asimovb with minuitSTRATEGY = "<<minuitSTRATEGY<<endl;
+					//minuitSTRATEGY +=2 ; 
+					cout<<" try minuitSTRATEGY = "<<minuitSTRATEGY<<endl;
+					cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
+					//cms_global->FluctuatedNumbers();
+					//L_asimovb_glbmin =  MinuitFit(201, tmpr, tmperr, 0.1, cms_global->Get_randomizedPars(), true, debug, success) ;
+					L_asimovb_glbmin =  MinuitFit(201, tmpr, tmperr, 0.1, pars, false, debug, success) ;
+				}
+				minuitSTRATEGY = minuitSTRATEGY_old;
+				cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
+
 				double mu =  r95;
 
 				vdata_global = cms->Get_v_data();

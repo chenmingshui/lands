@@ -337,6 +337,7 @@ namespace lands{
 		if(model == 102) UseMinos = 2; // PL approximation method using Minos ....  with migrad 
 		if(model == 101) UseMinos = 1; // PL approximation method using Minos ....  without migrad
 		if(model == 1001) UseMinos = 2; // PL approximation method using Minos ....  with migrad 
+		if(model == 201) UseMinos = 2; // PL approximation method using Minos ....  with migrad 
 
 		double minuitStep = 0.1;
 
@@ -350,7 +351,7 @@ namespace lands{
 			cms_global->SetSignalScaleFactor(_signalScale);
 			return l;
 		}
-		if( (cms_global->IsUsingSystematicsErrors() && npars>0 )  || model ==2 or model==21 or model==101 or model==102 ){
+		if( (cms_global->IsUsingSystematicsErrors() && npars>0 )  || model ==2 or model==21 or model==101 or model==102 or model==201){
 
 			//FIXME temporarily solution:  when reading a source with all error = 0,  then assign it to be logNormal, error =0,  in UtilsROOT.cc 
 			//good solution: redefine npars here, count only sources with definded pdf. 
@@ -446,7 +447,7 @@ namespace lands{
 				myMinuit->mnparm(0, "ratio", 0.0, minuitStep, -1, 300, ierflg);
 				myMinuit->FixParameter(0);
 			}
-			else if(model==2){ // S+B,  float r
+			else if(model==2 or model==201){ // S+B,  float r
 				myMinuit->mnparm(0, "ratio", mu, minuitStep, -100, 300, ierflg); // andrey's suggestion, alow mu hat < 0   
 				// mu starting point is now configurable via the argument "mu",   when fitting asimov_b, the starting mu should be 0, elsewhere 1
 				// mu fitting range maybe need to be configurable via command line. 
@@ -506,7 +507,7 @@ namespace lands{
 			if(debug || ierflg)cout <<" MIGRAD return errflg = "<<ierflg<<endl;
 			if(debug || ierflg)cout <<" MinuitFit("<<model<<")"<<endl;
 			if(debug || ierflg) {
-				if(model==2)cout<<" starting mu = "<<mu<<endl;
+				if(model==2 or model==201)cout<<" starting mu = "<<mu<<endl;
 				if(model==102)cout<<" starting mu = "<<r<<endl;
 			}
 
