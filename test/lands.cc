@@ -1280,9 +1280,8 @@ int main(int argc, const char*argv[]){
 			if(scanRs){
 				vector<double> vr, vc; vr.clear(); vc.clear();
 				vr.push_back(pars[0]);vc.push_back(y0_2);
-				if(nSteps<=0) { cout<<"ERROR: nSteps must be > 0"<<endl; return 0; }
-				for(int i=0; i<nSteps+1; i++){
-					double testr = initialRmin + i*(initialRmax - initialRmin)/(float)nSteps;
+				for(int i=0; i<vR_toEval.size(); i++){
+					double testr = vR_toEval[i];
 					double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, false, debug);
 					if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
 					vr.push_back(testr);
@@ -1888,8 +1887,9 @@ void processParameters(int argc, const char* argv[]){
 				StringSplit(vstr, tmpv[i].Data(), ",");
 				if(vstr.size()==3 and (TString(vstr[2]).IsFloat() or TString(vstr[2]).BeginsWith("x")) ){
 					double r0 = TString(vstr[0]).Atof(), r1=TString(vstr[1]).Atof();	
-					if(r0>r1 or r0<=0) continue;
+					if(r0>r1 or r0<0) continue;
 					if(TString(vstr[2]).BeginsWith("x")) {
+						if(r0==0) continue;
 						double step = TString(vstr[2]).ReplaceAll("x", "").Atof();
 						if(step<=1) continue;
 						for(double r=r0; r<=r1; r*=step) vR_toEval.push_back(r);
