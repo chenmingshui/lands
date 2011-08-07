@@ -974,6 +974,57 @@ int main(int argc, const char*argv[]){
 					}
 				}
 				r95 = upperL;
+				if(dataset=="asimov_b"){
+					// +1sigma
+					double sigma = -1;
+					double m2s, m1s, p1s, p2s;
+					ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(sigma))+sigma ; 
+				        ErrorDef *= ErrorDef;	
+					cout<<" ErrorDef = "<<ErrorDef<<endl;
+					y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, false, debug) ;
+					cout<<" "<<sigma<<" sigma :  "<<upperL<<"   "<<lowerL<<endl;
+					m1s = upperL;
+
+					sigma = 1;
+					ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(sigma))+sigma ; 
+				        ErrorDef *= ErrorDef;	
+					cout<<" ErrorDef = "<<ErrorDef<<endl;
+					y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, false, debug) ;
+					cout<<" "<<sigma<<" sigma :  "<<upperL<<"   "<<lowerL<<endl;
+					p1s = upperL;
+
+					sigma = -2;
+					ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(sigma))+sigma ; 
+				        ErrorDef *= ErrorDef;	
+					cout<<" ErrorDef = "<<ErrorDef<<endl;
+					y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, false, debug) ;
+					cout<<" "<<sigma<<" sigma :  "<<upperL<<"   "<<lowerL<<endl;
+					m2s = upperL;
+
+					sigma = 2;
+					ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(sigma))+sigma ; 
+				        ErrorDef *= ErrorDef;	
+					cout<<" ErrorDef = "<<ErrorDef<<endl;
+					y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, false, debug) ;
+					if(upperL==lowerL){
+						cms_global->Set_minuitSTRATEGY(1);
+						cms_global->FluctuatedNumbers();
+						//y0_2 =  MinuitFit(202, upperL, lowerL, ErrorDef, cms_global->Get_randomizedPars(), true, debug) ;
+						y0_2 =  MinuitFit(202, upperL, lowerL, ErrorDef, pars, false, debug) ;
+					}
+					if(upperL==lowerL){
+						cms_global->Set_minuitSTRATEGY(2);
+						cms_global->FluctuatedNumbers();
+						y0_2 =  MinuitFit(202, upperL, lowerL, ErrorDef, cms_global->Get_randomizedPars(), true, debug) ;
+					}
+					cout<<" "<<sigma<<" sigma :  "<<upperL<<"   "<<lowerL<<endl;
+					p2s = upperL;
+
+					cout<<"BandsFromAsymptotic R@95%CL (from -2sigma -1sigma  mean  +1sigma  +2sigma,  median) : "<<endl;
+					if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
+					printf("BANDS %10.5f %10.5f %10.5f %10.5f %10.5f %10.5f\n", m2s, m1s, 0.00, p1s, p2s, r95);
+					cout<<"------------------------------------------------------------"<<endl;
+				}
 			}
 			if(PLalgorithm == "Migrad"){
 				tmpr = 0;
@@ -1204,7 +1255,116 @@ int main(int argc, const char*argv[]){
 			watch.Print();
 			return 1;
 
+		}else if(method == "ScanningMuFit"){
+			cms_global= cms;
+			vdata_global=cms->Get_v_data();
+			cms_global->SetDebug(debug);
+			_inputNuisances = cms->Get_norminalPars();
+			_startNuisances = cms->Get_norminalPars();
+
+			double *pars = new double[cms->Get_max_uncorrelation()+1]; // nsys + r
+			double tmp=0, tmpr = 0, tmperr=0;
+			double ErrorDef = TMath::ChisquareQuantile(0.68 , 1);// (confidenceLevel, ndf)
+			double y0_2 =  MinuitFit(202, tmpr, tmperr, ErrorDef, pars, false, debug) ;  //202, 201, 2:  allow mu to be negative
+			cout<<y0_2<<" fitter u="<<pars[0]<<", 68% CL:  ["<<tmperr<<","<<tmpr<<"]"<<endl; // upperL, lowerL
+
+			if(bPlots){
+				TGraphErrors *ge = new TGraphErrors(1);
+				ge->SetName("muhat");
+				ge->SetPoint(0, pars[0], y0_2);
+				ge->SetPointError(0, tmpr - pars[0], 0);
+				TFile f((jobname+"_muhat.root").Data(),"RECREATE");
+				f.WriteTObject(ge);
+			}
+
+			if(scanRs){
+				vector<double> vr, vc; vr.clear(); vc.clear();
+				vr.push_back(pars[0]);vc.push_back(y0_2);
+				if(nSteps<=0) { cout<<"ERROR: nSteps must be > 0"<<endl; return 0; }
+				for(int i=0; i<nSteps+1; i++){
+					double testr = initialRmin + i*(initialRmax - initialRmin)/(float)nSteps;
+					double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, false, debug);
+					if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
+					vr.push_back(testr);
+					vc.push_back(y0_1);
+				}
+				printf("\n results of scanned r vs. q: \n");
+				for(int i=0; i<vr.size(); i++){
+					printf("   r=%10.3f  q=%7.5f\n", vr[i], vc[i]);
+				}
+				if(bPlots){
+					DrawEvolution2D d2d(vr, vc, "; r ; q", (jobname+"_scanned_r_vs_q").Data(), pt);
+					d2d.draw();
+					d2d.save();
+				}
+
+				watch.Print();
+				return 0;
+			}
+
+
 		}
+
+		if(doExpectation){
+			// plot the distribution of limits of noutcomes
+			// and the cummulative pdf
+			TString ts=jobname; ts+="_limits";
+
+			if(sFileLimitsDistribution!=""){
+				TTree * tree = (TTree*)GetTObject(sFileLimitsDistribution.Data(), "T");
+				difflimits = GetVectorFrom(tree, "brT");
+				rmean = 0;
+				for(int i=0; i<difflimits.size(); i++)rmean+=difflimits[i];
+				if(difflimits.size()==0) rmean=0; else rmean/=float(difflimits.size());
+			}else 	FillTree(ts, difflimits);
+
+
+			vector<double> all_calculated_R95s;
+			vector<double> cummulativeProbabilities; // all_calculated_R95s has been sorted, each of them has a cummulative probability
+			SortAndCumulative(difflimits, all_calculated_R95s, cummulativeProbabilities);
+
+			// show bands without interpolation,  basically using step function
+			double GreenBandLow = (1- 0.683)/2.; //1 sigma
+			double GreenBandHigh = 1 - (1- 0.683)/2.; //1 sigma
+			double YellowBandLow = (1- 0.955)/2.; //2 sigma
+			double YellowBandHigh = 1 - (1- 0.955)/2.; //2 sigma
+			double rmedian2, rm1s2, rm2s2, rp1s2, rp2s2;	
+			bool brmedian2=false, brm1s2=false, brm2s2=false, brp1s2=false, brp2s2=false;	
+			for(int i=0; i<cummulativeProbabilities.size(); i++){
+				if(cummulativeProbabilities[i]>=GreenBandLow && !brm1s2) { rm1s2 = all_calculated_R95s[i]; brm1s2 = true; } 
+				if(cummulativeProbabilities[i]>=GreenBandHigh && !brp1s2) { rp1s2 = all_calculated_R95s[i]; brp1s2 = true; } 
+				if(cummulativeProbabilities[i]>=YellowBandLow && !brm2s2) { rm2s2 = all_calculated_R95s[i]; brm2s2 = true; } 
+				if(cummulativeProbabilities[i]>=YellowBandHigh && !brp2s2) { rp2s2 = all_calculated_R95s[i]; brp2s2 = true; } 
+				if(cummulativeProbabilities[i]>=0.5 && !brmedian2) { rmedian2 = all_calculated_R95s[i]; brmedian2 = true; } 
+			}
+			cout<<"------------NO INTERPOLATION--------------------------------"<<endl;
+			cout<<"BandsNoInterpolation R@95%CL (from -2sigma -1sigma  mean  +1sigma  +2sigma,  median) : "<<endl;
+			if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
+			printf("BANDS %10.5f %10.5f %10.5f %10.5f %10.5f %10.5f\n", rm2s2, rm1s2, rmean, rp1s2, rp2s2, rmedian2);
+			cout<<"------------------------------------------------------------"<<endl;
+
+			SaveResults(jobname+"_limitbands", HiggsMass, 0, 0, 0, 0, rm2s2, rm1s2, rmedian2, rmean, rp1s2, rp2s2);
+			if(bPlots){
+				TCanvas *c=new TCanvas("cme","cme");
+				c->SetLogy(1);
+				TH1F *h=new TH1F("h",";r=#frac{#sigma_{95%CL}}{#sigma_{SM}}; entries", 200, 0, 15);	
+				for(int i=0; i<difflimits.size(); i++) h->Fill(difflimits[i]);
+				h->Draw();
+				Save(c, (jobname+"_differential_limits").Data());
+
+				pt = SetTPaveText(0.67, 0.4, 0.8, 0.7);
+				//pt->AddText("statistical bands");
+				string ssave= (jobname+"_cummulativeR").Data();
+				string stitle="; r = #sigma_{95%}/#sigma_{SM}; cumulative probability;";
+				PlotXvsCummulativeProb plotRvsP(all_calculated_R95s, cummulativeProbabilities,
+						rm1s2, rp1s2, rm2s2, rp2s2, ssave, stitle, pt);
+				plotRvsP.draw();
+				plotRvsP.getGraph()->SetMarkerSize(1);
+				plotRvsP.save();
+			}
+
+		}
+
 
 	}else { // calc significances 
 
@@ -1218,7 +1378,7 @@ int main(int argc, const char*argv[]){
 		double rmean, rm1s, rm2s, rp1s, rp2s;	
 		vector<double> difflimits; 
 		if(method == "ProfiledLikelihood" or method=="ProfileLikelihood"){
-			
+
 			_inputNuisances = cms->Get_norminalPars();
 			_startNuisances = cms->Get_norminalPars();
 			cms_global= cms;
@@ -1241,15 +1401,15 @@ int main(int argc, const char*argv[]){
 			int success[1];success[0]=0;
 			x2 = MinuitFit(2, tmp, tmperr, 1, fittedPars, false, debug, success);  // MinuitFit(mode, r, err_r)
 			/*
-			int ntmp = 0;
-			while(success[0]!=0 && ntmp < 10){
-				cms->FluctuatedNumbers(); // toss nuisance around fitted b_hat_0 in data  
-				_startNuisances = cms->Get_randomizedPars();	
-				x2 = MinuitFit(2, tmp, tmperr, 0, fittedPars, false, 0, success);  // MinuitFit(mode, r, err_r)
-				ntmp++;
-			}
-			if(ntmp>0)cout<<" after "<<ntmp+1<<" tries: fit "<<(success[0]?"fails":"successful")<<endl;
-			*/
+			   int ntmp = 0;
+			   while(success[0]!=0 && ntmp < 10){
+			   cms->FluctuatedNumbers(); // toss nuisance around fitted b_hat_0 in data  
+			   _startNuisances = cms->Get_randomizedPars();	
+			   x2 = MinuitFit(2, tmp, tmperr, 0, fittedPars, false, 0, success);  // MinuitFit(mode, r, err_r)
+			   ntmp++;
+			   }
+			   if(ntmp>0)cout<<" after "<<ntmp+1<<" tries: fit "<<(success[0]?"fails":"successful")<<endl;
+			   */
 			if(success[0])x2 =  MinuitFit(21, tmp, tmperr, 0, fittedPars, false, debug, success); // mu>0
 			cout<<"fitted r = "<<tmp<<endl;
 			double mu_hat = tmp;
@@ -1458,7 +1618,7 @@ void processParameters(int argc, const char* argv[]){
 				(method!="ProfiledLikelihood" and method!="Hybrid" and method!="ProfileLikelihood")
 		  ){cout<<"ERROR You are trying to use "<<method<<", which is not supported currently to calculate Significance"<<endl; exit(0);}
 		if( !calcsignificance && 
-				(method!="ProfiledLikelihood" and method!="Hybrid" and method!="Bayesian" and method!="FeldmanCousins" and method!="ProfileLikelihood" and method!="Asymptotic")
+				(method!="ProfiledLikelihood" and method!="Hybrid" and method!="Bayesian" and method!="FeldmanCousins" and method!="ProfileLikelihood" and method!="Asymptotic" and method!="ScanningMuFit")
 		  ){cout<<"ERROR You are trying to use "<<method<<", which is not supported currently to calculate limit "<<endl; exit(0);}
 	}
 
@@ -1830,6 +1990,8 @@ void processParameters(int argc, const char* argv[]){
 		}
 	}else if(method=="Asymptotic"){
 		cout<<"  RUNNING Asymptotic limit"<<endl;
+	}else if(method=="ScanningMuFit"){
+		cout<<"  RUNNING ScanningMuFit"<<endl;
 	}
 	if(makeCLsBands) cout<<"  makeCLsBands = "<<makeCLsBands<<endl;
 
@@ -1941,6 +2103,10 @@ void PrintHelpMessage(){
 	printf("            *make limit bands with throwing pseudo data, \n");
 	printf("            *for each pseudo data, evaluate testStat for all available grid Rs from grid file*\n");
 	printf("lands.exe -d datacards*txt -M Hybrid --freq --bCalcObservedLimit 0  --M2lnQGridFile grid.root  --doExpectation 1 -t XXX --bSkipM2lnQ 1\n");
+	printf("            *asymptotic cls bands\n");
+	printf("lands.exe -d data.txt -M Asymptotic -D asimov_b\n");
+	printf("            *scanning mu with fit and make plots\n");
+	printf("lands.exe -d data.txt -M ScanningMuFit --scanRs 20 --initialRmin 0 --initialRmax 2  --plot\n");
 
 	exit(0);
 }

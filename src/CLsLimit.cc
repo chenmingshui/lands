@@ -337,7 +337,7 @@ namespace lands{
 		if(model == 102) UseMinos = 2; // PL approximation method using Minos ....  with migrad 
 		if(model == 101) UseMinos = 1; // PL approximation method using Minos ....  without migrad
 		if(model == 1001) UseMinos = 2; // PL approximation method using Minos ....  with migrad 
-		if(model == 201) UseMinos = 2; // PL approximation method using Minos ....  with migrad 
+		if(model == 201 || model==202) UseMinos = 2; // PL approximation method using Minos ....  with migrad   allowing negative mu
 
 		double minuitStep = 0.1;
 
@@ -351,7 +351,7 @@ namespace lands{
 			cms_global->SetSignalScaleFactor(_signalScale);
 			return l;
 		}
-		if( (cms_global->IsUsingSystematicsErrors() && npars>0 )  || model ==2 or model==21 or model==101 or model==102 or model==201){
+		if( (cms_global->IsUsingSystematicsErrors() && npars>0 )  || model ==2 or model==21 or model==101 or model==102 or model==201 or model == 202){
 
 			//FIXME temporarily solution:  when reading a source with all error = 0,  then assign it to be logNormal, error =0,  in UtilsROOT.cc 
 			//good solution: redefine npars here, count only sources with definded pdf. 
@@ -447,8 +447,10 @@ namespace lands{
 				myMinuit->mnparm(0, "ratio", 0.0, minuitStep, -1, 300, ierflg);
 				myMinuit->FixParameter(0);
 			}
-			else if(model==2 or model==201){ // S+B,  float r
-				myMinuit->mnparm(0, "ratio", mu, minuitStep, -100, 300, ierflg); // andrey's suggestion, alow mu hat < 0   
+			else if(model==2 or model==201 or model == 202){ // S+B,  float r
+
+				if(model==2 or model==201)myMinuit->mnparm(0, "ratio", mu, minuitStep, -100, 300, ierflg); // andrey's suggestion, alow mu hat < 0   
+				if(model==202)myMinuit->mnparm(0, "ratio", r, minuitStep, -100, 300, ierflg); // andrey's suggestion, alow mu hat < 0   
 				// mu starting point is now configurable via the argument "mu",   when fitting asimov_b, the starting mu should be 0, elsewhere 1
 				// mu fitting range maybe need to be configurable via command line. 
 				//myMinuit->mnparm(0, "ratio", 1, 0.1, 0, 100, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
@@ -463,6 +465,7 @@ namespace lands{
 			else if(model==3){ // profile mu
 				myMinuit->mnparm(0, "ratio", mu, minuitStep, -100, 300, ierflg);
 				myMinuit->FixParameter(0);
+				_bPositiveSignalStrength = false;
 			}
 			else if(model==4){ // only floating mu,  not fit for systematics
 				myMinuit->mnparm(0, "ratio", mu, minuitStep, -100, 300, ierflg);
@@ -507,8 +510,8 @@ namespace lands{
 			if(debug || ierflg)cout <<" MIGRAD return errflg = "<<ierflg<<endl;
 			if(debug || ierflg)cout <<" MinuitFit("<<model<<")"<<endl;
 			if(debug || ierflg) {
-				if(model==2 or model==201)cout<<" starting mu = "<<mu<<endl;
-				if(model==102)cout<<" starting mu = "<<r<<endl;
+				if(model==2 or model==201 )cout<<" starting mu = "<<mu<<endl;
+				if(model==102 or model==202)cout<<" starting mu = "<<r<<endl;
 			}
 
 			//	myMinuit->mnexcm("MINI", arglist ,2,ierflg);
@@ -535,7 +538,7 @@ namespace lands{
 			Double_t amin,edm,errdef;
 			Int_t nvpar,nparx,icstat;
 			Double_t errUp, errLow, errParab=0, gcor=0; 
-			if(model==101 or model==102){
+			if(model==101 or model==102 or model == 202){
 				myMinuit->mnstat(amin,edm,errdef,nvpar,nparx,icstat);
 				myMinuit->mnerrs(0, errUp, errLow, errParab, gcor);
 				if(debug)cout<<"DELETEME errUp="<<errUp<<" errLow="<<errLow<<" errParab="<<errParab<<" gcor="<<gcor<<endl;
@@ -546,7 +549,7 @@ namespace lands{
 			if(debug)cout<<"DELETEME r="<<r<<"+/-"<<er<<" fMin="<<l<<endl;
 
 			if(debug and UseMinos) cout<<" signal_strength :  [ "<<r+errLow<<"  "<<r+errUp<<" ] "<<endl;
-			if(model==101 or model==102) {
+			if(model==101 or model==102 or model==202) {
 				er=r;
 				r+=errUp;   // for upper limit
 				er+=errLow; // for lower limit
