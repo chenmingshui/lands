@@ -1516,8 +1516,14 @@ bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripp
 		else pdf =  (TString(ss[1])).Atoi();
 
 		tmps+= TString::Format("%3s ", ss[1].c_str());
-		if(pdf==typeGamma && ss[1]!="gmM") tmps+= TString::Format("%8s ", ss[2].c_str());
-		else		   tmps+= "         ";
+		if(pdf==typeGamma && ss[1]!="gmM") {
+			tmps+= TString::Format("%8s ", ss[2].c_str());
+			if(ss.size()<ntotprocesses+3) { cout<<"Error... uncertainty "<<ss[0]<<": doesn't have enough collums"<<endl; exit(1) ; }
+		}
+		else{
+     			tmps+= "         ";
+			if(ss.size()<ntotprocesses+2){ cout<<"Error... uncertainty "<<ss[0]<<": doesn't have enough collums"<<endl; exit(1); }
+		}
 
 		bool filledThisSource = false;
 		for(int p=0; p<ntotprocesses; p++){
@@ -2168,11 +2174,19 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 		if(debug) cout<<" pdf type "<<pdf<<endl;
 
 		tmps+= TString::Format("%8s ", ss[1].c_str());
-		if(pdf==typeGamma && ss[1]!="gmM") tmps+= TString::Format("%8s ", ss[2].c_str());
+		if(pdf==typeGamma && ss[1]!="gmM") {
+			tmps+= TString::Format("%8s ", ss[2].c_str());
+			if(ss.size()<ntotprocesses+3) { cout<<"Error... uncertainty "<<ss[0]<<": doesn't have enough collums"<<endl; exit(1) ; }
+		}
 		else if(pdf==typeBifurcatedGaussian || pdf==typeFlat) {
 			for(int ii=2; ii<ss.size(); ii++) {tmps+=ss[2]; tmps+=" ";}
 		}
 		else		   tmps+= "         ";
+
+		if(ss[1]=="flat" or ss[1]=="lnN" or ss[1]=="trG" or ss[1]=="gmM" or ss[1]=="shapeN" or ss[1]=="shape" or ss[1]=="shapeStat" or ss[1]=="shapeL" 
+				or ss[1]=="shapeQ"){
+			if(ss.size()<ntotprocesses+2) { cout<<"Error... uncertainty "<<ss[0]<<": doesn't have enough collums"<<endl; exit(1) ; }
+		}
 
 		bool filledThisSource = false;
 		for(int p=0; p<ntotprocesses; p++){

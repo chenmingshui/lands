@@ -169,11 +169,11 @@ int main(int argc, const char*argv[]){
 	cms->SetUseSystematicErrors(systematics);
 	// done combination
 
-	RooRandom::randomGenerator()->SetSeed(seed);
+	CRandom *rdm = new CRandom(seed);  //initilize a random generator
+	RooRandom::randomGenerator()->SetSeed(rdm->GetSeed());
 
 	// common operations
 	if(debug)cms->Print();
-	CRandom *rdm = new CRandom(seed);  //initilize a random generator
 	cms->SetRdm(rdm);
 	//cms->RemoveChannelsWithExpectedSignal0orBkg0();
 	int nch_removed =0 ;// = cms->RemoveChannelsWithExpectedSignal0orBkg0(0); // 0: remove only bins with total bkg<=0,  1: remove bins with total sig<=0,  2: both
