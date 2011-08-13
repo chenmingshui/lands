@@ -119,6 +119,17 @@ double inputMu_bayesian = 0;
 
 bool bWriteToys = false;
 
+TString ExpectationHints = "";
+bool runAsymptoticLimits();
+double runProfileLikelihoodApproximation(double neg2_llr=-9999);
+bool runBayesian();
+bool saveExpectation();
+
+double preHints_obs=0, preHints_m2s=0, preHints_m1s=0, preHints_p1s=0, preHints_p2s=0, preHints_median=0;
+// common results
+double rmean;
+vector<double> difflimits;
+
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
 
@@ -185,16 +196,12 @@ int main(int argc, const char*argv[]){
 
 	cms->SetMoveUpShapeUncertainties(1);
 
-	cms->SetTossToyConvention(tossToyConvention);
 
 	cms->SetMass(HiggsMass);
 
 	//**********************  setValueDirty() takes a lot of timing ************************
 	//RooAbsArg::setDirtyInhibit(0);
 
-	// common results
-	double rmean;
-	vector<double> difflimits;
 
 	TStopwatch watch;  
 	watch.Start();
@@ -216,81 +223,52 @@ int main(int argc, const char*argv[]){
 	TPaveText *pt = SetTPaveText(0.2, 0.7, 0.3, 0.9);
 	if(calcsignificance==0){// calc limits
 		if(method == "Bayesian"){
-			BayesianBase bys(cms, 1-CL, 1.e-3);
-			bys.SetDebug(debug);
-			bys.SetNumToys(toysBayesian);
-			bys.SetPreToys(toysPreBayesian);
-			bys.SetCrossSectionPrior(prior);
-			double rtmp;
-			if(bCalcObservedLimit){
-				double *parsFitted, *parsErrLow, *parsErrUp;
-				parsFitted = new double[cms->Get_max_uncorrelation()+1];
-				parsErrUp= new double[cms->Get_max_uncorrelation()+1];
-				parsErrLow = new double[cms->Get_max_uncorrelation()+1];
-				rtmp = bys.Limit(1-CL, -99999., true, parsFitted, parsErrLow, parsErrUp, flatPriorCropNsigma, bRunOnlyWithBestFittedNuisances_bayesian, inputMu_bayesian);
-
-				if(nTries>1)cout<<"try "<<1<<": R at 95\% CL = "<<rtmp<<endl;
-
-				vector<double> rtries;
-				double hint = rtmp;
-				rtries.push_back(rtmp);
-				double avgR=0, errR=0;
-				for(int i=1; i<nTries; i++){
-					rtmp = bys.Limit(1-CL, hint, false, parsFitted, parsErrLow, parsErrUp, flatPriorCropNsigma);
-					cout<<"try "<<i+1<<": R at 95\% CL = "<<rtmp<<endl;
-					if(rtmp<=0) cout<<"  - -- ---- r is meaningless, skipped "<<endl;
-					else{
-						rtries.push_back(rtmp);
-						avgR=0;
-						for(int j=0; j<rtries.size(); j++) avgR+=rtries[j]; avgR/=float(rtries.size());	
-						hint = avgR;
-						errR=0;
-						for(int i=0; i<rtries.size(); i++) errR+= (rtries[i]-avgR)*(rtries[i]-avgR); errR = sqrt(errR)/(float)(rtries.size());
-						cout<<"try current arg = "<<avgR<<" +/- "<<errR<<endl;
-					}
-				}
-				if(nTries<=1) avgR=rtmp;
-				errR=0;
-				for(int i=0; i<rtries.size(); i++) errR+= (rtries[i]-avgR)*(rtries[i]-avgR); errR = sqrt(errR)/(float)(rtries.size());
-
-				std::sort(rtries.begin(), rtries.end());
-				int idmedian = int(rtries.size()*0.5); if(idmedian>=rtries.size()) idmedian=rtries.size()-1;
-				if(idmedian>0)cout<<"  median value of all tries = "<<rtries[idmedian]<<endl;
-				
-
-				cout<<"------------------------------------------------------------"<<endl;
-				if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
-				cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<avgR;
-				if(nTries>1)cout<<" +/- "<<errR<<endl;
-				else cout<<endl;
-				cout<<"------------------------------------------------------------"<<endl;
-
-				SaveResults(jobname+"_bysObsLimit", HiggsMass, avgR, errR, 0, 0, 0, 0, 0, 0, 0, 0);
-
-				if(bPlots)	{
-					bys.PosteriorPdf();
-					//start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_BayesianLimit ppdf: "<< (cur_time - start_time)/1000. << " millisec\n";
-					DrawEvolution2D pdfr(bys.GetVR(), bys.GetVP(), ";r;Likelihood", (jobname+"_postpdf").Data(), pt);	
-					pdfr.setDrawPosteriorPdf(rtmp);
-					pdfr.draw();
-					pdfr.getGraph()->SetMarkerSize(0.01);
-					pdfr.save();
-				}
-			}
-
-			if(doExpectation && sFileLimitsDistribution==""){
-				cms->SetSignalScaleFactor(1.);
-				LimitBands lb(&bys, cms);	
-				lb.SetTossPseudoDataConvention(tossPseudoDataConvention);
-				lb.SetDebug(debug);
-				int noutcomes = toys;
-				lb.BysLimitBands(1-CL, noutcomes, toysBayesian);
-				rmean=lb.GetBysLimitMean();
-				difflimits = lb.GetDifferentialLimitsBys();
-
-			}
-
+			runBayesian();
 		}else if(method == "Hybrid"){
+
+			if(ExpectationHints=="PreComputed"){
+			}
+			if(ExpectationHints == "Asymptotic"){
+				TString tmp_dataset = dataset;
+				dataset= "data_obs";
+				vdata_global=cms_global->Get_v_data();
+				cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
+				runAsymptoticLimits();
+				dataset= "asimov_b";
+				cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
+				vdata_global = cms->Get_AsimovData(0);
+				runAsymptoticLimits();
+				dataset = tmp_dataset;
+			}
+			if(ExpectationHints == "Bayesian"){
+				runBayesian();
+				cms->SetData(cms->Get_v_data_real());
+				cms->SetDataForUnbinned(cms->Get_v_pdfs_roodataset_real());
+			}
+
+			if(ExpectationHints == "Asymptotic" || ExpectationHints=="Bayesian" || ExpectationHints=="PreComputed"){
+				double tmpstep = (1.1*preHints_p2s - preHints_m2s*0.8)/20.;
+				if(tmpstep > 0.01) for(double tmpr = preHints_m2s*0.8; tmpr<=preHints_p2s*1.1; tmpr+=tmpstep) vR_toEval.push_back(tmpr);
+
+				tmpstep = (1.2*preHints_m2s - preHints_m2s*0.8)/5.;
+				if(tmpstep > 0.01)for(double tmpr = preHints_m2s*0.75; tmpr<=preHints_m2s*1.2; tmpr+=tmpstep) vR_toEval.push_back(tmpr);
+
+				if(preHints_obs < preHints_m2s) {
+					tmpstep = (preHints_obs*1.2 - preHints_obs*0.8)/5.;
+					if(tmpstep>0.01)for(double tmpr = preHints_obs*0.8; tmpr<=preHints_obs*1.2; tmpr+=tmpstep) vR_toEval.push_back(tmpr);
+				}
+				if(preHints_obs > preHints_p2s) {
+					tmpstep = (preHints_obs*1.2 - preHints_obs*0.8)/5.;
+					if(tmpstep>0.01)for(double tmpr = preHints_obs*0.8; tmpr<=preHints_obs*1.2; tmpr+=tmpstep) vR_toEval.push_back(tmpr);
+				}
+				std::sort(vR_toEval.begin(), vR_toEval.end());
+				vector<double>::iterator it;
+				it = std::unique(vR_toEval.begin(), vR_toEval.end());
+				vR_toEval.resize(it - vR_toEval.begin());
+			}
+
+
+			cms->SetTossToyConvention(tossToyConvention);
 			cms->SetUseBestEstimateToCalcQ(UseBestEstimateToCalcQ);
 
 			// initialize the calculator
@@ -330,10 +308,14 @@ int main(int argc, const char*argv[]){
 					if(testStat==1)frequentist.prepareLogNoverB();
 					if(nToysForCLsb<=0) nToysForCLsb=toysHybrid;
 					if(nToysForCLb<=0) nToysForCLb=toysHybrid;
-					frequentist.BuildM2lnQ_sb(nToysForCLsb);
+
+					int nTimes = 1; 
+					if(vR_toEval[i]<=1.2*preHints_m2s) nTimes = 2;
+					frequentist.BuildM2lnQ_sb(nToysForCLsb*nTimes);
 					vsb = frequentist.Get_m2logQ_sb();
-					frequentist.BuildM2lnQ_b(nToysForCLb);
+					frequentist.BuildM2lnQ_b(nToysForCLb*nTimes);
 					vb = frequentist.Get_m2logQ_b();
+
 					frequentist.BuildM2lnQ_data();
 					double qdata = frequentist.Get_m2lnQ_data();
 					cout<<" Q[mu="<<vR_toEval[i]<<"] ="<<qdata <<endl;
@@ -361,7 +343,7 @@ int main(int argc, const char*argv[]){
 				vb = frequentist.Get_m2logQ_b();
 				if(bWriteToys){
 					watch.Print();
-				       	return 0;
+					return 0;
 				}
 			}
 
@@ -376,7 +358,7 @@ int main(int argc, const char*argv[]){
 				TTree *tsb = gridCLsb[testR];
 				TTree *tb = gridCLb[testR];
 				double qdata = gridQdata[testR];
-		
+
 				if(tsb==0 || tb==0) {
 					cout<<"ERROR: grid of R="<<testR<<" not in the file"<<endl; 
 					cout<<"   all available R's : "<<endl;
@@ -633,6 +615,7 @@ int main(int argc, const char*argv[]){
 				lb.CLsLimitBands(1-CL, noutcomes, toysHybrid);
 				rmean=lb.GetCLsLimitMean();
 				difflimits = lb.GetDifferentialLimitsCLs();
+				saveExpectation();
 			}
 
 		}else if(method == "FeldmanCousins"){
@@ -789,472 +772,15 @@ int main(int argc, const char*argv[]){
 			watch.Print();
 			return 1;
 		}else if(method=="ProfiledLikelihood" or method=="ProfileLikelihood"){
-
-			// change to use parabora approximation ....
-
-			cms_global= cms;
 			vdata_global=cms->Get_v_data();
-			cms_global->SetDebug(debug);
-
-			double r95;
-			double tmp;
-			double tmperr;
-			double *pars = new double[cms->Get_max_uncorrelation()+1]; // nsys + r
-
-			_inputNuisances = cms->Get_norminalPars();
-			_startNuisances = cms->Get_norminalPars();
-
-			double ErrorDef = TMath::ChisquareQuantile(CL , 1);// (confidenceLevel, ndf)
-			if(PLalgorithm == "Minos"){
-				double upperL=1, lowerL=0; 
-				if(dataset=="asimov_b") upperL = 0.000001; // the starting mu value in the global fit
-				double y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, false, debug) ;
-				if(upperL==lowerL){
-				       	cout<<"WARNING: First Attempt Fails, try one more time with different set of starting values"<<endl;
-					y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, true, debug) ;
-					if(upperL==lowerL){
-						cout<<"ERROR: need to be investigate --> two attempts fails "<<endl;
-						cout<<" -----> trying Migrad"<<endl;
-						PLalgorithm = "Migrad";
-					}
-				}
-				r95 = upperL;
-			}
-			if(PLalgorithm == "Migrad"){
-				double tmpr = 0;
-				double y0_2 =  MinuitFit(2, tmpr, tmperr, 0, pars, false, debug) ;
-				if(debug)	cout<<y0_2<<" fitter u="<<tmpr<<" +/- "<<tmperr<<endl;
-
-				double y0_1 =  MinuitFit(3, tmp, tmperr, 0, pars, false, debug);
-				if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
-
-				double x1 =0, x2 =1;
-				double y0 = y0_1;  
-				if ( (y0_1 > y0_2) && tmpr>0) {
-					y0 = y0_2;
-					x1 = tmpr; x2=2*tmpr;
-				}
-
-
-				//y0 = y0_2;  x1 = tmpr; x2=2*tmpr;
-				//if(x2<1) x2 = 1.;
-				if(debug) cout<<" y0="<<y0<<" x1="<<x1<<" x2="<<x2<<endl;
-
-
-				//------------
-				//If we have a background as a Gaussian distribution G(x|b) with mean b,
-				//sigma sqrt(b), and observe x = b, then the upper limit on signal is
-				//mu = 1.64*sqrt(b), which gives a 5% chance for P(obs < b).
-				//
-				//Therefore:
-				//
-				//1) muhat = 0, given the observation x=b
-				//
-				//2) -2 * ln (lambda(mu)) = -2 * ln( G(x|b+mu) / G(x|b+muhat) ) = 1.64^2
-				//
-				//If we use the 1.96-rule, it may *artificially* improve, but not cure,
-				//the coverage for low statistics case, but would now give wrong coverage
-				//in asymptotic.
-
-				//http://en.wikipedia.org/wiki/Chi-square_distribution
-				//double CI = 1.921;  // = 1.96**2/2 ,  probably for two sided 
-				//double CI = 1.64*1.64/2.;
-				double CI = ErrorDef/2.;
-				/*
-				   if (oneside==2) CI= 1.921;  // = 1.96**2/2 , two sided 95% CL --->  one sided 97.5%
-				   else CI = 1.64*1.64/2.; // two sided 90% CL
-				   */
-				double precision = 0.001;
-				int nsearched = 3;
-				//1.925 for 95% CL,   ....   
-				//              assume the profile likelihood function to be an increasing function
-				//              bisection search ...
-				//              y1 always > y0
-
-				double y =  MinuitFit(3, tmp, tmp, x2, pars, false, debug );
-				if(fabs((y-y0)/2. - CI) > precision ){
-					//first, got a number > 1.921,  otherwise increase it by a factor of 10 ...
-					while( (y-y0)/2. < CI ){
-						x1 =  x2;
-						x2 *=10.;
-						y =  MinuitFit(3, tmp, tmp, x2, pars, false, debug );
-						if(debug) cout<<" NLL = "<<y<<" r="<<pars[0]<<endl;
-						nsearched++;
-					}
-					y = MinuitFit(3, tmp, tmp, (x1+x2)/2., pars, false, debug );
-					if(debug) cout<<" NLL = "<<y<<" r="<<pars[0]<<endl;
-					if(debug) cout<< " r="<<(x1+x2)/2.<<" NLL = "<<y<<endl;
-					while( fabs((y-y0)/2. - CI)/CI > precision ){
-						double  tmpx = (x1+x2)/2.;
-						if( (y-y0)/2. < CI ){
-							x1 = tmpx; 
-						}else{
-							x2 = tmpx;
-						}	
-						y = MinuitFit(3, tmp, tmp, (x1+x2)/2., pars, false, debug );
-						if(debug) cout<<" NLL = "<<y<<" r="<<pars[0]<<endl;
-						if(debug) printf(" r=%.6f,  NLL=%.10f\n", (x1+x2)/2., y);
-						nsearched++;
-					}
-					r95 = (x2+x1)/2.;
-				}else{
-					r95 = x2;
-				}
-
-
-				if(debug)cout<<"r95 = "<<r95<<",  "<<nsearched<<" steps"<<endl;
-
-			}
-
-			cout<<"------------------------------------------------------------"<<endl;
-			if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
-			cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<r95<<endl;
-			cout<<"------------------------------------------------------------"<<endl;
-
-			SaveResults(jobname+"_plrObsLimit", HiggsMass, r95, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-
-			if(bPlots){ // show a plot for  -log(Lambda(mu)) vs. mu 
-				double x0 =  MinuitFit(21, tmp, tmperr, 0, pars, true, debug);
-				//double x0 = y0;
-				cout<<" x0 = "<<x0<<" optimized r="<<tmp<<endl;
-				vector<double> vrxsec, vmlnq; 
-				vrxsec.clear(); vmlnq.clear();
-				for(double r=0; r<=2*r95; r+=r95/10.){
-					vrxsec.push_back(r);
-					double x3 = MinuitFit(3,tmp, tmp, r, pars, true, debug) ;
-					cout<<"r= "<<r<<", x3 = "<<x3<<endl;
-					double m2lnQ = x3 - x0;
-					cout<<"Profiled:  r ="<<r<<"	m2lnQ="<<m2lnQ<<endl;
-					vmlnq.push_back(m2lnQ/2.0);
-					if(m2lnQ/2.>3) break;
-				}
-				DrawEvolution2D profiledL(vrxsec, vmlnq, ";r = #sigma/#sigma_{SM}; -log#lambda(r)", (jobname+"_profiledL").Data(), pt);
-				profiledL.setLogY(0);
-				profiledL.draw();
-			}
-
+			runProfileLikelihoodApproximation();
 			watch.Print();
-			return 1;
+			return 0;
 
 		}else if(method=="Asymptotic"){
-
-			// change to use parabora approximation ....
-
-			cms_global= cms;
-			vdata_global=cms->Get_v_data();
-			cms_global->SetDebug(debug);
-
-			double r95;
-			double tmp;
-			double tmpr ;
-			double tmperr;
-			double *pars = new double[cms->Get_max_uncorrelation()+1]; // nsys + r
-
-			_inputNuisances = cms->Get_norminalPars();
-			_startNuisances = cms->Get_norminalPars();
-
-			double starting_mu_for_globalFit = 1; // for data
-
-			// for expected median limit,  asimov data set
-			//double ErrorDef = TMath::NormQuantile(0.975)*TMath::NormQuantile(0.975); 
-			double ErrorDef = TMath::ChisquareQuantile(CL , 1);// (confidenceLevel, ndf)
-			if(1){ // first get hint of the limit from  PLR method, wrong asymptotic formula
-				PLalgorithm = "";
-				double upperL=1, lowerL=0; 
-				if(dataset=="asimov_b") upperL = 0.000001; // the starting mu value in the global fit
-				double y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, false, debug) ;
-				starting_mu_for_globalFit = pars[0];
-				if(upperL==lowerL){
-				       	cout<<"WARNING: First Attempt Fails, try one more time with different set of starting values"<<endl;
-					y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, true, debug) ;
-					if(upperL==lowerL){
-						cout<<"ERROR: need to be investigate --> two attempts fails "<<endl;
-						cout<<" -----> trying Migrad"<<endl;
-						PLalgorithm = "Migrad";
-					}
-				}
-				r95 = upperL;
-				if(dataset=="asimov_b"){
-					// +1sigma
-					double sigma = -1;
-					double m2s, m1s, p1s, p2s;
-					ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(sigma))+sigma ; 
-				        ErrorDef *= ErrorDef;	
-					cout<<" ErrorDef = "<<ErrorDef<<endl;
-					y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, false, debug) ;
-					cout<<" "<<sigma<<" sigma :  "<<upperL<<"   "<<lowerL<<endl;
-					m1s = upperL;
-
-					sigma = 1;
-					ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(sigma))+sigma ; 
-				        ErrorDef *= ErrorDef;	
-					cout<<" ErrorDef = "<<ErrorDef<<endl;
-					y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, false, debug) ;
-					cout<<" "<<sigma<<" sigma :  "<<upperL<<"   "<<lowerL<<endl;
-					p1s = upperL;
-
-					sigma = -2;
-					ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(sigma))+sigma ; 
-				        ErrorDef *= ErrorDef;	
-					cout<<" ErrorDef = "<<ErrorDef<<endl;
-					y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, false, debug) ;
-					cout<<" "<<sigma<<" sigma :  "<<upperL<<"   "<<lowerL<<endl;
-					m2s = upperL;
-
-					sigma = 2;
-					ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(sigma))+sigma ; 
-				        ErrorDef *= ErrorDef;	
-					cout<<" ErrorDef = "<<ErrorDef<<endl;
-					y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, false, debug) ;
-					if(upperL==lowerL){
-						cms_global->Set_minuitSTRATEGY(1);
-						cms_global->FluctuatedNumbers();
-						//y0_2 =  MinuitFit(202, upperL, lowerL, ErrorDef, cms_global->Get_randomizedPars(), true, debug) ;
-						y0_2 =  MinuitFit(202, upperL, lowerL, ErrorDef, pars, false, debug) ;
-					}
-					if(upperL==lowerL){
-						cms_global->Set_minuitSTRATEGY(2);
-						cms_global->FluctuatedNumbers();
-						y0_2 =  MinuitFit(202, upperL, lowerL, ErrorDef, cms_global->Get_randomizedPars(), true, debug) ;
-					}
-					cout<<" "<<sigma<<" sigma :  "<<upperL<<"   "<<lowerL<<endl;
-					p2s = upperL;
-
-					cout<<"BandsFromAsymptotic R@95%CL (from -2sigma -1sigma  mean  +1sigma  +2sigma,  median) : "<<endl;
-					if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
-					printf("BANDS %10.5f %10.5f %10.5f %10.5f %10.5f %10.5f\n", m2s, m1s, 0.00, p1s, p2s, r95);
-					cout<<"------------------------------------------------------------"<<endl;
-				}
-			}
-			if(PLalgorithm == "Migrad"){
-				tmpr = 0;
-				double y0_2 =  MinuitFit(2, tmpr, tmperr, 0, pars, false, debug) ;
-				if(debug)	cout<<y0_2<<" fitter u="<<tmpr<<" +/- "<<tmperr<<endl;
-
-				double y0_1 =  MinuitFit(3, tmp, tmperr, 0, pars, false, debug);
-				if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
-
-				double x1 =0, x2 =1;
-				double y0 = y0_1;  
-				if ( (y0_1 > y0_2) && tmpr>0) {
-					y0 = y0_2;
-					x1 = tmpr; x2=2*tmpr;
-				}
-
-
-				//y0 = y0_2;  x1 = tmpr; x2=2*tmpr;
-				//if(x2<1) x2 = 1.;
-				if(debug) cout<<" y0="<<y0<<" x1="<<x1<<" x2="<<x2<<endl;
-
-
-				double CI = ErrorDef/2.;
-				double precision = 0.001;
-				int nsearched = 3;
-				double y =  MinuitFit(3, tmp, tmp, x2, pars, false, debug );
-				if(fabs((y-y0)/2. - CI) > precision ){
-					//first, got a number > 1.921,  otherwise increase it by a factor of 10 ...
-					while( (y-y0)/2. < CI ){
-						x1 =  x2;
-						x2 *=10.;
-						y =  MinuitFit(3, tmp, tmp, x2, pars, false, debug );
-						if(debug) cout<<" NLL = "<<y<<" r="<<pars[0]<<endl;
-						nsearched++;
-					}
-					y = MinuitFit(3, tmp, tmp, (x1+x2)/2., pars, false, debug );
-					if(debug) cout<<" NLL = "<<y<<" r="<<pars[0]<<endl;
-					if(debug) cout<< " r="<<(x1+x2)/2.<<" NLL = "<<y<<endl;
-					while( fabs((y-y0)/2. - CI)/CI > precision ){
-						double  tmpx = (x1+x2)/2.;
-						if( (y-y0)/2. < CI ){
-							x1 = tmpx; 
-						}else{
-							x2 = tmpx;
-						}	
-						y = MinuitFit(3, tmp, tmp, (x1+x2)/2., pars, false, debug );
-						if(debug) cout<<" NLL = "<<y<<" r="<<pars[0]<<endl;
-						if(debug) printf(" r=%.6f,  NLL=%.10f\n", (x1+x2)/2., y);
-						nsearched++;
-					}
-					r95 = (x2+x1)/2.;
-				}else{
-					r95 = x2;
-				}
-
-
-				if(debug)cout<<"r95 = "<<r95<<",  "<<nsearched<<" steps"<<endl;
-
-			}
-
-			int nsteps_in_asymptotic = 0;
-			// running asymptotic limit from the hint 
-			if(dataset=="data_obs"){
-				vdata_global = cms->Get_v_data();
-				cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
-				if(debug) cout<<" fitting data with MinuitFit(2)"<<endl;
-				int success[1] = {0};
-				double L_data_glbmin =  MinuitFit(2, tmpr, tmperr, starting_mu_for_globalFit, pars, false, debug, success) ;
-				int minuitSTRATEGY_old=minuitSTRATEGY;
-				while(success[0] and minuitSTRATEGY<2) {
-					cout<<" failed global fit of data with minuitSTRATEGY = "<<minuitSTRATEGY<<endl;
-					minuitSTRATEGY +=2 ; 
-					cout<<" try minuitSTRATEGY = "<<minuitSTRATEGY<<endl;
-					cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
-					L_data_glbmin =  MinuitFit(2, tmpr, tmperr, starting_mu_for_globalFit+0.1, pars, false, debug, success) ;
-				}
-				minuitSTRATEGY = minuitSTRATEGY_old;
-				cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
-
-				cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
-				vdata_global = cms->Get_AsimovData(0);
-				if(debug) cout<<" fitting asimovb with MinuitFit(2)"<<endl;
-				double L_asimovb_glbmin =  MinuitFit(2, tmpr, tmperr, 0, pars, false, debug, success) ;
-				minuitSTRATEGY_old=minuitSTRATEGY;
-				while(success[0] and minuitSTRATEGY<2) {
-					cout<<" failed global fit of asimovb with minuitSTRATEGY = "<<minuitSTRATEGY<<endl;
-					//minuitSTRATEGY +=2 ; 
-					cout<<" try minuitSTRATEGY = "<<minuitSTRATEGY<<endl;
-					cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
-					//cms_global->FluctuatedNumbers();
-					//L_asimovb_glbmin =  MinuitFit(201, tmpr, tmperr, 0.1, cms_global->Get_randomizedPars(), true, debug, success) ;
-					L_asimovb_glbmin =  MinuitFit(201, tmpr, tmperr, 0.1, pars, false, debug, success) ;
-				}
-				minuitSTRATEGY = minuitSTRATEGY_old;
-				cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
-
-				double mu =  r95;
-
-				vdata_global = cms->Get_v_data();
-				cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
-				if(debug) cout<<" fitting data with MinuitFit(3)"<<endl;
-				double L_data_condmin =  MinuitFit(3, tmp, tmperr, mu, pars, false, debug);
-
-				cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
-				vdata_global = cms->Get_AsimovData(0);
-				if(debug) cout<<" fitting asimovb with MinuitFit(3)"<<endl;
-				double L_asimovb_condmin =  MinuitFit(3, tmp, tmperr, mu, pars, false, debug);
-				
-				nsteps_in_asymptotic +=4;
-				if(L_data_condmin - L_data_glbmin <0 ) {
-					cout<<"1 L_data_condmin = "<<L_data_condmin<<"  < "<<"L_data_glbmin="<<L_data_glbmin<<", exit"<<endl;
-					exit(1);
-				}
-				if(L_asimovb_condmin - L_asimovb_glbmin <0 ) {
-					cout<<"2 L_asimovb_condmin = "<<L_asimovb_condmin<<"  < "<<"L_asimovb_glbmin="<<L_asimovb_glbmin<<", exit"<<endl;
-					exit(1);
-				}
-				double tmpcls = (  1 - ROOT::Math::normal_cdf( sqrt(L_data_condmin - L_data_glbmin) ) ) / ( ROOT::Math::normal_cdf(
-							sqrt(L_asimovb_condmin - L_asimovb_glbmin) - sqrt(L_data_condmin - L_data_glbmin)
-							) ); 
-
-				double precision = 0.001;
-				double mu_up = mu, mu_down=mu;
-
-				if(debug)cout<<"tmpcls = "<<tmpcls<<endl;
-				if(debug)cout<<"mu = "<<mu<<" mu_up="<<mu_up<<" mu_down="<<mu_down<<endl;
-				if( fabs(tmpcls - (1-CL)) > precision ) {
-					if( tmpcls > 1-CL ){
-						while ( tmpcls > (1-CL) ) {
-							mu_up *= 2.; 
-							vdata_global = cms->Get_v_data();
-							cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
-							L_data_condmin =  MinuitFit(3, tmp, tmperr, mu_up, pars, false, debug);
-							vdata_global = cms->Get_AsimovData(0);
-							cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
-							L_asimovb_condmin =  MinuitFit(3, tmp, tmperr, mu_up, pars, false, debug);
-	
-							if(L_data_condmin - L_data_glbmin <0 ) {
-								cout<<"3 L_data_condmin = "<<L_data_condmin<<"  < "<<"L_data_glbmin="<<L_data_glbmin<<", exit"<<endl;
-								exit(1);
-							}
-							if(L_asimovb_condmin - L_asimovb_glbmin <0 ) {
-								cout<<"4 L_asimovb_condmin = "<<L_asimovb_condmin<<"  < "<<"L_asimovb_glbmin="<<L_asimovb_glbmin<<", exit"<<endl;
-								exit(1);
-							}
-							tmpcls = (  1 - ROOT::Math::normal_cdf( sqrt(L_data_condmin - L_data_glbmin) ) ) / ( ROOT::Math::normal_cdf(
-										sqrt(L_asimovb_condmin - L_asimovb_glbmin) - sqrt(L_data_condmin - L_data_glbmin)
-										) ); 
-							nsteps_in_asymptotic +=2;
-
-				if(debug)cout<<"tmpcls = "<<tmpcls<<endl;
-				if(debug)cout<<"mu = "<<mu<<" mu_up="<<mu_up<<" mu_down="<<mu_down<<endl;
-						}
-					}else{
-						while ( tmpcls < (1-CL) ) {
-							mu_down /= 2.; 
-							vdata_global = cms->Get_v_data();
-							cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
-							L_data_condmin =  MinuitFit(3, tmp, tmperr, mu_down, pars, false, debug);
-							vdata_global = cms->Get_AsimovData(0);
-							cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
-							L_asimovb_condmin =  MinuitFit(3, tmp, tmperr, mu_down, pars, false, debug);
-	
-							if(L_data_condmin - L_data_glbmin <0 ) {
-								cout<<"5 L_data_condmin = "<<L_data_condmin<<"  < "<<"L_data_glbmin="<<L_data_glbmin<<", exit"<<endl;
-								exit(1);
-							}
-							if(L_asimovb_condmin - L_asimovb_glbmin <0 ) {
-								cout<<"6 L_asimovb_condmin = "<<L_asimovb_condmin<<"  < "<<"L_asimovb_glbmin="<<L_asimovb_glbmin<<", exit"<<endl;
-								exit(1);
-							}
-							tmpcls = (  1 - ROOT::Math::normal_cdf( sqrt(L_data_condmin - L_data_glbmin) ) ) / ( ROOT::Math::normal_cdf(
-										sqrt(L_asimovb_condmin - L_asimovb_glbmin) - sqrt(L_data_condmin - L_data_glbmin)
-										) ); 
-
-							nsteps_in_asymptotic +=2;
-				if(debug)cout<<"tmpcls = "<<tmpcls<<endl;
-				if(debug)cout<<"mu = "<<mu<<" mu_up="<<mu_up<<" mu_down="<<mu_down<<endl;
-						}
-					}
-					while ( fabs(tmpcls - (1-CL)) > precision ) {
-						mu = (mu_up + mu_down)/2.;
-
-						vdata_global = cms->Get_v_data();
-						cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
-						L_data_condmin =  MinuitFit(3, tmp, tmperr, mu, pars, false, debug);
-						vdata_global = cms->Get_AsimovData(0);
-						cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
-						L_asimovb_condmin =  MinuitFit(3, tmp, tmperr, mu, pars, false, debug);
-
-						if(L_data_condmin - L_data_glbmin <0 ) {
-							cout<<"5 L_data_condmin = "<<L_data_condmin<<"  < "<<"L_data_glbmin="<<L_data_glbmin<<", exit"<<endl;
-							exit(1);
-						}
-						if(L_asimovb_condmin - L_asimovb_glbmin <0 ) {
-							cout<<"6 L_asimovb_condmin = "<<L_asimovb_condmin<<"  < "<<"L_asimovb_glbmin="<<L_asimovb_glbmin<<", exit"<<endl;
-							exit(1);
-						}
-						tmpcls = (  1 - ROOT::Math::normal_cdf( sqrt(L_data_condmin - L_data_glbmin) ) ) / ( ROOT::Math::normal_cdf(
-									sqrt(L_asimovb_condmin - L_asimovb_glbmin) - sqrt(L_data_condmin - L_data_glbmin)
-									) ); 
-
-						if(tmpcls > 1-CL) {
-							mu_down = mu;
-						}else{
-							mu_up = mu;
-						}
-
-				if(debug)cout<<"tmpcls = "<<tmpcls<<endl;
-				if(debug)cout<<"mu = "<<mu<<" mu_up="<<mu_up<<" mu_down="<<mu_down<<endl;
-						nsteps_in_asymptotic +=2;
-					}
-				}
-				if(debug)cout<<"tmpcls = "<<tmpcls<<endl;
-				if(debug)cout<<"mu = "<<mu<<" mu_up="<<mu_up<<" mu_down="<<mu_down<<endl;
-				r95 = mu;
-				if(debug) cout<<"Addtional number of fits in asymptotic =  "<<nsteps_in_asymptotic<<endl;
-			}
-
-
-			cout<<"------------------------------------------------------------"<<endl;
-			if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
-			cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<r95<<endl;
-			cout<<"------------------------------------------------------------"<<endl;
-
-			SaveResults(jobname+"_asymptoticObsLimit", HiggsMass, r95, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-
+			runAsymptoticLimits();
 			watch.Print();
-			return 1;
-
+			return 0;
 		}else if(method == "ScanningMuFit"){
 			cms_global= cms;
 			vdata_global=cms->Get_v_data();
@@ -1301,66 +827,6 @@ int main(int argc, const char*argv[]){
 				return 0;
 			}
 
-
-		}
-
-		if(doExpectation){
-			// plot the distribution of limits of noutcomes
-			// and the cummulative pdf
-			TString ts=jobname; ts+="_limits";
-
-			if(sFileLimitsDistribution!=""){
-				TTree * tree = (TTree*)GetTObject(sFileLimitsDistribution.Data(), "T");
-				difflimits = GetVectorFrom(tree, "brT");
-				rmean = 0;
-				for(int i=0; i<difflimits.size(); i++)rmean+=difflimits[i];
-				if(difflimits.size()==0) rmean=0; else rmean/=float(difflimits.size());
-			}else 	FillTree(ts, difflimits);
-
-
-			vector<double> all_calculated_R95s;
-			vector<double> cummulativeProbabilities; // all_calculated_R95s has been sorted, each of them has a cummulative probability
-			SortAndCumulative(difflimits, all_calculated_R95s, cummulativeProbabilities);
-
-			// show bands without interpolation,  basically using step function
-			double GreenBandLow = (1- 0.683)/2.; //1 sigma
-			double GreenBandHigh = 1 - (1- 0.683)/2.; //1 sigma
-			double YellowBandLow = (1- 0.955)/2.; //2 sigma
-			double YellowBandHigh = 1 - (1- 0.955)/2.; //2 sigma
-			double rmedian2, rm1s2, rm2s2, rp1s2, rp2s2;	
-			bool brmedian2=false, brm1s2=false, brm2s2=false, brp1s2=false, brp2s2=false;	
-			for(int i=0; i<cummulativeProbabilities.size(); i++){
-				if(cummulativeProbabilities[i]>=GreenBandLow && !brm1s2) { rm1s2 = all_calculated_R95s[i]; brm1s2 = true; } 
-				if(cummulativeProbabilities[i]>=GreenBandHigh && !brp1s2) { rp1s2 = all_calculated_R95s[i]; brp1s2 = true; } 
-				if(cummulativeProbabilities[i]>=YellowBandLow && !brm2s2) { rm2s2 = all_calculated_R95s[i]; brm2s2 = true; } 
-				if(cummulativeProbabilities[i]>=YellowBandHigh && !brp2s2) { rp2s2 = all_calculated_R95s[i]; brp2s2 = true; } 
-				if(cummulativeProbabilities[i]>=0.5 && !brmedian2) { rmedian2 = all_calculated_R95s[i]; brmedian2 = true; } 
-			}
-			cout<<"------------NO INTERPOLATION--------------------------------"<<endl;
-			cout<<"BandsNoInterpolation R@95%CL (from -2sigma -1sigma  mean  +1sigma  +2sigma,  median) : "<<endl;
-			if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
-			printf("BANDS %10.5f %10.5f %10.5f %10.5f %10.5f %10.5f\n", rm2s2, rm1s2, rmean, rp1s2, rp2s2, rmedian2);
-			cout<<"------------------------------------------------------------"<<endl;
-
-			SaveResults(jobname+"_limitbands", HiggsMass, 0, 0, 0, 0, rm2s2, rm1s2, rmedian2, rmean, rp1s2, rp2s2);
-			if(bPlots){
-				TCanvas *c=new TCanvas("cme","cme");
-				c->SetLogy(1);
-				TH1F *h=new TH1F("h",";r=#frac{#sigma_{95%CL}}{#sigma_{SM}}; entries", 200, 0, 15);	
-				for(int i=0; i<difflimits.size(); i++) h->Fill(difflimits[i]);
-				h->Draw();
-				Save(c, (jobname+"_differential_limits").Data());
-
-				pt = SetTPaveText(0.67, 0.4, 0.8, 0.7);
-				//pt->AddText("statistical bands");
-				string ssave= (jobname+"_cummulativeR").Data();
-				string stitle="; r = #sigma_{95%}/#sigma_{SM}; cumulative probability;";
-				PlotXvsCummulativeProb plotRvsP(all_calculated_R95s, cummulativeProbabilities,
-						rm1s2, rp1s2, rm2s2, rp2s2, ssave, stitle, pt);
-				plotRvsP.draw();
-				plotRvsP.getGraph()->SetMarkerSize(1);
-				plotRvsP.save();
-			}
 
 		}
 
@@ -1444,6 +910,7 @@ int main(int argc, const char*argv[]){
 		}else if(method == "Hybrid"){
 			cout<<" calc p-value ... "<<endl;
 
+			cms->SetTossToyConvention(tossToyConvention);
 			cms->SetSignalScaleFactor(1.);
 			cms->SetUseBestEstimateToCalcQ(UseBestEstimateToCalcQ);
 			frequentist.SetTestStatistics(testStat);
@@ -1850,6 +1317,16 @@ void processParameters(int argc, const char* argv[]){
 	if(isWordInMap("--bOnlyEvaluateQdata", options)) bOnlyEvaluateQdata= true;
 	if(isWordInMap("--bWriteToys", options)) bWriteToys = true;
 
+	tmpv = options["--ExpectationHints"];
+	if( tmpv.size()!=1 ) { ExpectationHints= ""; }
+	else {
+		ExpectationHints= tmpv[0];
+		if(ExpectationHints!="Asymptotic" || ExpectationHints!="Bayesian" || ExpectationHints!="PreComputed") {
+			cout<<"ERROR:  arg of ExpectationHints must be one of the following: "<<endl;
+			cout<<"Asymptotic, Bayesian, PreComputed"<<endl;
+		}
+	}
+
 	tmpv = options["--nToysForCLsb"];
 	if( tmpv.size()!=1 ) { nToysForCLsb = -1; }
 	else nToysForCLsb = tmpv[0].Atoi();
@@ -2010,6 +1487,536 @@ void processParameters(int argc, const char* argv[]){
 	fflush(stdout);	
 
 	// check duplicate options ,  non-exist options 
+}
+
+double runProfileLikelihoodApproximation(double neg2_llr){
+	// change to use parabora approximation ....
+
+	CountingModel * cms = cms_global;
+	cms_global->SetDebug(debug);
+
+	double r95;
+	double tmp;
+	double tmperr;
+	double *pars = new double[cms->Get_max_uncorrelation()+1]; // nsys + r
+
+	_inputNuisances = cms->Get_norminalPars();
+	_startNuisances = cms->Get_norminalPars();
+
+	double ErrorDef = TMath::ChisquareQuantile(CL , 1);// (confidenceLevel, ndf)
+	if(neg2_llr>=0) ErrorDef = neg2_llr;
+	if(PLalgorithm == "Minos"){
+		double upperL=1, lowerL=0; 
+		if(dataset=="asimov_b") upperL = 0.000001; // the starting mu value in the global fit
+		double y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, false, debug) ;
+		if(upperL==lowerL){
+			cout<<"WARNING: First Attempt Fails, try one more time with different set of starting values"<<endl;
+			y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, true, debug) ;
+			if(upperL==lowerL){
+				cout<<"ERROR: need to be investigate --> two attempts fails "<<endl;
+				cout<<" -----> trying Migrad"<<endl;
+				PLalgorithm = "Migrad";
+			}
+		}
+		r95 = upperL;
+	}
+	if(PLalgorithm == "Migrad"){
+		double tmpr = 0;
+		double y0_2 =  MinuitFit(2, tmpr, tmperr, 0, pars, false, debug) ;
+		if(debug)	cout<<y0_2<<" fitter u="<<tmpr<<" +/- "<<tmperr<<endl;
+
+		double y0_1 =  MinuitFit(3, tmp, tmperr, 0, pars, false, debug);
+		if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
+
+		double x1 =0, x2 =1;
+		double y0 = y0_1;  
+		if ( (y0_1 > y0_2) && tmpr>0) {
+			y0 = y0_2;
+			x1 = tmpr; x2=2*tmpr;
+		}
+
+
+		//y0 = y0_2;  x1 = tmpr; x2=2*tmpr;
+		//if(x2<1) x2 = 1.;
+		if(debug) cout<<" y0="<<y0<<" x1="<<x1<<" x2="<<x2<<endl;
+
+
+		//------------
+		//If we have a background as a Gaussian distribution G(x|b) with mean b,
+		//sigma sqrt(b), and observe x = b, then the upper limit on signal is
+		//mu = 1.64*sqrt(b), which gives a 5% chance for P(obs < b).
+		//
+		//Therefore:
+		//
+		//1) muhat = 0, given the observation x=b
+		//
+		//2) -2 * ln (lambda(mu)) = -2 * ln( G(x|b+mu) / G(x|b+muhat) ) = 1.64^2
+		//
+		//If we use the 1.96-rule, it may *artificially* improve, but not cure,
+		//the coverage for low statistics case, but would now give wrong coverage
+		//in asymptotic.
+
+		//http://en.wikipedia.org/wiki/Chi-square_distribution
+		//double CI = 1.921;  // = 1.96**2/2 ,  probably for two sided 
+		//double CI = 1.64*1.64/2.;
+		double CI = ErrorDef/2.;
+		/*
+		   if (oneside==2) CI= 1.921;  // = 1.96**2/2 , two sided 95% CL --->  one sided 97.5%
+		   else CI = 1.64*1.64/2.; // two sided 90% CL
+		   */
+		double precision = 0.001;
+		int nsearched = 3;
+		//1.925 for 95% CL,   ....   
+		//              assume the profile likelihood function to be an increasing function
+		//              bisection search ...
+		//              y1 always > y0
+
+		double y =  MinuitFit(3, tmp, tmp, x2, pars, false, debug );
+		if(fabs((y-y0)/2. - CI) > precision ){
+			//first, got a number > 1.921,  otherwise increase it by a factor of 10 ...
+			while( (y-y0)/2. < CI ){
+				x1 =  x2;
+				x2 *=10.;
+				y =  MinuitFit(3, tmp, tmp, x2, pars, false, debug );
+				if(debug) cout<<" NLL = "<<y<<" r="<<pars[0]<<endl;
+				nsearched++;
+			}
+			y = MinuitFit(3, tmp, tmp, (x1+x2)/2., pars, false, debug );
+			if(debug) cout<<" NLL = "<<y<<" r="<<pars[0]<<endl;
+			if(debug) cout<< " r="<<(x1+x2)/2.<<" NLL = "<<y<<endl;
+			while( fabs((y-y0)/2. - CI)/CI > precision ){
+				double  tmpx = (x1+x2)/2.;
+				if( (y-y0)/2. < CI ){
+					x1 = tmpx; 
+				}else{
+					x2 = tmpx;
+				}	
+				y = MinuitFit(3, tmp, tmp, (x1+x2)/2., pars, false, debug );
+				if(debug) cout<<" NLL = "<<y<<" r="<<pars[0]<<endl;
+				if(debug) printf(" r=%.6f,  NLL=%.10f\n", (x1+x2)/2., y);
+				nsearched++;
+			}
+			r95 = (x2+x1)/2.;
+		}else{
+			r95 = x2;
+		}
+
+
+		if(debug)cout<<"r95 = "<<r95<<",  "<<nsearched<<" steps"<<endl;
+
+	}
+
+	cout<<"------------------------------------------------------------"<<endl;
+	if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
+	cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<r95<<endl;
+	cout<<"------------------------------------------------------------"<<endl;
+
+	SaveResults(jobname+"_plrObsLimit", HiggsMass, r95, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+	if(bPlots){ // show a plot for  -log(Lambda(mu)) vs. mu 
+		double x0 =  MinuitFit(21, tmp, tmperr, 0, pars, true, debug);
+		//double x0 = y0;
+		cout<<" x0 = "<<x0<<" optimized r="<<tmp<<endl;
+		vector<double> vrxsec, vmlnq; 
+		vrxsec.clear(); vmlnq.clear();
+		for(double r=0; r<=2*r95; r+=r95/10.){
+			vrxsec.push_back(r);
+			double x3 = MinuitFit(3,tmp, tmp, r, pars, true, debug) ;
+			cout<<"r= "<<r<<", x3 = "<<x3<<endl;
+			double m2lnQ = x3 - x0;
+			cout<<"Profiled:  r ="<<r<<"	m2lnQ="<<m2lnQ<<endl;
+			vmlnq.push_back(m2lnQ/2.0);
+			if(m2lnQ/2.>3) break;
+		}
+		TPaveText *pt = SetTPaveText(0.2, 0.7, 0.3, 0.9);
+		DrawEvolution2D profiledL(vrxsec, vmlnq, ";r = #sigma/#sigma_{SM}; -log#lambda(r)", (jobname+"_profiledL").Data(), pt);
+		profiledL.setLogY(0);
+		profiledL.draw();
+	}
+	if(pars) delete pars;
+	return r95;
+}
+bool runAsymptoticLimits(){
+	// change to use parabora approximation ....
+	CountingModel * cms = cms_global;
+	vdata_global=cms->Get_v_data();
+	cms_global->SetDebug(debug);
+
+	if(dataset=="asimov_b"){
+		cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
+		vdata_global = cms->Get_AsimovData(0);
+	}
+	double r95;
+	double tmp;
+	double tmpr ;
+	double tmperr;
+	double *pars = new double[cms->Get_max_uncorrelation()+1]; // nsys + r
+
+	_inputNuisances = cms->Get_norminalPars();
+	_startNuisances = cms->Get_norminalPars();
+
+	double starting_mu_for_globalFit = 1; // for data
+
+	// for expected median limit,  asimov data set
+	//double ErrorDef = TMath::NormQuantile(0.975)*TMath::NormQuantile(0.975); 
+	double ErrorDef = TMath::ChisquareQuantile(CL , 1);// (confidenceLevel, ndf)
+	if(1){ // first get hint of the limit from  PLR method, wrong asymptotic formula
+		r95 = runProfileLikelihoodApproximation(ErrorDef);
+		if(dataset=="asimov_b"){
+			cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
+			vdata_global = cms->Get_AsimovData(0);
+			preHints_median = r95;
+			// +1sigma
+			double sigma = -1;
+			double m2s, m1s, p1s, p2s;
+			ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(sigma))+sigma ; 
+			ErrorDef *= ErrorDef;	
+			if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
+			m1s = runProfileLikelihoodApproximation(ErrorDef);
+			preHints_m1s=m1s;
+
+			sigma = 1;
+			ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(sigma))+sigma ; 
+			ErrorDef *= ErrorDef;	
+			if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
+			p1s = runProfileLikelihoodApproximation(ErrorDef);
+			preHints_p1s=p1s;
+
+			sigma = -2;
+			ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(sigma))+sigma ; 
+			ErrorDef *= ErrorDef;	
+			if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
+			m2s = runProfileLikelihoodApproximation(ErrorDef);
+			preHints_m2s=m2s;
+
+			sigma = 2;
+			ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(sigma))+sigma ; 
+			ErrorDef *= ErrorDef;	
+			if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
+			p2s = runProfileLikelihoodApproximation(ErrorDef);
+			preHints_p2s=p2s;
+
+			cout<<"BandsFromAsymptotic R@95%CL (from -2sigma -1sigma  mean  +1sigma  +2sigma,  median) : "<<endl;
+			if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
+			printf("BANDS %10.5f %10.5f %10.5f %10.5f %10.5f %10.5f\n", m2s, m1s, 0.00, p1s, p2s, r95);
+			cout<<"------------------------------------------------------------"<<endl;
+		}
+	}
+	int nsteps_in_asymptotic = 0;
+	// running asymptotic limit from the hint 
+	if(dataset=="data_obs"){
+		vdata_global = cms->Get_v_data();
+		cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
+		if(debug) cout<<" fitting data with MinuitFit(2)"<<endl;
+		int success[1] = {0};
+		double L_data_glbmin =  MinuitFit(2, tmpr, tmperr, starting_mu_for_globalFit, pars, false, debug, success) ;
+		int minuitSTRATEGY_old=minuitSTRATEGY;
+		while(success[0] and minuitSTRATEGY<2) {
+			cout<<" failed global fit of data with minuitSTRATEGY = "<<minuitSTRATEGY<<endl;
+			minuitSTRATEGY +=2 ; 
+			cout<<" try minuitSTRATEGY = "<<minuitSTRATEGY<<endl;
+			cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
+			L_data_glbmin =  MinuitFit(2, tmpr, tmperr, starting_mu_for_globalFit+0.1, pars, false, debug, success) ;
+		}
+		minuitSTRATEGY = minuitSTRATEGY_old;
+		cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
+
+		cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
+		vdata_global = cms->Get_AsimovData(0);
+		if(debug) cout<<" fitting asimovb with MinuitFit(2)"<<endl;
+		double L_asimovb_glbmin =  MinuitFit(2, tmpr, tmperr, 0, pars, false, debug, success) ;
+		minuitSTRATEGY_old=minuitSTRATEGY;
+		while(success[0] and minuitSTRATEGY<2) {
+			cout<<" failed global fit of asimovb with minuitSTRATEGY = "<<minuitSTRATEGY<<endl;
+			//minuitSTRATEGY +=2 ; 
+			cout<<" try minuitSTRATEGY = "<<minuitSTRATEGY<<endl;
+			cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
+			//cms_global->FluctuatedNumbers();
+			//L_asimovb_glbmin =  MinuitFit(201, tmpr, tmperr, 0.1, cms_global->Get_randomizedPars(), true, debug, success) ;
+			L_asimovb_glbmin =  MinuitFit(201, tmpr, tmperr, 0.1, pars, false, debug, success) ;
+		}
+		minuitSTRATEGY = minuitSTRATEGY_old;
+		cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
+
+		double mu =  r95;
+
+		vdata_global = cms->Get_v_data();
+		cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
+		if(debug) cout<<" fitting data with MinuitFit(3)"<<endl;
+		double L_data_condmin =  MinuitFit(3, tmp, tmperr, mu, pars, false, debug);
+
+		cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
+		vdata_global = cms->Get_AsimovData(0);
+		if(debug) cout<<" fitting asimovb with MinuitFit(3)"<<endl;
+		double L_asimovb_condmin =  MinuitFit(3, tmp, tmperr, mu, pars, false, debug);
+
+		nsteps_in_asymptotic +=4;
+		if(L_data_condmin - L_data_glbmin <0 ) {
+			cout<<"1 L_data_condmin = "<<L_data_condmin<<"  < "<<"L_data_glbmin="<<L_data_glbmin<<", exit"<<endl;
+			exit(1);
+		}
+		if(L_asimovb_condmin - L_asimovb_glbmin <0 ) {
+			cout<<"2 L_asimovb_condmin = "<<L_asimovb_condmin<<"  < "<<"L_asimovb_glbmin="<<L_asimovb_glbmin<<", exit"<<endl;
+			exit(1);
+		}
+		double tmpcls = (  1 - ROOT::Math::normal_cdf( sqrt(L_data_condmin - L_data_glbmin) ) ) / ( ROOT::Math::normal_cdf(
+					sqrt(L_asimovb_condmin - L_asimovb_glbmin) - sqrt(L_data_condmin - L_data_glbmin)
+					) ); 
+
+		double precision = 0.001;
+		double mu_up = mu, mu_down=mu;
+
+		if(debug)cout<<"tmpcls = "<<tmpcls<<endl;
+		if(debug)cout<<"mu = "<<mu<<" mu_up="<<mu_up<<" mu_down="<<mu_down<<endl;
+		if( fabs(tmpcls - (1-CL)) > precision ) {
+			if( tmpcls > 1-CL ){
+				while ( tmpcls > (1-CL) ) {
+					mu_up *= 2.; 
+					vdata_global = cms->Get_v_data();
+					cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
+					L_data_condmin =  MinuitFit(3, tmp, tmperr, mu_up, pars, false, debug);
+					vdata_global = cms->Get_AsimovData(0);
+					cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
+					L_asimovb_condmin =  MinuitFit(3, tmp, tmperr, mu_up, pars, false, debug);
+
+					if(L_data_condmin - L_data_glbmin <0 ) {
+						cout<<"3 L_data_condmin = "<<L_data_condmin<<"  < "<<"L_data_glbmin="<<L_data_glbmin<<", exit"<<endl;
+						exit(1);
+					}
+					if(L_asimovb_condmin - L_asimovb_glbmin <0 ) {
+						cout<<"4 L_asimovb_condmin = "<<L_asimovb_condmin<<"  < "<<"L_asimovb_glbmin="<<L_asimovb_glbmin<<", exit"<<endl;
+						exit(1);
+					}
+					tmpcls = (  1 - ROOT::Math::normal_cdf( sqrt(L_data_condmin - L_data_glbmin) ) ) / ( ROOT::Math::normal_cdf(
+								sqrt(L_asimovb_condmin - L_asimovb_glbmin) - sqrt(L_data_condmin - L_data_glbmin)
+								) ); 
+					nsteps_in_asymptotic +=2;
+
+					if(debug)cout<<"tmpcls = "<<tmpcls<<endl;
+					if(debug)cout<<"mu = "<<mu<<" mu_up="<<mu_up<<" mu_down="<<mu_down<<endl;
+				}
+			}else{
+				while ( tmpcls < (1-CL) ) {
+					mu_down /= 2.; 
+					vdata_global = cms->Get_v_data();
+					cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
+					L_data_condmin =  MinuitFit(3, tmp, tmperr, mu_down, pars, false, debug);
+					vdata_global = cms->Get_AsimovData(0);
+					cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
+					L_asimovb_condmin =  MinuitFit(3, tmp, tmperr, mu_down, pars, false, debug);
+
+					if(L_data_condmin - L_data_glbmin <0 ) {
+						cout<<"5 L_data_condmin = "<<L_data_condmin<<"  < "<<"L_data_glbmin="<<L_data_glbmin<<", exit"<<endl;
+						exit(1);
+					}
+					if(L_asimovb_condmin - L_asimovb_glbmin <0 ) {
+						cout<<"6 L_asimovb_condmin = "<<L_asimovb_condmin<<"  < "<<"L_asimovb_glbmin="<<L_asimovb_glbmin<<", exit"<<endl;
+						exit(1);
+					}
+					tmpcls = (  1 - ROOT::Math::normal_cdf( sqrt(L_data_condmin - L_data_glbmin) ) ) / ( ROOT::Math::normal_cdf(
+								sqrt(L_asimovb_condmin - L_asimovb_glbmin) - sqrt(L_data_condmin - L_data_glbmin)
+								) ); 
+
+					nsteps_in_asymptotic +=2;
+					if(debug)cout<<"tmpcls = "<<tmpcls<<endl;
+					if(debug)cout<<"mu = "<<mu<<" mu_up="<<mu_up<<" mu_down="<<mu_down<<endl;
+				}
+			}
+			while ( fabs(tmpcls - (1-CL)) > precision ) {
+				mu = (mu_up + mu_down)/2.;
+
+				vdata_global = cms->Get_v_data();
+				cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
+				L_data_condmin =  MinuitFit(3, tmp, tmperr, mu, pars, false, debug);
+				vdata_global = cms->Get_AsimovData(0);
+				cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
+				L_asimovb_condmin =  MinuitFit(3, tmp, tmperr, mu, pars, false, debug);
+
+				if(L_data_condmin - L_data_glbmin <0 ) {
+					cout<<"5 L_data_condmin = "<<L_data_condmin<<"  < "<<"L_data_glbmin="<<L_data_glbmin<<", exit"<<endl;
+					exit(1);
+				}
+				if(L_asimovb_condmin - L_asimovb_glbmin <0 ) {
+					cout<<"6 L_asimovb_condmin = "<<L_asimovb_condmin<<"  < "<<"L_asimovb_glbmin="<<L_asimovb_glbmin<<", exit"<<endl;
+					exit(1);
+				}
+				tmpcls = (  1 - ROOT::Math::normal_cdf( sqrt(L_data_condmin - L_data_glbmin) ) ) / ( ROOT::Math::normal_cdf(
+							sqrt(L_asimovb_condmin - L_asimovb_glbmin) - sqrt(L_data_condmin - L_data_glbmin)
+							) ); 
+
+				if(tmpcls > 1-CL) {
+					mu_down = mu;
+				}else{
+					mu_up = mu;
+				}
+
+				if(debug)cout<<"tmpcls = "<<tmpcls<<endl;
+				if(debug)cout<<"mu = "<<mu<<" mu_up="<<mu_up<<" mu_down="<<mu_down<<endl;
+				nsteps_in_asymptotic +=2;
+			}
+		}
+		if(debug)cout<<"tmpcls = "<<tmpcls<<endl;
+		if(debug)cout<<"mu = "<<mu<<" mu_up="<<mu_up<<" mu_down="<<mu_down<<endl;
+		r95 = mu;
+		if(debug) cout<<"Addtional number of fits in asymptotic =  "<<nsteps_in_asymptotic<<endl;
+
+		preHints_obs = r95;
+	}
+
+
+	cout<<"------------------------------------------------------------"<<endl;
+	if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
+	cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<r95<<endl;
+	cout<<"------------------------------------------------------------"<<endl;
+
+	SaveResults(jobname+"_asymptoticObsLimit", HiggsMass, r95, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+	if(pars) delete pars;
+	return true;
+}
+
+bool runBayesian(){
+	CountingModel*cms=cms_global;
+	BayesianBase bys(cms, 1-CL, 1.e-3);
+	bys.SetDebug(debug);
+	bys.SetNumToys(toysBayesian);
+	bys.SetPreToys(toysPreBayesian);
+	bys.SetCrossSectionPrior(prior);
+	double rtmp;
+	if(bCalcObservedLimit){
+		double *parsFitted, *parsErrLow, *parsErrUp;
+		parsFitted = new double[cms->Get_max_uncorrelation()+1];
+		parsErrUp= new double[cms->Get_max_uncorrelation()+1];
+		parsErrLow = new double[cms->Get_max_uncorrelation()+1];
+		rtmp = bys.Limit(1-CL, -99999., true, parsFitted, parsErrLow, parsErrUp, flatPriorCropNsigma, bRunOnlyWithBestFittedNuisances_bayesian, inputMu_bayesian);
+
+		if(nTries>1)cout<<"try "<<1<<": R at 95\% CL = "<<rtmp<<endl;
+
+		vector<double> rtries;
+		double hint = rtmp;
+		rtries.push_back(rtmp);
+		double avgR=0, errR=0;
+		for(int i=1; i<nTries; i++){
+			rtmp = bys.Limit(1-CL, hint, false, parsFitted, parsErrLow, parsErrUp, flatPriorCropNsigma);
+			cout<<"try "<<i+1<<": R at 95\% CL = "<<rtmp<<endl;
+			if(rtmp<=0) cout<<"  - -- ---- r is meaningless, skipped "<<endl;
+			else{
+				rtries.push_back(rtmp);
+				avgR=0;
+				for(int j=0; j<rtries.size(); j++) avgR+=rtries[j]; avgR/=float(rtries.size());	
+				hint = avgR;
+				errR=0;
+				for(int i=0; i<rtries.size(); i++) errR+= (rtries[i]-avgR)*(rtries[i]-avgR); errR = sqrt(errR)/(float)(rtries.size());
+				cout<<"try current arg = "<<avgR<<" +/- "<<errR<<endl;
+			}
+		}
+		if(nTries<=1) avgR=rtmp;
+		errR=0;
+		for(int i=0; i<rtries.size(); i++) errR+= (rtries[i]-avgR)*(rtries[i]-avgR); errR = sqrt(errR)/(float)(rtries.size());
+
+		std::sort(rtries.begin(), rtries.end());
+		int idmedian = int(rtries.size()*0.5); if(idmedian>=rtries.size()) idmedian=rtries.size()-1;
+		if(idmedian>0)cout<<"  median value of all tries = "<<rtries[idmedian]<<endl;
+
+
+		cout<<"------------------------------------------------------------"<<endl;
+		if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
+		cout<<"Observed Upper Limit on the ratio R at 95\% CL = "<<avgR;
+		if(nTries>1)cout<<" +/- "<<errR<<endl;
+		else cout<<endl;
+		cout<<"------------------------------------------------------------"<<endl;
+
+		preHints_obs = avgR;
+
+		SaveResults(jobname+"_bysObsLimit", HiggsMass, avgR, errR, 0, 0, 0, 0, 0, 0, 0, 0);
+
+		if(bPlots)	{
+			bys.PosteriorPdf();
+			//start_time=cur_time; cur_time=clock(); cout << "\t TIME_in_BayesianLimit ppdf: "<< (cur_time - start_time)/1000. << " millisec\n";
+			TPaveText *pt = SetTPaveText(0.2, 0.7, 0.3, 0.9);
+			DrawEvolution2D pdfr(bys.GetVR(), bys.GetVP(), ";r;Likelihood", (jobname+"_postpdf").Data(), pt);	
+			pdfr.setDrawPosteriorPdf(rtmp);
+			pdfr.draw();
+			pdfr.getGraph()->SetMarkerSize(0.01);
+			pdfr.save();
+		}
+	}
+
+	if(doExpectation && sFileLimitsDistribution==""){
+		difflimits.clear();
+		cms->SetSignalScaleFactor(1.);
+		LimitBands lb(&bys, cms);	
+		//	lb.SetTossPseudoDataConvention(tossPseudoDataConvention);
+		//	bayesian toys generation should follow LEP convention
+		lb.SetDebug(debug);
+		int noutcomes = toys;
+		lb.BysLimitBands(1-CL, noutcomes, toysBayesian);
+		rmean=lb.GetBysLimitMean();
+		difflimits = lb.GetDifferentialLimitsBys();
+		saveExpectation();
+	}
+}
+
+bool saveExpectation(){
+	// plot the distribution of limits of noutcomes
+	// and the cummulative pdf
+	TString ts=jobname; ts+=method; ts+="_limits";
+
+	if(sFileLimitsDistribution!=""){
+		TTree * tree = (TTree*)GetTObject(sFileLimitsDistribution.Data(), "T");
+		difflimits = GetVectorFrom(tree, "brT");
+		rmean = 0;
+		for(int i=0; i<difflimits.size(); i++)rmean+=difflimits[i];
+		if(difflimits.size()==0) rmean=0; else rmean/=float(difflimits.size());
+	}else 	FillTree(ts, difflimits);
+
+
+	vector<double> all_calculated_R95s;
+	vector<double> cummulativeProbabilities; // all_calculated_R95s has been sorted, each of them has a cummulative probability
+	SortAndCumulative(difflimits, all_calculated_R95s, cummulativeProbabilities);
+
+	// show bands without interpolation,  basically using step function
+	double GreenBandLow = (1- 0.683)/2.; //1 sigma
+	double GreenBandHigh = 1 - (1- 0.683)/2.; //1 sigma
+	double YellowBandLow = (1- 0.955)/2.; //2 sigma
+	double YellowBandHigh = 1 - (1- 0.955)/2.; //2 sigma
+	double rmedian2, rm1s2, rm2s2, rp1s2, rp2s2;	
+	bool brmedian2=false, brm1s2=false, brm2s2=false, brp1s2=false, brp2s2=false;	
+	for(int i=0; i<cummulativeProbabilities.size(); i++){
+		if(cummulativeProbabilities[i]>=GreenBandLow && !brm1s2) { rm1s2 = all_calculated_R95s[i]; brm1s2 = true; } 
+		if(cummulativeProbabilities[i]>=GreenBandHigh && !brp1s2) { rp1s2 = all_calculated_R95s[i]; brp1s2 = true; } 
+		if(cummulativeProbabilities[i]>=YellowBandLow && !brm2s2) { rm2s2 = all_calculated_R95s[i]; brm2s2 = true; } 
+		if(cummulativeProbabilities[i]>=YellowBandHigh && !brp2s2) { rp2s2 = all_calculated_R95s[i]; brp2s2 = true; } 
+		if(cummulativeProbabilities[i]>=0.5 && !brmedian2) { rmedian2 = all_calculated_R95s[i]; brmedian2 = true; } 
+	}
+	cout<<"------------NO INTERPOLATION--------------------------------"<<endl;
+	cout<<"BandsNoInterpolation R@95%CL (from -2sigma -1sigma  mean  +1sigma  +2sigma,  median) : "<<endl;
+	if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
+	printf("BANDS %10.5f %10.5f %10.5f %10.5f %10.5f %10.5f\n", rm2s2, rm1s2, rmean, rp1s2, rp2s2, rmedian2);
+	cout<<"------------------------------------------------------------"<<endl;
+
+	SaveResults(jobname+method+"_limitbands", HiggsMass, 0, 0, 0, 0, rm2s2, rm1s2, rmedian2, rmean, rp1s2, rp2s2);
+	if(bPlots){
+		TCanvas *c=new TCanvas("cme","cme");
+		c->SetLogy(1);
+		TH1F *h=new TH1F("h",";r=#frac{#sigma_{95%CL}}{#sigma_{SM}}; entries", 200, 0, 15);	
+		for(int i=0; i<difflimits.size(); i++) h->Fill(difflimits[i]);
+		h->Draw();
+		Save(c, (jobname+method+"_differential_limits").Data());
+
+		TPaveText *pt = SetTPaveText(0.67, 0.4, 0.8, 0.7);
+		string ssave= (jobname+method+"_cummulativeR").Data();
+		string stitle="; r = #sigma_{95%}/#sigma_{SM}; cumulative probability;";
+		PlotXvsCummulativeProb plotRvsP(all_calculated_R95s, cummulativeProbabilities,
+				rm1s2, rp1s2, rm2s2, rp2s2, ssave, stitle, pt);
+		plotRvsP.draw();
+		plotRvsP.getGraph()->SetMarkerSize(1);
+		plotRvsP.save();
+	}
+
+	preHints_median = rmedian2; preHints_p2s = rp2s2; preHints_p1s = rp2s2; preHints_m2s = rm2s2; preHints_m1s = rm1s2;
+	return true;
+
 }
 
 void PrintHelpMessage(){

@@ -219,7 +219,10 @@ double extractLimitAtQuantile(TString inFileName, TString plotName, double d_qua
 		line.SetLineWidth(1); line.SetLineStyle(2);
 		line.DrawLine(limit-limitErr, 0, limit-limitErr, limitPlot_->GetY()[0]);
 		line.DrawLine(limit+limitErr, 0, limit+limitErr, limitPlot_->GetY()[0]);
+		limitPlot_->SetTitle(";#mu;CLs");
 		c1->Print(plotName+".gif");
+
+		if(_debug)limitPlot_->Print("v");
 	}
 
 	std::cout << "\n -- Hybrid New -- \n";
@@ -270,6 +273,7 @@ void readAllToysFromFile(TGraphErrors*tge, TFile*f, double d_quantile) {
 		if(cls!=1 and clserr==0)continue;
 		if(cls>0.9) continue;
 		if(cls<0.0001) continue;
+		if(clserr>=cls)continue;
 		n_valid+=1;
 		tge->Set(n_valid);
 		tge->SetPoint(     n_valid-1, itg->first, cls   ); 
