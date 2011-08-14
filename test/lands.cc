@@ -225,9 +225,6 @@ int main(int argc, const char*argv[]){
 		if(method == "Bayesian"){
 			runBayesian();
 		}else if(method == "Hybrid"){
-
-			if(ExpectationHints=="PreComputed"){
-			}
 			if(ExpectationHints == "Asymptotic"){
 				TString tmp_dataset = dataset;
 				dataset= "data_obs";
@@ -239,14 +236,71 @@ int main(int argc, const char*argv[]){
 				vdata_global = cms->Get_AsimovData(0);
 				runAsymptoticLimits();
 				dataset = tmp_dataset;
-			}
-			if(ExpectationHints == "Bayesian"){
+				SaveResults(jobname+"Asymptotic"+"_limitbands", HiggsMass, preHints_obs, 0, 0, 0, preHints_m2s, preHints_m1s, preHints_median, 0, preHints_p1s, preHints_p2s);
+			}else if(ExpectationHints == "Bayesian"){
 				runBayesian();
 				cms->SetData(cms->Get_v_data_real());
 				cms->SetDataForUnbinned(cms->Get_v_pdfs_roodataset_real());
-			}
+			}else if(ExpectationHints!=""){
+				TFile *fhints = new TFile(ExpectationHints);
+				if(fhints->IsZombie()) {cout<<" File supposing to contain bands hints: "<<ExpectationHints<<" is not exist or it's bad, exit"<<endl; exit(1);};
+				
+				TTree *fChain = (TTree*) fhints->Get("T");
+				if(fChain == NULL) {cout<<" TTree \"T\" is not exist in the file "<<ExpectationHints<<", exit"<<endl; exit(1);};
+				// Declaration of leaf types
+				Double_t        mH;
+				Double_t        limit;
+				Double_t        rm2s;
+				Double_t        rm1s;
+				Double_t        rmedian;
+				Double_t        rp1s;
+				Double_t        rp2s;
 
-			if(ExpectationHints == "Asymptotic" || ExpectationHints=="Bayesian" || ExpectationHints=="PreComputed"){
+				// List of branches
+				TBranch        *b_mH;   //!
+				TBranch        *b_limit;   //!
+				TBranch        *b_rm2s;   //!
+				TBranch        *b_rm1s;   //!
+				TBranch        *b_rmedian;   //!
+				TBranch        *b_rp1s;   //!
+				TBranch        *b_rp2s;   //!
+
+				if(fChain->GetBranch("mH")){
+					fChain->SetBranchAddress("mH", &mH, &b_mH);
+				}
+				if(fChain->GetBranch("mh")){
+					fChain->SetBranchAddress("mh", &mH, &b_mH);
+				}
+
+				fChain->SetBranchAddress("limit", &limit, &b_limit);
+				fChain->SetBranchAddress("rm2s", &rm2s, &b_rm2s);
+				fChain->SetBranchAddress("rm1s", &rm1s, &b_rm1s);
+				fChain->SetBranchAddress("rmedian", &rmedian, &b_rmedian);
+				fChain->SetBranchAddress("rp1s", &rp1s, &b_rp1s);
+				fChain->SetBranchAddress("rp2s", &rp2s, &b_rp2s);
+
+				Long64_t nentries = fChain->GetEntries();
+				bool only_one_entry = true;
+				if(nentries != 1) only_one_entry = false;
+
+				//Long64_t nbytes = 0, nb = 0;
+				for (Long64_t jentry=0; jentry<nentries;jentry++) {
+					Long64_t ientry = fChain->GetEntry(jentry);
+					if (ientry < 0) break;
+					if((mH==HiggsMass && only_one_entry==false) or only_one_entry) {
+						preHints_median = rmedian;	
+						preHints_p2s = rp2s;
+						preHints_p1s = rp1s;
+						preHints_m1s = rm1s;
+						preHints_m2s = rm2s;
+						preHints_obs = limit;
+					}
+				}
+			}
+			if(ExpectationHints!=""){
+				cout<<" hints:  "<<endl;
+				cout<<" observed limit = "<<preHints_obs<<endl;
+				cout<<" bands :  "<<preHints_m2s<<" "<<preHints_m1s<<" "<<preHints_median<<" "<<preHints_p1s<<" "<<preHints_p2s<<endl;
 				double tmpstep = (1.1*preHints_p2s - preHints_m2s*0.8)/20.;
 				if(tmpstep > 0.01) for(double tmpr = preHints_m2s*0.8; tmpr<=preHints_p2s*1.1; tmpr+=tmpstep) vR_toEval.push_back(tmpr);
 
@@ -1321,10 +1375,10 @@ void processParameters(int argc, const char* argv[]){
 	if( tmpv.size()!=1 ) { ExpectationHints= ""; }
 	else {
 		ExpectationHints= tmpv[0];
-		if(ExpectationHints!="Asymptotic" || ExpectationHints!="Bayesian" || ExpectationHints!="PreComputed") {
-			cout<<"ERROR:  arg of ExpectationHints must be one of the following: "<<endl;
-			cout<<"Asymptotic, Bayesian, PreComputed"<<endl;
-		}
+		//if(ExpectationHints!="Asymptotic" || ExpectationHints!="Bayesian" || ExpectationHints!="PreComputed") {
+		//	cout<<"ERROR:  arg of ExpectationHints must be one of the following: "<<endl;
+		//	cout<<"Asymptotic, Bayesian, PreComputed"<<endl;
+		//}
 	}
 
 	tmpv = options["--nToysForCLsb"];
@@ -1995,7 +2049,7 @@ bool saveExpectation(){
 	printf("BANDS %10.5f %10.5f %10.5f %10.5f %10.5f %10.5f\n", rm2s2, rm1s2, rmean, rp1s2, rp2s2, rmedian2);
 	cout<<"------------------------------------------------------------"<<endl;
 
-	SaveResults(jobname+method+"_limitbands", HiggsMass, 0, 0, 0, 0, rm2s2, rm1s2, rmedian2, rmean, rp1s2, rp2s2);
+	SaveResults(jobname+method+"_limitbands", HiggsMass, preHints_obs, 0, 0, 0, rm2s2, rm1s2, rmedian2, rmean, rp1s2, rp2s2);
 	if(bPlots){
 		TCanvas *c=new TCanvas("cme","cme");
 		c->SetLogy(1);
