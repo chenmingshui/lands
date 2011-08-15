@@ -20,6 +20,7 @@
 #include "TFile.h"
 #include "RooMsgService.h"
 #include "TMath.h"
+#include "TGraphAsymmErrors.h"
 
 #ifdef LANDS_PROFILE
   #include <google/profiler.h>
@@ -302,10 +303,10 @@ int main(int argc, const char*argv[]){
 				cout<<" observed limit = "<<preHints_obs<<endl;
 				cout<<" bands :  "<<preHints_m2s<<" "<<preHints_m1s<<" "<<preHints_median<<" "<<preHints_p1s<<" "<<preHints_p2s<<endl;
 				double tmpstep = (1.1*preHints_p2s - preHints_m2s*0.8)/20.;
-				if(tmpstep > 0.01) for(double tmpr = preHints_m2s*0.8; tmpr<=preHints_p2s*1.1; tmpr+=tmpstep) vR_toEval.push_back(tmpr);
+				if(tmpstep > 0.001) for(double tmpr = preHints_m2s*0.8; tmpr<=preHints_p2s*1.1; tmpr+=tmpstep) vR_toEval.push_back(tmpr);
 
 				tmpstep = (1.2*preHints_m2s - preHints_m2s*0.8)/5.;
-				if(tmpstep > 0.01)for(double tmpr = preHints_m2s*0.75; tmpr<=preHints_m2s*1.2; tmpr+=tmpstep) vR_toEval.push_back(tmpr);
+				if(tmpstep > 0.001)for(double tmpr = preHints_m2s*0.75; tmpr<=preHints_m2s*1.2; tmpr+=tmpstep) vR_toEval.push_back(tmpr);
 
 				if(preHints_obs < preHints_m2s) {
 					tmpstep = (preHints_obs*1.2 - preHints_obs*0.8)/5.;
@@ -845,31 +846,171 @@ int main(int argc, const char*argv[]){
 			double *pars = new double[cms->Get_max_uncorrelation()+1]; // nsys + r
 			double tmp=0, tmpr = 0, tmperr=0;
 			double ErrorDef = TMath::ChisquareQuantile(0.68 , 1);// (confidenceLevel, ndf)
-			double y0_2 =  MinuitFit(202, tmpr, tmperr, ErrorDef, pars, false, debug) ;  //202, 201, 2:  allow mu to be negative
-			cout<<y0_2<<" fitter u="<<pars[0]<<", 68% CL:  ["<<tmperr<<","<<tmpr<<"]"<<endl; // upperL, lowerL
+			int success[1]={0};
+			//double y0_2 =  MinuitFit(202, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //202, 201, 2:  allow mu to be negative
+			double y0_2 =  MinuitFit(102, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //102, 101, 21:  don't allow mu to be negative
+			cout<<y0_2<<" fitter u="<<pars[0]<<", from minos fit asymmetry 68% CL:  ["<<tmperr<<","<<tmpr<<"]"<<endl; // upperL, lowerL
+			double mu_hat = pars[0];
+			double mu_hat_up = tmpr;
+			double mu_hat_low = tmperr;
 
+			ErrorDef = TMath::ChisquareQuantile(0.95 , 1);// (confidenceLevel, ndf)
+			double y0_3 =  MinuitFit(102, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //102, 101, 21:  don't allow mu to be negative
+			cout<<y0_3<<" fitter u="<<pars[0]<<", from minos fit asymmetry 95% CL:  ["<<tmperr<<","<<tmpr<<"]"<<endl; // upperL, lowerL
+			double mu_hat2 = pars[0];
+			double mu_hat_up2 = tmpr;
+			double mu_hat_low2 = tmperr;
+
+			ErrorDef = TMath::ChisquareQuantile(0.68 , 1);// (confidenceLevel, ndf)
+			bool b_global_fit = true;
+			if(success[0]!=0 or tmpr==tmperr){
+				b_global_fit = false;
+				double tmpr = 0;
+				y0_2 =  MinuitFit(21, tmpr, tmperr, 0, pars, false, debug) ;
+				if(debug)	cout<<y0_2<<" fitter u="<<tmpr<<" +/- "<<tmperr<<endl;
+				mu_hat = pars[0];
+			}
+
+
+			if(b_global_fit==false){
+				double x1 =0, x2 =1;
+				double y0 = y0_2;  
+				x1 = mu_hat; x2=2*mu_hat;   // has to be positive, otherwise mess up
+
+				
+				if(debug) cout<<" y0="<<y0<<" x1="<<x1<<" x2="<<x2<<endl;
+
+				double CI = ErrorDef/2.;
+				double precision = 0.001;
+				int nsearched = 3;
+				double y =  MinuitFit(3, tmp, tmp, x2, pars, false, debug );
+				if(fabs((y-y0)/2. - CI) > precision ){
+					//first, got a number > 1.921,  otherwise increase it by a factor of 10 ...
+					while( (y-y0)/2. < CI ){
+						x1 =  x2;
+						x2 *=10.;
+						y =  MinuitFit(3, tmp, tmp, x2, pars, false, debug );
+						if(debug) cout<<" NLL = "<<y<<" r="<<pars[0]<<endl;
+						nsearched++;
+					}
+					y = MinuitFit(3, tmp, tmp, (x1+x2)/2., pars, false, debug );
+					if(debug) cout<<" NLL = "<<y<<" r="<<pars[0]<<endl;
+					if(debug) cout<< " r="<<(x1+x2)/2.<<" NLL = "<<y<<endl;
+					while( fabs((y-y0)/2. - CI)/CI > precision ){
+						double  tmpx = (x1+x2)/2.;
+						if( (y-y0)/2. < CI ){
+							x1 = tmpx; 
+						}else{
+							x2 = tmpx;
+						}	
+						y = MinuitFit(3, tmp, tmp, (x1+x2)/2., pars, false, debug );
+						if(debug) cout<<" NLL = "<<y<<" r="<<pars[0]<<endl;
+						if(debug) printf(" r=%.6f,  NLL=%.10f\n", (x1+x2)/2., y);
+						nsearched++;
+					}
+					mu_hat_up= (x2+x1)/2.;
+				}else{
+					mu_hat_up = x2;
+				}
+
+			}
+			// look for asymmetry errors on muhat
+			if(b_global_fit==false){
+				double x1 =0, x2 =1;
+				double y0 = y0_2;  
+				x1 = mu_hat; x2=0.5*mu_hat;  // has to be positive, otherwise mess up
+				double precision = 0.001;
+
+				double CI = ErrorDef/2.;
+				double y =  MinuitFit(3, tmp, tmp, 0, pars, false, debug );
+				if (fabs(y-y0_2)/2. <= CI+precision ){
+					mu_hat_low = 0.;
+				}else{
+					if(debug) cout<<" y0="<<y0<<" x1="<<x1<<" x2="<<x2<<endl;
+					int nsearched = 3;
+					y =  MinuitFit(3, tmp, tmp, x2, pars, false, debug );
+					if(fabs((y-y0)/2. - CI) > precision ){
+						//first, got a number > 1.921,  otherwise increase it by a factor of 10 ...
+						while( (y-y0)/2. < CI ){
+							x1 =  x2;
+							x2 /=10.;
+							y =  MinuitFit(3, tmp, tmp, x2, pars, false, debug );
+							if(debug) cout<<" NLL = "<<y<<" r="<<pars[0]<<endl;
+							nsearched++;
+						}
+						y = MinuitFit(3, tmp, tmp, (x1+x2)/2., pars, false, debug );
+						if(debug) cout<<" NLL = "<<y<<" r="<<pars[0]<<endl;
+						if(debug) cout<< " r="<<(x1+x2)/2.<<" NLL = "<<y<<endl;
+						while( fabs((y-y0)/2. - CI)/CI > precision ){
+							double  tmpx = (x1+x2)/2.;
+							if( (y-y0)/2. < CI ){
+								x1 = tmpx; 
+							}else{
+								x2 = tmpx;
+							}	
+							y = MinuitFit(3, tmp, tmp, (x1+x2)/2., pars, false, debug );
+							if(debug) cout<<" NLL = "<<y<<" r="<<pars[0]<<endl;
+							if(debug) printf(" r=%.6f,  NLL=%.10f\n", (x1+x2)/2., y);
+							nsearched++;
+						}
+						mu_hat_low= (x2+x1)/2.;
+					}else{
+						mu_hat_low = x2;
+					}
+				}
+
+			}
+
+			cout<<" muhat = "<<mu_hat<<" and 68% CL: ["<<mu_hat_low<<","<<mu_hat_up<<"]"<<endl;
 			if(bPlots){
-				TGraphErrors *ge = new TGraphErrors(1);
+				TGraphAsymmErrors *ge = new TGraphAsymmErrors(1);
 				ge->SetName("muhat");
-				ge->SetPoint(0, pars[0], y0_2);
-				ge->SetPointError(0, tmpr - pars[0], 0);
+				ge->SetPoint(0, mu_hat, y0_2);
+				ge->SetPointError(0, mu_hat_low, mu_hat_up, 0, 0);
 				TFile f((jobname+"_muhat.root").Data(),"RECREATE");
 				f.WriteTObject(ge);
+
+				TGraphAsymmErrors *ge2 = new TGraphAsymmErrors(1);
+				ge2->SetName("muhat_2sigma");
+				ge2->SetPoint(0, mu_hat2, y0_3);
+				ge2->SetPointError(0, mu_hat_low2, mu_hat_up2, 0, 0);
+				f.WriteTObject(ge2);
 			}
 
 			if(scanRs){
 				vector<double> vr, vc; vr.clear(); vc.clear();
-				vr.push_back(pars[0]);vc.push_back(y0_2);
+				vr.push_back(pars[0]);vc.push_back(y0_2-y0_2);
 				for(int i=0; i<vR_toEval.size(); i++){
 					double testr = vR_toEval[i];
 					double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, false, debug);
 					if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
 					vr.push_back(testr);
-					vc.push_back(y0_1);
+					vc.push_back(y0_1-y0_2);
 				}
+				if(mu_hat<vR_toEval[0]){
+					double dr = (vR_toEval[0] - mu_hat)/10.;
+					if(dr<0.2) dr=0.2;
+					for(double testr = mu_hat+0.2; testr<vR_toEval[0]; testr+=dr){
+						double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, false, debug);
+						if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
+						vr.push_back(testr);
+						vc.push_back(y0_1-y0_2);
+					}
+				}
+				if(mu_hat_up>vR_toEval.back()){
+					double dr = (mu_hat_up - vR_toEval.back())/10.;
+					if(dr<0.2) dr=0.2;
+					for(double testr = vR_toEval.back(); testr<=mu_hat_up+0.2; testr+=dr){
+						double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, false, debug);
+						if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
+						vr.push_back(testr);
+						vc.push_back(y0_1-y0_2);
+					}
+				}
+
 				printf("\n results of scanned r vs. q: \n");
 				for(int i=0; i<vr.size(); i++){
-					printf("   r=%10.3f  q=%7.5f\n", vr[i], vc[i]);
+					printf("   r=%10.3f  delta_q=%7.5f\n", vr[i], vc[i]);
 				}
 				if(bPlots){
 					DrawEvolution2D d2d(vr, vc, "; r ; q", (jobname+"_scanned_r_vs_q").Data(), pt);
