@@ -131,6 +131,13 @@ double preHints_obs=0, preHints_m2s=0, preHints_m1s=0, preHints_p1s=0, preHints_
 double rmean;
 vector<double> difflimits;
 
+
+bool bConstrainMuPositive = false;  // in the max_ll fit of ScanningMuFit
+bool bAlsoExtract2SigmErrorBar = false;
+
+// for LHC-CLs method
+bool bFixNuisancsAtNominal = false;
+
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
 
@@ -188,7 +195,7 @@ int main(int argc, const char*argv[]){
 	if(debug)cms->Print();
 	cms->SetRdm(rdm);
 	//cms->RemoveChannelsWithExpectedSignal0orBkg0();
-	int nch_removed =0 ;// = cms->RemoveChannelsWithExpectedSignal0orBkg0(0); // 0: remove only bins with total bkg<=0,  1: remove bins with total sig<=0,  2: both
+	int nch_removed  = cms->RemoveChannelsWithExpectedSignal0orBkg0(0); // 0: remove only bins with total bkg<=0,  1: remove bins with total sig<=0,  2: both
 	if(debug and nch_removed )cms->Print();
 	if(nch_removed)cms->SetUseSystematicErrors(systematics);//need reconfig,  otherwise crash
 	//cms->SetAllowNegativeSignalStrength(false);
@@ -352,7 +359,7 @@ int main(int argc, const char*argv[]){
 				return 0;
 			}
 			//frequentist.checkFittedParsInData(true, false, "fittedPars.root");
-			if(tossToyConvention==1)frequentist.checkFittedParsInData(bReadPars, bWritePars, fileFittedPars);
+			if(tossToyConvention==1 && !bFixNuisancsAtNominal )frequentist.checkFittedParsInData(bReadPars, bWritePars, fileFittedPars);
 
 
 			vector<double> vb, vsb;
@@ -360,6 +367,10 @@ int main(int argc, const char*argv[]){
 				for(int i=0; i<vR_toEval.size(); i++){
 					cout<<" running with signal stength = "<<vR_toEval[i]<<endl;
 					cms->SetSignalScaleFactor(vR_toEval[i]);
+					if(tossToyConvention==1 && bFixNuisancsAtNominal){
+						cms->Set_fittedParsInData_sb(cms->Get_norminalPars());
+						cms->Set_fittedParsInData_b(cms->Get_norminalPars());
+					}
 					if(testStat==1)frequentist.prepareLogNoverB();
 					if(nToysForCLsb<=0) nToysForCLsb=toysHybrid;
 					if(nToysForCLb<=0) nToysForCLb=toysHybrid;
@@ -847,22 +858,34 @@ int main(int argc, const char*argv[]){
 			double tmp=0, tmpr = 0, tmperr=0;
 			double ErrorDef = TMath::ChisquareQuantile(0.68 , 1);// (confidenceLevel, ndf)
 			int success[1]={0};
-			//double y0_2 =  MinuitFit(202, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //202, 201, 2:  allow mu to be negative
-			double y0_2 =  MinuitFit(102, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //102, 101, 21:  don't allow mu to be negative
+			double y0_2 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //202, 201, 2:  allow mu to be negative
+			//double y0_2 =  MinuitFit(102, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //102, 101, 21:  don't allow mu to be negative
 			cout<<y0_2<<" fitter u="<<pars[0]<<", from minos fit asymmetry 68% CL:  ["<<tmperr<<","<<tmpr<<"]"<<endl; // upperL, lowerL
 			double mu_hat = pars[0];
 			double mu_hat_up = tmpr;
 			double mu_hat_low = tmperr;
 
-			ErrorDef = TMath::ChisquareQuantile(0.95 , 1);// (confidenceLevel, ndf)
-			double y0_3 =  MinuitFit(102, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //102, 101, 21:  don't allow mu to be negative
-			cout<<y0_3<<" fitter u="<<pars[0]<<", from minos fit asymmetry 95% CL:  ["<<tmperr<<","<<tmpr<<"]"<<endl; // upperL, lowerL
-			double mu_hat2 = pars[0];
-			double mu_hat_up2 = tmpr;
-			double mu_hat_low2 = tmperr;
+			
+			SaveResults(jobname+"_maxllfit", HiggsMass, 0, 0, 0, 0, 0, mu_hat_low, 0, mu_hat, mu_hat_up, 0);
+
+
+			double y0_3, mu_hat2, mu_hat_up2, mu_hat_low2;
+
+			if(bAlsoExtract2SigmErrorBar){
+				ErrorDef = TMath::ChisquareQuantile(0.95 , 1);// (confidenceLevel, ndf)
+				y0_3 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //102, 101, 21:  don't allow mu to be negative
+				//double y0_3 =  MinuitFit(102, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //102, 101, 21:  don't allow mu to be negative
+				cout<<y0_3<<" fitter u="<<pars[0]<<", from minos fit asymmetry 95% CL:  ["<<tmperr<<","<<tmpr<<"]"<<endl; // upperL, lowerL
+				mu_hat2 = pars[0];
+				mu_hat_up2 = tmpr;
+				mu_hat_low2 = tmperr;
+			}
+
 
 			ErrorDef = TMath::ChisquareQuantile(0.68 , 1);// (confidenceLevel, ndf)
 			bool b_global_fit = true;
+			// FIXME also need to check the 2 sigma fit is fine 
+			// if not, need to run brute-force approach
 			if(success[0]!=0 or tmpr==tmperr){
 				b_global_fit = false;
 				double tmpr = 0;
@@ -962,6 +985,7 @@ int main(int argc, const char*argv[]){
 			}
 
 			cout<<" muhat = "<<mu_hat<<" and 68% CL: ["<<mu_hat_low<<","<<mu_hat_up<<"]"<<endl;
+			watch.Print();
 			if(bPlots){
 				TGraphAsymmErrors *ge = new TGraphAsymmErrors(1);
 				ge->SetName("muhat");
@@ -970,11 +994,13 @@ int main(int argc, const char*argv[]){
 				TFile f((jobname+"_muhat.root").Data(),"RECREATE");
 				f.WriteTObject(ge);
 
-				TGraphAsymmErrors *ge2 = new TGraphAsymmErrors(1);
-				ge2->SetName("muhat_2sigma");
-				ge2->SetPoint(0, mu_hat2, y0_3);
-				ge2->SetPointError(0, mu_hat_low2, mu_hat_up2, 0, 0);
-				f.WriteTObject(ge2);
+				if(bAlsoExtract2SigmErrorBar){
+					TGraphAsymmErrors *ge2 = new TGraphAsymmErrors(1);
+					ge2->SetName("muhat_2sigma");
+					ge2->SetPoint(0, mu_hat2, y0_3);
+					ge2->SetPointError(0, mu_hat_low2, mu_hat_up2, 0, 0);
+					f.WriteTObject(ge2);
+				}
 			}
 
 			if(scanRs){
@@ -1073,6 +1099,12 @@ int main(int argc, const char*argv[]){
 			if(success[0])x2 =  MinuitFit(21, tmp, tmperr, 0, fittedPars, false, debug, success); // mu>0
 			cout<<"fitted r = "<<tmp<<endl;
 			double mu_hat = tmp;
+
+			double tmp_muhat, tmp_muhaterr ;
+			myMinuit->GetParameter(0, tmp_muhat, tmp_muhaterr);
+			
+			if(debug)cout<<" mu_hat = "<<mu_hat<<" tmp_muhat="<<tmp_muhat<<" tmp_muhaterr="<<tmp_muhaterr<<endl;
+
 			if(mu_hat<=0) {
 				cout<<" fitted r <=0 at maximum likelihood ratio ,  signicance = 0"<<endl;
 				m2lnQ = 0;
@@ -1087,7 +1119,7 @@ int main(int argc, const char*argv[]){
 			cout<<"Observed p-value = "<<pvalue<<endl;
 			if(sig_data>=4) cout<<"WARNING: please contact mschen@cern.ch for a potential issue on the nuisances' range. Needs change from [-5,5] to larger one"<<endl;
 
-			SaveResults(jobname+"_plrObsPvalue", HiggsMass, 0, 0, sig_data, pvalue, 0, 0, 0, mu_hat, 0, 0);
+			SaveResults(jobname+"_plrObsPvalue", HiggsMass, 0, 0, sig_data, pvalue, 0, tmp_muhat-tmp_muhaterr, tmp_muhat, mu_hat, tmp_muhat+tmp_muhaterr, 0);
 			if(debug>=10) { // show a plot for   -log(Lambda(mu)) vs. mu ...
 				for(double r=0; r<2; r+=0.1){
 					m2lnQ = MinuitFit(3,tmp, tmp, r) -x2; 
@@ -1593,6 +1625,14 @@ void processParameters(int argc, const char* argv[]){
 	if( tmpv.size()!=1 ) { maximumFunctionCallsInAFit= 5000; }
 	else { maximumFunctionCallsInAFit = tmpv[0].Atoi(); }
 
+	// for ScanningMuFit
+	if(isWordInMap("--bAlsoExtract2SigmErrorBar", options)) bAlsoExtract2SigmErrorBar= true;
+	if(isWordInMap("--bConstrainMuPositive", options)) bConstrainMuPositive= true;
+
+	// for LHC-CLs method
+	if(isWordInMap("--bFixNuisancsAtNominal", options)) bFixNuisancsAtNominal = true;
+
+
 	printf("\n\n[ Summary of configuration in this job: ]\n");
 	if(sPhysicsModel=="ChargedHiggs")cout<<" PhysicsModel:  Charged Higgs"<<endl;
 	cout<<"  Calculating "<<(calcsignificance?"significance":"limit")<<" with "<<method<<" method "<<endl;
@@ -1895,6 +1935,7 @@ bool runAsymptoticLimits(){
 			if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
 			printf("BANDS %10.5f %10.5f %10.5f %10.5f %10.5f %10.5f\n", m2s, m1s, 0.00, p1s, p2s, r95);
 			cout<<"------------------------------------------------------------"<<endl;
+			SaveResults(jobname+"Asymptotic"+"_limitbands", HiggsMass, preHints_median, 0, 0, 0, preHints_m2s, preHints_m1s, preHints_median, 0, preHints_p1s, preHints_p2s);
 		}
 	}
 	int nsteps_in_asymptotic = 0;
