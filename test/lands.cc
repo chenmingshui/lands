@@ -1700,6 +1700,8 @@ void processParameters(int argc, const char* argv[]){
 		if(bM2lnQGridPreComputed){
 			cout<<" Use pre-computed grid (-2lnQ) from file : "<<sFileM2lnQGrid<<endl;
 		}
+
+		if(bFixNuisancsAtNominal) cout<<" The nuisances are fixed at nominal values instead of being fitted to data "<<endl;
 	}else if(method=="Asymptotic"){
 		cout<<"  RUNNING Asymptotic limit"<<endl;
 	}else if(method=="ScanningMuFit"){
