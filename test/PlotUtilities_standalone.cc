@@ -999,6 +999,8 @@ void GetPValues(TTree *tree, vector<double>& inputMH, vector<double>& inputLimit
    }
    for(int i=0; i<vv_sameMH.size();i++){ 
 	   if(vv_sameMH[i].size()>1) {
+		   cout<<" More than 1 pvalues at this mass "<<inputMH[i]<<endl;
+		   exit(1);
 		   std::sort(vv_sameMH[i].begin(), vv_sameMH[i].end());
 		   double avr=0, avrerr=0;
 		   for(int j=0; j<vv_sameMH[i].size(); j++){
@@ -1099,7 +1101,7 @@ void GetMuHat(TTree *tree, vector<double>& inputMH, vector<double>& inputLimits 
 	}
 	if(tree->GetBranch("mh")){
 		fChain->SetBranchAddress("mh", &mH, &b_mH);
-		fChain->SetBranchAddress("rmean", &limit, &b_limit);
+		fChain->SetBranchAddress("limit", &limit, &b_limit);
 	}
 
 
