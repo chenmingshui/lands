@@ -2341,6 +2341,8 @@ void PrintHelpMessage(){
 
 	printf(" \n");
 	printf("------------------some comand lines-----------------------------------------------\n");
+	printf("            *run LHC-CLs from hints extracted from asymptotic limits*\n");
+	printf("lands.exe -d cards -M Hybrid --freq --ExpectationHints Asymptotic --scanRs 1 --freq --nToysForCLsb 3000 --nToysForCLb 1500 --seed 1234 -n JOBNAME\n");
 	printf("            *extract CLs values with bands from precomputed grid*\n");
 	printf("lands.exe  -M Hybrid --makeCLsBands 2 --M2lnQGridFile fileContainsM2lnQ_R=1.root\n");
 	printf("            *extract UL expectation from merged file contains limit tree*\n");
