@@ -53,10 +53,6 @@ namespace lands{
 
 	double del_oldn = 0; double del_newn =0 ; //DELETEME
 	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag){
-		// DELETEME
-		del_oldn = del_newn;
-		if(cms_global->Get_max_uncorrelation()>2)del_newn = _inputNuisances[2];
-		if(del_newn != del_oldn) cout<<"DELETEME input nuisance changed !!!! old="<<del_oldn<<", new="<<del_newn<<endl;
 
 
 		int debug = cms_global->GetDebug();
@@ -65,8 +61,15 @@ namespace lands{
 			cout<<"cms_global not pointed yet "<<endl;
 			exit(0);
 		}
-		f = 0; // fabs(cms_global->GetRdm()->Gaus() ) ;
 
+		// DELETEME
+		if( (cms_global->Get_max_uncorrelation()>2) && debug){
+			del_oldn = del_newn;
+			del_newn = _inputNuisances[2];
+			if(del_newn != del_oldn) cout<<"DELETEME input nuisance changed !!!! old="<<del_oldn<<", new="<<del_newn<<endl;
+		}
+
+		f = 0; // fabs(cms_global->GetRdm()->Gaus() ) ;
 		if(par[0]<0 && _bPositiveSignalStrength) { f = -9e10; return; }
 		
 		bool bAllChannelsAreFlagged = false;
