@@ -246,6 +246,10 @@ int main(int argc, const char*argv[]){
 				dataset = tmp_dataset;
 				SaveResults(jobname+"Asymptotic"+"_limitbands", HiggsMass, preHints_obs, 0, 0, 0, preHints_m2s, preHints_m1s, preHints_median, 0, preHints_p1s, preHints_p2s);
 			}else if(ExpectationHints == "Bayesian"){
+				if(!doExpectation) {
+					doExpectation = true;
+					toysBayesian = 100;
+				}
 				runBayesian();
 				cms->SetData(cms->Get_v_data_real());
 				cms->SetDataForUnbinned(cms->Get_v_pdfs_roodataset_real());
@@ -1377,7 +1381,7 @@ void processParameters(int argc, const char* argv[]){
 	}
 
 	tmpv = options["-tPB"]; if(tmpv.size()!=1) tmpv = options["--toysPreBayesian"];
-	if( tmpv.size()!=1 ) { toysPreBayesian = 100; }
+	if( tmpv.size()!=1 ) { toysPreBayesian = 10; }
 	else {
 		toysPreBayesian = tmpv[0].Atoi();
 		if(toysPreBayesian<0) toysPreBayesian = 1;
