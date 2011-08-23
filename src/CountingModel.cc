@@ -1299,8 +1299,13 @@ If we need to change it later, it will be easy to do.
 			}
 		}
 
-		for(int i=1; i<=max_uncorrelation; i++) _randomizedPars[i] = vrdm[i]; // only for LHC-type test statistics evaluation
-
+		if(par==0){
+			//cout<<"DELETEME0 randomized parameters: "<<endl;
+			for(int i=1; i<=max_uncorrelation; i++) {
+				_randomizedPars[i] = vrdm[i]; // only for LHC-type test statistics evaluation
+				//if(par==0)cout<<" par "<<i<<" "<<_randomizedPars[i]<<endl;
+			}
+		}
 		return vv;
 	}	
 	VIChannel CountingModel::GetToyData_H0(double *pars){
@@ -2193,7 +2198,7 @@ If we need to change it later, it will be easy to do.
 		v_pdfs_b.push_back(s);	
 		//if(_debug) _w->pdf(s)->Print("V");
 
-		
+
 		if(_w->var("wgttmp") == NULL)_w->factory("wgttmp[0,10000000]");
 		RooDataSet * rds = _w->pdf(v_pdfs_b.back()) -> generate(*observable, Extended());
 		v_pdfs_roodataset.push_back(rds);
@@ -2201,7 +2206,7 @@ If we need to change it later, it will be easy to do.
 		v_pdfs_roodataset_real.push_back(rds);
 		RooDataHist *rdh_asimovb = _w->pdf(v_pdfs_b.back()) -> generateBinned(*observable,ExpectedData());
 
-		
+
 		RooArgSet * rastmp = new RooArgSet(*observable, *(_w->var("wgttmp")));
 		RooDataSet *rds_asimovb = new RooDataSet(TString("rds_asimovb")+channel_name.c_str(), "rds_asimovb", *rastmp, "wgttmp");
 		if(_debug)cout<<" rdh_asimovb["<<channel_name<<"]->bins = "<<rdh_asimovb->numEntries()<<endl;
@@ -2215,7 +2220,7 @@ If we need to change it later, it will be easy to do.
 			cout<<" sumEntries = "<<rds_asimovb->sumEntries()<<endl;
 		}
 		v_pdfs_roodataset_asimovb.push_back(rds_asimovb);
-		
+
 		double dtmp = 0;
 		for(int i=0; i<rds_asimovb->numEntries(); i++){
 			rds_asimovb->get(i); 
@@ -2424,7 +2429,7 @@ If we need to change it later, it will be easy to do.
 				if(i>=v_pdfs_sigproc[ch]) btot+=vv_pdfs_norm_varied[ch][i]; // FIXME HGG // already multiplied by extra norm in FluctuatedNumbers
 				else stot+=vv_pdfs_norm_varied[ch][i];
 			}
-			sbtot=stot+btot; if(sbtot<=0) {continue;} //cout<<"ERROR: evaluateCh2:  s+b <= 0: "<<sbtot<<endl; exit(1); }
+			sbtot=stot+btot; if(sbtot<=0) {continue;} //cout<<"ERROR: evaluateCh2:  s+b <= 0: "<<sbtot<<endl; exit(1); 
 			RooArgSet vars(*(_w_varied->var(v_pdfs_observables[ch])));
 
 			/*
@@ -2794,6 +2799,17 @@ If we need to change it later, it will be easy to do.
 			cout<<" parameter "<<pname<<" not exist in the added channels,   skip it"<<endl;
 			return false;
 		}
+		if(_debug) {
+			RooRealVar * rrv = _w_varied->var(pname.c_str());
+			cout<<" parameter "<<pname<<" in workspace: "<<endl;
+			rrv->Print("");
+			if(_debug>=10)rrv->Print("V");
+			cout<<"\n"<<endl;
+			cout<<" in datacard: "<<endl;
+			cout<<" mean = "<<mean<<endl;
+			cout<<" sigma L= "<<sigmaL<<", R="<<sigmaR<<endl;
+			cout<<" range = ["<<rangeMin<<","<<rangeMax<<"]"<<endl;
+		}
 
 		int index_correlation = -1; // numeration starts from 1
 		sigmaL = fabs(sigmaL);
@@ -2815,6 +2831,9 @@ If we need to change it later, it will be easy to do.
 			rangeMin = mean - 4*sigmaL;
 			rangeMax = mean + 4*sigmaR;
 		}
+
+		RooRealVar * rrv = _w_varied->var(pname.c_str());
+		rrv->setRange(rangeMin, rangeMax);
 
 		vector<double> vunc; vunc.clear(); 
 		vunc.push_back(mean);
