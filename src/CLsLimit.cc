@@ -51,7 +51,14 @@ namespace lands{
 	vector<double> _lastParams;
 	vector<double> _currParams;
 
+	double del_oldn = 0; double del_newn =0 ; //DELETEME
 	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag){
+		// DELETEME
+		del_oldn = del_newn;
+		if(cms_global->Get_max_uncorrelation()>2)del_newn = _inputNuisances[2];
+		if(del_newn != del_oldn) cout<<"DELETEME input nuisance changed !!!! old="<<del_oldn<<", new="<<del_newn<<endl;
+
+
 		int debug = cms_global->GetDebug();
 		// par[0] for the ratio of cross section, common signal strength ....
 		if(!cms_global)  {
@@ -324,6 +331,9 @@ namespace lands{
 	}
 
 	double MinuitFit(int model, double &r , double &er, double mu /* or ErrorDef for Minos*/, double *pars, bool hasBestFitted, int debug, int *success ){
+				//	for(int i=1; i<=cms_global->Get_max_uncorrelation(); i++) {
+				//		cout<<"DELETEMEfitstart par "<<i<<" "<<_inputNuisances[i]<<endl;
+				//	}
 		RooAbsArg::setDirtyInhibit(1);
 		if(!(pars && hasBestFitted)){
 			_lastParams.clear();	_currParams.clear();
@@ -520,7 +530,7 @@ namespace lands{
 			if(success) success[0]=ierflg;
 
 			if(UseMinos){
-				arglist[0] = 5000;
+				arglist[0] = cms_global->Get_maximumFunctionCallsInAFit(); // to be good at minization, need set this number to be 5000 (from experience of hgg+hww+hzz combination)
 				arglist[1] = 1;
 				myMinuit->mnexcm("MINOS", arglist , 2, ierflg);
 				if(debug || ierflg )cout << " MINOS Number of function calls in Minuit: " << myMinuit->fNfcn << endl;
@@ -567,6 +577,9 @@ namespace lands{
 				}
 			}
 
+				//	for(int i=1; i<=cms_global->Get_max_uncorrelation(); i++) {
+				//		cout<<"DELETEMEfitend par "<<i<<" "<<_inputNuisances[i]<<endl;
+				//	}
 			cms_global->SetSignalScaleFactor(_signalScale);
 			RooAbsArg::setDirtyInhibit(0);
 			return l;
@@ -2008,6 +2021,9 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys, bool bWriteToys){ 
 					for(int itmp=0; itmp<_model->Get_v_pdftype().size(); itmp++){
 						if(_model->Get_v_pdftype()[itmp]==typeGamma) _inputNuisances[itmp]+=1;
 					}
+				//	for(int i=1; i<=_model->Get_max_uncorrelation(); i++) {
+				//		cout<<"DELETEMEb par "<<i<<" "<<_inputNuisances[i]<<endl;
+				//	}
 				}
 
 				break;
@@ -2308,6 +2324,9 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys){
 					for(int itmp=0; itmp<_model->Get_v_pdftype().size(); itmp++){
 						if(_model->Get_v_pdftype()[itmp]==typeGamma) _inputNuisances[itmp]+=1;
 					}
+					//for(int i=1; i<=_model->Get_max_uncorrelation(); i++) {
+					//	cout<<"DELETEME1 par "<<i<<" "<<_inputNuisances[i]<<endl;
+					//}
 				}
 
 				break;
