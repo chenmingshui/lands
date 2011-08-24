@@ -51,6 +51,9 @@ namespace lands{
 	vector<double> _lastParams;
 	vector<double> _currParams;
 
+	double _customRMin = 0;
+	double _customRMax = 0;
+
 	double del_oldn = 0; double del_newn =0 ; //DELETEME
 	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag){
 
@@ -462,17 +465,21 @@ namespace lands{
 			}
 			else if(model==2 or model==201 or model == 202){ // S+B,  float r
 
-				if(model==2 or model==201)myMinuit->mnparm(0, "ratio", mu, minuitStep, -100, 300, ierflg); // andrey's suggestion, alow mu hat < 0   
-				if(model==202)myMinuit->mnparm(0, "ratio", r, minuitStep, -100, 300, ierflg); // andrey's suggestion, alow mu hat < 0   
+				double rmin = -100, rmax = 300; 
+				if(_customRMax != _customRMin) {rmin=_customRMin; rmax=_customRMax; }
+				if(model==2 or model==201)myMinuit->mnparm(0, "ratio", mu, minuitStep, rmin, rmax, ierflg); // andrey's suggestion, alow mu hat < 0   
+				if(model==202)myMinuit->mnparm(0, "ratio", r, minuitStep, rmin, rmax, ierflg); // andrey's suggestion, alow mu hat < 0   
 				// mu starting point is now configurable via the argument "mu",   when fitting asimov_b, the starting mu should be 0, elsewhere 1
 				// mu fitting range maybe need to be configurable via command line. 
 				//myMinuit->mnparm(0, "ratio", 1, 0.1, 0, 100, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
 				_bPositiveSignalStrength = false;
 			}
 			else if(model==21 || model==101 || model==102){ // S+B,  float r
+				double rmin = 0, rmax = 300; 
+				if(_customRMax != _customRMin) {rmin=_customRMin; rmax=_customRMax; }
 				//myMinuit->mnparm(0, "ratio", _startNuisances[0], minuitStep, 0.0, 300, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
-				myMinuit->mnparm(0, "ratio", 1, minuitStep, 0.0, 300, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
-				if(model==102) myMinuit->mnparm(0, "ratio", r, minuitStep, 0.0, 300, ierflg); //make starting r configurable
+				myMinuit->mnparm(0, "ratio", 1, minuitStep, rmin, rmax, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
+				if(model==102) myMinuit->mnparm(0, "ratio", r, minuitStep, rmin, rmax, ierflg); //make starting r configurable
 				_bPositiveSignalStrength = true;
 			}
 			else if(model==3){ // profile mu
