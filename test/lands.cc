@@ -62,7 +62,7 @@ double rAbsAcc;// 0.01; Absolute accuracy on r to reach to terminate the scan
 double rRelAcc;// 0.01; Relative accuracy on r to reach to terminate the scan
 bool singlePoint;
 double testR;
-bool scanRs;
+int scanRs;
 int nSteps;
 int bPlots = 0;
 int tossToyConvention;
@@ -137,6 +137,9 @@ bool bAlsoExtract2SigmErrorBar = false;
 
 // for LHC-CLs method
 bool bFixNuisancsAtNominal = false;
+
+// custom, constrain mu to be [ rMin, rMax ]  during fit
+double customRMin=0, customRMax=0;
 
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
@@ -858,6 +861,8 @@ int main(int argc, const char*argv[]){
 			_inputNuisances = cms->Get_norminalPars();
 			_startNuisances = cms->Get_norminalPars();
 
+			if(customRMax!=customRMin) {_customRMin=customRMin; _customRMax = customRMax;}
+
 			double *pars = new double[cms->Get_max_uncorrelation()+1]; // nsys + r
 			double tmp=0, tmpr = 0, tmperr=0;
 			double ErrorDef = TMath::ChisquareQuantile(0.68 , 1);// (confidenceLevel, ndf)
@@ -1017,24 +1022,26 @@ int main(int argc, const char*argv[]){
 					vr.push_back(testr);
 					vc.push_back(y0_1-y0_2);
 				}
-				if(mu_hat<vR_toEval[0]){
-					double dr = (vR_toEval[0] - mu_hat)/10.;
-					if(dr<0.2) dr=0.2;
-					for(double testr = mu_hat+0.2; testr<vR_toEval[0]; testr+=dr){
-						double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, false, debug);
-						if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
-						vr.push_back(testr);
-						vc.push_back(y0_1-y0_2);
+				if( scanRs >= 2) {
+					if(mu_hat<vR_toEval[0]){
+						double dr = (vR_toEval[0] - mu_hat)/10.;
+						if(dr<0.2) dr=0.2;
+						for(double testr = mu_hat+0.2; testr<vR_toEval[0]; testr+=dr){
+							double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, false, debug);
+							if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
+							vr.push_back(testr);
+							vc.push_back(y0_1-y0_2);
+						}
 					}
-				}
-				if(mu_hat_up>vR_toEval.back()){
-					double dr = (mu_hat_up - vR_toEval.back())/10.;
-					if(dr<0.2) dr=0.2;
-					for(double testr = vR_toEval.back(); testr<=mu_hat_up+0.2; testr+=dr){
-						double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, false, debug);
-						if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
-						vr.push_back(testr);
-						vc.push_back(y0_1-y0_2);
+					if(mu_hat_up>vR_toEval.back()){
+						double dr = (mu_hat_up - vR_toEval.back())/10.;
+						if(dr<0.2) dr=0.2;
+						for(double testr = vR_toEval.back(); testr<=mu_hat_up+0.2; testr+=dr){
+							double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, false, debug);
+							if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
+							vr.push_back(testr);
+							vc.push_back(y0_1-y0_2);
+						}
 					}
 				}
 
@@ -1447,6 +1454,19 @@ void processParameters(int argc, const char* argv[]){
 		//if(initialRmax<=0) initialRmax = 20;
 	}
 
+	tmpv = options["-rMin"]; 
+	if( tmpv.size()!=1 ) { customRMin = 0; }
+	else {
+		customRMin = tmpv[0].Atof();
+	}
+
+	tmpv = options["-rMax"]; 
+	if( tmpv.size()!=1 ) { customRMax = 0; }
+	else {
+		customRMax = tmpv[0].Atof();
+	}
+
+
 
 	// Hybrid specific options
 	tmpv = options["-tH"]; if(tmpv.size()!=1) tmpv = options["--toysHybrid"];
@@ -1461,8 +1481,8 @@ void processParameters(int argc, const char* argv[]){
 	else { singlePoint = true; testR = tmpv[0].Atof(); }
 
 	tmpv = options["--scanRs"]; 
-	if( tmpv.size()!=1 ) { scanRs= false; }
-	else { scanRs= true; nSteps = tmpv[0].Atoi(); }
+	if( tmpv.size()!=1 ) { scanRs= 0; }
+	else { scanRs= tmpv[0].Atoi(); nSteps = tmpv[0].Atoi(); }
 
 	tmpv = options["--testStat"]; 
 	if( tmpv.size()!=1 ) { testStat = 1; }
@@ -2358,6 +2378,8 @@ void PrintHelpMessage(){
 	printf("lands.exe -d data.txt -M Asymptotic -D asimov_b\n");
 	printf("            *scanning mu with fit and make plots\n");
 	printf("lands.exe -d data.txt -M ScanningMuFit --scanRs 20 --initialRmin 0 --initialRmax 2  --plot\n");
+	printf("            *maximum LL fit with floating mu and mu=0,  printing fitted results with -v 1 \n");
+	printf("lands.exe -d data.txt -M ScanningMuFit --scanRs 1 -vR 0 -v 1 --minuitSTRATEGY 1\n");
 
 	exit(0);
 }
