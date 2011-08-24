@@ -22,6 +22,8 @@ namespace lands{
 	extern double *_startNuisances; // _xxxxNuisances[0] is the POI signal strength
 	extern double *_minNuisances;
 	extern double *_maxNuisances;
+	extern double _customRMin;
+	extern double _customRMax;
 	extern bool _bPositiveSignalStrength;
 	extern vector<double> _lastParams;
 	extern vector<double> _currParams;
