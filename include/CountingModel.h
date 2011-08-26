@@ -272,6 +272,9 @@ namespace lands{
 
 			void SetPhysicsModel(int i){_PhysicsModel=i; if(i!=1 && i!=2){ cout<<"ERROR: we only support typeStandardModel and typeChargedHiggs"<<endl; exit(1);}};
 			int GetPhysicsModel(){return _PhysicsModel;};
+
+			void ForceSymmetryError(bool b){b_ForceSymmetryError = b;};
+			void MultiSigProcShareSamePDF(bool b){b_MultiSigProcShareSamePDF = b;};
 		private:
 			VDChannel v_data; // could be pseudo-data for bands
 			VDChannel v_data_real; // real data, not changed during entire run 
@@ -289,6 +292,8 @@ namespace lands{
 
 			CRandom *_rdm;
 			bool b_systematics;
+			bool b_ForceSymmetryError;
+			bool b_MultiSigProcShareSamePDF;
 
 			vector<double> v_TruncatedGaussian_maxUnc;// record the maximum uncertainty for each uncorrelated source
 			vector<int> v_pdftype; // 0th = -1,  if take a pdftype for idcorrl, then the indice is idcorrl

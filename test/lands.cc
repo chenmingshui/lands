@@ -141,6 +141,10 @@ bool bFixNuisancsAtNominal = false;
 // custom, constrain mu to be [ rMin, rMax ]  during fit
 double customRMin=0, customRMax=0;
 
+bool bForceSymmetryError = false;
+
+bool bMultiSigProcShareSamePDF = false;
+
 TString scanRAroundBand = "all";
 
 int main(int argc, const char*argv[]){
@@ -159,6 +163,7 @@ int main(int argc, const char*argv[]){
 	CountingModel *cms; // this instance will be the one combining all sub cards
 	cms = new CountingModel();
 	cms->SetDebug(debug);
+	cms->ForceSymmetryError(bForceSymmetryError);
 
 	/*
 	 * combining at most 100 datacards
@@ -169,6 +174,7 @@ int main(int argc, const char*argv[]){
 	for(int i=0; i<datacards.size(); i++){
 		tmp[i] = new CountingModel();
 		tmp[i] -> SetDebug(debug);
+		tmp[i] -> ForceSymmetryError(bForceSymmetryError);
 		ConfigureModel(tmp[i], HiggsMass, datacards[i].Data(), debug);
 		tmp[i]->SetUseSystematicErrors(true);
 	}
@@ -192,6 +198,8 @@ int main(int argc, const char*argv[]){
 	cout<<"totally "<<datacards.size()<<" data cards combined"<<endl;
 	cms->SetUseSystematicErrors(systematics);
 	// done combination
+
+	cms->MultiSigProcShareSamePDF(bMultiSigProcShareSamePDF);
 
 	CRandom *rdm = new CRandom(seed);  //initilize a random generator
 	RooRandom::randomGenerator()->SetSeed(rdm->GetSeed());
@@ -234,6 +242,7 @@ int main(int argc, const char*argv[]){
 	cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
 	cms_global->Set_maximumFunctionCallsInAFit(maximumFunctionCallsInAFit);
 	TPaveText *pt = SetTPaveText(0.2, 0.7, 0.3, 0.9);
+	if(customRMax!=customRMin) {_customRMin=customRMin; _customRMax = customRMax;}
 	if(calcsignificance==0){// calc limits
 		if(method == "Bayesian"){
 			runBayesian();
@@ -882,14 +891,15 @@ int main(int argc, const char*argv[]){
 			_inputNuisances = cms->Get_norminalPars();
 			_startNuisances = cms->Get_norminalPars();
 
-			if(customRMax!=customRMin) {_customRMin=customRMin; _customRMax = customRMax;}
 
 			double *pars = new double[cms->Get_max_uncorrelation()+1]; // nsys + r
 			double tmp=0, tmpr = 0, tmperr=0;
 			double ErrorDef = TMath::ChisquareQuantile(0.68 , 1);// (confidenceLevel, ndf)
 			int success[1]={0};
+			_countPdfEvaluation = 0;
 			double y0_2 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //202, 201, 2:  allow mu to be negative
 			//double y0_2 =  MinuitFit(102, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //102, 101, 21:  don't allow mu to be negative
+			if(debug) cout<<" _countPdfEvaluation = "<<_countPdfEvaluation<<endl;
 			cout<<y0_2<<" fitter u="<<pars[0]<<", from minos fit asymmetry 68% CL:  ["<<tmperr<<","<<tmpr<<"]"<<endl; // upperL, lowerL
 			double mu_hat = pars[0];
 			double mu_hat_up = tmpr;
@@ -1038,7 +1048,9 @@ int main(int argc, const char*argv[]){
 				vr.push_back(pars[0]);vc.push_back(y0_2-y0_2);
 				for(int i=0; i<vR_toEval.size(); i++){
 					double testr = vR_toEval[i];
+					_countPdfEvaluation = 0;
 					double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, false, debug);
+					if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
 					if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
 					vr.push_back(testr);
 					vc.push_back(y0_1-y0_2);
@@ -1117,7 +1129,9 @@ int main(int argc, const char*argv[]){
 			//x2 =  MinuitFit(2, tmp, tmperr); // allow mu<0
 			double * fittedPars = new double[cms->Get_max_uncorrelation()+1];
 			int success[1];success[0]=0;
+			_countPdfEvaluation = 0;
 			x2 = MinuitFit(2, tmp, tmperr, 1, fittedPars, false, debug, success);  // MinuitFit(mode, r, err_r)
+			if(debug) cout<<" _countPdfEvaluation ="<<_countPdfEvaluation<<endl;
 			/*
 			   int ntmp = 0;
 			   while(success[0]!=0 && ntmp < 10){
@@ -1141,7 +1155,9 @@ int main(int argc, const char*argv[]){
 				cout<<" fitted r <=0 at maximum likelihood ratio ,  signicance = 0"<<endl;
 				m2lnQ = 0;
 			}else{
+				_countPdfEvaluation = 0;
 				m2lnQ = MinuitFit(3,tmp, tmp, 0, fittedPars, true, debug, success) - x2; // mu=0
+				if(debug) cout<<" _countPdfEvaluation ="<<_countPdfEvaluation<<endl;
 			}
 			sig_data = sqrt(fabs(m2lnQ));
 			if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
@@ -1313,6 +1329,9 @@ void processParameters(int argc, const char* argv[]){
 		cout<<" .... valid data cards = "<<datacards.size()<<endl;
 		if(datacards.size()<=0){ cout<< " please provide valid data cards "<<endl; exit(0); }
 	}
+
+	if(isWordInMap("--bForceSymmetryError", options)) bForceSymmetryError = true;
+	if(isWordInMap("--bMultiSigProcShareSamePDF", options)) bMultiSigProcShareSamePDF = true;
 
 	tmpv= options["-L"];if(tmpv.size()==0)tmpv=options["--LoadLibraries"];
 	librariesToBeLoaded = tmpv;
@@ -1778,6 +1797,9 @@ void processParameters(int argc, const char* argv[]){
 	}
 	cout<<"  minuitSTRATEGY="<<minuitSTRATEGY<<endl;
 	cout<<"  maximumFunctionCallsInAFit="<<maximumFunctionCallsInAFit<<endl;
+
+	if(bMultiSigProcShareSamePDF) cout<<" MultiSigProcShareSamePDF "<<endl;
+	if(bForceSymmetryError) cout<<" ForceSymmetryError"<<endl;
 	cout<<endl<<endl;
 
 	fflush(stdout);	
@@ -2394,8 +2416,11 @@ void PrintHelpMessage(){
 	printf("--minuitSTRATEGY arg (=0)             0: no calculation of secondary derivative, 1: yes \n"); 
 	printf("--maximumFunctionCallsInAFit arg (=5000)  \n"); 
 
-
-	printf("\n--bFixNuisancsAtNominal               fix nuisances to nominal value instead of fitting to data in case of LHC-CLs\n");
+	printf("\n");
+	printf("random arguments, need to be cleaned\n");
+	printf("--bForceSymmetryError                 make the asymmetry uncertainties  be symmetry in a conservative way inside code\n");
+	printf("--bMultiSigProcShareSamePDF           e.g. in hzz4l, the ggH, WH, ZH, ttH and VBF have the same signal pdf, when evaluating LL, we can avoid duplicated calculations \n");
+	printf("--bFixNuisancsAtNominal               fix nuisances to nominal value instead of fitting to data in case of LHC-CLs\n");
 	printf("--scanRAroundBand  (=all)            scan signal strengths around band (-2, -1, 0, 1, 2, obs, all)\n");
 
 	printf(" \n");

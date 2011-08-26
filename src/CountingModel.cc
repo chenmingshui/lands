@@ -32,6 +32,7 @@
 #include "RooBifurGauss.h"
 #include "RooWorkspace.h"
 #include "RooHistFunc.h"
+#include "CLsLimit.h"
 //#include "RooStats/RooStatsUtils.h"
 
 using namespace std;
@@ -53,6 +54,8 @@ namespace lands{
 		v_channelname.clear();
 		_rdm=0;
 		b_systematics=0;
+		b_ForceSymmetryError=0;
+		b_MultiSigProcShareSamePDF=0;
 		v_TruncatedGaussian_maxUnc.clear();
 		v_pdftype.clear();
 		_common_signal_strength=1;
@@ -558,6 +561,10 @@ namespace lands{
 			exit(0);
 		}
 		vector<double> vunc; vunc.clear(); 
+		if(b_ForceSymmetryError) {
+			if (uncertainty_in_relative_fraction_up > uncertainty_in_relative_fraction_down) uncertainty_in_relative_fraction_down=uncertainty_in_relative_fraction_up;
+			if(uncertainty_in_relative_fraction_down > uncertainty_in_relative_fraction_up ) uncertainty_in_relative_fraction_up = uncertainty_in_relative_fraction_down;
+		}
 		vunc.push_back(uncertainty_in_relative_fraction_down);
 		vunc.push_back(uncertainty_in_relative_fraction_up);
 		vvvv_uncpar.at(index_channel).at(index_sample).push_back(vunc);
@@ -846,6 +853,7 @@ If we need to change it later, it will be easy to do.
 		_norminalPars = new double[max_uncorrelation+1];
 		_randomizedPars= new double[max_uncorrelation+1];
 		for(int i=1; i<=max_uncorrelation; i++){
+			if(_debug)cout<<" ** DELETEME "<<i<<" "<<v_uncname[i-1]<<endl;
 			switch (v_pdftype[i]){
 				case typeShapeGaussianLinearMorph:
 				case typeShapeGaussianQuadraticMorph:
@@ -860,14 +868,20 @@ If we need to change it later, it will be easy to do.
 					_norminalPars[i]=v_pdfs_floatParamsUnc[i][0];
 					break;
 				case typeFlat:
-					if(v_pdfs_floatParamsUnc.size()>=i && v_pdfs_floatParamsType[i]==typeFlat)_norminalPars[i]=(v_pdfs_floatParamsUnc[i][0]-v_pdfs_floatParamsUnc[i][3])/v_pdfs_floatParamsUnc[i][1];
-					else _norminalPars[i] = 0.5;
+					if(_w->var(v_uncname[i-1].c_str())!=NULL){
+						_norminalPars[i]=(v_pdfs_floatParamsUnc[i][0]-v_pdfs_floatParamsUnc[i][3])/v_pdfs_floatParamsUnc[i][1];
+						if(_debug)cout<<" DELETEME flatParam "<<": norminal="<<v_pdfs_floatParamsUnc[i][0]
+							<<" max-min="<<v_pdfs_floatParamsUnc[i][1]<<" min="
+								<<v_pdfs_floatParamsUnc[i][3]<<" max="<<v_pdfs_floatParamsUnc[i][4]<<endl;
+					}else _norminalPars[i] = 0.5;
+
 					break;
 				default:
 					cout<<"pdftype not yet defined:  "<<v_pdftype[i]<<endl;
 					cout<<"**********"<<endl;
 					exit(0);
 			}
+			if(_debug)	 cout<<" DELETEME _norminalPars "<<_norminalPars[i]<<endl; 
 		}
 
 		for(int i=0; i<vvp_pdfs_connectNuisBinProc.size(); i++){
@@ -1740,6 +1754,7 @@ If we need to change it later, it will be easy to do.
 	}
 	CountingModel* CombineModels(CountingModel *cms1, CountingModel *cms2){
 		CountingModel *cms = new CountingModel();
+		if(cms1->GetDebug()>=10)cms->SetDebug(1);
 
 		VChannelVSampleVUncertaintyVParameter tmp_vvvv_uncpar = cms1->Get_vvvv_uncpar();
 		VChannelVSampleVUncertainty tmp_vvv_pdftype=cms1->Get_vvv_pdftype();	
@@ -2421,6 +2436,8 @@ If we need to change it later, it will be easy to do.
 		double tmp=0, tmp2=0, tmp3=0, retch=0;
 		int ntot;
 		double weight=1;
+		int nsigproc = 1;
+		double firstSigProcPdfVal = -1;
 		for(int ch=0; ch<vv_pdfs.size(); ch++){
 			btot = 0; stot=0;
 			tmp=0; retch=0;
@@ -2442,14 +2459,20 @@ If we need to change it later, it will be easy to do.
 			   }
 			   */
 
+			nsigproc = v_pdfs_sigproc[ch];
+			//TString stemp = "";
+			//bool bupdated = false;
 			for(int i=0; i<ntot; i++){
+				//stemp+=" evt "; stemp+=i;
 				tmprrv=_w_varied->var(v_pdfs_observables[ch]);
 				//tmprrv->setDirtyInhibit(1);
 				tmprrv->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset_tmp[ch]->get(i)->first()))->getVal());
 				weight = v_pdfs_roodataset_tmp[ch]->weight();
 				if(_debug>=10 && i==0) cout<<"channel "<<ch<<",  event "<<i<<": weight = "<<weight<<endl;
 				tmp = 0;  
+				firstSigProcPdfVal = -1;
 				for(int p=0; p<vv_pdfs[ch].size();p++){
+					//stemp+=" proc "; stemp+=p;
 					if(vv_pdfs_norm_varied[ch][p]!=0){
 						if(_debug>=100&&i==0){
 							cout<<"DELETEME 1.1: "<<vv_pdfs_norm_varied[ch][p]<<endl;
@@ -2460,10 +2483,18 @@ If we need to change it later, it will be easy to do.
 							cout<<"v[ch][p].size="<<vvv_cachPdfValues[ch][p].size()<<endl;
 						}
 						if(vv_pdfs_statusUpdated[ch][p]){
-							tmp3 =	_w_varied->pdf(vv_pdfs[ch][p].c_str())->getVal(&vars);  //give some warning message when r=0
+							if( p<nsigproc && firstSigProcPdfVal >= 0 && b_MultiSigProcShareSamePDF){
+								tmp3 = firstSigProcPdfVal;
+							}else{
+								tmp3 =	_w_varied->pdf(vv_pdfs[ch][p].c_str())->getVal(&vars);  //give some warning message when r=0
+								_countPdfEvaluation ++ ;
+								if(p<nsigproc) firstSigProcPdfVal = tmp3;
+							}
+							//bupdated = true;
 							tmp2 = vv_pdfs_norm_varied[ch][p]*tmp3;
 							vvv_cachPdfValues[ch][p][i]=tmp3;
 							if(_debug>=100&&i==0)cout<<" new: "<<tmp3<<endl;
+							//stemp+=" val "; stemp+=tmp3;
 						}else {
 							if(_debug==102)tmp3 =	_w_varied->pdf(vv_pdfs[ch][p].c_str())->getVal(&vars);  //give some warning message when r=0
 							tmp2=vv_pdfs_norm_varied[ch][p]*vvv_cachPdfValues[ch][p][i];
@@ -2475,6 +2506,7 @@ If we need to change it later, it will be easy to do.
 				}
 				retch -= (tmp>0?log(tmp):0)*weight;
 			}
+			//if(bupdated) cout<<stemp<<endl;
 
 			retch+=stot;
 			retch+=btot;
@@ -2594,6 +2626,10 @@ If we need to change it later, it will be easy to do.
 			exit(0);
 		}
 		vector<double> vunc; vunc.clear(); 
+		if(b_ForceSymmetryError) {
+			if (uncertainty_in_relative_fraction_up > uncertainty_in_relative_fraction_down) uncertainty_in_relative_fraction_down=uncertainty_in_relative_fraction_up;
+			if(uncertainty_in_relative_fraction_down > uncertainty_in_relative_fraction_up ) uncertainty_in_relative_fraction_up = uncertainty_in_relative_fraction_down;
+		}
 		vunc.push_back(uncertainty_in_relative_fraction_down);
 		vunc.push_back(uncertainty_in_relative_fraction_up);
 		vvv_pdfs_normvariation.at(index_channel).at(index_sample).push_back(vunc);
@@ -2785,6 +2821,7 @@ If we need to change it later, it will be easy to do.
 			}
 		}else v_pdfs_floatParamsUnc[index_correlation] = vunc;
 		if(_debug) cout<<" v_pdfs_floatParamsUnc.size() = "<<v_pdfs_floatParamsUnc.size()<<" index_correlation="<<index_correlation<<endl;
+		if(_debug)cout<<" * Adding flat floating parameter: "<<pname<<endl;
 
 		TString s = pname;
 		v_pdfs_floatParamsName.push_back(pname);
@@ -2849,7 +2886,7 @@ If we need to change it later, it will be easy to do.
 		if(_debug) cout<<" v_pdfs_floatParamsUnc.size() = "<<v_pdfs_floatParamsUnc.size()<<" index_correlation="<<index_correlation<<endl;
 
 		TString s = pname;
-		if(_debug)cout<<" * Adding floating parameter: "<<pname<<endl;
+		if(_debug)cout<<" * Adding bifurcated floating parameter: "<<pname<<endl;
 		_w_varied->factory(TString::Format("%s_x[%f,%f]", pname.c_str(), rangeMin, rangeMax));
 		_w_varied->factory(TString::Format("%s_mean[%f,%f,%f]", pname.c_str(), mean, rangeMin, rangeMax));
 		if(_debug)cout<<pname<<"_x added"<<endl;

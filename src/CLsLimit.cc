@@ -54,6 +54,8 @@ namespace lands{
 	double _customRMin = 0;
 	double _customRMax = 0;
 
+	double _countPdfEvaluation = 0;
+
 	double del_oldn = 0; double del_newn =0 ; //DELETEME
 	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag){
 
@@ -340,6 +342,7 @@ namespace lands{
 				//	for(int i=1; i<=cms_global->Get_max_uncorrelation(); i++) {
 				//		cout<<"DELETEMEfitstart par "<<i<<" "<<_inputNuisances[i]<<endl;
 				//	}
+
 		RooAbsArg::setDirtyInhibit(1);
 		if(!(pars && hasBestFitted)){
 			_lastParams.clear();	_currParams.clear();
@@ -476,7 +479,7 @@ namespace lands{
 			}
 			else if(model==21 || model==101 || model==102){ // S+B,  float r
 				double rmin = 0, rmax = 300; 
-				if(_customRMax != _customRMin) {rmin=_customRMin; rmax=_customRMax; }
+				if(_customRMax != _customRMin) {rmin=_customRMin; rmax=_customRMax; if (rmin<0) rmin=0;}
 				//myMinuit->mnparm(0, "ratio", _startNuisances[0], minuitStep, 0.0, 300, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
 				myMinuit->mnparm(0, "ratio", 1, minuitStep, rmin, rmax, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
 				if(model==102) myMinuit->mnparm(0, "ratio", r, minuitStep, rmin, rmax, ierflg); //make starting r configurable
@@ -523,7 +526,8 @@ namespace lands{
 			// Now ready for minimization step
 			arglist[0] = cms_global->Get_maximumFunctionCallsInAFit(); // to be good at minization, need set this number to be 5000 (from experience of hgg+hww+hzz combination)
 			if(debug)cout<<" Maximum Function Calls="<<arglist[0]<<endl;
-			arglist[1] = 1.;
+			arglist[1] = 1.;  // tolerance 
+			//arglist[1] = 0.009991;
 			if(!UseMinos)myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
 			if(UseMinos==2)myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
 			if(debug || ierflg)cout <<" MIGRAD Number of function calls in Minuit: " << myMinuit->fNfcn << endl;
@@ -567,6 +571,10 @@ namespace lands{
 			double l = myMinuit->fAmin;
 			myMinuit->GetParameter(0, r, er);
 			if(debug)cout<<"DELETEME r="<<r<<"+/-"<<er<<" fMin="<<l<<endl;
+			if(errUp==0 and errLow==0) {
+				errUp = er;
+				errLow = -er;
+			}
 
 			if(debug and UseMinos) cout<<" signal_strength :  [ "<<r+errLow<<"  "<<r+errUp<<" ] "<<endl;
 			if(model==101 or model==102 or model==202) {
