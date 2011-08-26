@@ -141,6 +141,8 @@ bool bFixNuisancsAtNominal = false;
 // custom, constrain mu to be [ rMin, rMax ]  during fit
 double customRMin=0, customRMax=0;
 
+TString scanRAroundBand = "all";
+
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
 
@@ -316,19 +318,26 @@ int main(int argc, const char*argv[]){
 				cout<<" hints:  "<<endl;
 				cout<<" observed limit = "<<preHints_obs<<endl;
 				cout<<" bands :  "<<preHints_m2s<<" "<<preHints_m1s<<" "<<preHints_median<<" "<<preHints_p1s<<" "<<preHints_p2s<<endl;
-				double tmpstep = (1.1*preHints_p2s - preHints_m2s*0.8)/20.;
-				if(tmpstep > 0.001) for(double tmpr = preHints_m2s*0.8; tmpr<=preHints_p2s*1.1; tmpr+=tmpstep) vR_toEval.push_back(tmpr);
+				if(scanRAroundBand=="all"){
+					double tmpstep = (1.1*preHints_p2s - preHints_m2s*0.8)/20.;
+					if(tmpstep > 0.001) for(double tmpr = preHints_m2s*0.8; tmpr<=preHints_p2s*1.1; tmpr+=tmpstep){
+						vR_toEval.push_back(tmpr);
+					}
 
-				tmpstep = (1.2*preHints_m2s - preHints_m2s*0.8)/5.;
-				if(tmpstep > 0.001)for(double tmpr = preHints_m2s*0.75; tmpr<=preHints_m2s*1.2; tmpr+=tmpstep) vR_toEval.push_back(tmpr);
+					tmpstep = (1.2*preHints_m2s - preHints_m2s*0.8)/5.;
+					if(tmpstep > 0.001)for(double tmpr = preHints_m2s*0.75; tmpr<=preHints_m2s*1.2; tmpr+=tmpstep) vR_toEval.push_back(tmpr);
 
-				if(preHints_obs < preHints_m2s) {
-					tmpstep = (preHints_obs*1.2 - preHints_obs*0.8)/5.;
-					if(tmpstep>0.01)for(double tmpr = preHints_obs*0.8; tmpr<=preHints_obs*1.2; tmpr+=tmpstep) vR_toEval.push_back(tmpr);
-				}
-				if(preHints_obs > preHints_p2s) {
-					tmpstep = (preHints_obs*1.2 - preHints_obs*0.8)/5.;
-					if(tmpstep>0.01)for(double tmpr = preHints_obs*0.8; tmpr<=preHints_obs*1.2; tmpr+=tmpstep) vR_toEval.push_back(tmpr);
+					if(preHints_obs < preHints_m2s) {
+						tmpstep = (preHints_obs*1.2 - preHints_obs*0.8)/5.;
+						if(tmpstep>0.01)for(double tmpr = preHints_obs*0.8; tmpr<=preHints_obs*1.2; tmpr+=tmpstep) vR_toEval.push_back(tmpr);
+					}
+					if(preHints_obs > preHints_p2s) {
+						tmpstep = (preHints_obs*1.2 - preHints_obs*0.8)/5.;
+						if(tmpstep>0.01)for(double tmpr = preHints_obs*0.8; tmpr<=preHints_obs*1.2; tmpr+=tmpstep) vR_toEval.push_back(tmpr);
+					}
+				}else if(scanRAroundBand=="obs"){
+					double tmpstep = (preHints_obs*1.2 - preHints_obs*0.8)/5.;
+					if(tmpstep>0.001)for(double tmpr = preHints_obs*0.8; tmpr<=preHints_obs*1.2; tmpr+=tmpstep) vR_toEval.push_back(tmpr);
 				}
 				std::sort(vR_toEval.begin(), vR_toEval.end());
 				vector<double>::iterator it;
@@ -378,6 +387,11 @@ int main(int argc, const char*argv[]){
 						cms->Set_fittedParsInData_sb(cms->Get_norminalPars());
 						cms->Set_fittedParsInData_b(cms->Get_norminalPars());
 					}
+					if(tossToyConvention==1 && !bFixNuisancsAtNominal){
+					//	DoAfit(vR_toEval[i], cms->Get_v_data_real(), cms->Get_v_pdfs_roodataset_real(), cms->Get_fittedParsInData_sb());
+					//	cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
+					}
+
 					if(testStat==1)frequentist.prepareLogNoverB();
 					if(nToysForCLsb<=0) nToysForCLsb=toysHybrid;
 					if(nToysForCLb<=0) nToysForCLb=toysHybrid;
@@ -399,6 +413,8 @@ int main(int argc, const char*argv[]){
 					TString fileM2lnQ = jobname; fileM2lnQ+="_m2lnQ.root";
 					TString option = (i==0?"RECREATE":"UPDATE");
 					FillTree(fileM2lnQ, cms->GetSignalScaleFactor(), qdata, vsb, vb, s_r, s_qdata, s_sb, s_b, option);
+					fileM2lnQ = jobname; fileM2lnQ+="_m2lnQ2.root";
+					FillTree2(fileM2lnQ, cms->GetSignalScaleFactor(), qdata, vsb, vb, s_r, s_sb, s_b, option);
 				}
 				watch.Print();
 				return 0;
@@ -407,7 +423,10 @@ int main(int argc, const char*argv[]){
 			//frequentist.BuildM2lnQ(toysHybrid);
 			if(!bSkipM2lnQ){
 				if(testStat==1)frequentist.prepareLogNoverB();
-				if(!bNotCalcQdata)frequentist.BuildM2lnQ_data();
+				if(!bNotCalcQdata){
+					frequentist.BuildM2lnQ_data();
+					cout<<" Q_data = " << frequentist.Get_m2lnQ_data()<<endl;
+				}
 				if(nToysForCLsb<=0) nToysForCLsb=toysHybrid;
 				if(nToysForCLb<=0) nToysForCLb=toysHybrid;
 				frequentist.BuildM2lnQ_sb(nToysForCLsb, false, bWriteToys);
@@ -481,11 +500,13 @@ int main(int argc, const char*argv[]){
 			if(bSaveM2lnQ && !bSkipM2lnQ){
 				double qdata = bNotCalcQdata?0:frequentist.Get_m2lnQ_data();
 				TString s_r; s_r.Form("TESTED_R%.5f", cms->GetSignalScaleFactor());
-				TString s_qdata; s_qdata.Form("DATA_R%.5f_Q%.5f", cms->GetSignalScaleFactor(), qdata);
+				TString s_qdata; s_qdata.Form("DATA_R%.5f_Q%.10f", cms->GetSignalScaleFactor(), qdata);
 				TString s_sb = "SAMPLING_SB_"; s_sb+=s_r;
 				TString s_b = "SAMPLING_B_"; s_b+=s_r;
 				TString fileM2lnQ = jobname; fileM2lnQ+="_m2lnQ.root";
 				FillTree(fileM2lnQ, cms->GetSignalScaleFactor(), qdata, vsb, vb, s_r, s_qdata, s_sb, s_b);
+				fileM2lnQ = jobname; fileM2lnQ+="_m2lnQ2.root";
+				FillTree2(fileM2lnQ, cms->GetSignalScaleFactor(), qdata, vsb, vb, s_r, s_sb, s_b);
 			}
 
 			if(0){// throw pseudo data
@@ -1578,6 +1599,20 @@ void processParameters(int argc, const char* argv[]){
 		//}
 	}
 
+
+	tmpv = options["--scanRAroundBand"];
+	if( tmpv.size()!=1 ) { scanRAroundBand= "all"; }
+	else {
+		scanRAroundBand= tmpv[0];
+		if(scanRAroundBand!="all" && scanRAroundBand!="obs" && scanRAroundBand!="-1" && scanRAroundBand!="-2"
+				&&scanRAroundBand!="0" && scanRAroundBand!="1" && scanRAroundBand!="2") {
+			cout<<"ERROR:  arg of scanRAroundBand must be one of the following: "<<endl;
+			cout<<"-2, -1, 0, 1, 2, obs, all"<<endl;
+			exit(1);
+
+		}
+	}
+
 	tmpv = options["--nToysForCLsb"];
 	if( tmpv.size()!=1 ) { nToysForCLsb = -1; }
 	else nToysForCLsb = tmpv[0].Atoi();
@@ -2359,10 +2394,14 @@ void PrintHelpMessage(){
 	printf("--minuitSTRATEGY arg (=0)             0: no calculation of secondary derivative, 1: yes \n"); 
 	printf("--maximumFunctionCallsInAFit arg (=5000)  \n"); 
 
+
+	printf("\n--bFixNuisancsAtNominal               fix nuisances to nominal value instead of fitting to data in case of LHC-CLs\n");
+	printf("--scanRAroundBand  (=all)            scan signal strengths around band (-2, -1, 0, 1, 2, obs, all)\n");
+
 	printf(" \n");
 	printf("------------------some comand lines-----------------------------------------------\n");
 	printf("            *run LHC-CLs from hints extracted from asymptotic limits*\n");
-	printf("lands.exe -d cards -M Hybrid --freq --ExpectationHints Asymptotic --scanRs 1 --freq --nToysForCLsb 3000 --nToysForCLb 1500 --seed 1234 -n JOBNAME\n");
+	printf("lands.exe -d cards -M Hybrid --freq --ExpectationHints Asymptotic --scanRs 1 --nToysForCLsb 3000 --nToysForCLb 1500 --seed 1234 -n JOBNAME\n");
 	printf("            *extract CLs values with bands from precomputed grid*\n");
 	printf("lands.exe  -M Hybrid --makeCLsBands 2 --M2lnQGridFile fileContainsM2lnQ_R=1.root\n");
 	printf("            *extract UL expectation from merged file contains limit tree*\n");

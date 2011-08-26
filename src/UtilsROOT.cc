@@ -120,6 +120,29 @@ void FillTree(TString sfile, double d1, double d2, vector<double> array1,  vecto
 	fTrees.Write();
 	fTrees.Close();
 }
+void FillTree2(TString sfile, double d1, double d2, vector<double> array1,  vector<double> array2, TString d1Name, TString array1Name, TString array2Name, TString option ){
+	TFile fTrees(sfile, option);
+	Double_t brT;
+	TTree *tree1 = new TTree(array1Name, array1Name); 
+	tree1->Branch("brT", &brT, "brT/D");
+	for(int i=0; i<array1.size(); i++){
+		brT= array1.at(i);
+		tree1->Fill();
+	}
+	TTree *tree2 = new TTree(array2Name, array2Name); 
+	tree2->Branch("brT", &brT, "brT/D");
+	for(int i=0; i<array2.size(); i++){
+		brT= array2.at(i);
+		tree2->Fill();
+	}
+
+	TTree *tree3 = new TTree(d1Name, d1Name); 
+	tree3->Branch("brT", &brT, "brT/D");
+	brT= d2;
+	tree3->Fill();
+	fTrees.Write();
+	fTrees.Close();
+}
 void FillTree(TString sfile, vector<double> array, TString treeName){
 	TFile fTrees(sfile+"_tree.root", "RECREATE");
 	Double_t brT;

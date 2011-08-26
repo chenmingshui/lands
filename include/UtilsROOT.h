@@ -28,6 +28,7 @@ void FillTree(TString sfile, vector<int> array);
 void FillTree(TString sfile, double * array, int nsize=100000);
 void FillTree(TString sfile, int* array, int nsize=100000);
 void FillTree(TString sfile, double d1, double d2, vector<double> array1,  vector<double> array2, TString d1Name="d1", TString d2Name="d2", TString array1Name="T1", TString array2Name="T2", TString option = "RECREATE");
+void FillTree2(TString sfile, double d1, double d2, vector<double> array1,  vector<double> array2, TString d1Name="d1", TString array1Name="T1", TString array2Name="T2", TString option = "RECREATE");
 
 bool isWordInMap(TString s, std::map<TString, vector<TString> > tMap);
 void StringStrip( std::string & str ) ;

@@ -716,6 +716,13 @@ namespace lands{
 				ret = (i+1)/(double)_nexps;	
 		}		
 
+		/*
+		cout<<" DELETEME "<<endl;
+		for(int i=0; i<_nexps; i++){
+			cout<<" CLsb "<<i<<" "<<Q_sb[iq_sb[i]]<<endl;
+		}
+		*/
+
 		err= sqrt(ret*(1-ret)/_nexps);
 		if(ret==0||ret==1) err= 1./_nexps;
 
@@ -802,6 +809,13 @@ namespace lands{
 			if(Q_b[iq_b[i]]<=tmp)
 				ret = (i+1)/(double)_nexps;	
 		}		
+
+		/*
+		cout<<" DELETEME "<<endl;
+		for(int i=0; i<_nexps; i++){
+			cout<<" CLb "<<i<<" "<<Q_b[iq_b[i]]<<endl;
+		}
+		*/
 
 		err= sqrt(ret*(1-ret)/_nexps);
 		if(ret==0||ret==1) err= 1./_nexps;
@@ -2049,7 +2063,7 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys, bool bWriteToys){ 
 			// skip this toy and regenerate it   --> any bias ? 
 			// caveat: it may go to infinite loop if all toys fails
 			i-=1;
-			cout<<"WARNING: skip a failed toy"<<endl;
+			cout<<"WARNING: skip a failed toy, regenerating "<<endl;
 		}
 	}
 
@@ -2352,7 +2366,7 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys){
 			// skip this toy and regenerate it   --> any bias ? 
 			// caveat: it may go to infinite loop if all toys fails
 			i-=1;
-			cout<<"WARNING: skip a failed toy"<<endl;
+			cout<<"WARNING: skip a failed toy, regenerating "<<endl;
 		}
 	}
 
