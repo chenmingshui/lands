@@ -122,6 +122,7 @@ bool bWriteToys = false;
 
 TString ExpectationHints = "";
 bool runAsymptoticLimits();
+bool runAsymptoticCLs();
 double runProfileLikelihoodApproximation(double neg2_llr=-9999);
 bool runBayesian();
 bool saveExpectation();
@@ -253,16 +254,20 @@ int main(int argc, const char*argv[]){
 				vdata_global=cms_global->Get_v_data();
 				cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
 				runAsymptoticLimits();
-				dataset= "asimov_b";
-				cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
-				vdata_global = cms->Get_AsimovData(0);
-				runAsymptoticLimits();
+				if(scanRAroundBand=="all"){
+					dataset= "asimov_b";
+					cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
+					vdata_global = cms->Get_AsimovData(0);
+					runAsymptoticLimits();
+				}
 				dataset = tmp_dataset;
 				SaveResults(jobname+"Asymptotic"+"_limitbands", HiggsMass, preHints_obs, 0, 0, 0, preHints_m2s, preHints_m1s, preHints_median, 0, preHints_p1s, preHints_p2s);
 			}else if(ExpectationHints == "Bayesian"){
 				if(!doExpectation) {
-					doExpectation = true;
-					toysBayesian = 100;
+					if(scanRAroundBand=="all"){
+						doExpectation = true;
+						toysBayesian = 100;
+					}
 				}
 				runBayesian();
 				cms->SetData(cms->Get_v_data_real());
@@ -385,6 +390,10 @@ int main(int argc, const char*argv[]){
 			}
 			//frequentist.checkFittedParsInData(true, false, "fittedPars.root");
 			if(tossToyConvention==1 && !bFixNuisancsAtNominal )frequentist.checkFittedParsInData(bReadPars, bWritePars, fileFittedPars);
+			if(tossToyConvention==1 && bFixNuisancsAtNominal){
+				cms->Set_fittedParsInData_sb(cms->Get_norminalPars());
+				cms->Set_fittedParsInData_b(cms->Get_norminalPars());
+			}
 
 
 			vector<double> vb, vsb;
@@ -397,8 +406,8 @@ int main(int argc, const char*argv[]){
 						cms->Set_fittedParsInData_b(cms->Get_norminalPars());
 					}
 					if(tossToyConvention==1 && !bFixNuisancsAtNominal){
-					//	DoAfit(vR_toEval[i], cms->Get_v_data_real(), cms->Get_v_pdfs_roodataset_real(), cms->Get_fittedParsInData_sb());
-					//	cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
+						DoAfit(vR_toEval[i], cms->Get_v_data_real(), cms->Get_v_pdfs_roodataset_real(), cms->Get_fittedParsInData_sb());
+						cms->Set_fittedParsInData_sb(cms->Get_fittedParsInData_sb());
 					}
 
 					if(testStat==1)frequentist.prepareLogNoverB();
@@ -880,6 +889,10 @@ int main(int argc, const char*argv[]){
 			watch.Print();
 			return 0;
 
+		}else if(method=="AsymptoticCLs"){
+			runAsymptoticCLs();
+			watch.Print();
+			return 0;
 		}else if(method=="Asymptotic"){
 			runAsymptoticLimits();
 			watch.Print();
@@ -1362,7 +1375,7 @@ void processParameters(int argc, const char* argv[]){
 				(method!="ProfiledLikelihood" and method!="Hybrid" and method!="ProfileLikelihood")
 		  ){cout<<"ERROR You are trying to use "<<method<<", which is not supported currently to calculate Significance"<<endl; exit(0);}
 		if( !calcsignificance && 
-				(method!="ProfiledLikelihood" and method!="Hybrid" and method!="Bayesian" and method!="FeldmanCousins" and method!="ProfileLikelihood" and method!="Asymptotic" and method!="ScanningMuFit")
+				(method!="ProfiledLikelihood" and method!="Hybrid" and method!="Bayesian" and method!="FeldmanCousins" and method!="ProfileLikelihood" and method!="AsymptoticCLs" and method!="Asymptotic" and method!="ScanningMuFit")
 		  ){cout<<"ERROR You are trying to use "<<method<<", which is not supported currently to calculate limit "<<endl; exit(0);}
 	}
 
@@ -1782,6 +1795,8 @@ void processParameters(int argc, const char* argv[]){
 		if(bFixNuisancsAtNominal) cout<<" The nuisances are fixed at nominal values instead of being fitted to data "<<endl;
 	}else if(method=="Asymptotic"){
 		cout<<"  RUNNING Asymptotic limit"<<endl;
+	}else if(method=="AsymptoticCLs"){
+		cout<<"  RUNNING Asymptotic CLs"<<endl;
 	}else if(method=="ScanningMuFit"){
 		cout<<"  RUNNING ScanningMuFit"<<endl;
 	}
@@ -1825,7 +1840,7 @@ double runProfileLikelihoodApproximation(double neg2_llr){
 	if(neg2_llr>=0) ErrorDef = neg2_llr;
 	if(PLalgorithm == "Minos"){
 		double upperL=1, lowerL=0; 
-		if(dataset=="asimov_b") upperL = 0.000001; // the starting mu value in the global fit
+		//if(dataset=="asimov_b") upperL = 0.000001; // the starting mu value in the global fit
 		double y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, false, debug) ;
 		if(upperL==lowerL){
 			cout<<"WARNING: First Attempt Fails, try one more time with different set of starting values"<<endl;
@@ -1953,6 +1968,78 @@ double runProfileLikelihoodApproximation(double neg2_llr){
 	}
 	if(pars) delete pars;
 	return r95;
+}
+bool runAsymptoticCLs(){
+	// change to use parabora approximation ....
+	CountingModel * cms = cms_global;
+    cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
+    vdata_global = cms->Get_AsimovData(0);
+	double r95;
+	double tmp;
+	double tmpr ;
+	double tmperr;
+	double *pars = new double[cms->Get_max_uncorrelation()+1]; // nsys + r
+
+	_inputNuisances = cms->Get_norminalPars();
+	_startNuisances = cms->Get_norminalPars();
+
+	double starting_mu_for_globalFit = 1; // for data
+
+	// for expected median limit,  asimov data set
+	//double ErrorDef = TMath::NormQuantile(0.975)*TMath::NormQuantile(0.975); 
+	double ErrorDef = TMath::ChisquareQuantile(CL , 1);// (confidenceLevel, ndf)
+
+	int nsteps_in_asymptotic = 0;
+	// running asymptotic limit from the hint 
+		int success[1] = {0};
+		int minuitSTRATEGY_old=minuitSTRATEGY;
+		minuitSTRATEGY = minuitSTRATEGY_old;
+		cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
+
+		cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
+		vdata_global = cms->Get_AsimovData(0);
+		if(debug) cout<<" fitting asimovb with MinuitFit(2)"<<endl;
+		double L_asimovb_glbmin =  MinuitFit(2, tmpr, tmperr, 0, pars, false, debug, success) ;
+		minuitSTRATEGY_old=minuitSTRATEGY;
+		while(success[0] and minuitSTRATEGY<2) {
+			cout<<" failed global fit of asimovb with minuitSTRATEGY = "<<minuitSTRATEGY<<endl;
+			//minuitSTRATEGY +=2 ; 
+			cout<<" try minuitSTRATEGY = "<<minuitSTRATEGY<<endl;
+			cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
+			//cms_global->FluctuatedNumbers();
+			//L_asimovb_glbmin =  MinuitFit(201, tmpr, tmperr, 0.1, cms_global->Get_randomizedPars(), true, debug, success) ;
+			L_asimovb_glbmin =  MinuitFit(201, tmpr, tmperr, 0.1, pars, false, debug, success) ;
+		}
+		minuitSTRATEGY = minuitSTRATEGY_old;
+		cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
+
+		double mu =  1.;
+
+		cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
+		vdata_global = cms->Get_AsimovData(0);
+		if(debug) cout<<" fitting asimovb with MinuitFit(3)"<<endl;
+		double L_asimovb_condmin =  MinuitFit(3, tmp, tmperr, mu, pars, false, debug);
+
+		nsteps_in_asymptotic +=4;
+		if(L_asimovb_condmin - L_asimovb_glbmin <0 ) {
+			cout<<"2 L_asimovb_condmin = "<<L_asimovb_condmin<<"  < "<<"L_asimovb_glbmin="<<L_asimovb_glbmin<<", exit"<<endl;
+			exit(1);
+		}
+        double L_data_condmin = L_asimovb_condmin; 
+        double L_data_glbmin = L_asimovb_glbmin;
+		double tmpcls = (  1 - ROOT::Math::normal_cdf( sqrt(L_data_condmin - L_data_glbmin) ) ) / ( ROOT::Math::normal_cdf(
+					sqrt(L_asimovb_condmin - L_asimovb_glbmin) - sqrt(L_data_condmin - L_data_glbmin)
+					) ); 
+
+
+	if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
+	cout<<"Observed Asymptotic CLs  "<<tmpcls<<endl;
+	cout<<"------------------------------------------------------------"<<endl;
+
+	SaveResults(jobname+"_asymptoticObsCLs", HiggsMass, tmpcls, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+	if(pars) delete pars;
+	return true;
 }
 bool runAsymptoticLimits(){
 	// change to use parabora approximation ....
