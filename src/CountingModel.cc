@@ -108,6 +108,7 @@ namespace lands{
 		v_pdfs_roodataset_real.clear();
 		v_pdfs_roodataset_tmp.clear();
 		v_pdfs_roodataset_asimovb.clear();
+		v_pdfs_roodataset_asimovsb.clear();
 		vv_pdfs_normNAME.clear();
 		vv_pdfs_extranormNAME.clear();
 		vvv_pdfs_paramsRRV.clear();
@@ -211,6 +212,7 @@ namespace lands{
 		v_pdfs_roodataset_real.clear();
 		v_pdfs_roodataset_tmp.clear();
 		v_pdfs_roodataset_asimovb.clear();
+		v_pdfs_roodataset_asimovsb.clear();
 		vv_pdfs_normNAME.clear();
 		vv_pdfs_extranormNAME.clear();
 		vvv_pdfs_paramsRRV.clear();
@@ -1750,6 +1752,8 @@ If we need to change it later, it will be easy to do.
 					v_data_real[i]+= vv_exp_sigbkgs.at(i).at(b);
 				}
 			}
+			v_pdfs_roodataset = v_pdfs_roodataset_asimovsb;
+			v_pdfs_roodataset_tmp = v_pdfs_roodataset_asimovsb;
 		}
 	}
 	CountingModel* CombineModels(CountingModel *cms1, CountingModel *cms2){
@@ -2220,6 +2224,7 @@ If we need to change it later, it will be easy to do.
 		v_pdfs_roodataset_tmp.push_back(rds);
 		v_pdfs_roodataset_real.push_back(rds);
 		RooDataHist *rdh_asimovb = _w->pdf(v_pdfs_b.back()) -> generateBinned(*observable,ExpectedData());
+		RooDataHist *rdh_asimovsb = _w->pdf(v_pdfs_sb.back()) -> generateBinned(*observable,ExpectedData());
 
 
 		RooArgSet * rastmp = new RooArgSet(*observable, *(_w->var("wgttmp")));
@@ -2236,13 +2241,27 @@ If we need to change it later, it will be easy to do.
 		}
 		v_pdfs_roodataset_asimovb.push_back(rds_asimovb);
 
-		double dtmp = 0;
-		for(int i=0; i<rds_asimovb->numEntries(); i++){
-			rds_asimovb->get(i); 
-			dtmp+=rds_asimovb->weight();
+		RooDataSet *rds_asimovsb = new RooDataSet(TString("rds_asimovsb")+channel_name.c_str(), "rds_asimovsb", *rastmp, "wgttmp");
+		if(_debug)cout<<" rdh_asimovsb["<<channel_name<<"]->bins = "<<rdh_asimovsb->numEntries()<<endl;
+		for(int i=0; i<rdh_asimovsb->numEntries(); i++){
+			if(_debug && i==0)cout<<" DELETEME 3 "<<i<<" weight = "<<rdh_asimovsb->weight()<<endl;	
+			rds_asimovsb->add(*rdh_asimovsb->get(i), rdh_asimovsb->weight());
 		}
-		if(_debug>=10)cout<<" from numEntries and weight,  sumEntries  = "<<dtmp<<endl;
+		if(_debug>=10){
+			cout<<" *** DELETEME : "<<endl;
+			rds_asimovsb->Print("v");
+			cout<<" sumEntries = "<<rds_asimovsb->sumEntries()<<endl;
+		}
+		v_pdfs_roodataset_asimovsb.push_back(rds_asimovsb);
 
+		if(_debug>=10){
+            double dtmp = 0;
+            for(int i=0; i<rds_asimovb->numEntries(); i++){
+                rds_asimovb->get(i); 
+                dtmp+=rds_asimovb->weight();
+            }
+            cout<<" from numEntries and weight,  sumEntries  = "<<dtmp<<endl;
+        }
 		//v_pdfs_roodataset_toy.push_back(rds);
 		//cout<<"H0, number of events generated for channel "<<ch<<": "<<v_pdfs_roodataset_toy[ch]->sumEntries()<<endl;
 		if(_debug) 	rds->Print("V");
