@@ -1841,6 +1841,8 @@ double runProfileLikelihoodApproximation(double neg2_llr){
 	if(PLalgorithm == "Minos"){
 		double upperL=1, lowerL=0; 
 		//if(dataset=="asimov_b") upperL = 0.000001; // the starting mu value in the global fit
+        // set it to be close to 0, because of it's asimov_b dataset, which may speed up fits during b-only toys
+        // but it cause some problems ,  instabilities  FIXME
 		double y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, false, debug) ;
 		if(upperL==lowerL){
 			cout<<"WARNING: First Attempt Fails, try one more time with different set of starting values"<<endl;
