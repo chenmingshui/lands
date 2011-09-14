@@ -1740,6 +1740,26 @@ If we need to change it later, it will be easy to do.
 					v_data_real[i]+= vv_exp_sigbkgs.at(i).at(b);
 				}
 			}
+			for(int i=0; i<v_pdfs_b.size(); i++){
+				RooRealVar * observable = _w->var(v_pdfs_observables[i]);
+				observable->Print();
+				RooDataHist *rdh_asimovb = _w->pdf(v_pdfs_b[i]) -> generateBinned(*observable,ExpectedData());
+				RooArgSet * rastmp = new RooArgSet(*observable, *(_w->var("wgttmp")));
+				RooDataSet *rds_asimovb = new RooDataSet(TString("rds_asimovb")+v_pdfs_channelname[i].c_str(), "rds_asimovb", *rastmp, "wgttmp");
+				if(_debug)cout<<" rdh_asimovb["<<v_pdfs_channelname[i]<<"]->bins = "<<rdh_asimovb->numEntries()<<endl;
+				for(int j=0; j<rdh_asimovb->numEntries(); j++){
+					if(_debug && j==0)cout<<" DELETEME 3 "<<j<<" weight = "<<rdh_asimovb->weight()<<endl;	
+					rds_asimovb->add(*rdh_asimovb->get(j), rdh_asimovb->weight());
+				}
+				if(_debug>=10){
+					cout<<" *** DELETEME : "<<endl;
+					rds_asimovb->Print("v");
+					cout<<" sumEntries = "<<rds_asimovb->sumEntries()<<endl;
+				}
+				v_pdfs_roodataset_asimovb.push_back(rds_asimovb);
+				cout<<v_pdfs_channelname[i]<<"  asimovb numEntries = "<<rds_asimovb->numEntries()<<endl;
+				cout<<v_pdfs_channelname[i]<<"  asimovb sumEntries = "<<rds_asimovb->sumEntries()<<endl;
+			}
 			v_pdfs_roodataset = v_pdfs_roodataset_asimovb;
 			v_pdfs_roodataset_tmp = v_pdfs_roodataset_asimovb;
 		}else if(b==1){
@@ -1751,6 +1771,23 @@ If we need to change it later, it will be easy to do.
 					v_data[i]+= vv_exp_sigbkgs.at(i).at(b);
 					v_data_real[i]+= vv_exp_sigbkgs.at(i).at(b);
 				}
+			}
+			for(int i=0; i<v_pdfs_sb.size(); i++){
+				RooRealVar * observable = _w->var(v_pdfs_observables[i]);
+				RooDataHist *rdh_asimovsb = _w->pdf(v_pdfs_sb[i]) -> generateBinned(*observable,ExpectedData());
+				RooArgSet * rastmp = new RooArgSet(*observable, *(_w->var("wgttmp")));
+				RooDataSet *rds_asimovsb = new RooDataSet(TString("rds_asimovsb")+v_pdfs_channelname[i], "rds_asimovsb", *rastmp, "wgttmp");
+				if(_debug)cout<<" rdh_asimovsb["<<v_pdfs_channelname[i]<<"]->bins = "<<rdh_asimovsb->numEntries()<<endl;
+				for(int i=0; i<rdh_asimovsb->numEntries(); i++){
+					if(_debug && i==0)cout<<" DELETEME 3 "<<i<<" weight = "<<rdh_asimovsb->weight()<<endl;	
+					rds_asimovsb->add(*rdh_asimovsb->get(i), rdh_asimovsb->weight());
+				}
+				if(_debug>=10){
+					cout<<" *** DELETEME : "<<endl;
+					rds_asimovsb->Print("v");
+					cout<<" sumEntries = "<<rds_asimovsb->sumEntries()<<endl;
+				}
+				v_pdfs_roodataset_asimovsb.push_back(rds_asimovsb);
 			}
 			v_pdfs_roodataset = v_pdfs_roodataset_asimovsb;
 			v_pdfs_roodataset_tmp = v_pdfs_roodataset_asimovsb;
@@ -2219,60 +2256,64 @@ If we need to change it later, it will be easy to do.
 
 
 		if(_w->var("wgttmp") == NULL)_w->factory("wgttmp[0,10000000]");
-		RooDataSet * rds = _w->pdf(v_pdfs_b.back()) -> generate(*observable, Extended());
+		//RooDataSet * rds = _w->pdf(v_pdfs_b.back()) -> generate(*observable, Extended());
+		RooDataSet * rds = _w->pdf(v_pdfs_b.back()) -> generate(*observable, 1) ;
 		v_pdfs_roodataset.push_back(rds);
 		v_pdfs_roodataset_tmp.push_back(rds);
 		v_pdfs_roodataset_real.push_back(rds);
-		RooDataHist *rdh_asimovb = _w->pdf(v_pdfs_b.back()) -> generateBinned(*observable,ExpectedData());
-		RooDataHist *rdh_asimovsb = _w->pdf(v_pdfs_sb.back()) -> generateBinned(*observable,ExpectedData());
+		/*
+		   RooDataHist *rdh_asimovb = _w->pdf(v_pdfs_b.back()) -> generateBinned(*observable,ExpectedData());
+		   RooDataHist *rdh_asimovsb = _w->pdf(v_pdfs_sb.back()) -> generateBinned(*observable,ExpectedData());
 
+		   RooArgSet * rastmp = new RooArgSet(*observable, *(_w->var("wgttmp")));
+		   RooDataSet *rds_asimovb = new RooDataSet(TString("rds_asimovb")+channel_name.c_str(), "rds_asimovb", *rastmp, "wgttmp");
+		   if(_debug)cout<<" rdh_asimovb["<<channel_name<<"]->bins = "<<rdh_asimovb->numEntries()<<endl;
+		   for(int i=0; i<rdh_asimovb->numEntries(); i++){
+		   if(_debug && i==0)cout<<" DELETEME 3 "<<i<<" weight = "<<rdh_asimovb->weight()<<endl;	
+		   rds_asimovb->add(*rdh_asimovb->get(i), rdh_asimovb->weight());
+		   }
+		   if(_debug>=10){
+		   cout<<" *** DELETEME : "<<endl;
+		   rds_asimovb->Print("v");
+		   cout<<" sumEntries = "<<rds_asimovb->sumEntries()<<endl;
+		   }
+		   v_pdfs_roodataset_asimovb.push_back(rds_asimovb);
 
-		RooArgSet * rastmp = new RooArgSet(*observable, *(_w->var("wgttmp")));
-		RooDataSet *rds_asimovb = new RooDataSet(TString("rds_asimovb")+channel_name.c_str(), "rds_asimovb", *rastmp, "wgttmp");
-		if(_debug)cout<<" rdh_asimovb["<<channel_name<<"]->bins = "<<rdh_asimovb->numEntries()<<endl;
-		for(int i=0; i<rdh_asimovb->numEntries(); i++){
-			if(_debug && i==0)cout<<" DELETEME 3 "<<i<<" weight = "<<rdh_asimovb->weight()<<endl;	
-			rds_asimovb->add(*rdh_asimovb->get(i), rdh_asimovb->weight());
-		}
-		if(_debug>=10){
-			cout<<" *** DELETEME : "<<endl;
-			rds_asimovb->Print("v");
-			cout<<" sumEntries = "<<rds_asimovb->sumEntries()<<endl;
-		}
-		v_pdfs_roodataset_asimovb.push_back(rds_asimovb);
-
-		RooDataSet *rds_asimovsb = new RooDataSet(TString("rds_asimovsb")+channel_name.c_str(), "rds_asimovsb", *rastmp, "wgttmp");
-		if(_debug)cout<<" rdh_asimovsb["<<channel_name<<"]->bins = "<<rdh_asimovsb->numEntries()<<endl;
-		for(int i=0; i<rdh_asimovsb->numEntries(); i++){
-			if(_debug && i==0)cout<<" DELETEME 3 "<<i<<" weight = "<<rdh_asimovsb->weight()<<endl;	
-			rds_asimovsb->add(*rdh_asimovsb->get(i), rdh_asimovsb->weight());
-		}
-		if(_debug>=10){
-			cout<<" *** DELETEME : "<<endl;
-			rds_asimovsb->Print("v");
-			cout<<" sumEntries = "<<rds_asimovsb->sumEntries()<<endl;
-		}
-		v_pdfs_roodataset_asimovsb.push_back(rds_asimovsb);
-
-		if(_debug>=10){
-            double dtmp = 0;
-            for(int i=0; i<rds_asimovb->numEntries(); i++){
-                rds_asimovb->get(i); 
-                dtmp+=rds_asimovb->weight();
-            }
-            cout<<" from numEntries and weight,  sumEntries  = "<<dtmp<<endl;
-        }
+		   RooDataSet *rds_asimovsb = new RooDataSet(TString("rds_asimovsb")+channel_name.c_str(), "rds_asimovsb", *rastmp, "wgttmp");
+		   if(_debug)cout<<" rdh_asimovsb["<<channel_name<<"]->bins = "<<rdh_asimovsb->numEntries()<<endl;
+		   for(int i=0; i<rdh_asimovsb->numEntries(); i++){
+		   if(_debug && i==0)cout<<" DELETEME 3 "<<i<<" weight = "<<rdh_asimovsb->weight()<<endl;	
+		   rds_asimovsb->add(*rdh_asimovsb->get(i), rdh_asimovsb->weight());
+		   }
+		   if(_debug>=10){
+		   cout<<" *** DELETEME : "<<endl;
+		   rds_asimovsb->Print("v");
+		   cout<<" sumEntries = "<<rds_asimovsb->sumEntries()<<endl;
+		   }
+		   v_pdfs_roodataset_asimovsb.push_back(rds_asimovsb);
+		   */
+		/*
+		   if(_debug>=10){
+		   double dtmp = 0;
+		   for(int i=0; i<rds_asimovb->numEntries(); i++){
+		   rds_asimovb->get(i); 
+		   dtmp+=rds_asimovb->weight();
+		   }
+		   cout<<" from numEntries and weight,  sumEntries  = "<<dtmp<<endl;
+		   }
+		   */
 		//v_pdfs_roodataset_toy.push_back(rds);
 		//cout<<"H0, number of events generated for channel "<<ch<<": "<<v_pdfs_roodataset_toy[ch]->sumEntries()<<endl;
 		if(_debug) 	rds->Print("V");
+		/*
 		vector<double> vdata;
 		for(int i=0; i<rds->sumEntries(); i++){
 			RooRealVar *r = dynamic_cast<RooRealVar*>(rds->get(i)->first());
 			vdata.push_back( r->getVal() );
 		}
 		vv_pdfs_data.push_back(vdata);
-
-
+		*/
+			
 		bHasParametricShape = true;
 
 		if(_debug>=10){
@@ -2361,6 +2402,8 @@ If we need to change it later, it will be easy to do.
 		v_pdfs_roodataset[ch]=rds;
 		v_pdfs_roodataset_tmp[ch]=rds;
 		v_pdfs_roodataset_real[ch]=rds;
+			cout<<v_pdfs_channelname[ch]<<" data numEntries = "<<v_pdfs_roodataset_real[ch]->numEntries()<<endl;;
+			cout<<v_pdfs_channelname[ch]<<" data sumEntries = "<<v_pdfs_roodataset_real[ch]->sumEntries()<<endl;
 		delete tmp;
 
 		if(_debug>=10){
@@ -2385,9 +2428,10 @@ If we need to change it later, it will be easy to do.
 			hb.Write();
 			hsb.Write();
 
-			for(int i=0; i<v_pdfs_roodataset[ch]->sumEntries(); i++){
-				_w->var(v_pdfs_observables[ch])->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal());
-				h.Fill(_w->var(v_pdfs_observables[ch])->getVal());
+			for(int i=0; i<v_pdfs_roodataset[ch]->numEntries(); i++){
+				//_w->var(v_pdfs_observables[ch])->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first()))->getVal());
+				//h.Fill(_w->var(v_pdfs_observables[ch])->getVal());
+				h.Fill(dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first())->getVal(), v_pdfs_roodataset[ch]->weight());
 			}
 			f.WriteTObject(&h);
 
@@ -2611,11 +2655,13 @@ If we need to change it later, it will be easy to do.
 			v_pdfs_roodataset_tmp.push_back(data[ch]);
 			if(bRealData) v_pdfs_roodataset_real.push_back(data[ch]);
 
+			/*
 			for(int i=0; i<v_pdfs_roodataset[ch]->sumEntries(); i++){
 				RooRealVar *r = dynamic_cast<RooRealVar*>(v_pdfs_roodataset[ch]->get(i)->first());
 				vtmp.push_back( r->getVal() );
 			}
 			vv_pdfs_data.push_back(vtmp);
+			*/
 		}
 	}
 	void CountingModel::SetTmpDataForUnbinned(vector< RooDataSet* > data){
