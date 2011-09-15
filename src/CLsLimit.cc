@@ -414,12 +414,9 @@ namespace lands{
 					case typeShapeGaussianLinearMorph:
 					case typeShapeGaussianQuadraticMorph:
 					case typeLogNormal:
-						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, -20, 20,ierflg);
-						// range was -5 to 5,  causing problem with significance larger than > 7 
 						// FIXME need to be smart here ,  when calc significance, if the S > 5 at the end, print out the WARNING message to change the range setting here 
 						// or try to get the option of significance from main program 
 						// but now [-20, 20] cause some problem in minuit fitting for non-signifcant deviation .... 
-						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, -5, 5,ierflg); // was 5,  causing problem with significance larger than > 7 
 						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_startNuisances[i], minuitStep, -5, 5,ierflg); // was 5,  causing problem with significance larger than > 7 
 						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_startNuisances[i], minuitStep, -10, 10,ierflg); // was 5,  causing problem with significance larger than > 7 
 						break;
