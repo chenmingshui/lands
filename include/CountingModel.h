@@ -209,6 +209,7 @@ namespace lands{
 			const vector< RooDataSet* >& Get_v_pdfs_roodataset_toy(){return v_pdfs_roodataset_toy;} // in each channel, it has a list of events
 			const vector< RooDataSet* >& Get_v_pdfs_roodataset_real(){return v_pdfs_roodataset_real;} // in each channel, it has a list of events
 			const vector< RooDataSet* >& Get_v_pdfs_roodataset_asimovb(){return v_pdfs_roodataset_asimovb;} // in each channel, it has a list of events
+			void ConstructAsimovData(int b);
 			const vector< RooDataSet* >& Get_v_pdfs_roodataset_asimovsb(){return v_pdfs_roodataset_asimovsb;} // in each channel, it has a list of events
 			const vector< double >& Get_v_pdfs_floatParamsVaried(){return v_pdfs_floatParamsVaried;}
 			const vector< vector< double > >& Get_v_pdfs_floatParamsUnc(){ return v_pdfs_floatParamsUnc;}
@@ -268,6 +269,10 @@ namespace lands{
 
 			void Set_minuitSTRATEGY(int i){minuitSTRATEGY=i;};
 			int Get_minuitSTRATEGY(){return minuitSTRATEGY;};
+			void Set_minuitTolerance(double i){minuitTolerance=i;};
+			int Get_minuitTolerance(){return minuitTolerance;};
+			void Set_nuisancesRange(double i){nuisancesRange=i;};
+			int Get_nuisancesRange(){return nuisancesRange;};
 			void Set_maximumFunctionCallsInAFit(int i){maximumFunctionCallsInAFit=i;};
 			int Get_maximumFunctionCallsInAFit(){return maximumFunctionCallsInAFit;};
 
@@ -405,6 +410,8 @@ namespace lands{
 			vector< vector<std::pair<int, int> > > vvp_connectNuisBinProc;// keep in memory:  a nuisance affects a list of [channel, process]
 
 			int minuitSTRATEGY;
+			double minuitTolerance;
+			double nuisancesRange;
 			int maximumFunctionCallsInAFit;
 
 

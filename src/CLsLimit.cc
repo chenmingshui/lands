@@ -407,6 +407,8 @@ namespace lands{
 			vector<bool> v_uncFloatInFit= cms_global->Get_v_uncFloatInFit();
 			double maxunc;
 
+			double nuisancesFitRange  =  cms_global->Get_nuisancesRange(); // default is 5 sigma variation allowed
+
 			for(int i=1; i<=npars; i++){
 				TString sname=v_uncname[i-1]; 
 				//	if(debug>=10) cout<<"DELETEME in MinuitFit    "<<sname<<endl;
@@ -417,8 +419,8 @@ namespace lands{
 						// FIXME need to be smart here ,  when calc significance, if the S > 5 at the end, print out the WARNING message to change the range setting here 
 						// or try to get the option of significance from main program 
 						// but now [-20, 20] cause some problem in minuit fitting for non-signifcant deviation .... 
-						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_startNuisances[i], minuitStep, -5, 5,ierflg); // was 5,  causing problem with significance larger than > 7 
-						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_startNuisances[i], minuitStep, -10, 10,ierflg); // was 5,  causing problem with significance larger than > 7 
+						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_startNuisances[i], minuitStep, -nuisancesFitRange, nuisancesFitRange, ierflg); // was 5,  causing problem with significance larger than > 7 
+						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_startNuisances[i], minuitStep, -10, 10,ierflg); // was 5,  causing problem with significance larger than > 7 
 						break;
 					case typeTruncatedGaussian :
 						maxunc = v_TG_maxUnc[i];	
@@ -523,7 +525,7 @@ namespace lands{
 			// Now ready for minimization step
 			arglist[0] = cms_global->Get_maximumFunctionCallsInAFit(); // to be good at minization, need set this number to be 5000 (from experience of hgg+hww+hzz combination)
 			if(debug)cout<<" Maximum Function Calls="<<arglist[0]<<endl;
-			arglist[1] = 1.;  // tolerance 
+			arglist[1] = cms_global->Get_minuitTolerance();  // tolerance 
 			//arglist[1] = 0.009991;
 			if(!UseMinos)myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
 			if(UseMinos==2)myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);

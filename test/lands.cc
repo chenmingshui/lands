@@ -110,6 +110,8 @@ int nTries = 1;
 
 int maximumFunctionCallsInAFit = 5000;
 int minuitSTRATEGY = 0;
+double minuitTolerance = 0.001;
+double nuisancesRange = 5.;
 
 double flatPriorCropNsigma = 3;
 
@@ -213,6 +215,9 @@ int main(int argc, const char*argv[]){
 	if(debug and nch_removed )cms->Print();
 	if(nch_removed)cms->SetUseSystematicErrors(systematics);//need reconfig,  otherwise crash
 	//cms->SetAllowNegativeSignalStrength(false);
+	
+	cms->ConstructAsimovData(0); // b-only asimov 
+	cms->ConstructAsimovData(1); // sb asimov
 	if(dataset == "asimov_b")cms->UseAsimovData(0);
 	else if(dataset == "asimov_sb")cms->UseAsimovData(1);
 
@@ -241,6 +246,8 @@ int main(int argc, const char*argv[]){
 	cms_global= cms;
 	cms_global->SetDebug(debug);
 	cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
+	cms_global->Set_minuitTolerance(minuitTolerance);
+	cms_global->Set_nuisancesRange(nuisancesRange);
 	cms_global->Set_maximumFunctionCallsInAFit(maximumFunctionCallsInAFit);
 	TPaveText *pt = SetTPaveText(0.2, 0.7, 0.3, 0.9);
 	if(customRMax!=customRMin) {_customRMin=customRMin; _customRMax = customRMax;}
@@ -1712,6 +1719,14 @@ void processParameters(int argc, const char* argv[]){
 	if( tmpv.size()!=1 ) { minuitSTRATEGY= 0; }
 	else { minuitSTRATEGY = tmpv[0].Atoi(); }
 
+	tmpv = options["--minuitTolerance"]; 
+	if( tmpv.size()!=1 ) { minuitTolerance= 0.001; }
+	else { minuitTolerance= tmpv[0].Atof(); }
+
+	tmpv = options["--nuisancesRange"]; 
+	if( tmpv.size()!=1 ) { nuisancesRange = 5.; }
+	else { nuisancesRange = tmpv[0].Atof(); }
+
 	tmpv = options["--maximumFunctionCallsInAFit"]; 
 	if( tmpv.size()!=1 ) { maximumFunctionCallsInAFit= 5000; }
 	else { maximumFunctionCallsInAFit = tmpv[0].Atoi(); }
@@ -1795,6 +1810,7 @@ void processParameters(int argc, const char* argv[]){
 		if(bFixNuisancsAtNominal) cout<<" The nuisances are fixed at nominal values instead of being fitted to data "<<endl;
 	}else if(method=="Asymptotic"){
 		cout<<"  RUNNING Asymptotic limit"<<endl;
+		cout<<"  for expected : "<<scanRAroundBand<<endl;
 	}else if(method=="AsymptoticCLs"){
 		cout<<"  RUNNING Asymptotic CLs"<<endl;
 	}else if(method=="ScanningMuFit"){
@@ -1810,8 +1826,10 @@ void processParameters(int argc, const char* argv[]){
 		cout<<"    custom libraries to be loaded: "<<endl;
 		for(int i=0; i<librariesToBeLoaded.size(); i++) cout<<" "<<librariesToBeLoaded[i]<<endl;
 	}
-	cout<<"  minuitSTRATEGY="<<minuitSTRATEGY<<endl;
-	cout<<"  maximumFunctionCallsInAFit="<<maximumFunctionCallsInAFit<<endl;
+	if(isWordInMap("minuitSTRATEGY", options))cout<<"  minuitSTRATEGY="<<minuitSTRATEGY<<endl;
+	if(isWordInMap("minuitTolerance", options))cout<<"  minuitTolerance="<<minuitTolerance<<endl;
+	if(isWordInMap("maximumFunctionCallsInAFit", options))cout<<"  maximumFunctionCallsInAFit="<<maximumFunctionCallsInAFit<<endl;
+	if(isWordInMap("nuisancesRange", options))cout<<"  nuisancesRange = +/- "<<nuisancesRange<<" sigma "<<endl;
 
 	if(bMultiSigProcShareSamePDF) cout<<" MultiSigProcShareSamePDF "<<endl;
 	if(bForceSymmetryError) cout<<" ForceSymmetryError"<<endl;
@@ -2070,38 +2088,45 @@ bool runAsymptoticLimits(){
 	if(1){ // first get hint of the limit from  PLR method, wrong asymptotic formula
 		r95 = runProfileLikelihoodApproximation(ErrorDef);
 		if(dataset=="asimov_b"){
-			cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
-			vdata_global = cms->Get_AsimovData(0);
-			preHints_median = r95;
-			// +1sigma
-			double sigma = -1;
+			double sigma = 0;
 			double m2s, m1s, p1s, p2s;
-			ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(sigma))+sigma ; 
-			ErrorDef *= ErrorDef;	
-			if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
-			m1s = runProfileLikelihoodApproximation(ErrorDef);
-			preHints_m1s=m1s;
-
-			sigma = 1;
-			ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(sigma))+sigma ; 
-			ErrorDef *= ErrorDef;	
-			if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
-			p1s = runProfileLikelihoodApproximation(ErrorDef);
-			preHints_p1s=p1s;
-
-			sigma = -2;
-			ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(sigma))+sigma ; 
-			ErrorDef *= ErrorDef;	
-			if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
-			m2s = runProfileLikelihoodApproximation(ErrorDef);
-			preHints_m2s=m2s;
-
-			sigma = 2;
-			ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(sigma))+sigma ; 
-			ErrorDef *= ErrorDef;	
-			if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
-			p2s = runProfileLikelihoodApproximation(ErrorDef);
-			preHints_p2s=p2s;
+			if(scanRAroundBand=="all" || scanRAroundBand=="0"){
+				cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
+				vdata_global = cms->Get_AsimovData(0);
+				preHints_median = r95;
+			}
+			if(scanRAroundBand=="all" || scanRAroundBand=="-1"){
+				sigma = -1;
+				ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(sigma))+sigma ; 
+				ErrorDef *= ErrorDef;	
+				if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
+				m1s = runProfileLikelihoodApproximation(ErrorDef);
+				preHints_m1s=m1s;
+			}
+			if(scanRAroundBand=="all" || scanRAroundBand=="1"){
+				sigma = 1;
+				ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(sigma))+sigma ; 
+				ErrorDef *= ErrorDef;	
+				if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
+				p1s = runProfileLikelihoodApproximation(ErrorDef);
+				preHints_p1s=p1s;
+			}
+			if(scanRAroundBand=="all" || scanRAroundBand=="-2"){
+				sigma = -2;
+				ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(sigma))+sigma ; 
+				ErrorDef *= ErrorDef;	
+				if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
+				m2s = runProfileLikelihoodApproximation(ErrorDef);
+				preHints_m2s=m2s;
+			}
+			if(scanRAroundBand=="all" || scanRAroundBand=="1"){
+				sigma = 2;
+				ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(sigma))+sigma ; 
+				ErrorDef *= ErrorDef;	
+				if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
+				p2s = runProfileLikelihoodApproximation(ErrorDef);
+				preHints_p2s=p2s;
+			}
 
 			cout<<"BandsFromAsymptotic R@95%CL (from -2sigma -1sigma  mean  +1sigma  +2sigma,  median) : "<<endl;
 			if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
@@ -2503,7 +2528,9 @@ void PrintHelpMessage(){
 	printf("--OneOrTwoSided arg (=2)              1 sided limit -lnL = 1.345;  2 sided limit -lnL = 1.921 \n"); 
 	printf("--PLalgorithm arg (=Minos)            algorithms for ProfileLikelihood approximation: Minos, Migrad \n"); 
 	printf("--minuitSTRATEGY arg (=0)             0: no calculation of secondary derivative, 1: yes \n"); 
+	printf("--minuitTolerance arg (=0.001)        tolerance in minuit fit \n"); 
 	printf("--maximumFunctionCallsInAFit arg (=5000)  \n"); 
+	printf("--nuisancesRange arg (=5.)            nuisances viriation range allowed, when the significan is >> 5, then, need set it to be 10 or larger)\n"); 
 
 	printf("\n");
 	printf("random arguments, need to be cleaned\n");
