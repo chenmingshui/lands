@@ -150,6 +150,9 @@ bool bMultiSigProcShareSamePDF = false;
 
 TString scanRAroundBand = "all";
 
+
+bool bConstructAsimovbFromNominal = false;
+
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
 
@@ -215,11 +218,6 @@ int main(int argc, const char*argv[]){
 	if(debug and nch_removed )cms->Print();
 	if(nch_removed)cms->SetUseSystematicErrors(systematics);//need reconfig,  otherwise crash
 	//cms->SetAllowNegativeSignalStrength(false);
-	
-	cms->ConstructAsimovData(0); // b-only asimov 
-	cms->ConstructAsimovData(1); // sb asimov
-	if(dataset == "asimov_b")cms->UseAsimovData(0);
-	else if(dataset == "asimov_sb")cms->UseAsimovData(1);
 
 	cms->SetMoveUpShapeUncertainties(1);
 
@@ -249,8 +247,19 @@ int main(int argc, const char*argv[]){
 	cms_global->Set_minuitTolerance(minuitTolerance);
 	cms_global->Set_nuisancesRange(nuisancesRange);
 	cms_global->Set_maximumFunctionCallsInAFit(maximumFunctionCallsInAFit);
+	
+
 	TPaveText *pt = SetTPaveText(0.2, 0.7, 0.3, 0.9);
 	if(customRMax!=customRMin) {_customRMin=customRMin; _customRMax = customRMax;}
+
+	_startNuisances = cms->Get_norminalPars();
+	_inputNuisances = cms->Get_norminalPars();
+	cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
+	cms->ConstructAsimovData(0, bConstructAsimovbFromNominal); // b-only asimov 
+	cms->ConstructAsimovData(1); // sb asimov
+	if(dataset == "asimov_b")cms->UseAsimovData(0);
+	else if(dataset == "asimov_sb")cms->UseAsimovData(1);
+
 	if(calcsignificance==0){// calc limits
 		if(method == "Bayesian"){
 			runBayesian();
@@ -1352,6 +1361,7 @@ void processParameters(int argc, const char* argv[]){
 
 	if(isWordInMap("--bForceSymmetryError", options)) bForceSymmetryError = true;
 	if(isWordInMap("--bMultiSigProcShareSamePDF", options)) bMultiSigProcShareSamePDF = true;
+	if(isWordInMap("--bConstructAsimovbFromNominal", options)) bConstructAsimovbFromNominal = true;
 
 	tmpv= options["-L"];if(tmpv.size()==0)tmpv=options["--LoadLibraries"];
 	librariesToBeLoaded = tmpv;
@@ -1851,8 +1861,9 @@ double runProfileLikelihoodApproximation(double neg2_llr){
 	double tmperr;
 	double *pars = new double[cms->Get_max_uncorrelation()+1]; // nsys + r
 
-	_inputNuisances = cms->Get_norminalPars();
-	_startNuisances = cms->Get_norminalPars();
+	if(_inputNuisances == NULL) _inputNuisances = cms->Get_norminalPars();
+	if(_inputNuisances == NULL) _startNuisances = cms->Get_norminalPars();
+
 
 	double ErrorDef = TMath::ChisquareQuantile(CL , 1);// (confidenceLevel, ndf)
 	if(neg2_llr>=0) ErrorDef = neg2_llr;
@@ -1862,6 +1873,8 @@ double runProfileLikelihoodApproximation(double neg2_llr){
         // set it to be close to 0, because of it's asimov_b dataset, which may speed up fits during b-only toys
         // but it cause some problems ,  instabilities  FIXME
 		double y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, false, debug) ;
+
+		cout<<" best fitted r, upper bound = "<<upperL<<", nllmin="<<y0_2<<endl;
 		if(upperL==lowerL){
 			cout<<"WARNING: First Attempt Fails, try one more time with different set of starting values"<<endl;
 			y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, true, debug) ;
@@ -2080,53 +2093,82 @@ bool runAsymptoticLimits(){
 	_inputNuisances = cms->Get_norminalPars();
 	_startNuisances = cms->Get_norminalPars();
 
-	double starting_mu_for_globalFit = 1; // for data
+	double starting_mu_for_globalFit = 1; // for data   1. 
 
 	// for expected median limit,  asimov data set
 	//double ErrorDef = TMath::NormQuantile(0.975)*TMath::NormQuantile(0.975); 
 	double ErrorDef = TMath::ChisquareQuantile(CL , 1);// (confidenceLevel, ndf)
 	if(1){ // first get hint of the limit from  PLR method, wrong asymptotic formula
+		cout<<"  DELETEME :   _inputNuisances[2] = "<<_inputNuisances[2]<<endl;
+		if(dataset == "asimov_b" and bConstructAsimovbFromNominal==false){
+			_inputNuisances = cms->Get_fittedParsInData_b();
+			_startNuisances = cms->Get_fittedParsInData_b();
+		}
+		cout<<"  DELETEME :   _inputNuisances[2] = "<<_inputNuisances[2]<<endl;
 		r95 = runProfileLikelihoodApproximation(ErrorDef);
 		if(dataset=="asimov_b"){
-			double sigma = 0;
+			double N = 0;
 			double m2s, m1s, p1s, p2s;
 			if(scanRAroundBand=="all" || scanRAroundBand=="0"){
 				cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
 				vdata_global = cms->Get_AsimovData(0);
 				preHints_median = r95;
 			}
+			/*
 			if(scanRAroundBand=="all" || scanRAroundBand=="-1"){
-				sigma = -1;
-				ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(sigma))+sigma ; 
+				N = -1;
+				ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ; 
 				ErrorDef *= ErrorDef;	
 				if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
 				m1s = runProfileLikelihoodApproximation(ErrorDef);
 				preHints_m1s=m1s;
 			}
 			if(scanRAroundBand=="all" || scanRAroundBand=="1"){
-				sigma = 1;
-				ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(sigma))+sigma ; 
+				N = 1;
+				ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ; 
 				ErrorDef *= ErrorDef;	
 				if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
 				p1s = runProfileLikelihoodApproximation(ErrorDef);
 				preHints_p1s=p1s;
 			}
 			if(scanRAroundBand=="all" || scanRAroundBand=="-2"){
-				sigma = -2;
-				ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(sigma))+sigma ; 
+				N = -2;
+				ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ; 
 				ErrorDef *= ErrorDef;	
 				if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
 				m2s = runProfileLikelihoodApproximation(ErrorDef);
 				preHints_m2s=m2s;
 			}
 			if(scanRAroundBand=="all" || scanRAroundBand=="1"){
-				sigma = 2;
-				ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(sigma))+sigma ; 
+				N = 2;
+				ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ; 
 				ErrorDef *= ErrorDef;	
 				if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
 				p2s = runProfileLikelihoodApproximation(ErrorDef);
 				preHints_p2s=p2s;
 			}
+			*/	
+
+			
+			// http://cms.cern.ch/iCMS/jsp/analysis/admin/analysismanagement.jsp?ancode=HIG-11-011
+			// AN 11-298
+			// equation (38) : mu_median = sigma * normal_quantile(1-0.5*alpha) 
+			double sigma = preHints_median / TMath::NormQuantile(1-0.5*(1-CL));
+
+			cout<<" median = "<<r95<<", sigma = "<<sigma<<endl;
+
+			// equation(37)  : mu_N = sigma*(normal_quantile(1 - quantile*alpha, 1.0) + normal_quantile(quantile))
+			// equation(37)  : mu_N = sigma*(normal_quantile(1 - normal_cdf(N)*alpha) + N ) 
+			N = -2;
+			m2s = sigma *  ( TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ) ; 
+			N = -1;
+			m1s = sigma *  ( TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ) ; 
+			N = 1 ;
+			p1s = sigma *  ( TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ) ; 
+			N = 2;
+			p2s = sigma *  ( TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ) ; 
+						
+			preHints_p2s = p2s; preHints_p1s=p1s; preHints_m2s=m2s; preHints_m1s=m1s;
 
 			cout<<"BandsFromAsymptotic R@95%CL (from -2sigma -1sigma  mean  +1sigma  +2sigma,  median) : "<<endl;
 			if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
@@ -2142,6 +2184,8 @@ bool runAsymptoticLimits(){
 		cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
 		if(debug) cout<<" fitting data with MinuitFit(2)"<<endl;
 		int success[1] = {0};
+
+		_inputNuisances = cms->Get_norminalPars();
 		double L_data_glbmin =  MinuitFit(2, tmpr, tmperr, starting_mu_for_globalFit, pars, false, debug, success) ;
 		int minuitSTRATEGY_old=minuitSTRATEGY;
 		while(success[0] and minuitSTRATEGY<2) {
@@ -2151,14 +2195,18 @@ bool runAsymptoticLimits(){
 			cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
 			L_data_glbmin =  MinuitFit(2, tmpr, tmperr, starting_mu_for_globalFit+0.1, pars, false, debug, success) ;
 		}
+		double rfitted_d = tmpr;
 		minuitSTRATEGY = minuitSTRATEGY_old;
 		cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
 
 		cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
 		vdata_global = cms->Get_AsimovData(0);
+		if(!bConstructAsimovbFromNominal)_inputNuisances = cms->Get_fittedParsInData_b();
 		if(debug) cout<<" fitting asimovb with MinuitFit(2)"<<endl;
 		double L_asimovb_glbmin =  MinuitFit(2, tmpr, tmperr, 0, pars, false, debug, success) ;
+		cout<<" fitted r = "<<tmpr<<" nllmin = "<<L_asimovb_glbmin<<endl;
 		minuitSTRATEGY_old=minuitSTRATEGY;
+
 		while(success[0] and minuitSTRATEGY<2) {
 			cout<<" failed global fit of asimovb with minuitSTRATEGY = "<<minuitSTRATEGY<<endl;
 			//minuitSTRATEGY +=2 ; 
@@ -2167,7 +2215,16 @@ bool runAsymptoticLimits(){
 			//cms_global->FluctuatedNumbers();
 			//L_asimovb_glbmin =  MinuitFit(201, tmpr, tmperr, 0.1, cms_global->Get_randomizedPars(), true, debug, success) ;
 			L_asimovb_glbmin =  MinuitFit(201, tmpr, tmperr, 0.1, pars, false, debug, success) ;
+			cout<<" fitted r = "<<tmpr<<" nllmin = "<<L_asimovb_glbmin<<endl;
 		}
+		if(tmpr<0) {
+			L_asimovb_glbmin = MinuitFit(3, tmp, tmperr, 0,  pars, false, debug);
+			tmpr = 0 ;
+		}
+		double rfitted_a = tmpr;
+		if(1)cout<<" data_global min ="<<L_data_glbmin<<", best fitted r = "<<rfitted_d<<endl;
+		if(1)cout<<" asimov_global min ="<<L_asimovb_glbmin<<", best fitted r = "<<rfitted_a<<endl;
+
 		minuitSTRATEGY = minuitSTRATEGY_old;
 		cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
 
@@ -2175,11 +2232,13 @@ bool runAsymptoticLimits(){
 
 		vdata_global = cms->Get_v_data();
 		cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
+		_inputNuisances = cms->Get_norminalPars();
 		if(debug) cout<<" fitting data with MinuitFit(3)"<<endl;
 		double L_data_condmin =  MinuitFit(3, tmp, tmperr, mu, pars, false, debug);
 
 		cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
 		vdata_global = cms->Get_AsimovData(0);
+		if(!bConstructAsimovbFromNominal)_inputNuisances = cms->Get_fittedParsInData_b();
 		if(debug) cout<<" fitting asimovb with MinuitFit(3)"<<endl;
 		double L_asimovb_condmin =  MinuitFit(3, tmp, tmperr, mu, pars, false, debug);
 
@@ -2201,15 +2260,48 @@ bool runAsymptoticLimits(){
 
 		if(debug)cout<<"tmpcls = "<<tmpcls<<endl;
 		if(debug)cout<<"mu = "<<mu<<" mu_up="<<mu_up<<" mu_down="<<mu_down<<endl;
+
+		if(singlePoint){
+			vdata_global = cms->Get_v_data();
+			cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
+			_inputNuisances = cms->Get_norminalPars();
+			L_data_condmin =  MinuitFit(3, tmp, tmperr, testR, pars, false, debug);
+			vdata_global = cms->Get_AsimovData(0);
+			cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
+			if(!bConstructAsimovbFromNominal)_inputNuisances = cms->Get_fittedParsInData_b();
+			L_asimovb_condmin =  MinuitFit(3, tmp, tmperr, testR, pars, false, debug);
+
+			if(L_data_condmin - L_data_glbmin <0 ) {
+				cout<<"3 L_data_condmin = "<<L_data_condmin<<"  < "<<"L_data_glbmin="<<L_data_glbmin<<", exit"<<endl;
+				exit(1);
+			}
+			if(L_asimovb_condmin - L_asimovb_glbmin <0 ) {
+				cout<<"4 L_asimovb_condmin = "<<L_asimovb_condmin<<"  < "<<"L_asimovb_glbmin="<<L_asimovb_glbmin<<", exit"<<endl;
+				exit(1);
+			}
+			tmpcls = (  1 - ROOT::Math::normal_cdf( sqrt(L_data_condmin - L_data_glbmin) ) ) / ( ROOT::Math::normal_cdf(
+						sqrt(L_asimovb_condmin - L_asimovb_glbmin) - sqrt(L_data_condmin - L_data_glbmin)
+						) ); 
+
+			cout<<" L_asimovb_condmin = "<<L_asimovb_condmin<<" , "<<"L_asimovb_glbmin="<<L_asimovb_glbmin<<", exit"<<endl;
+			cout<<" qmu = "<<L_data_condmin - L_data_glbmin<<" qasimov = "<<L_asimovb_condmin - L_asimovb_glbmin<<endl;
+			cout<<" RESULTS:  mu  = "<<testR;
+			cout<<" clsb = "<<1 - ROOT::Math::normal_cdf( sqrt(L_data_condmin - L_data_glbmin) );
+			cout<<" clb = "<<ROOT::Math::normal_cdf(sqrt(L_asimovb_condmin - L_asimovb_glbmin) - sqrt(L_data_condmin - L_data_glbmin));
+			cout<<" cls = "<<tmpcls<<endl;
+			return 0;
+		}
 		if( fabs(tmpcls - (1-CL)) > precision ) {
 			if( tmpcls > 1-CL ){
 				while ( tmpcls > (1-CL) ) {
 					mu_up *= 2.; 
 					vdata_global = cms->Get_v_data();
 					cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
+					_inputNuisances = cms->Get_norminalPars();
 					L_data_condmin =  MinuitFit(3, tmp, tmperr, mu_up, pars, false, debug);
 					vdata_global = cms->Get_AsimovData(0);
 					cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
+					if(!bConstructAsimovbFromNominal)_inputNuisances = cms->Get_fittedParsInData_b();
 					L_asimovb_condmin =  MinuitFit(3, tmp, tmperr, mu_up, pars, false, debug);
 
 					if(L_data_condmin - L_data_glbmin <0 ) {
@@ -2233,9 +2325,11 @@ bool runAsymptoticLimits(){
 					mu_down /= 2.; 
 					vdata_global = cms->Get_v_data();
 					cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
+					_inputNuisances = cms->Get_norminalPars();
 					L_data_condmin =  MinuitFit(3, tmp, tmperr, mu_down, pars, false, debug);
 					vdata_global = cms->Get_AsimovData(0);
 					cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
+					if(!bConstructAsimovbFromNominal)_inputNuisances = cms->Get_fittedParsInData_b();
 					L_asimovb_condmin =  MinuitFit(3, tmp, tmperr, mu_down, pars, false, debug);
 
 					if(L_data_condmin - L_data_glbmin <0 ) {
@@ -2260,9 +2354,11 @@ bool runAsymptoticLimits(){
 
 				vdata_global = cms->Get_v_data();
 				cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
+				_inputNuisances = cms->Get_norminalPars();
 				L_data_condmin =  MinuitFit(3, tmp, tmperr, mu, pars, false, debug);
 				vdata_global = cms->Get_AsimovData(0);
 				cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
+				if(!bConstructAsimovbFromNominal)_inputNuisances = cms->Get_fittedParsInData_b();
 				L_asimovb_condmin =  MinuitFit(3, tmp, tmperr, mu, pars, false, debug);
 
 				if(L_data_condmin - L_data_glbmin <0 ) {
@@ -2538,6 +2634,7 @@ void PrintHelpMessage(){
 	printf("--bMultiSigProcShareSamePDF           e.g. in hzz4l, the ggH, WH, ZH, ttH and VBF have the same signal pdf, when evaluating LL, we can avoid duplicated calculations \n");
 	printf("--bFixNuisancsAtNominal               fix nuisances to nominal value instead of fitting to data in case of LHC-CLs\n");
 	printf("--scanRAroundBand  (=all)            scan signal strengths around band (-2, -1, 0, 1, 2, obs, all)\n");
+	printf("--bConstructAsimovbFromNominal	      construct asimov_b dataset from nominal nuisances   (default is from fitted nuisances) \n");
 
 	printf(" \n");
 	printf("------------------some comand lines-----------------------------------------------\n");

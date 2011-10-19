@@ -209,7 +209,7 @@ namespace lands{
 			const vector< RooDataSet* >& Get_v_pdfs_roodataset_toy(){return v_pdfs_roodataset_toy;} // in each channel, it has a list of events
 			const vector< RooDataSet* >& Get_v_pdfs_roodataset_real(){return v_pdfs_roodataset_real;} // in each channel, it has a list of events
 			const vector< RooDataSet* >& Get_v_pdfs_roodataset_asimovb(){return v_pdfs_roodataset_asimovb;} // in each channel, it has a list of events
-			void ConstructAsimovData(int b);
+			void ConstructAsimovData(int b, bool nominal=true);
 			const vector< RooDataSet* >& Get_v_pdfs_roodataset_asimovsb(){return v_pdfs_roodataset_asimovsb;} // in each channel, it has a list of events
 			const vector< double >& Get_v_pdfs_floatParamsVaried(){return v_pdfs_floatParamsVaried;}
 			const vector< vector< double > >& Get_v_pdfs_floatParamsUnc(){ return v_pdfs_floatParamsUnc;}
@@ -284,6 +284,7 @@ namespace lands{
 		private:
 			VDChannel v_data; // could be pseudo-data for bands
 			VDChannel v_data_real; // real data, not changed during entire run 
+			VDChannel v_data_asimovb; // asimov data b only
 			VChannelVSample vv_exp_sigbkgs;
 			VChannelVSample vv_exp_sigbkgs_scaled;
 			VChannelVSample vv_randomized_sigbkgs;   

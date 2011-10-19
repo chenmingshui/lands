@@ -1746,7 +1746,7 @@ bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripp
 
 bool ConfigureModel(CountingModel *cms, double mass, const char* fileName, int debug){
 	TString s = ReadFile(fileName);
-	cout<<"DELETEME model name = "<<fileName<<endl;
+	cout<<"data card name = "<<fileName<<endl;
 	cms->SetModelName(fileName);
 	return CheckIfDoingShapeAnalysis(cms, mass,  s, debug);
 }

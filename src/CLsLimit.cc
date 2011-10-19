@@ -409,7 +409,9 @@ namespace lands{
 
 			double nuisancesFitRange  =  cms_global->Get_nuisancesRange(); // default is 5 sigma variation allowed
 
+			if(debug) cout<<" nuisancesFitRange = "<<nuisancesFitRange<<" sigma "<<endl;
 			for(int i=1; i<=npars; i++){
+				if(debug>=10) cout<<" in par "<<i<<endl;
 				TString sname=v_uncname[i-1]; 
 				//	if(debug>=10) cout<<"DELETEME in MinuitFit    "<<sname<<endl;
 				switch (v_pdftype[i]){
@@ -439,6 +441,7 @@ namespace lands{
 						break;
 					case typeBifurcatedGaussian:
 						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, v_paramsUnc[i][3], v_paramsUnc[i][4], ierflg  );
+						if(debug>=10) cout<<" _startNuisances = "<<_startNuisances[i]<<endl;
 						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_startNuisances[i], minuitStep, v_paramsUnc[i][3], v_paramsUnc[i][4], ierflg  );
 						break;
 					case typeFlat:
