@@ -2628,7 +2628,7 @@ If we need to change it later, it will be easy to do.
 			    //tmprrv->setDirtyInhibit(1);
 			    //tmprrv->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset_tmp[ch]->get(i)->first()))->getVal());
 			    
-			    std::auto_ptr<TIterator> iter(v_pdfs_roodataset[ch]->get(i)->createIterator());
+			    std::auto_ptr<TIterator> iter(v_pdfs_roodataset_tmp[ch]->get(i)->createIterator());
 			    for(RooRealVar * obs= (RooRealVar*)iter->Next(); obs!=0; obs=(RooRealVar*)iter->Next()){
 				    _w_varied->var(obs->GetName())->setVal(obs->getVal());
 				    //cout<<" Bin "<<i<<": "<<obs->getVal()<<endl;
