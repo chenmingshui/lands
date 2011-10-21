@@ -2462,7 +2462,7 @@ If we need to change it later, it will be easy to do.
 		    for(int i=0; i<v_pdfs_roodataset_toy[ch]->numEntries(); i++){
 			    ///_w->var(v_pdfs_observables[ch])->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset_toy[ch]->get(i)->first()))->getVal());
 			    
-			    std::auto_ptr<TIterator> iter(v_pdfs_roodataset[ch]->get(i)->createIterator());
+			    std::auto_ptr<TIterator> iter(v_pdfs_roodataset_toy[ch]->get(i)->createIterator());
 			    for(RooRealVar * obs= (RooRealVar*)iter->Next(); obs!=0; obs=(RooRealVar*)iter->Next()){
 				    _w->var(obs->GetName())->setVal(obs->getVal());
 			    }
