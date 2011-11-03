@@ -2195,6 +2195,10 @@ bool runAsymptoticLimits(){
 			cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
 			L_data_glbmin =  MinuitFit(2, tmpr, tmperr, starting_mu_for_globalFit+0.1, pars, false, debug, success) ;
 		}
+		if(tmpr<0){
+			L_data_glbmin =  MinuitFit(3, tmp, tmperr, 0, pars, false, debug);
+			tmpr=0;
+		}
 		double rfitted_d = tmpr;
 		minuitSTRATEGY = minuitSTRATEGY_old;
 		cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
@@ -2258,9 +2262,12 @@ bool runAsymptoticLimits(){
 		double precision = 0.001;
 		double mu_up = mu, mu_down=mu;
 
-		if(debug)cout<<"tmpcls = "<<tmpcls<<endl;
-		if(debug)cout<<"mu = "<<mu<<" mu_up="<<mu_up<<" mu_down="<<mu_down<<endl;
-
+		if(debug or tmpcls==0)cout<<"tmpcls = "<<tmpcls<<endl;
+		if(debug or tmpcls==0)cout<<"mu = "<<mu<<" mu_up="<<mu_up<<" mu_down="<<mu_down<<endl;
+		if(tmpcls==0) {
+			cout<<" L_data_condmin = "<<L_data_condmin<<", L_data_glbmin="<<L_data_glbmin<<"; L_asimovb_condmin="<<L_asimovb_condmin<<", L_asimovb_glbmin="<<L_asimovb_glbmin<<endl;
+			cout<<"ROOT::Math::normal_cdf( sqrt(L_data_condmin - L_data_glbmin) ) = "<<ROOT::Math::normal_cdf( sqrt(L_data_condmin - L_data_glbmin) ) <<endl;
+		}
 		if(singlePoint){
 			vdata_global = cms->Get_v_data();
 			cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
