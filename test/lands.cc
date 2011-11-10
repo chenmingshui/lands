@@ -153,6 +153,8 @@ TString scanRAroundBand = "all";
 
 bool bConstructAsimovbFromNominal = false;
 
+bool bDumpFitResults = false;
+
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
 
@@ -926,6 +928,9 @@ int main(int argc, const char*argv[]){
 			double ErrorDef = TMath::ChisquareQuantile(0.68 , 1);// (confidenceLevel, ndf)
 			int success[1]={0};
 			_countPdfEvaluation = 0;
+			if(bDumpFitResults){
+				lands::_bDumpFinalFitResults = true;
+			}
 			double y0_2 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //202, 201, 2:  allow mu to be negative
 			//double y0_2 =  MinuitFit(102, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //102, 101, 21:  don't allow mu to be negative
 			if(debug) cout<<" _countPdfEvaluation = "<<_countPdfEvaluation<<endl;
@@ -936,6 +941,7 @@ int main(int argc, const char*argv[]){
 
 			
 			SaveResults(jobname+"_maxllfit", HiggsMass, 0, 0, 0, 0, 0, mu_hat_low, 0, mu_hat, mu_hat_up, 0);
+			if(bDumpFitResults)cms->DumpFitResults(pars, jobname+"_fittedShape_floatMu");
 
 
 			double y0_3, mu_hat2, mu_hat_up2, mu_hat_low2;
@@ -1083,6 +1089,8 @@ int main(int argc, const char*argv[]){
 					if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
 					vr.push_back(testr);
 					vc.push_back(y0_1-y0_2);
+					TString sj = jobname; sj+="_fittedShape_mu"; sj+=testr;
+					if(bDumpFitResults)cms->DumpFitResults(pars, sj);
 				}
 				if( scanRs >= 2) {
 					if(mu_hat<vR_toEval[0]){
@@ -1524,13 +1532,13 @@ void processParameters(int argc, const char* argv[]){
 		//if(initialRmax<=0) initialRmax = 20;
 	}
 
-	tmpv = options["-rMin"]; 
+	tmpv = options["-rMin"]; if(tmpv.size()!=1) tmpv = options["--rMin"];
 	if( tmpv.size()!=1 ) { customRMin = 0; }
 	else {
 		customRMin = tmpv[0].Atof();
 	}
 
-	tmpv = options["-rMax"]; 
+	tmpv = options["-rMax"]; if(tmpv.size()!=1) tmpv = options["--rMax"];
 	if( tmpv.size()!=1 ) { customRMax = 0; }
 	else {
 		customRMax = tmpv[0].Atof();
@@ -1747,6 +1755,9 @@ void processParameters(int argc, const char* argv[]){
 
 	// for LHC-CLs method
 	if(isWordInMap("--bFixNuisancsAtNominal", options)) bFixNuisancsAtNominal = true;
+
+
+	if(isWordInMap("--bDumpFitResults", options)) bDumpFitResults = true; 
 
 
 	printf("\n\n[ Summary of configuration in this job: ]\n");
@@ -2642,6 +2653,7 @@ void PrintHelpMessage(){
 	printf("--bFixNuisancsAtNominal               fix nuisances to nominal value instead of fitting to data in case of LHC-CLs\n");
 	printf("--scanRAroundBand  (=all)            scan signal strengths around band (-2, -1, 0, 1, 2, obs, all)\n");
 	printf("--bConstructAsimovbFromNominal	      construct asimov_b dataset from nominal nuisances   (default is from fitted nuisances) \n");
+	printf("--bDumpFitResults                     dump fit results and also the fitted shape if there is any shape input (only binned supported) \n");
 
 	printf(" \n");
 	printf("------------------some comand lines-----------------------------------------------\n");

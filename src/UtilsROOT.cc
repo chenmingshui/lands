@@ -848,6 +848,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 			if(TString(shape[i][4]).Contains(":") and TString(shape[i][0]) != "##") parametricShapeLines.push_back(shape[i]);
 		}
 		for(int i=0; i<shapeuncertainties.size(); i++){// for histogram morphing ....    keyword:  shapeN, shapeL, shape, shapeQ ,  alternative two sets of histogram for the variations w.r.t a particular source of systematics
+//need to implement shape2 and shapeN2  which do interpolation in log scale   instead of  linear scale 
 			for(int j=i+1; j<shapeuncertainties.size(); j++){
 				if(shapeuncertainties[j][1]==shapeuncertainties[i][1] and shapeuncertainties[j][2]==shapeuncertainties[i][2]
 						and shapeuncertainties[j][5] == shapeuncertainties[i][5]
@@ -938,7 +939,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 		vector<TString> vs_unc; vs_unc.clear();
 		for(int u=0; u<nsyssources; u++) {
 			vector<string>	ss1 = uncerlines[u]; 
-			if(ss1[1]=="shapeN") ss1[1]="lnN"; 
+			if(ss1[1]=="shapeN" or ss1[1]=="shapeN2") ss1[1]="lnN"; 
 			TString s = ""; s+=ss1[0].c_str(); s+=" "; s+=ss1[1].c_str(); s+=" "; 
 			if(ss1[1]=="gmA" or ss1[1]=="gmN"){
 				s+=ss1[2]; s+=" ";
@@ -1047,7 +1048,12 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 					n++; 
 					int proc = 0;
 					for(int t=0; t<n_proc; t++){
-						s_bin+=channelnames[c]; s_bin+="_"; s_bin+=r; s_bin+=" ";
+						//s_bin+=channelnames[c]; s_bin+="_"; s_bin+=r; s_bin+=" ";
+						s_bin+="TH1F_"; s_bin+=channelnames[c];
+						s_bin+="_"; s_bin+=h->GetBinLowEdge(r);
+						s_bin+="_"; s_bin+=h->GetBinCenter(r); 
+						s_bin+="_"; s_bin+=h->GetBinWidth(r); 
+						s_bin+=" ";
 						s_rate+=((hn[proc]))->GetBinContent(r);s_rate+=" ";
 						// fill  s_process  //FIXME
 						s_process += (proc-nsigproc[c]+1) ; s_process += " ";
@@ -1060,7 +1066,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 							if(uncertypes[u]=="param" or uncertypes[u]=="flatParam") continue;
 							if(1){
 								if(debug>=100) cout<<"debug "<<uncertypes[u]<<endl;
-								if(uncertypes[u]=="shape" or uncertypes[u]=="shapeL" or uncertypes[u]=="shapeQ" or uncertypes[u]=="shapeN" or uncertypes[u]=="shapeStat"){
+								if(uncertypes[u]=="shape" or uncertypes[u]=="shape2" or uncertypes[u]=="shapeL" or uncertypes[u]=="shapeQ" or uncertypes[u]=="shapeN" or uncertypes[u]=="shapeN2" or uncertypes[u]=="shapeStat"){
 									TString unc = GetUncertainy(c, t, vv_procnames, uncerlines[u]);
 									if(unc.IsFloat() && unc.Atof()>0){ // number should be > 0
 										double down = hunc_dn_norm[t][u]->GetBinContent(r);
@@ -1085,7 +1091,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 										double norm_up = hunc_up[t][u]->Integral();
 										double norm_norminal = hn[t]->Integral();
 										TString stmp;
-										if(uncertypes[u]=="shapeN" or uncertypes[u]=="shapeStat"){
+										if(uncertypes[u]=="shapeN" or uncertypes[u]=="shapeN2" or uncertypes[u]=="shapeStat"){
 											vs_unc[u]+=(norminal==0?1:down/norminal); vs_unc[u] += "/";
 											stmp.Form("%g",(norminal==0?1:up/norminal));
 											//vs_unc[u]+=(norminal==0?1:up/norminal); vs_unc[u] += " ";
@@ -1300,12 +1306,28 @@ bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripp
 			if(TString(vss_processes[l][i]).Atoi()<=0) nsigproc[nsigproc.size()-1]++;
 			if(TString(vss_processes[l][i]).Atoi()==0) tmpn++; // as each channel has "0" standing for one of signal processes
 			processnames.push_back(vss_processes[l][i]); // we temporarily assign process name as the "number", if another "process" line found,  we'll make change later
+
+
+			// check that processes number follow   " -2 -1  0  1  2 " ordering 
+			int currproc = TString(vss_processes[l][i]).Atoi();
+			if(currproc<=0){
+				bool procOrderingIsFine = true;
+				if(vss_processes[l].size()<=i+1){procOrderingIsFine = false;} 
+				else {
+					int nextproc = TString(vss_processes[l][i+1]).Atoi();
+					if(nextproc!= currproc+1) procOrderingIsFine = false;
+				}
+				if(procOrderingIsFine == false) {
+					cout<<"ERROR: in \"process\" line, the ordering is wrong,  you have to follow the following ordering in each bin: "<<endl;
+					cout<<"       .... -2 -1 0 1 2 ....."<<endl;
+					exit(0);
+				}
+			}
 		}
 		// debug
 		for(int i=0; i<nsigproc.size(); i++){
 			if(debug)cout<<" n signal process in channel "<<i<<": "<<nsigproc[i]<<endl;
 		}
-
 
 		if(tmpn>0) {
 			l_proc = l; // record which line of "process" lines is for enumeration
@@ -1533,10 +1555,14 @@ bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripp
 		else if(ss[1]=="flat") pdf=typeFlat;   // typeFlat
 		else if(ss[1]=="trG") pdf=typeTruncatedGaussian; // typeTruncatedGaussian
 		else if(ss[1]=="gmA" or ss[1]=="gmN" or ss[1]=="gmM") pdf=typeGamma; // typeControlSampleInferredLogNormal;  gmA was chosen randomly, while in gmN, N stands for yield in control sample;  gmM stands for Multiplicative gamma distribution, it implies using a Gamma distribution not for a yield but for a multiplicative correction
-		else if(ss[1]=="shapeN" or ss[1]=="shapeStat") pdf=typeLogNormal;
-		else if(ss[1]=="shape" or ss[1]=="shapeQ") pdf=typeShapeGaussianQuadraticMorph;
+		else if(ss[1]=="shapeN" or ss[1]=="shapeN2"  or ss[1]=="shapeStat") pdf=typeLogNormal;
+		else if(ss[1]=="shape" or ss[1]=="shape2" or ss[1]=="shapeQ") pdf=typeShapeGaussianQuadraticMorph;
 		else if(ss[1]=="shapeL" ) pdf=typeShapeGaussianLinearMorph;
-		else pdf =  (TString(ss[1])).Atoi();
+		else {
+			//pdf =  (TString(ss[1])).Atoi();
+			cout<<" ERROR: Uncertainty type ["<<ss[1]<<"] is not defined yet "<<endl;
+			exit(1);
+		}
 
 		tmps+= TString::Format("%3s ", ss[1].c_str());
 		if(pdf==typeGamma && ss[1]!="gmM") {
@@ -2181,8 +2207,8 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 		else if(ss[1]=="flat") pdf=typeFlat; // typeFlat
 		else if(ss[1]=="trG") pdf=typeTruncatedGaussian; // typeTruncatedGaussian
 		else if(ss[1]=="gmA" or ss[1]=="gmN" or ss[1]=="gmM") pdf=typeGamma; // typeControlSampleInferredLogNormal;  gmA was chosen randomly, while in gmN, N stands for yield in control sample;  gmM stands for Multiplicative gamma distribution, it implies using a Gamma distribution not for a yield but for a multiplicative correction
-		else if(ss[1]=="shapeN" or ss[1]=="shapeStat") pdf=typeLogNormal;
-		else if(ss[1]=="shape" or ss[1]=="shapeQ") pdf=typeShapeGaussianQuadraticMorph;
+		else if(ss[1]=="shapeN" or ss[1]=="shapeN2" or ss[1]=="shapeStat") pdf=typeLogNormal;
+		else if(ss[1]=="shape" or ss[1]=="shape2" or ss[1]=="shapeQ") pdf=typeShapeGaussianQuadraticMorph;
 		else if(ss[1]=="shapeL" ) pdf=typeShapeGaussianLinearMorph;
 		else if(ss[1]=="param" ) {
 			pdf=typeBifurcatedGaussian;
@@ -2191,8 +2217,11 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 			pdf=typeFlat;
 			vshape_params_unclines.push_back(ss);
 		}
-		else pdf =  (TString(ss[1])).Atoi();
-
+		else {
+			//pdf =  (TString(ss[1])).Atoi();
+			cout<<" ERROR: Uncertainty type ["<<ss[1]<<"] is not defined yet "<<endl;
+			exit(1);
+		}
 
 		if(debug) cout<<" pdf type "<<pdf<<endl;
 
@@ -2206,7 +2235,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 		}
 		else		   tmps+= "         ";
 
-		if(ss[1]=="flat" or ss[1]=="lnN" or ss[1]=="trG" or ss[1]=="gmM" or ss[1]=="shapeN" or ss[1]=="shape" or ss[1]=="shapeStat" or ss[1]=="shapeL" 
+		if(ss[1]=="flat" or ss[1]=="lnN" or ss[1]=="trG" or ss[1]=="gmM" or ss[1]=="shapeN" or ss[1]=="shapeN2" or ss[1]=="shape" or ss[1]=="shape2" or ss[1]=="shapeStat" or ss[1]=="shapeL" 
 				or ss[1]=="shapeQ"){
 			if(ss.size()<ntotprocesses+2) { cout<<"Error... uncertainty "<<ss[0]<<": doesn't have enough collums"<<endl; exit(1) ; }
 		}

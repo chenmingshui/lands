@@ -26,6 +26,7 @@
 #include "RooBifurGauss.h"
 #include "RooWorkspace.h"
 #include <map>
+#include "TString.h"
 
 using namespace std;
 namespace lands{
@@ -281,6 +282,9 @@ namespace lands{
 
 			void ForceSymmetryError(bool b){b_ForceSymmetryError = b;};
 			void MultiSigProcShareSamePDF(bool b){b_MultiSigProcShareSamePDF = b;};
+
+
+			void DumpFitResults(double *pars, TString ssave);
 		private:
 			VDChannel v_data; // could be pseudo-data for bands
 			VDChannel v_data_real; // real data, not changed during entire run 

@@ -33,6 +33,7 @@
 #include "RooWorkspace.h"
 #include "RooHistFunc.h"
 #include "CLsLimit.h"
+#include "TGraphAsymmErrors.h"
 //#include "RooStats/RooStatsUtils.h"
 
 using namespace std;
@@ -3242,5 +3243,65 @@ If we need to change it later, it will be easy to do.
 		    }
 	    }
 
+    }
+    void CountingModel::DumpFitResults(double *pars, TString ssave){
+	VChannelVSample vv = FluctuatedNumbers(pars);	
+	vector< vector<TGraphAsymmErrors*> > vvTGraph; vvTGraph.clear();
+	for(int c=0; c<vv.size(); c++){
+		TString cname = v_channelname[c];
+		if(cname.BeginsWith("TH1F_")){
+			vector<string> vs;
+			StringSplit(vs,v_channelname[c], "_");
+			if(vs.size()<5) continue;
+			double bincenter = TString(vs[vs.size()-2]).Atof();
+			double binlow = TString(vs[vs.size()-3]).Atof();
+			double binhigh = TString(vs[vs.size()-1]).Atof() + binlow;
+			cname = "";
+			for(int i=1; i<vs.size()-3; i++){
+				cname += vs[i];
+			}
+			bool newchannel = false;
+			if(c==0){
+				newchannel = true;
+			}else{
+				TString cname1 = v_channelname[c-1];
+				if(cname1.BeginsWith("TH1F_")){
+					vector<string> vs1;
+					StringSplit(vs1,v_channelname[c-1], "_");
+					if(vs1.size()<5) { newchannel = true; continue; }
+					cname1 = "";
+					for(int i=1; i<vs1.size()-3; i++){
+						cname1 += vs1[i];
+					}
+					if(cname != cname1) newchannel = true;
+				}else{ newchannel = true; }
+			}
+			if(newchannel){
+				vector<TGraphAsymmErrors*> vTGraph; vTGraph.clear();
+				for(int p=0; p<vv[c].size(); p++){
+					TGraphAsymmErrors* gr = new TGraphAsymmErrors();
+					gr->Set(0);
+					vTGraph.push_back(gr);
+					TString histname = cname; histname+="_"; histname+=vv_procname[c][p];
+					gr->SetName(histname);
+				}	
+				vvTGraph.push_back(vTGraph);
+			}
+			for(int p=0; p<vv[c].size(); p++){
+				TGraphAsymmErrors * gr = vvTGraph.back()[p];
+				gr->Set(gr->GetN()+1);
+				gr->SetPoint(gr->GetN()-1, bincenter, vv[c][p]);
+				gr->SetPointError(gr->GetN()-1, bincenter-binlow, binhigh-bincenter, 0, 0);
+			}
+		}
+	}
+	TFile *f = new TFile(ssave+".root", "RECREATE");
+	for(int c=0; c<vvTGraph.size(); c++){
+		for(int p=0; p<vvTGraph[c].size(); p++){
+			vvTGraph[c][p]->Sort();
+			f->WriteTObject(vvTGraph[c][p]);
+		}
+	}
+	f->Close();
     }
 };

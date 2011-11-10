@@ -56,6 +56,8 @@ namespace lands{
 
 	double _countPdfEvaluation = 0;
 
+	bool _bDumpFinalFitResults = 0;
+
 	double del_oldn = 0; double del_newn =0 ; //DELETEME
 	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag){
 
@@ -587,11 +589,11 @@ namespace lands{
 
 			if(debug || pars || ierflg){
 
-				if(debug || ierflg )printf("  par                 name         fitted_value        input_value        start_value\n");
+				if(debug || ierflg || _bDumpFinalFitResults )printf("  par                 name         fitted_value        input_value        start_value\n");
 				for(int i=0; i<=npars; i++){
 					double tmp, tmpe;
 					myMinuit->GetParameter(i, tmp, tmpe);
-					if(debug || ierflg ) printf("  par %30s      %.6f +/- %.6f      %.6f     %.6f\n", i>0?v_uncname[i-1].c_str():"signal_strength", tmp, tmpe, _inputNuisances[i], _startNuisances[i]);
+					if(debug || ierflg || _bDumpFinalFitResults ) printf("  par %30s      %.6f +/- %.6f      %.6f     %.6f\n", i>0?v_uncname[i-1].c_str():"signal_strength", tmp, tmpe, _inputNuisances[i], _startNuisances[i]);
 					if(pars && !hasBestFitted)pars[i] = tmp;
 					//if(pars)pars[i] = tmp;
 				}
