@@ -922,6 +922,7 @@ int main(int argc, const char*argv[]){
 			_inputNuisances = cms->Get_norminalPars();
 			_startNuisances = cms->Get_norminalPars();
 
+			if(bDumpFitResults)cms->DumpFitResults(_inputNuisances, jobname+"_nominalShape");
 
 			double *pars = new double[cms->Get_max_uncorrelation()+1]; // nsys + r
 			double tmp=0, tmpr = 0, tmperr=0;
