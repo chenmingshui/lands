@@ -2051,7 +2051,9 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys, bool bWriteToys){ 
 				}
 				if(!_model->UseBestEstimateToCalcQ()){
 					//generate nuisance around b^hat_0 
+				if(_debug>=1000)cout<<" ---- DELETEME in BuildM2lnQ_b "<<" before fluctuatenumber "<<endl;
 					VChannelVSample vv =  _model->FluctuatedNumbers(0, false, 2); // toss nuisance around fitted b_hat_0 in data  
+				if(_debug>=1000)cout<<" ---- DELETEME in BuildM2lnQ_b "<<" after fluctuatenumber "<<endl;
 					_inputNuisances = _model->Get_randomizedPars();	
 					_startNuisances = _model->Get_fittedParsInData_b();
 					for(int itmp=0; itmp<_model->Get_v_pdftype().size(); itmp++){

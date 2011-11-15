@@ -1029,7 +1029,11 @@ If we need to change it later, it will be easy to do.
             if(bUseBestEstimateToCalcQ==1)vv= scaled?vv_exp_sigbkgs_scaled:vv_exp_sigbkgs;
             else if(bUseBestEstimateToCalcQ==0)vv= scaled?vv_randomized_sigbkgs_scaled:vv_randomized_sigbkgs;
             else vv= scaled?vv_fitted_sigbkgs_scaled:vv_fitted_sigbkgs;
-            for(int ch=0; ch<vvv_idcorrl.size(); ch++){
+	if(_debug >=1000 ){
+		cout<<" DELETEME 88881 vv_fitted_sigbkgs.size()="<<vv_fitted_sigbkgs.size()<<endl;
+		cout<<" DELETEME 88881 vv.size()="<<vv.size()<<endl;
+        }
+	    for(int ch=0; ch<vvv_idcorrl.size(); ch++){
                 nsigproc = v_sigproc[ch];
                 for(isam=0; isam<vvv_idcorrl[ch].size(); isam++){
                     if(bMoveUpShapeUncertainties){
@@ -1099,10 +1103,20 @@ If we need to change it later, it will be easy to do.
                         pdftype = vvv_pdftype[ch][isam][iunc];
                         ran = vrdm[indexcorrl];
                         uncpars  = &(vvvv_uncpar[ch][isam][iunc][0]);
+
                         switch (pdftype){
                             case typeLogNormal : 
                                 //vv[ch][isam]*=pow( (1+ vvvv_uncpar[ch][isam][iunc][ (ran>0?1:0) ]), ran ); // down/up
-                                vv[ch][isam]*=pow( (1+ (ran>0? *(uncpars+1):*uncpars) ) , ran );
+				if(_debug >=1000 ){
+					cout<<"DELETEME ran = "<<ran<<" "<<endl;
+					cout<<"DELETEME uncpars = "<<*uncpars<<" "<<endl;
+					cout<<"DELETEME uncpars+1 = "<<*(uncpars+1)<<" "<<endl;
+					cout<<"DELETEME -- "<<(ran>0? (*(uncpars+1)):(*uncpars))<<endl;
+					cout<<"DELETEME -- "<<pow( (1+ (ran>0? (*(uncpars+1)):(*uncpars)) ) , ran )<<endl;
+					cout<<" ch="<<ch<<" sam="<<isam<<endl; 
+					cout<<"vv[ch][isam]="<<vv[ch][isam]<<endl;
+				}
+                                vv[ch][isam]*=pow( (1+ (ran>0? (*(uncpars+1)):(*uncpars)) ) , ran );
                                 break;
 
                             case typeTruncatedGaussian :
@@ -1747,7 +1761,8 @@ If we need to change it later, it will be easy to do.
 		    if(!nominal) { // from fitted nuisances
 			    double *pars = new double[cms_global->Get_max_uncorrelation()+1];
 			    DoAfit(0, v_data_real, v_pdfs_roodataset_real, pars); 
-			    _fittedParsInData_bonly = pars;
+			    //_fittedParsInData_bonly = pars;
+			    Set_fittedParsInData_b(pars);
 
 			    VChannelVSample vv = FluctuatedNumbers(_fittedParsInData_bonly);
 			    v_data_asimovb = v_data;

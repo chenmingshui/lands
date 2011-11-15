@@ -413,6 +413,12 @@ int main(int argc, const char*argv[]){
 				cms->Set_fittedParsInData_b(cms->Get_norminalPars());
 			}
 
+				if(debug>=1000){
+				cout<<" *** DELETEME checking 1"<<endl;
+			    int npars = cms_global->Get_max_uncorrelation();
+			    for(int i=0; i<=npars; i++) 
+				    printf("DELETEME  par %30s      %.6f \n", i>0?cms->Get_v_uncname()[i-1].c_str():"signal_strength", cms->Get_fittedParsInData_b()[i]);
+				}
 
 			vector<double> vb, vsb;
 			if(scanRs && vR_toEval.size()>0){
@@ -467,7 +473,15 @@ int main(int argc, const char*argv[]){
 				if(nToysForCLb<=0) nToysForCLb=toysHybrid;
 				frequentist.BuildM2lnQ_sb(nToysForCLsb, false, bWriteToys);
 				vsb = frequentist.Get_m2logQ_sb();
+
+				if(debug>=1000){
+				cout<<" *** DELETEME checking 2"<<endl;
+			    int npars = cms_global->Get_max_uncorrelation();
+			    for(int ii=0; ii<=npars; ii++) 
+				    printf("DELETEME  par %30s      %.6f \n", ii>0?cms->Get_v_uncname()[ii-1].c_str():"signal_strength", cms->Get_fittedParsInData_b()[ii]);
+				}
 				frequentist.BuildM2lnQ_b(nToysForCLb, false, bWriteToys);
+
 				vb = frequentist.Get_m2logQ_b();
 				if(bWriteToys){
 					watch.Print();
@@ -1874,7 +1888,7 @@ double runProfileLikelihoodApproximation(double neg2_llr){
 	double *pars = new double[cms->Get_max_uncorrelation()+1]; // nsys + r
 
 	if(_inputNuisances == NULL) _inputNuisances = cms->Get_norminalPars();
-	if(_inputNuisances == NULL) _startNuisances = cms->Get_norminalPars();
+	if(_startNuisances == NULL) _startNuisances = cms->Get_norminalPars();
 
 
 	double ErrorDef = TMath::ChisquareQuantile(CL , 1);// (confidenceLevel, ndf)
