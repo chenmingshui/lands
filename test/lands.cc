@@ -452,10 +452,10 @@ int main(int argc, const char*argv[]){
 					TString s_qdata; s_qdata.Form("DATA_R%.5f_Q%.5f", cms->GetSignalScaleFactor(), qdata);
 					TString s_sb = "SAMPLING_SB_"; s_sb+=s_r;
 					TString s_b = "SAMPLING_B_"; s_b+=s_r;
-					TString fileM2lnQ = jobname; fileM2lnQ+="_m2lnQ.root";
+					TString fileM2lnQ = jobname; fileM2lnQ+="_m2lnQ_deprecated.root";
 					TString option = (i==0?"RECREATE":"UPDATE");
 					FillTree(fileM2lnQ, cms->GetSignalScaleFactor(), qdata, vsb, vb, s_r, s_qdata, s_sb, s_b, option);
-					fileM2lnQ = jobname; fileM2lnQ+="_m2lnQ2.root";
+					fileM2lnQ = jobname; fileM2lnQ+="_m2lnQ.root";
 					FillTree2(fileM2lnQ, cms->GetSignalScaleFactor(), qdata, vsb, vb, s_r, s_sb, s_b, option);
 				}
 				watch.Print();
