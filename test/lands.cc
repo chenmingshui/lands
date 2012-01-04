@@ -216,7 +216,7 @@ int main(int argc, const char*argv[]){
 	if(debug)cms->Print();
 	cms->SetRdm(rdm);
 	//cms->RemoveChannelsWithExpectedSignal0orBkg0();
-	int nch_removed  = cms->RemoveChannelsWithExpectedSignal0orBkg0(0); // 0: remove only bins with total bkg<=0,  1: remove bins with total sig<=0,  2: both
+	int nch_removed = 0;// cms->RemoveChannelsWithExpectedSignal0orBkg0(0); // 0: remove only bins with total bkg<=0,  1: remove bins with total sig<=0,  2: both
 	if(debug and nch_removed )cms->Print();
 	if(nch_removed)cms->SetUseSystematicErrors(systematics);//need reconfig,  otherwise crash
 	//cms->SetAllowNegativeSignalStrength(false);
@@ -1145,7 +1145,10 @@ int main(int argc, const char*argv[]){
 			}
 
 
+		}else{
+			if(doExpectation && sFileLimitsDistribution!="") saveExpectation();
 		}
+		
 
 
 	}else { // calc significances 
@@ -2125,12 +2128,12 @@ bool runAsymptoticLimits(){
 	//double ErrorDef = TMath::NormQuantile(0.975)*TMath::NormQuantile(0.975); 
 	double ErrorDef = TMath::ChisquareQuantile(CL , 1);// (confidenceLevel, ndf)
 	if(1){ // first get hint of the limit from  PLR method, wrong asymptotic formula
-		cout<<"  DELETEME :   _inputNuisances[2] = "<<_inputNuisances[2]<<endl;
+		//cout<<"  DELETEME :   _inputNuisances[2] = "<<_inputNuisances[2]<<endl;
 		if(dataset == "asimov_b" and bConstructAsimovbFromNominal==false){
 			_inputNuisances = cms->Get_fittedParsInData_b();
 			_startNuisances = cms->Get_fittedParsInData_b();
 		}
-		cout<<"  DELETEME :   _inputNuisances[2] = "<<_inputNuisances[2]<<endl;
+		//cout<<"  DELETEME :   _inputNuisances[2] = "<<_inputNuisances[2]<<endl;
 		r95 = runProfileLikelihoodApproximation(ErrorDef);
 		if(dataset=="asimov_b"){
 			double N = 0;
