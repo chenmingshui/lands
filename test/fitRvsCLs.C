@@ -106,6 +106,10 @@ void run(TString inFileName, TString plotName, TString sfile="bands", double mH 
 
 	_m2s = m2s; _m1s=m1s;
 }
+void fitRvsCLs(TString inFileName, TString plotName, TString sfile="bands", double mH = -1){
+  run(inFileName, plotName, sfile, mH, 1);
+}
+
 double extractLimitAtQuantile(TString inFileName, TString plotName, double d_quantile ){
 	TFile *f = TFile::Open(inFileName);
 	TF1 *expoFit = new TF1("expoFit","[0]*exp([1]*(x-[2]))", rMin, rMax);
@@ -223,6 +227,7 @@ double extractLimitAtQuantile(TString inFileName, TString plotName, double d_qua
 		line.DrawLine(limit+limitErr, 0, limit+limitErr, limitPlot_->GetY()[0]);
 		limitPlot_->SetTitle(";#mu;CLs");
 		c1->Print(plotName+".gif");
+		c1->Print(plotName+".root");
 
 		if(_debug)limitPlot_->Print("v");
 	}
