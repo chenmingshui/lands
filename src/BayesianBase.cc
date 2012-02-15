@@ -11,7 +11,7 @@
 #include "Utilities.h"
 #include "CLsLimit.h"
 
-#include "RooDataSet.h"
+#include "RooAbsData.h"
 #include "TMath.h"
 
 //----------------need implementing a super good technique to do integration
@@ -115,6 +115,7 @@ namespace lands{
 		vector< vector<double> > vvparamunc = _cms->Get_v_pdfs_floatParamsUnc();
 		VChannelVSampleVUncertaintyVParameter vvvv_uncpar_tmp=_cms->Get_vvvv_uncpar();
 
+		if(_debug>=10) cout<<"DELETEME BayesianBase::Limit  1 "<<endl; 
 		double *fitedPars =0;
 		if(bRunOnlyWithBestFittedNuisances==false){
 
@@ -125,6 +126,7 @@ namespace lands{
 				if(vtype[i]==typeFlat) {bHasFlatPriorNuisance=true; break;}
 			}
 
+		if(_debug>=10) cout<<"DELETEME BayesianBase::Limit  bRunOnlyWithBestFittedNuisances =false"<<endl; 
 			if(bHasFlatPriorNuisance && bsys){
 				if(bdofit){
 					cms_global= _cms;
@@ -134,9 +136,13 @@ namespace lands{
 					double ErrorDef = TMath::ChisquareQuantile(0.68 , 1);// (confidenceLevel, ndf)
 					double upperL=1, lowerL=0; 
 					//double y0_2 =  MinuitFit(1001, upperL, lowerL, ErrorDef, 0, false, _debug) ;
+		if(_debug>=10) cout<<"DELETEME BayesianBase::Limit  bdofit"<<endl; 
 					double y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, 0, false, _debug) ;
+		if(_debug>=10) cout<<"DELETEME BayesianBase::Limit  bdofit done"<<endl; 
 				}
+		if(_debug>=10) cout<<"DELETEME BayesianBase::Limit  2 "<<endl; 
 				for(int i=1; i<=_cms->Get_max_uncorrelation(); i++){
+		if(_debug>=10) cout<<"DELETEME BayesianBase::Limit  i ="<<i<<endl; 
 					Double_t errUp, errLow, errParab=0, gcor=0; 
 					//myMinuit->mnerrs(i, errUp, errLow, errParab, gcor);
 					double p, pe;
@@ -153,6 +159,7 @@ namespace lands{
 						if(_debug)cout<<" FITTEDflatParam: "<<_cms->Get_v_uncname()[i-1]<<" param "<<vvparamunc[i][1]*p+vvparamunc[i][3]<<"  "<<vvparamunc[i][1]*errUp<<endl;;
 						_cms->SetFlatNormalizationRange(i, p+5*errLow, p+5*errUp);
 					}
+		if(_debug>=10) cout<<"DELETEME BayesianBase::Limit  done i= "<<i<<endl; 
 				}	
 				//change the range of flat parameters ;
 				//and change it back at the end ;
@@ -165,11 +172,14 @@ namespace lands{
 			_startNuisances = _cms->Get_norminalPars();
 			double ErrorDef = TMath::ChisquareQuantile(0.68 , 1);// (confidenceLevel, ndf)
 			double upperL=0, lowerL=0; 
+		if(_debug>=10) cout<<"DELETEME BayesianBase::Limit  bRunOnlyWithBestFittedNuisances=true"<<endl; 
 			//double y0_2 =  MinuitFit(1001, upperL, lowerL, ErrorDef, 0, false, _debug) ;
 			//double y0_2 =  MinuitFit(1001, upperL, lowerL, ErrorDef, fitedPars, false, _debug) ;
 			double y0_2 =  MinuitFit(3, upperL, lowerL, inputMu, fitedPars, false, _debug) ;
+		if(_debug>=10) cout<<"DELETEME BayesianBase::Limit  done fit"<<endl; 
 
 		}
+		if(_debug>=10) cout<<"DELETEME BayesianBase::Limit  3 "<<endl; 
 		double rmid = 10;
 		if(hint<-10000){
 

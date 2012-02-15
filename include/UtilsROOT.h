@@ -46,7 +46,7 @@ TTree * LoadTreeBonly(TString filename, TString & treeName);
 TH1F* GetHisto(string filename, string histoname);
 TObject* GetTObject(string filename, string objname);
 bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentStripped, vector< vector<string> > parametricShapeLines,  vector< vector<string> > uncerlinesAffectingShapes,  int debug=0);
-RooDataSet* GetRooDataSet(string c, string p, vector< vector<string> > lines, double mass=0);
+RooAbsData* GetRooAbsData(string c, string p, vector< vector<string> > lines, double mass=0);
 RooAbsPdf* GetPdf(string c, string p, vector< vector<string> > lines, double mass=0);
 RooAbsArg* GetExtraNorm(string c, string p, vector< vector<string> > lines, double mass=0);
 
