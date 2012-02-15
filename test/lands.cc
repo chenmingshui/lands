@@ -153,6 +153,11 @@ TString scanRAroundBand = "all";
 
 bool bConstructAsimovbFromNominal = false;
 
+bool bRedefineObservableRange = false;
+double ObservableRangeMin = 0;
+double ObservableRangeMax = 0;
+int ObservableBins = 100;
+
 bool bDumpFitResults = false;
 
 int main(int argc, const char*argv[]){
@@ -172,6 +177,7 @@ int main(int argc, const char*argv[]){
 	cms = new CountingModel();
 	cms->SetDebug(debug);
 	cms->ForceSymmetryError(bForceSymmetryError);
+	if(bRedefineObservableRange) cms->SetObservableRange(ObservableBins, ObservableRangeMin, ObservableRangeMax);
 
 	/*
 	 * combining at most 100 datacards
@@ -183,6 +189,7 @@ int main(int argc, const char*argv[]){
 		tmp[i] = new CountingModel();
 		tmp[i] -> SetDebug(debug);
 		tmp[i] -> ForceSymmetryError(bForceSymmetryError);
+		if(bRedefineObservableRange) tmp[i]->SetObservableRange(ObservableBins, ObservableRangeMin, ObservableRangeMax);
 		ConfigureModel(tmp[i], HiggsMass, datacards[i].Data(), debug);
 		tmp[i]->SetUseSystematicErrors(true);
 	}
@@ -216,7 +223,8 @@ int main(int argc, const char*argv[]){
 	if(debug)cms->Print();
 	cms->SetRdm(rdm);
 	//cms->RemoveChannelsWithExpectedSignal0orBkg0();
-	int nch_removed = 0;// cms->RemoveChannelsWithExpectedSignal0orBkg0(0); // 0: remove only bins with total bkg<=0,  1: remove bins with total sig<=0,  2: both
+	int nch_removed  = cms->RemoveChannelsWithExpectedSignal0orBkg0(0); // 0: remove only bins with total bkg<=0,  1: remove bins with total sig<=0,  2: both
+	// FIXME need add an option for speficying if to remove some channels 
 	if(debug and nch_removed )cms->Print();
 	if(nch_removed)cms->SetUseSystematicErrors(systematics);//need reconfig,  otherwise crash
 	//cms->SetAllowNegativeSignalStrength(false);
@@ -257,6 +265,8 @@ int main(int argc, const char*argv[]){
 	_startNuisances = cms->Get_norminalPars();
 	_inputNuisances = cms->Get_norminalPars();
 	cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
+	bConstructAsimovbFromNominal = true;
+	if(method == "Asymptotic") bConstructAsimovbFromNominal = false;
 	cms->ConstructAsimovData(0, bConstructAsimovbFromNominal); // b-only asimov 
 	cms->ConstructAsimovData(1); // sb asimov
 	if(dataset == "asimov_b")cms->UseAsimovData(0);
@@ -370,6 +380,21 @@ int main(int argc, const char*argv[]){
 				}else if(scanRAroundBand=="obs"){
 					double tmpstep = (preHints_obs*1.2 - preHints_obs*0.8)/5.;
 					if(tmpstep>0.001)for(double tmpr = preHints_obs*0.8; tmpr<=preHints_obs*1.2; tmpr+=tmpstep) vR_toEval.push_back(tmpr);
+				}else if(scanRAroundBand=="-2"){
+					double tmpstep = (preHints_m2s*1.2 - preHints_m2s*0.8)/5.;
+					if(tmpstep>0.001)for(double tmpr = preHints_m2s*0.8; tmpr<=preHints_m2s*1.2; tmpr+=tmpstep) vR_toEval.push_back(tmpr);
+				}else if(scanRAroundBand=="-1"){
+					double tmpstep = (preHints_m1s*1.2 - preHints_m1s*0.8)/5.;
+					if(tmpstep>0.001)for(double tmpr = preHints_m1s*0.8; tmpr<=preHints_m1s*1.2; tmpr+=tmpstep) vR_toEval.push_back(tmpr);
+				}else if(scanRAroundBand=="0"){
+					double tmpstep = (preHints_median*1.2 - preHints_median*0.8)/5.;
+					if(tmpstep>0.001)for(double tmpr = preHints_median*0.8; tmpr<=preHints_median*1.2; tmpr+=tmpstep) vR_toEval.push_back(tmpr);
+				}else if(scanRAroundBand=="1"){
+					double tmpstep = (preHints_p1s*1.2 - preHints_p1s*0.8)/5.;
+					if(tmpstep>0.001)for(double tmpr = preHints_p1s*0.8; tmpr<=preHints_p1s*1.2; tmpr+=tmpstep) vR_toEval.push_back(tmpr);
+				}else if(scanRAroundBand=="2"){
+					double tmpstep = (preHints_p2s*1.2 - preHints_p2s*0.8)/5.;
+					if(tmpstep>0.001)for(double tmpr = preHints_p2s*0.8; tmpr<=preHints_p2s*1.2; tmpr+=tmpstep) vR_toEval.push_back(tmpr);
 				}
 				std::sort(vR_toEval.begin(), vR_toEval.end());
 				vector<double>::iterator it;
@@ -454,7 +479,7 @@ int main(int argc, const char*argv[]){
 					TString s_b = "SAMPLING_B_"; s_b+=s_r;
 					TString fileM2lnQ = jobname; fileM2lnQ+="_m2lnQ_deprecated.root";
 					TString option = (i==0?"RECREATE":"UPDATE");
-					FillTree(fileM2lnQ, cms->GetSignalScaleFactor(), qdata, vsb, vb, s_r, s_qdata, s_sb, s_b, option);
+					//FillTree(fileM2lnQ, cms->GetSignalScaleFactor(), qdata, vsb, vb, s_r, s_qdata, s_sb, s_b, option);
 					fileM2lnQ = jobname; fileM2lnQ+="_m2lnQ.root";
 					FillTree2(fileM2lnQ, cms->GetSignalScaleFactor(), qdata, vsb, vb, s_r, s_sb, s_b, option);
 				}
@@ -569,7 +594,7 @@ int main(int argc, const char*argv[]){
 				vpseudodata=cms->GetToyData_H0(pars);
 				vector<RooDataSet*> vrds; vrds.clear();
 				for(int c=0; c<cms->Get_vv_pdfs().size(); c++){
-					RooDataSet *rds = new RooDataSet(*(cms->Get_v_pdfs_roodataset_toy()[c]));
+					RooDataSet *rds = new RooDataSet(*((RooDataSet*)cms->Get_v_pdfs_roodataset_toy()[c]));
 					vrds.push_back(rds);
 				}
 				TFile *f = new TFile("data.root", "RECREATE");
@@ -1148,7 +1173,7 @@ int main(int argc, const char*argv[]){
 		}else{
 			if(doExpectation && sFileLimitsDistribution!="") saveExpectation();
 		}
-		
+
 
 
 	}else { // calc significances 
@@ -1874,6 +1899,21 @@ void processParameters(int argc, const char* argv[]){
 	if(bForceSymmetryError) cout<<" ForceSymmetryError"<<endl;
 	cout<<endl<<endl;
 
+	if(isWordInMap("--bRedefineObservableRange", options)){
+		bRedefineObservableRange = true;
+		tmpv = options["--ObservableRangeMax"]; 
+		if( tmpv.size()!=1 ){} 
+		else { ObservableRangeMax = tmpv[0].Atof(); }
+		tmpv = options["--ObservableRangeMin"]; 
+		if( tmpv.size()!=1 ){} 
+		else { ObservableRangeMin = tmpv[0].Atof(); }
+		tmpv = options["--ObservableBins"]; 
+		if( tmpv.size()!=1 ){} 
+		else { ObservableBins= tmpv[0].Atoi(); }
+		cout<< " ObservableBins = " << ObservableBins <<endl;
+
+	}
+
 	fflush(stdout);	
 
 	// check duplicate options ,  non-exist options 
@@ -2385,8 +2425,10 @@ bool runAsymptoticLimits(){
 					if(debug)cout<<"mu = "<<mu<<" mu_up="<<mu_up<<" mu_down="<<mu_down<<endl;
 				}
 			}
-			while ( fabs(tmpcls - (1-CL)) > precision ) {
+			int iteration = 0;
+			while ( fabs(tmpcls - (1-CL)) > precision and iteration<=20 ) {
 				mu = (mu_up + mu_down)/2.;
+				if(mu==mu_up and mu==mu_down) {cout<<" WARNING **** infinite loop , mu=mu_up=mu_down="<<mu<<endl; break;}
 
 				vdata_global = cms->Get_v_data();
 				cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
@@ -2418,6 +2460,7 @@ bool runAsymptoticLimits(){
 				if(debug)cout<<"tmpcls = "<<tmpcls<<endl;
 				if(debug)cout<<"mu = "<<mu<<" mu_up="<<mu_up<<" mu_down="<<mu_down<<endl;
 				nsteps_in_asymptotic +=2;
+				iteration ++;
 			}
 		}
 		if(debug)cout<<"tmpcls = "<<tmpcls<<endl;
@@ -2671,6 +2714,7 @@ void PrintHelpMessage(){
 	printf("--bFixNuisancsAtNominal               fix nuisances to nominal value instead of fitting to data in case of LHC-CLs\n");
 	printf("--scanRAroundBand  (=all)            scan signal strengths around band (-2, -1, 0, 1, 2, obs, all)\n");
 	printf("--bConstructAsimovbFromNominal	      construct asimov_b dataset from nominal nuisances   (default is from fitted nuisances) \n");
+	printf("--bRedefineObservableRange, --ObservableRangeMin, --ObservableRangeMax, --ObservableBins :  for hzz4l pdf extraction\n");
 	printf("--bDumpFitResults                     dump fit results and also the fitted shape if there is any shape input (only binned supported) \n");
 
 	printf(" \n");
