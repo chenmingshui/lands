@@ -178,6 +178,8 @@ namespace lands{
 			int UseBestEstimateToCalcQ(){ return _UseBestEstimateToCalcQ;}
 
 			// start to add parametric shape into model
+			void SetObservableRange(int n, double xmin, double xmax){bRedefineObservableRange = true; ObservableBins=n; ObservableRangeMin=xmin; ObservableRangeMax=xmax;};
+
 			bool hasParametricShape(){return bHasParametricShape;}
 			const vector< vector<string> >& Get_vv_pdfs(){return vv_pdfs;}
 			const vector< vector<double *> >& Get_vv_pdfs_params(){return vv_pdfs_params;} //nominal parameters for each pdf
@@ -206,12 +208,12 @@ namespace lands{
 			void Set_vv_pdfs_norm_fitted_scaled(const VChannelVSample& vv){vv_pdfs_norm_fitted_scaled=vv;}
 			const VChannelVSample& Get_vv_pdfs_norm_fitted_scaled(){return vv_pdfs_norm_fitted_scaled;}
 			const vector<int>& Get_v_pdfs_sigproc(){return v_pdfs_sigproc;}
-			const vector< RooDataSet* >& Get_v_pdfs_roodataset();
-			const vector< RooDataSet* >& Get_v_pdfs_roodataset_toy(){return v_pdfs_roodataset_toy;} // in each channel, it has a list of events
-			const vector< RooDataSet* >& Get_v_pdfs_roodataset_real(){return v_pdfs_roodataset_real;} // in each channel, it has a list of events
-			const vector< RooDataSet* >& Get_v_pdfs_roodataset_asimovb(){return v_pdfs_roodataset_asimovb;} // in each channel, it has a list of events
+			const vector< RooAbsData* >& Get_v_pdfs_roodataset();
+			const vector< RooAbsData* >& Get_v_pdfs_roodataset_toy(){return v_pdfs_roodataset_toy;} // in each channel, it has a list of events
+			const vector< RooAbsData* >& Get_v_pdfs_roodataset_real(){return v_pdfs_roodataset_real;} // in each channel, it has a list of events
+			const vector< RooAbsData* >& Get_v_pdfs_roodataset_asimovb(){return v_pdfs_roodataset_asimovb;} // in each channel, it has a list of events
 			void ConstructAsimovData(int b, bool nominal=true);
-			const vector< RooDataSet* >& Get_v_pdfs_roodataset_asimovsb(){return v_pdfs_roodataset_asimovsb;} // in each channel, it has a list of events
+			const vector< RooAbsData* >& Get_v_pdfs_roodataset_asimovsb(){return v_pdfs_roodataset_asimovsb;} // in each channel, it has a list of events
 			const vector< double >& Get_v_pdfs_floatParamsVaried(){return v_pdfs_floatParamsVaried;}
 			const vector< vector< double > >& Get_v_pdfs_floatParamsUnc(){ return v_pdfs_floatParamsUnc;}
 			void Set_v_pdfs_floatParamsUnc(const vector< vector< double > >& vv ){ v_pdfs_floatParamsUnc = vv;}
@@ -235,12 +237,12 @@ namespace lands{
 			double EvaluateChi2(double *par, vector< vector< vector<float> > >& vvv_cachPdfValues, int bUseBestEstimateToCalcQ=1);          // for Chi2
 			double EvaluateGL(int ch, double xr); // for bayesian 
 			double EvaluateGL(vector< vector<double> > vvnorms, vector<double> vparams, double xr, VChannelVSample& vvs, VChannelVSample&vvb); // for bayesian 
-			void AddObservedDataSet(int index_channel, RooDataSet* rds);
-			void AddObservedDataSet(string channelname, RooDataSet* rds);
-			void SetDataForUnbinned(vector< RooDataSet*> data, bool bRealData=true);
+			void AddObservedDataSet(int index_channel, RooAbsData* rds);
+			void AddObservedDataSet(string channelname, RooAbsData* rds);
+			void SetDataForUnbinned(vector< RooAbsData*> data, bool bRealData=true);
 			void SetDataForUnbinned(TString filename, bool bRealData=true);
-			void SetTmpDataForUnbinned(vector< RooDataSet*> data); // set it before doing fit
-			void SetToyForUnbinned(vector< RooDataSet*> data); // set it before doing fit
+			void SetTmpDataForUnbinned(vector< RooAbsData*> data); // set it before doing fit
+			void SetToyForUnbinned(vector< RooAbsData*> data); // set it before doing fit
 			void AddUncertaintyOnShapeNorm(int index_channel, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, int index_correlation );
 			void AddUncertaintyOnShapeNorm(int index_channel, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, string uncname);
 			void AddUncertaintyOnShapeNorm(string chname, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, string uncname);
@@ -257,6 +259,7 @@ namespace lands{
 			const MapStrVV& Get_map_param_sources(){return map_param_sources;}
 
 			double * Get_norminalPars(){return _norminalPars;}
+			double * Get_norminalParsSigma(){return _norminalParsSigma;}
 			double * Get_randomizedPars(){return _randomizedPars;}
 
 			void SetMass(double d);
@@ -330,6 +333,7 @@ namespace lands{
 			bool bMoveUpShapeUncertainties;
 
 			double * _norminalPars; 
+			double * _norminalParsSigma; 
 			double * _randomizedPars; 
 
 			double * _fittedParsInData_bonly; // perform a fit on real data  with mu=0	
@@ -345,6 +349,7 @@ namespace lands{
 			// 0 use randomized measurements;  1 use the original best estimates;  2 use the fitted sets in data
 
 			//// start to add unbinned parametric shape into model,  for only 1-dimention 
+			bool bRedefineObservableRange; int ObservableBins; double ObservableRangeMin, ObservableRangeMax;
 			bool bHasParametricShape;// for both binned and unbinned 
 			vector< vector<string> > vv_pdfs; // every process has its own pdf, in each parametric channel
 			vector< vector<double> > vv_pdfs_norm; //normalization of each pdf, i.e. expected number of events in each process 
@@ -366,12 +371,12 @@ namespace lands{
 			vector< TString > v_pdfs_s; //  tot pdf for s-only model  in each channel
 
 			vector<TString> v_pdfs_observables; // observable in each channel
-			vector<RooDataSet*>  v_pdfs_roodataset_toy;
-			vector<RooDataSet*>  v_pdfs_roodataset; // could be pseudo-data for bands
-			vector<RooDataSet*>  v_pdfs_roodataset_real; // real data, not changed during entire run 
-			vector<RooDataSet*>  v_pdfs_roodataset_tmp;
-			vector<RooDataSet*>  v_pdfs_roodataset_asimovb; // b-only  asimov dataset
-			vector<RooDataSet*>  v_pdfs_roodataset_asimovsb; // b-only  asimov dataset
+			vector<RooAbsData*>  v_pdfs_roodataset_toy;
+			vector<RooAbsData*>  v_pdfs_roodataset; // could be pseudo-data for bands
+			vector<RooAbsData*>  v_pdfs_roodataset_real; // real data, not changed during entire run 
+			vector<RooAbsData*>  v_pdfs_roodataset_tmp;
+			vector<RooAbsData*>  v_pdfs_roodataset_asimovb; // b-only  asimov dataset
+			vector<RooAbsData*>  v_pdfs_roodataset_asimovsb; // b-only  asimov dataset
 
 
 			vector< vector<TString> > vv_pdfs_normNAME;
