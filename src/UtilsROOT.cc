@@ -1,4 +1,5 @@
 #include "UtilsROOT.h"
+#include <memory>
 #include "TFile.h"
 #include "TH1F.h"
 #include <iostream>
@@ -6,7 +7,7 @@
 #include "TSystem.h"
 #include "TDirectory.h"
 #include "TKey.h"
-#include "RooDataSet.h"
+#include "RooAbsData.h"
 void SaveResults(TString sfile, double mH, double limit, double limitErr, double significance, double pvalue, double rm2s, double rm1s, double rmedian, double rmean, double rp1s, double rp2s){
 	TFile fTrees(sfile+".root", "RECREATE");
 	TTree *tree = new TTree("T","T"); 
@@ -302,6 +303,73 @@ TString ReadFile(const char*fileName){
 			if (debug) cout<<"fReadFile: In single line comment ..."<<endl;
 			continue;
 		}
+		bool bgoodline = false;
+		if(line.BeginsWith("-") 
+				or line.BeginsWith("0")
+				or line.BeginsWith("1")
+				or line.BeginsWith("2")
+				or line.BeginsWith("3")
+				or line.BeginsWith("4")
+				or line.BeginsWith("5")
+				or line.BeginsWith("6")
+				or line.BeginsWith("7")
+				or line.BeginsWith("8")
+				or line.BeginsWith("9")
+				or line.BeginsWith("a")
+				or line.BeginsWith("b")
+				or line.BeginsWith("c")
+				or line.BeginsWith("d")
+				or line.BeginsWith("e")
+				or line.BeginsWith("f")
+				or line.BeginsWith("g")
+				or line.BeginsWith("h")
+				or line.BeginsWith("i")
+				or line.BeginsWith("j")
+				or line.BeginsWith("k")
+				or line.BeginsWith("l")
+				or line.BeginsWith("m")
+				or line.BeginsWith("n")
+				or line.BeginsWith("o")
+				or line.BeginsWith("p")
+				or line.BeginsWith("q")
+				or line.BeginsWith("r")
+				or line.BeginsWith("s")
+				or line.BeginsWith("t")
+				or line.BeginsWith("u")
+				or line.BeginsWith("v")
+				or line.BeginsWith("w")
+				or line.BeginsWith("x")
+				or line.BeginsWith("y")
+				or line.BeginsWith("z")
+				or line.BeginsWith("A")
+				or line.BeginsWith("B")
+				or line.BeginsWith("C")
+				or line.BeginsWith("D")
+				or line.BeginsWith("E")
+				or line.BeginsWith("F")
+				or line.BeginsWith("G")
+				or line.BeginsWith("H")
+				or line.BeginsWith("I")
+				or line.BeginsWith("J")
+				or line.BeginsWith("K")
+				or line.BeginsWith("L")
+				or line.BeginsWith("M")
+				or line.BeginsWith("N")
+				or line.BeginsWith("O")
+				or line.BeginsWith("P")
+				or line.BeginsWith("Q")
+				or line.BeginsWith("R")
+				or line.BeginsWith("S")
+				or line.BeginsWith("T")
+				or line.BeginsWith("U")
+				or line.BeginsWith("V")
+				or line.BeginsWith("W")
+				or line.BeginsWith("X")
+				or line.BeginsWith("Y")
+				or line.BeginsWith("Z")
+				)
+			       	bgoodline =  true;
+		if(bgoodline==false)continue;
 
 		// Did a multiline comment just begin?
 		if (line.BeginsWith("/*")){
@@ -2149,15 +2217,33 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 					if(debug)cout<<"* ExtraNormalization in workspace = "<<((RooAbsReal*)vbExtraNorm[i])->getVal()<<endl;
 				}
 			}
-			RooDataSet *data = (RooDataSet*)GetRooDataSet(channelnames[c], "data_obs", parametricShapeLines, mass);
+			RooAbsData *data = (RooAbsData*)GetRooAbsData(channelnames[c], "data_obs", parametricShapeLines, mass);
 			if(data->sumEntries()!=observeddata[c] && observeddata[c]>=0) {
 				cout<<"ERROR: In Channel: "<<channelnames[c]<<endl;
-				cout<<"Observed data in card: "<<observeddata[c]<<" != "<<" RooDataSet.sumEntries"<<endl;
+				cout<<"Observed data in card: "<<observeddata[c]<<" != "<<" RooAbsData.sumEntries"<<endl;
 				exit(1);
 			}
-			RooRealVar* x = dynamic_cast<RooRealVar*> (data->get()->first());
+
+			cout<<" pdf observable ********* =  "<<endl;
+			(vspdf[0]->getObservables(data))->Print();
+			TString cuts;
+			RooArgSet* observables = vspdf[0]->getObservables(data);
+			std::auto_ptr<TIterator> iter(observables->createIterator());
+			int ii = 0;
+			for(RooRealVar *obs = (RooRealVar*)iter->Next(); obs!=0; obs=(RooRealVar*)iter->Next()){
+				cout<<" DELETEME *******  obs "<<obs->GetName()<<" bins = "<<obs->getBins()<<endl;
+				if(obs->getBins()>200) obs->setBins(200);
+				if(ii>0) cuts+=" && ";
+				cuts+=obs->GetName(); cuts+=">="; cuts+=obs->getMin(); cuts+=" && ";
+				cuts+=obs->GetName(); cuts+="<="; cuts+=obs->getMax();
+				ii++;
+			}
+			
+			RooAbsData* reducedData = (RooAbsData*)data->reduce(*(vspdf[0]->getObservables(data)), cuts);
+			//RooRealVar* x = dynamic_cast<RooRealVar*> (data->get()->first());
+			RooRealVar* x = dynamic_cast<RooRealVar*> (observables->first());
 			cms->AddChannel(channelnames[c], x, vspdf, vsnorm, vsExtraNorm, vbpdf, vbnorm, vbExtraNorm);
-			cms->AddObservedDataSet(channelnames[c], data);
+			cms->AddObservedDataSet(channelnames[c], reducedData);
 		}
 	}	
 
@@ -2576,14 +2662,14 @@ RooAbsArg * GetExtraNorm(string c, string p, vector< vector<string> > lines, dou
 	}
 	return arg;
 }
-RooDataSet* GetRooDataSet(string c, string p, vector< vector<string> > lines, double mass){
-	RooDataSet* pdf = 0;
+RooAbsData* GetRooAbsData(string c, string p, vector< vector<string> > lines, double mass){
+	RooAbsData* pdf = 0;
 	for(int i=0; i<lines.size(); i++){
 		if(c==lines[i][2] and p==lines[i][1]){
 			RooWorkspace *w;
 			w = (RooWorkspace*)GetTObject(lines[i][3], GetWordFromLine(lines[i][4], 0, ":").Data());
 			if(w->var("MH") && mass>0) w->var("MH")->setVal(mass);
-			pdf= (RooDataSet*)w->data(GetWordFromLine(lines[i][4], 1 ,":")); //pdf->SetName(channelnames[c]+pdf->GetName());
+			pdf= (RooAbsData*)w->data(GetWordFromLine(lines[i][4], 1 ,":")); //pdf->SetName(channelnames[c]+pdf->GetName());
 		}
 	}
 	if(pdf==0) {
