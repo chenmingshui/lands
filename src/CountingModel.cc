@@ -26,8 +26,9 @@
 #include "TFile.h"
 #include "TH1F.h"
 #include "RooAbsPdf.h"
-#include "RooDataSet.h"
+#include "RooAbsData.h"
 #include "RooDataHist.h"
+#include "RooDataSet.h"
 #include "RooRealVar.h"
 #include "RooBifurGauss.h"
 #include "RooWorkspace.h"
@@ -136,6 +137,7 @@ namespace lands{
         map_param_sources.clear();
 
         _norminalPars = 0;
+        _norminalParsSigma = 0;
         _randomizedPars= 0;
 
         vv_pdfs_statusUpdated.clear();
@@ -251,6 +253,7 @@ namespace lands{
         delete _w_varied;
 
         if(_norminalPars) delete _norminalPars;
+        if(_norminalParsSigma) delete _norminalParsSigma;
         if(_randomizedPars) delete _randomizedPars;
     }
     void CountingModel::AddChannel(std::string channel_name, double num_expected_signal, double num_expected_bkg_1, double num_expected_bkg_2, 
@@ -857,6 +860,7 @@ If we need to change it later, it will be easy to do.
         MakeListOfShapeUncertainties();
 
         _norminalPars = new double[max_uncorrelation+1];
+        _norminalParsSigma = new double[max_uncorrelation+1];
         _randomizedPars= new double[max_uncorrelation+1];
         for(int i=1; i<=max_uncorrelation; i++){
             if(_debug)cout<<" ** DELETEME "<<i<<" "<<v_uncname[i-1]<<endl;
@@ -866,12 +870,15 @@ If we need to change it later, it will be easy to do.
                 case typeLogNormal:
                 case typeTruncatedGaussian :
                     _norminalPars[i]=0;
+                    _norminalParsSigma[i]=1;
                     break;
                 case typeGamma:
                     _norminalPars[i]=v_GammaN[i];
+                    _norminalParsSigma[i]=sqrt(v_GammaN[i]);
                     break;
                 case typeBifurcatedGaussian:
                     _norminalPars[i]=v_pdfs_floatParamsUnc[i][0];
+                    _norminalParsSigma[i]= (v_pdfs_floatParamsUnc[i][1]>v_pdfs_floatParamsUnc[i][2]?v_pdfs_floatParamsUnc[i][1]:v_pdfs_floatParamsUnc[i][2]);
                     break;
                 case typeFlat:
                     if(_w->var(v_uncname[i-1].c_str())!=NULL){
@@ -880,6 +887,7 @@ If we need to change it later, it will be easy to do.
                             <<" max-min="<<v_pdfs_floatParamsUnc[i][1]<<" min="
                                 <<v_pdfs_floatParamsUnc[i][3]<<" max="<<v_pdfs_floatParamsUnc[i][4]<<endl;
                     }else _norminalPars[i] = 0.5;
+		    _norminalParsSigma[i] = -9999.; // it's flat ...
 
                     break;
                 default:
@@ -980,7 +988,7 @@ If we need to change it later, it will be easy to do.
                             //tmprrv->setDirtyInhibit(0);
                             tmprrv->setVal(bUseBestEstimateToCalcQ!=2?v_pdfs_floatParamsUnc[i][0]:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]));
 
-                            RooDataSet *tmpRDS =  _w_varied->pdf(TString::Format("%s_bfg",v_uncname[i-1].c_str()))
+                            RooAbsData *tmpRDS = (RooAbsData*) _w_varied->pdf(TString::Format("%s_bfg",v_uncname[i-1].c_str()))
                                 ->generate(RooArgSet(*_w_varied->var(TString::Format("%s_x", v_uncname[i-1].c_str()))), 1);
                             vrdm.back()= dynamic_cast<RooRealVar*> ( tmpRDS->get(0)->first() )->getVal();
                             delete tmpRDS;
@@ -1366,7 +1374,12 @@ If we need to change it later, it will be easy to do.
                 vector<double> vtmp;vtmp.clear();
                 if(_debug>=100)cout<<" in GetToyData_H0, bHasParametricShape: ch = "<<ch<<endl;
                 //v_pdfs_roodataset_toy.push_back( _w_varied->pdf(v_pdfs_b[ch])->generate(RooArgSet(*_w->var(v_pdfs_observables[ch])), Extended()));
-                v_pdfs_roodataset_toy.push_back( _w_varied->pdf(v_pdfs_b[ch])->generate(RooArgSet(*(v_pdfs_roodataset_real[ch]->get())), Extended()));
+		bool binned = false;
+		if(v_pdfs_roodataset_real[ch]->InheritsFrom("RooDataHist")){binned = true;}
+		if (binned)
+			v_pdfs_roodataset_toy.push_back(_w_varied->pdf(v_pdfs_b[ch])->generateBinned(RooArgSet(*(v_pdfs_roodataset_real[ch]->get())), Extended()));
+		else
+			v_pdfs_roodataset_toy.push_back((RooAbsData*) _w_varied->pdf(v_pdfs_b[ch])->generate(RooArgSet(*(v_pdfs_roodataset_real[ch]->get())), Extended()));
                 if(TString(v_pdfs_roodataset_toy[ch]->GetName())=="emptyData") {
                     if(_debug>=100)cout<<"changing toy name "<<endl;
                     v_pdfs_roodataset_toy[ch]->SetName( TString(v_pdfs_b[ch]+"Data").Data() );
@@ -1387,11 +1400,13 @@ If we need to change it later, it will be easy to do.
                 }
 
                 if(_debug>=10)cout<<"H0, number of events generated for channel "<<ch<<": "<<v_pdfs_roodataset_toy[ch]->sumEntries()<<endl;
+		/*
                 for(int i=0; i<v_pdfs_roodataset_toy[ch]->sumEntries(); i++){
                     RooRealVar *r = dynamic_cast<RooRealVar*>(v_pdfs_roodataset_toy[ch]->get(i)->first());
                     vtmp.push_back( r->getVal() );
                 }
                 vv_pdfs_data_toy.push_back(vtmp);
+		*/
             }
         }	
 
@@ -1458,7 +1473,12 @@ If we need to change it later, it will be easy to do.
 
                 if(_debug>=100)cout<<" in GetToyData_H1, bHasParametricShape: ch = "<<ch<<endl;
                 //v_pdfs_roodataset_toy.push_back(_w_varied->pdf(v_pdfs_sb[ch])->generate(RooArgSet(*_w->var(v_pdfs_observables[ch])), Extended()));
-                v_pdfs_roodataset_toy.push_back(_w_varied->pdf(v_pdfs_sb[ch])->generate(RooArgSet(*(v_pdfs_roodataset_real[ch]->get())), Extended()));
+		bool binned = false;
+		if(v_pdfs_roodataset_real[ch]->InheritsFrom("RooDataHist")){binned = true;}
+		if (binned)
+			v_pdfs_roodataset_toy.push_back(_w_varied->pdf(v_pdfs_sb[ch])->generateBinned(RooArgSet(*(v_pdfs_roodataset_real[ch]->get())), Extended()));
+		else
+			v_pdfs_roodataset_toy.push_back((RooAbsData*)_w_varied->pdf(v_pdfs_sb[ch])->generate(RooArgSet(*(v_pdfs_roodataset_real[ch]->get())), Extended()));
                 // if generated events = 0, then the name of dataset will be emptyData, need to be changed
                 if(TString(v_pdfs_roodataset_toy[ch]->GetName())=="emptyData") {
                     v_pdfs_roodataset_toy[ch]->SetName( TString(v_pdfs_sb[ch]+"Data").Data() );
@@ -1477,11 +1497,13 @@ If we need to change it later, it will be easy to do.
                 }
 
                 if(_debug>=10) cout<<"H1, number of events generated for channel "<<ch<<": "<<v_pdfs_roodataset_toy[ch]->sumEntries()<<endl;
+		/*
                 for(int i=0; i<v_pdfs_roodataset_toy[ch]->sumEntries(); i++){
                     RooRealVar *r = dynamic_cast<RooRealVar*>(v_pdfs_roodataset_toy[ch]->get(i)->first());
                     vtmp.push_back( r->getVal() );
                 }
                 vv_pdfs_data_toy.push_back(vtmp);
+		*/
             }
         }	
 
@@ -1793,6 +1815,11 @@ If we need to change it later, it will be easy to do.
 		    for(unsigned int i=0; i<v_pdfs_b.size(); i++){
 			    //RooRealVar * observable = _w->var(v_pdfs_observables[i]);
 			    RooArgSet * observable = (RooArgSet*) v_pdfs_roodataset_real[i]->get();
+			    std::auto_ptr<TIterator> iter(observable->createIterator());
+			    for(RooRealVar * obs= (RooRealVar*)iter->Next(); obs!=0; obs=(RooRealVar*)iter->Next()){
+				    if(TString(obs->GetName()).BeginsWith("wgttmp_")) continue;
+				    if(obs->getBins()>200) obs->setBins(200);
+			    }
 			    observable->Print();
 
 			    RooDataHist *rdh_asimovb = _w_varied->pdf(v_pdfs_b[i]) -> generateBinned(*observable,ExpectedData());
@@ -1841,6 +1868,12 @@ If we need to change it later, it will be easy to do.
 		    for(int i=0; i<v_pdfs_sb.size(); i++){
 			    //RooRealVar * observable = _w->var(v_pdfs_observables[i]);
 			    RooArgSet * observable = (RooArgSet*)v_pdfs_roodataset_real[i]->get();
+			    std::auto_ptr<TIterator> iter(observable->createIterator());
+			    for(RooRealVar * obs= (RooRealVar*)iter->Next(); obs!=0; obs=(RooRealVar*)iter->Next()){
+				    if(TString(obs->GetName()).BeginsWith("wgttmp_")) continue;
+				    if(obs->getBins()>200) obs->setBins(200);
+				    cout<<"DELETEME ***** obs "<<obs->GetName()<<" bins = "<<obs->getBins()<<"\n";
+			    }
 			    RooDataHist *rdh_asimovsb = _w->pdf(v_pdfs_sb[i]) -> generateBinned(*observable,ExpectedData());
 			    TString swgt = "wgttmp_"; swgt+=v_pdfs_channelname[i];
 			    RooArgSet * rastmp = new RooArgSet(*observable, *(_w->var(swgt)));
@@ -1996,7 +2029,7 @@ If we need to change it later, it will be easy to do.
 			    vector<TString> vobs = ms[m]->Get_v_pdfs_observables();
 			    vector< vector<double> > vnorm = ms[m]->Get_vv_pdfs_norm_nonscaled(); 
 			    vector<string> vchnames = ms[m]->Get_v_pdfs_channelname();
-			    vector< RooDataSet* > vrds = ms[m]->Get_v_pdfs_roodataset();
+			    vector< RooAbsData* > vrds = ms[m]->Get_v_pdfs_roodataset();
 			    tmp_vvvv_uncpar = ms[m]->Get_vvv_pdfs_normvariation();
 			    tmp_vvv_pdftype=ms[m]->Get_vvv_pdfs_pdftype();	
 			    tmp_vvv_idcorrl=ms[m]->Get_vvv_pdfs_idcorrl();	
@@ -2199,6 +2232,12 @@ If we need to change it later, it will be easy to do.
 	    _w_varied->import(*observable, RecycleConflictNodes());
 	    v_pdfs_observables.push_back(observable->GetName());
 
+	    if(_w->var(v_pdfs_observables.back())->getBins()>200){
+		    _w->var(v_pdfs_observables.back())->setBins(200);
+		    _w_varied->var(v_pdfs_observables.back())->setBins(200);
+		    observable->setBins(200);
+	    }
+
 
 	    vector<string> vsigbkgs; vsigbkgs.clear();
 	    vector< vector< vector<double> > > vvvuncpar; vvvuncpar.clear();
@@ -2257,6 +2296,29 @@ If we need to change it later, it will be easy to do.
 		    TString coef;
 		    coef = rrv->GetName();
 		    vcoeffs.push_back(coef);
+
+		    if(_debug>=10){
+			    if(bRedefineObservableRange){
+				    _w->var(v_pdfs_observables.back())->setMin(ObservableRangeMin);
+				    _w->var(v_pdfs_observables.back())->setMax(ObservableRangeMax);
+				    _w->var(v_pdfs_observables.back())->setBins(ObservableBins);
+			    }
+			    TString s = "pdf_"; s+= channel_name; s+="_signals.root";
+			    TFile f(s, i==0?"RECREATE":"UPDATE") ;
+			    double xmin = _w->var(v_pdfs_observables.back())->getMin();
+			    double xmax = _w->var(v_pdfs_observables.back())->getMax();
+			    TString sp = channel_name; sp+=sigPdfs[i]->GetName();
+			    int nbins = 100; if ( bRedefineObservableRange ) nbins = ObservableBins;
+			    TH1F hs(sp,sp, nbins, xmin, xmax);
+			    RooArgSet vars(*(_w->var(v_pdfs_observables.back() ) ) );
+			    sigPdfs[i]->fillHistogram(&hs, vars);
+			    hs.SetNormFactor(rrv->getVal());
+			    hs.Write();
+			    f.Close();
+			    hs.Write();
+			    f.Close();
+		    }
+
 	    }
 
 	    for(int i=0; i<bkgPdfs.size(); i++){
@@ -2290,6 +2352,27 @@ If we need to change it later, it will be easy to do.
 		    TString coef;
 		    coef = rrv->GetName();
 		    vcoeffs.push_back(coef);
+
+		    if(_debug>=10){
+			    if(bRedefineObservableRange){
+				    _w->var(v_pdfs_observables.back())->setMin(ObservableRangeMin);
+				    _w->var(v_pdfs_observables.back())->setMax(ObservableRangeMax);
+				    _w->var(v_pdfs_observables.back())->setBins(ObservableBins);
+			    }
+			    TString s = "pdf_"; s+= channel_name; s+="_bkgs.root";
+			    TFile f(s, i==0?"RECREATE":"UPDATE") ;
+			    double xmin = _w->var(v_pdfs_observables.back())->getMin();
+			    double xmax = _w->var(v_pdfs_observables.back())->getMax();
+			    TString sp = channel_name; sp+=bkgPdfs[i]->GetName();
+			    int nbins = 100; if ( bRedefineObservableRange ) nbins = ObservableBins;
+			    TH1F hs(sp,sp, nbins, xmin, xmax);
+			    RooArgSet vars(*(_w->var(v_pdfs_observables.back() ) ) );
+			    bkgPdfs[i]->fillHistogram(&hs, vars);
+			    hs.SetNormFactor(rrv->getVal());
+			    hs.Write();
+			    f.Close();
+		    }
+
 	    }
 
 	    vv_pdfs.push_back(vsigbkgs);
@@ -2348,8 +2431,8 @@ If we need to change it later, it will be easy to do.
 
 	    TString swgt = "wgttmp_"; swgt+=channel_name;
 	    if(_w->var(swgt) == NULL)_w->factory(swgt+"[0,10000000]");
-	    //RooDataSet * rds = _w->pdf(v_pdfs_b.back()) -> generate(*observable, Extended());
-	    RooDataSet * rds = _w->pdf(v_pdfs_b.back()) -> generate(*observable, 1) ;
+	    //RooAbsData * rds = _w->pdf(v_pdfs_b.back()) -> generate(*observable, Extended());
+	    RooAbsData * rds = (RooAbsData*)_w->pdf(v_pdfs_b.back()) -> generate(*observable, 1) ;
 	    v_pdfs_roodataset.push_back(rds);
 	    v_pdfs_roodataset_tmp.push_back(rds);
 	    v_pdfs_roodataset_real.push_back(rds);
@@ -2358,7 +2441,7 @@ If we need to change it later, it will be easy to do.
 	       RooDataHist *rdh_asimovsb = _w->pdf(v_pdfs_sb.back()) -> generateBinned(*observable,ExpectedData());
 
 	       RooArgSet * rastmp = new RooArgSet(*observable, *(_w->var("wgttmp")));
-	       RooDataSet *rds_asimovb = new RooDataSet(TString("rds_asimovb")+channel_name.c_str(), "rds_asimovb", *rastmp, "wgttmp");
+	       RooAbsData *rds_asimovb = new RooAbsData(TString("rds_asimovb")+channel_name.c_str(), "rds_asimovb", *rastmp, "wgttmp");
 	       if(_debug)cout<<" rdh_asimovb["<<channel_name<<"]->bins = "<<rdh_asimovb->numEntries()<<endl;
 	       for(int i=0; i<rdh_asimovb->numEntries(); i++){
 	       if(_debug && i==0)cout<<" DELETEME 3 "<<i<<" weight = "<<rdh_asimovb->weight()<<endl;	
@@ -2371,7 +2454,7 @@ If we need to change it later, it will be easy to do.
 	       }
 	       v_pdfs_roodataset_asimovb.push_back(rds_asimovb);
 
-	       RooDataSet *rds_asimovsb = new RooDataSet(TString("rds_asimovsb")+channel_name.c_str(), "rds_asimovsb", *rastmp, "wgttmp");
+	       RooAbsData *rds_asimovsb = new RooAbsData(TString("rds_asimovsb")+channel_name.c_str(), "rds_asimovsb", *rastmp, "wgttmp");
 	       if(_debug)cout<<" rdh_asimovsb["<<channel_name<<"]->bins = "<<rdh_asimovsb->numEntries()<<endl;
 	       for(int i=0; i<rdh_asimovsb->numEntries(); i++){
 	       if(_debug && i==0)cout<<" DELETEME 3 "<<i<<" weight = "<<rdh_asimovsb->weight()<<endl;	
@@ -2459,6 +2542,7 @@ If we need to change it later, it will be easy to do.
 			    
 			    std::auto_ptr<TIterator> iter(v_pdfs_roodataset[ch]->get(i)->createIterator());
 			    for(RooRealVar * obs= (RooRealVar*)iter->Next(); obs!=0; obs=(RooRealVar*)iter->Next()){
+				    if(TString(obs->GetName()).BeginsWith("wgttmp_")) continue;
 				    _w->var(obs->GetName())->setVal(obs->getVal());
 			    }
 
@@ -2480,6 +2564,7 @@ If we need to change it later, it will be easy to do.
 			    
 			    std::auto_ptr<TIterator> iter(v_pdfs_roodataset_toy[ch]->get(i)->createIterator());
 			    for(RooRealVar * obs= (RooRealVar*)iter->Next(); obs!=0; obs=(RooRealVar*)iter->Next()){
+				    if(TString(obs->GetName()).BeginsWith("wgttmp_")) continue;
 				    _w->var(obs->GetName())->setVal(obs->getVal());
 			    }
 			    if(_debug>=100){
@@ -2500,11 +2585,11 @@ If we need to change it later, it will be easy to do.
 	    return ret;
     }
 
-    void CountingModel::AddObservedDataSet(int index_channel, RooDataSet* rds){
+    void CountingModel::AddObservedDataSet(int index_channel, RooAbsData* rds){
 	    //if(v_pdfs_roodataset[index_channel]) delete v_pdfs_roodataset[index_channel];
 	    int ch = index_channel;
 
-	    RooDataSet *tmp = v_pdfs_roodataset[ch];
+	    RooAbsData *tmp = v_pdfs_roodataset[ch];
 	    v_pdfs_roodataset[ch]=rds;
 	    v_pdfs_roodataset_tmp[ch]=rds;
 	    v_pdfs_roodataset_real[ch]=rds;
@@ -2582,7 +2667,7 @@ If we need to change it later, it will be easy to do.
 	    }
     }
 
-    void CountingModel::AddObservedDataSet(string channelname, RooDataSet* rds){
+    void CountingModel::AddObservedDataSet(string channelname, RooAbsData* rds){
 	    int ch =0;
 	    for(int c = 0; c<v_pdfs_channelname.size(); c++){
 		    if(v_pdfs_channelname[c]==channelname) ch=c;
@@ -2644,8 +2729,12 @@ If we need to change it later, it will be easy to do.
 			    //tmprrv->setDirtyInhibit(1);
 			    //tmprrv->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset_tmp[ch]->get(i)->first()))->getVal());
 			    
+			    int itmpp=0;
+
 			    std::auto_ptr<TIterator> iter(v_pdfs_roodataset_tmp[ch]->get(i)->createIterator());
-			    for(RooRealVar * obs= (RooRealVar*)iter->Next(); obs!=0; obs=(RooRealVar*)iter->Next()){
+			    for(RooRealVar * obs= (RooRealVar*)iter->Next(); obs!=NULL; obs=(RooRealVar*)iter->Next()){
+
+				    if(TString(obs->GetName()).BeginsWith("wgttmp_")) continue;
 				    _w_varied->var(obs->GetName())->setVal(obs->getVal());
 				    //cout<<" Bin "<<i<<": "<<obs->getVal()<<endl;
 			    }
@@ -2739,9 +2828,9 @@ If we need to change it later, it will be easy to do.
 	    return ret;
     }
     void CountingModel::SetDataForUnbinned(TString filename, bool bRealData){
-	    vector<RooDataSet*> data; data.clear();
+	    vector<RooAbsData*> data; data.clear();
 	    for(int i=0; i<v_pdfs_channelname.size(); i++){
-		    data.push_back((RooDataSet*)GetTObject(filename.Data(), v_pdfs_channelname[i]));
+		    data.push_back((RooAbsData*)GetTObject(filename.Data(), v_pdfs_channelname[i]));
 	    }
 	    SetDataForUnbinned(data, bRealData);
     }
@@ -2755,7 +2844,7 @@ If we need to change it later, it will be easy to do.
 	    }
 	    SetData(data, bRealData);
     }
-    void CountingModel::SetDataForUnbinned(vector< RooDataSet* > data, bool bRealData){
+    void CountingModel::SetDataForUnbinned(vector< RooAbsData* > data, bool bRealData){
 	    /*
 	       for(int ch=0; ch<vv_pdfs.size(); ch++){
 	       if(v_pdfs_roodataset[ch])delete v_pdfs_roodataset[ch];
@@ -2784,13 +2873,13 @@ If we need to change it later, it will be easy to do.
 		       */
 	    }
     }
-    void CountingModel::SetTmpDataForUnbinned(vector< RooDataSet* > data){
+    void CountingModel::SetTmpDataForUnbinned(vector< RooAbsData* > data){
 	    v_pdfs_roodataset_tmp.clear();
 	    for(int ch=0; ch<vv_pdfs.size(); ch++){
 		    v_pdfs_roodataset_tmp.push_back(data[ch]);
 	    }
     }
-    void CountingModel::SetToyForUnbinned(vector< RooDataSet* > data){
+    void CountingModel::SetToyForUnbinned(vector< RooAbsData* > data){
 	    v_pdfs_roodataset_toy.clear();
 	    for(int ch=0; ch<vv_pdfs.size(); ch++){
 		    v_pdfs_roodataset_toy.push_back(data[ch]);
@@ -2899,10 +2988,11 @@ If we need to change it later, it will be easy to do.
 
 	    if(vvs.size()>0 && vvb.size()>0){
 		    for(int ch=0; ch<vv_pdfs.size(); ch++){
-			    int ntot = int(v_pdfs_roodataset[ch]->sumEntries());
+			    int ntot = int(v_pdfs_roodataset[ch]->numEntries());
 			    double tmp=0;
 			    for(int i=0; i<ntot; i++){
-				    tmp+= log( xr*vvs[ch][i] + vvb[ch][i]);
+				    v_pdfs_roodataset[ch]->get(i);
+				    tmp+= log( xr*vvs[ch][i] + vvb[ch][i])*v_pdfs_roodataset[ch]->weight();
 			    }
 			    ret+=tmp;
 		    }
@@ -2917,7 +3007,7 @@ If we need to change it later, it will be easy to do.
 		    for(int ch=0; ch<vv_pdfs.size(); ch++){
 			    vs.clear(); vb.clear();
 			    double btot = 0, stot=0;
-			    int ntot = int(v_pdfs_roodataset[ch]->sumEntries());
+			    int ntot = int(v_pdfs_roodataset[ch]->numEntries());
 			    double tmp=0;
 			    for(int i=0; i<vnorms[ch].size(); i++){
 				    if(i>=v_pdfs_sigproc[ch]) btot+=vnorms[ch][i];
@@ -2933,6 +3023,7 @@ If we need to change it later, it will be easy to do.
 
 				    std::auto_ptr<TIterator> iter(v_pdfs_roodataset[ch]->get(i)->createIterator());
 				    for(RooRealVar * obs= (RooRealVar*)iter->Next(); obs!=0; obs=(RooRealVar*)iter->Next()){
+					    if(TString(obs->GetName()).BeginsWith("wgttmp_")) continue;
 					    _w_varied->var(obs->GetName())->setVal(obs->getVal());
 				    }
 											              
@@ -2948,7 +3039,7 @@ If we need to change it later, it will be easy to do.
 				    }
 				    tmps =  stot*_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars); tmpb =  btot*_w_varied->pdf(v_pdfs_b[ch])->getVal(&vars);
 				    vs.push_back(tmps); vb.push_back(tmpb);
-				    tmp+= log(xr*tmps+tmpb);
+				    tmp+= log(xr*tmps+tmpb) * v_pdfs_roodataset[ch]->weight();
 				    //tmp+= log( xr*stot*_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars)
 				    //		+btot*_w_varied->pdf(v_pdfs_b[ch])->getVal(&vars));
 			    }
@@ -3139,7 +3230,7 @@ If we need to change it later, it will be easy to do.
 	    }
 	    if(_debug)cout<<"DELETEME: map_param_sources.size = "<<map_param_sources.size()<<endl;
     }
-    const vector< RooDataSet* >& CountingModel::Get_v_pdfs_roodataset(){
+    const vector< RooAbsData* >& CountingModel::Get_v_pdfs_roodataset(){
 	    //cout<<"in Get_v_pdfs_roodataset"<<endl;
 	    //cout<<" v_pdfs_roodataset.size =  "<<v_pdfs_roodataset.size()<<endl;
 	    //v_pdfs_roodataset[0]->Print();
