@@ -28,7 +28,7 @@
 #include "TGraphErrors.h"
 
 
-#include "RooDataSet.h"
+#include "RooAbsData.h"
 #include "RooWorkspace.h"
 
 using std::cout;
@@ -41,6 +41,7 @@ namespace lands{
 	TF1 * fitToRvsCL_expo = new TF1("fitToRvsCL_expo","[0]*exp([1]*(x-[2]))", 0, 0);
 	double _signalScale=0;
 	double * _inputNuisances = 0;	
+	double * _inputNuisancesSigma = 0;	
 	double * _startNuisances = 0;	
 	double * _minNuisances = 0; 
 	double * _maxNuisances = 0; 
@@ -588,12 +589,13 @@ namespace lands{
 			}
 
 			if(debug || pars || ierflg){
+				_inputNuisancesSigma = cms_global->Get_norminalParsSigma();
 
-				if(debug || ierflg || _bDumpFinalFitResults )printf("  par                 name         fitted_value        input_value        start_value\n");
+				if(debug || ierflg || _bDumpFinalFitResults )printf("  par                 name         fitted_value                      input_value                start_value        dx/s_in,s_out/s_in\n");
 				for(int i=0; i<=npars; i++){
 					double tmp, tmpe;
 					myMinuit->GetParameter(i, tmp, tmpe);
-					if(debug || ierflg || _bDumpFinalFitResults ) printf("  par %30s      %.6f +/- %.6f      %.6f     %.6f\n", i>0?v_uncname[i-1].c_str():"signal_strength", tmp, tmpe, _inputNuisances[i], _startNuisances[i]);
+					if(debug || ierflg || _bDumpFinalFitResults ) printf("  par %30s      %.6f +/- %.6f      %.6f +/- %.6f    %.6f     %.2f, %.2f\n", i>0?v_uncname[i-1].c_str():"signal_strength", tmp, tmpe, _inputNuisances[i], _inputNuisancesSigma[i], _startNuisances[i],  _inputNuisancesSigma[i]==0?0:(tmp-_inputNuisances[i])/_inputNuisancesSigma[i], _inputNuisancesSigma[i]==0?0:tmpe/_inputNuisancesSigma[i]);
 					if(pars && !hasBestFitted)pars[i] = tmp;
 					//if(pars)pars[i] = tmp;
 				}
@@ -622,7 +624,7 @@ namespace lands{
 		return 0.0;
 	}	
 
-	bool DoAfit(double mu, vector<double> vdata, vector<RooDataSet*> vrds, double* pars){
+	bool DoAfit(double mu, vector<double> vdata, vector<RooAbsData*> vrds, double* pars){
 		if(cms_global->GetDebug())cout<<"* DoAfit: start with mu= "<<mu<<endl;
 		if(!pars) {
 			cout<<" pars = 0,  newing "<<endl;
