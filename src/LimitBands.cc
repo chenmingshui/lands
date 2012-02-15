@@ -2,6 +2,7 @@
 #include <time.h> // upto micro second
 #include <cstdio>
 #include <iostream>
+#include "RooAbsData.h"
 #include "RooDataSet.h"
 #include "TTree.h"
 #include <map>
@@ -82,7 +83,7 @@ namespace lands{
 		vector<int> vEntries; vEntries.clear();  // index of vvPossibleOutcomes are the same as vEntries
 		VIChannel vbkg_tmp; 
 
-		vector< vector< RooDataSet* > > vvPossibleOutcomes_forUnbinnedChannels;
+		vector< vector< RooAbsData* > > vvPossibleOutcomes_forUnbinnedChannels;
 		vvPossibleOutcomes_forUnbinnedChannels.clear();
 
 		if(_debug) cout<<" _noutcomes="<<_noutcomes<<endl;
@@ -112,10 +113,10 @@ namespace lands{
 			}else{
 				vvPossibleOutcomes.push_back(vbkg_tmp);
 				vEntries.push_back(1);	
-				vector<RooDataSet*> vrds; vrds.clear();
+				vector<RooAbsData*> vrds; vrds.clear();
 				for(int c=0; c<_cms->Get_vv_pdfs().size(); c++){
-					RooDataSet *rds = new RooDataSet(*(_cms->Get_v_pdfs_roodataset_toy()[c]));
-					vrds.push_back(rds);
+					RooDataSet *rds = new RooDataSet(*((RooDataSet*)_cms->Get_v_pdfs_roodataset_toy()[c]));
+					vrds.push_back((RooAbsData*)rds);
 				}
 				vvPossibleOutcomes_forUnbinnedChannels.push_back(vrds);
 			}
