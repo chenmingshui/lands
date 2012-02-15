@@ -111,6 +111,9 @@ namespace lands{
 		const VChannelVSample &vv_sigbks = cms_global->Get_vv_exp_sigbkgs(); 
 
 		const vector<int> &v_pdftype = cms_global->Get_v_pdftype();
+		//cout<<" DELETEME :  Chisquare,  v_pdftype 1 = "<<v_pdftype[1]<<endl;; 
+		
+
 		const vector<double> &v_GammaN = cms_global->Get_v_GammaN();
 		const vector< vector<double> > &v_paramsUnc = cms_global->Get_v_pdfs_floatParamsUnc();
 
@@ -136,6 +139,7 @@ namespace lands{
 		if(vv_cachCountingParts.size()==0){
 			vv_cachCountingParts.resize(vv_sigbks.size());
 			for(int ch=0; ch<vv_sigbks.size(); ch++){
+			//cout<<" DELETEME  vv_sigbkg[ch].size = "<<vv_sigbks[ch].size()<<endl;
 				vv_cachCountingParts[ch].resize(vv_sigbks[ch].size());
 			}
 		}
@@ -241,6 +245,7 @@ namespace lands{
 										tmp = vv_sigbks[c][s];	
 										if(tmp!=0) { bs/=tmp; bs *= ((*uncpars)*ran*(s<nsigproc?par[0]:1)); }
 										else bs = (*uncpars)*ran*(s<nsigproc?par[0]:1);
+										//cout<<" DELETEME ****  vv_sigbks[c][s]= "<<vv_sigbks[c][s]<<" ran="<<ran<<"  alpha="<<(*uncpars)<<endl;	
 									}else{ // if *uncpars, i.e. rho <0, then it's multiplicative gamma
 										bs*=(ran/v_GammaN[ipar]);
 									}
@@ -346,6 +351,9 @@ namespace lands{
 				//		cout<<"DELETEMEfitstart par "<<i<<" "<<_inputNuisances[i]<<endl;
 				//	}
 
+		//cout<<" ********************   MinuitFit **************** "<<endl;
+
+
 		RooAbsArg::setDirtyInhibit(1);
 		if(!(pars && hasBestFitted)){
 			_lastParams.clear();	_currParams.clear();
@@ -416,7 +424,7 @@ namespace lands{
 			for(int i=1; i<=npars; i++){
 				if(debug>=10) cout<<" in par "<<i<<endl;
 				TString sname=v_uncname[i-1]; 
-				//	if(debug>=10) cout<<"DELETEME in MinuitFit    "<<sname<<endl;
+				if(debug>=10)cout<<" ******* DELETEME in MinuitFit    "<<sname<<":   v_pdftype = "<< v_pdftype[i]<<"  typeGamma = "<<typeGamma<<endl;
 				switch (v_pdftype[i]){
 					case typeShapeGaussianLinearMorph:
 					case typeShapeGaussianQuadraticMorph:

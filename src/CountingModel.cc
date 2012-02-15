@@ -691,10 +691,12 @@ namespace lands{
                 for(int isam=0; isam<vvv_idcorrl.at(ch).size(); isam++){
                     if(i==0 && isam<v_sigproc[ch])vvp_connectNuisBinProc[0].push_back(std::make_pair(ch, isam));
                     for(int iunc=0; iunc<vvv_idcorrl.at(ch).at(isam).size(); iunc++){
+//cout<<" *** DELETEME ConfigUncertaintyPdfs,  vvv_pdftype[ch][isam][iunc]="<<vvv_pdftype.at(ch).at(isam).at(iunc)<<endl;
                         if(_debug>=101)	 cout<< "in counting ConfigUncertaintyPdfs: ch "<<ch<<" isam "<<isam<<" iunc "<<iunc<<endl;
                         int indexcorrl = vvv_idcorrl.at(ch).at(isam).at(iunc);
                         if(indexcorrl==i && v_pdftype.back()<0 ){
                             v_pdftype.back()=vvv_pdftype.at(ch).at(isam).at(iunc);
+//			   cout<<" *** DELETEME ConfigUncertaintyPdfs, v_pdftype.back = "<<v_pdftype.back()<<endl;;
                         }
 
                         if(indexcorrl==i)vvp_connectNuisBinProc[indexcorrl].push_back(std::make_pair(ch, isam));
@@ -856,6 +858,8 @@ If we need to change it later, it will be easy to do.
             //  FIXME 
             // need to be able to identify which parameters are affected by this uncertainty source here 
             // and update the vvp_pdfs_connectNuisBinProc
+
+	    //cout<<"DELETEME v_pdftype[i+1]="<<v_pdftype[i+1]<<endl;
         }
         MakeListOfShapeUncertainties();
 
@@ -863,7 +867,7 @@ If we need to change it later, it will be easy to do.
         _norminalParsSigma = new double[max_uncorrelation+1];
         _randomizedPars= new double[max_uncorrelation+1];
         for(int i=1; i<=max_uncorrelation; i++){
-            if(_debug)cout<<" ** DELETEME "<<i<<" "<<v_uncname[i-1]<<endl;
+            if(_debug)cout<<" ** DELETEME wrong"<<i<<" "<<v_uncname[i-1]<<" v_pdftype = "<<v_pdftype[i]<<endl;
             switch (v_pdftype[i]){
                 case typeShapeGaussianLinearMorph:
                 case typeShapeGaussianQuadraticMorph:
@@ -2147,6 +2151,9 @@ If we need to change it later, it will be easy to do.
 	    return vv_exp_sigbkgs_scaled.at(index_channel).at(index_sample);
     }
     int CountingModel::RemoveChannelsWithExpectedSignal0orBkg0(int king){
+
+	//	return 0;
+
 	    // should be advoked at the end of model construction, otherwise you will get into trouble ....
 	    // either before or after "ConfigUncertaintyPdfs"
 	    std::vector< vector<double> >::iterator iter=vv_exp_sigbkgs.begin(); 
