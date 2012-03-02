@@ -1066,8 +1066,9 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 						}
 							
 
-						hnorm[t]=(TH1F*)hn[t]->Clone("del_clone"+t);
-						hnorm[t]->Scale(1./hn[t]->Integral());
+						TString sname  = "del_clone"; sname+=t;
+						hnorm[t]=(TH1F*)hn[t]->Clone(sname);
+						if(hn[t]->Integral()!=0)hnorm[t]->Scale(1./hn[t]->Integral());
 					}
 
 					// for channel c, process t,  looking for uncer which is shaping 
@@ -1082,21 +1083,36 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 											and shapeuncertainties[i][INDEXofProcess]==vv_procnames[c][t]
 											and shapeuncertainties[i][4]==uncerlines[u][0]){
 										hunc_up[t][u] = (TH1F*)GetHisto(shapeuncertainties[i][3], shapeuncertainties[i][5]);
-										if(hunc_up[t][u]->Integral()== 0) { 
+										if(hunc_up[t][u]->Integral()== 0 && hnorm[t]->Integral()!=0) { 
+											cout<<" hnorm "<<hnorm[t]->GetName()<<": integral = "<<hnorm[t]->Integral()<<endl;
 											cout<<"ERROR: channel ["<<channelnames[c]<<"] process ["<<vv_procnames[c][t]
 												<<"] is shape, but the up_shift histogram->Integral = 0"<<endl;
 											exit(0);
 										}
 										hunc_dn[t][u] = (TH1F*)GetHisto(shapeuncertainties[i][3], shapeuncertainties[i][6]);
-										if(hunc_dn[t][u]->Integral()== 0) { 
+										if(hunc_dn[t][u]->Integral()== 0 && hnorm[t]->Integral()!=0) { 
 											cout<<"ERROR: channel ["<<channelnames[c]<<"] process ["<<vv_procnames[c][t]
 												<<"] is shape, but the down_shift histogram->Integral = 0"<<endl;
 											exit(0);
 										}
-										hunc_up_norm[t][u]=(TH1F*)hunc_up[t][u]->Clone("up_clone"+t+u);
-										hunc_up_norm[t][u]->Scale(1./hunc_up[t][u]->Integral());
-										hunc_dn_norm[t][u]=(TH1F*)hunc_dn[t][u]->Clone("dn_clone"+t+u);
-										hunc_dn_norm[t][u]->Scale(1./hunc_dn[t][u]->Integral());
+										TString sname  = "up_clone"; sname+=t; sname+=u;
+										hunc_up_norm[t][u]=(TH1F*)hunc_up[t][u]->Clone(sname);
+										if(hunc_up[t][u]->Integral()!=0)hunc_up_norm[t][u]->Scale(1./hunc_up[t][u]->Integral());
+										sname  = "dn_clone"; sname+=t; sname+=u;
+										hunc_dn_norm[t][u]=(TH1F*)hunc_dn[t][u]->Clone(sname);
+										if(hunc_dn[t][u]->Integral()!=0)hunc_dn_norm[t][u]->Scale(1./hunc_dn[t][u]->Integral());
+										if(hnorm[t]->Integral()==0){
+											for(int ii=0; ii<=hunc_up_norm[t][u]->GetNbinsX(); ii++){
+											hunc_dn_norm[t][u]->SetBinContent(ii,0);
+											hunc_up_norm[t][u]->SetBinContent(ii,0);
+											}
+										}
+										if(0&&debug){
+											cout<<"channel ["<<channelnames[c]<<"] process ["<<vv_procnames[c][t]<<": sys."<<uncerlines[u][0]<<endl;
+											cout<<hnorm[t]->GetName()<<":"<<hnorm[t]->Integral()<<endl;
+											cout<<hunc_dn_norm[t][u]->GetName()<<":"<<hunc_dn_norm[t][u]->Integral()<<endl;
+											cout<<hunc_up_norm[t][u]->GetName()<<":"<<hunc_up_norm[t][u]->Integral()<<endl;
+										}
 										filled = true;
 									}
 								}	
@@ -1148,6 +1164,8 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 											cout<<"down = "<<down<<endl;
 											cout<<"up   = "<<up<<endl;
 											cout<<"norminal = "<<norminal<<endl;
+											cout<<hunc_dn_norm[t][u]->GetName()<<":"<<hunc_dn_norm[t][u]->Integral()<<endl;
+											cout<<hunc_up_norm[t][u]->GetName()<<":"<<hunc_up_norm[t][u]->Integral()<<endl;
 											exit(1);
 										}
 										if(norminal<0){ 

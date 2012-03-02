@@ -1,8 +1,7 @@
 LIB  := lands.so
 EXEC :=	test/CLs.exe \
 	test/Bayesian.exe \
-	test/lands.exe \
-	test/fakerate.exe
+	test/lands.exe 
 
 SOURCES := $(wildcard src/*.cc)
 OBJECTS := $(patsubst src/%.cc, bin/%.o, $(SOURCES))
