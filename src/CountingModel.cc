@@ -989,7 +989,9 @@ If we need to change it later, it will be easy to do.
                         tmp = -2;
                         while(tmp<-1){
                             // FIXME  need to be care about range of nuisances, since we change the central values
-                            vrdm.back()=_rdm->Gaus(bUseBestEstimateToCalcQ!=2?0:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]), v_TruncatedGaussian_maxUnc[i]);
+                            //vrdm.back()=_rdm->Gaus(bUseBestEstimateToCalcQ!=2?0:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]), v_TruncatedGaussian_maxUnc[i]);
+                            tmp = _rdm->Gaus(bUseBestEstimateToCalcQ!=2?0:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]), v_TruncatedGaussian_maxUnc[i]);
+			    
                         }
                         vrdm.back()=tmp;
                         break;
