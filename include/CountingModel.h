@@ -36,6 +36,7 @@ namespace lands{
 	typedef vector< vector<double> > VChannelVSample;
 	typedef vector< vector< vector<int> > > VChannelVSampleVUncertainty;
 	typedef vector< vector< vector< vector<double> > > > VChannelVSampleVUncertaintyVParameter;
+	typedef vector< vector< vector< vector<float> > > > VChannelVSampleVsetVval;
 	typedef map< string, vector< vector<double> > > MapStrVV;
 
 	enum enumPdfType {typeLogNormal=1, typeTruncatedGaussian=2, typeGamma=3, typeShapeGaussianLinearMorph=4, typeShapeGaussianQuadraticMorph=5, 
@@ -229,6 +230,11 @@ namespace lands{
 			const vector<TString>& Get_v_pdfs_observables(){return v_pdfs_observables;}
 			RooWorkspace * GetWorkSpace(){return _w;}
 
+			const vector< vector< vector<int> > >& Get_vvv_pdfs_nuisancesindex(){return vvv_pdfs_nuisancesindex;}
+			const VChannelVSampleVUncertaintyVParameter& Get_vvvv_pdfs_ChProcSetEvtVals(){return vvvv_pdfs_ChProcSetEvtVals;}
+			void Set_vvvv_pdfs_ChProcSetEvtVals(const VChannelVSampleVUncertaintyVParameter& vvvv_pdfs){vvvv_pdfs_ChProcSetEvtVals=vvvv_pdfs;}
+			const VChannelVSampleVUncertaintyVParameter& Get_vvvv_pdfs_ChProcSetParVals(){return vvvv_pdfs_ChProcSetParVals;}
+			void Set_vvvv_pdfs_ChProcSetParVals(const VChannelVSampleVUncertaintyVParameter& vvvv_pdfs){vvvv_pdfs_ChProcSetParVals=vvvv_pdfs;}
 
 			void AddChannel(string channel_name, RooRealVar* observable, vector<RooAbsPdf*> sigPdfs, vector<double> sigNorms, vector<RooAbsArg*> vsExtraNorm, 
 				       	vector<RooAbsPdf*> bkgPdfs, vector<double> bkgNorms, vector<RooAbsArg*> vbExtraNorm);
@@ -288,6 +294,7 @@ namespace lands{
 
 
 			void DumpFitResults(double *pars, TString ssave);
+			void Set_maxSetsCaching(int i){maxsets_forcaching=i;};
 		private:
 			VDChannel v_data; // could be pseudo-data for bands
 			VDChannel v_data_real; // real data, not changed during entire run 
@@ -409,6 +416,12 @@ namespace lands{
 			vector< vector<double> > vv_pdfs_data_toy; // in each channel, it has a list of events
 			// three types of uncertainties: 1. only affect shape;  2. only affect normalization; 3. affect both 
 			vector< vector< vector<int> > > vvv_pdfs_unctype;
+			vector< vector< vector<int> > > vvv_pdfs_nuisancesindex;
+
+			vector< vector< vector< vector<double> > > > vvvv_pdfs_ChProcSetEvtVals;
+			vector< vector< vector< vector<double> > > > vvvv_pdfs_ChProcSetParVals;
+			vector< vector<int> > vv_pdfs_curSetIndex;
+
 			vector< vector<string> > vv_pdfs_procname;
 
 			MapStrVV map_param_sources; // map <paramName, vector< idcorrl, sigmaL, sigmaR > > 
@@ -419,10 +432,13 @@ namespace lands{
 			vector< vector<std::pair<int, int> > > vvp_pdfs_connectNuisBinProc;// keep in memory:  a nuisance affects a list of [channel, process]
 			vector< vector<std::pair<int, int> > > vvp_connectNuisBinProc;// keep in memory:  a nuisance affects a list of [channel, process]
 
+			vector< vector< int > > TMP_vvpdfs_chprocINT; 
+
 			int minuitSTRATEGY;
 			double minuitTolerance;
 			double nuisancesRange;
 			int maximumFunctionCallsInAFit;
+			int maxsets_forcaching;
 
 
 			int _PhysicsModel;

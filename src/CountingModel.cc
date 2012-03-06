@@ -834,12 +834,26 @@ If we need to change it later, it will be easy to do.
         }
 
 
-        for(int i=0; i<v_pdfs_floatParamsName.size(); i++){
+	vvv_pdfs_nuisancesindex.clear();
+	for(int ch = 0; ch<vv_pdfs.size(); ch++ ){
+		vector< vector<int> > vv;
+		for(int p=0; p<vv_pdfs[ch].size(); p++){
+			vector< int > v;
+			vv.push_back(v);
+		}
+		vvv_pdfs_nuisancesindex.push_back(vv);
+	}
+	for(int i=0; i<v_pdfs_floatParamsName.size(); i++){
             //v_pdftype[v_pdfs_floatParamsIndcorr[i]] = typeBifurcatedGaussian;
             v_pdftype[v_pdfs_floatParamsIndcorr[i]] = v_pdfs_floatParamsType[i];
             // identify here which pdfs are affected by this parameter
             // and update the vvp_pdfs_connectNuisBinProc
-
+	
+	int nuiInd = -1;
+        for(int j=0; j<v_uncname.size(); j++){
+		if(v_uncname[j]==v_pdfs_floatParamsName[i]) nuiInd=j+1;
+	}
+	if(nuiInd<0){ cout<<" "<<v_pdfs_floatParamsName[i]<<" doesn't appear in uncname list" <<endl; exit(1); }
             //cout<<" DELETEME floatparam "<<v_pdfs_floatParamsName[i]<<endl;
             for(int ch = 0; ch<vv_pdfs.size(); ch++ ){
                 for(int p=0; p<vv_pdfs[ch].size(); p++){
@@ -847,7 +861,11 @@ If we need to change it later, it will be easy to do.
                     //		cout<<" pdf: "<<vv_pdfs[ch][p]<<endl;
                     for (RooAbsArg *par = (RooAbsArg *) iter->Next(); par != 0; par = (RooAbsArg *) iter->Next()) {
                         //			cout<<" DELETEME par "<<par->GetName()<<endl;
-                        if(par->GetName()==v_pdfs_floatParamsName[i]) vvp_pdfs_connectNuisBinProc[v_pdfs_floatParamsIndcorr[i]].push_back(make_pair(ch,p));
+                        if(par->GetName()==v_pdfs_floatParamsName[i]) {
+				vvp_pdfs_connectNuisBinProc[v_pdfs_floatParamsIndcorr[i]].push_back(make_pair(ch,p));
+				vvv_pdfs_nuisancesindex[ch][p].push_back(nuiInd);
+				continue;
+			}
                     }
                 }
             }
@@ -2699,6 +2717,56 @@ If we need to change it later, it will be easy to do.
 		    }
 	    }
 
+	    //int maxsets_forcaching = 20;
+	    if(vvvv_pdfs_ChProcSetEvtVals.size()==0){
+		    vvvv_pdfs_ChProcSetEvtVals.resize(vv_pdfs.size());
+		    for(int ch=0; ch<vv_pdfs.size(); ch++){
+			    vvvv_pdfs_ChProcSetEvtVals[ch].resize(vv_pdfs[ch].size());
+			    for(int p=0; p<vv_pdfs[ch].size();p++){
+				    vvvv_pdfs_ChProcSetEvtVals[ch][p].resize(maxsets_forcaching); 
+				    int ntot = int(v_pdfs_roodataset_tmp[ch]->numEntries());
+				    for(int i=0; i<maxsets_forcaching; i++){
+					    vvvv_pdfs_ChProcSetEvtVals[ch][p][i].resize(ntot); 
+				    }
+			    }
+		    }
+	    }
+	    if(_debug>=100)cout<<" hi0 "<<endl;
+	    if(vvvv_pdfs_ChProcSetParVals.size()==0){
+		    vvvv_pdfs_ChProcSetParVals.resize(vv_pdfs.size());
+		    for(int ch=0; ch<vv_pdfs.size(); ch++){
+			    vvvv_pdfs_ChProcSetParVals[ch].resize(vv_pdfs[ch].size());
+			    for(int p=0; p<vv_pdfs[ch].size();p++){
+				    vvvv_pdfs_ChProcSetParVals[ch][p].resize(maxsets_forcaching); 
+				    for(int i=0; i<maxsets_forcaching; i++){
+					    vvvv_pdfs_ChProcSetParVals[ch][p][i].resize(vvv_pdfs_nuisancesindex[ch][p].size()); 
+					    if(vvv_pdfs_nuisancesindex[ch][p].size()>0)vvvv_pdfs_ChProcSetParVals[ch][p][i][0] = -99998.;
+				    }
+			    }
+		    }
+	    }
+	    if(_debug>=100)cout<<" hi1 "<<endl;
+	    if(vv_pdfs_curSetIndex.size()==0){
+		    vv_pdfs_curSetIndex.resize(vv_pdfs.size());
+		    for(int ch=0; ch<vv_pdfs.size(); ch++){
+			    vv_pdfs_curSetIndex[ch].resize(vv_pdfs[ch].size());
+			    for(int p=0; p<vv_pdfs[ch].size(); p++) vv_pdfs_curSetIndex[ch][p]=-1;
+		    }
+	    }
+	    if(_debug>=100)cout<<" hi2 "<<endl;
+	    if(TMP_vvpdfs_chprocINT.size()==0){
+		    TMP_vvpdfs_chprocINT.resize(vv_pdfs.size());
+		    for(int ch=0; ch<vv_pdfs.size(); ch++) {
+			    TMP_vvpdfs_chprocINT[ch].resize(vv_pdfs[ch].size());
+			    for(int p=0; p<vv_pdfs[ch].size(); p++) TMP_vvpdfs_chprocINT[ch][p]=-1;
+		    }
+	    }
+	    if(maxsets_forcaching>0){
+		    for(int ch=0; ch<vv_pdfs.size(); ch++) {
+			    for(int p=0; p<vv_pdfs[ch].size(); p++) TMP_vvpdfs_chprocINT[ch][p]=-1;
+			    //	for(int p=0; p<vv_pdfs[ch].size(); p++) vv_pdfs_curSetIndex[ch][p]=-1;
+		    }
+	    }
 	    double btot = 0, stot=0, sbtot=0;
 	    double tmp=0, tmp2=0, tmp3=0, retch=0;
 	    int ntot;
@@ -2725,17 +2793,18 @@ If we need to change it later, it will be easy to do.
 		       tmp += btot*_w_varied->pdf(v_pdfs_b[ch])->getVal(&vars);
 		       retch -= (tmp>0?log(tmp):0);
 		       }
-		       */
+		     */
 
 		    nsigproc = v_pdfs_sigproc[ch];
 		    //TString stemp = "";
 		    //bool bupdated = false;
+		    for(int p=0; p<vv_pdfs[ch].size(); p++) TMP_vvpdfs_chprocINT[ch][p]=-1;
 		    for(int i=0; i<ntot; i++){
 			    //stemp+=" evt "; stemp+=i;
 			    //tmprrv=_w_varied->var(v_pdfs_observables[ch]);
 			    //tmprrv->setDirtyInhibit(1);
 			    //tmprrv->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset_tmp[ch]->get(i)->first()))->getVal());
-			    
+
 			    int itmpp=0;
 
 			    std::auto_ptr<TIterator> iter(v_pdfs_roodataset_tmp[ch]->get(i)->createIterator());
@@ -2765,8 +2834,59 @@ If we need to change it later, it will be easy to do.
 						    if( p<nsigproc && firstSigProcPdfVal >= 0 && b_MultiSigProcShareSamePDF){
 							    tmp3 = firstSigProcPdfVal;
 						    }else{
-							    tmp3 =	_w_varied->pdf(vv_pdfs[ch][p].c_str())->getVal(&vars);  //give some warning message when r=0
-							    _countPdfEvaluation ++ ;
+
+
+							    if(i==0 && maxsets_forcaching>0){
+								    for(int ti=0; ti<maxsets_forcaching; ti++){
+									    for(int tj=0; tj < vvv_pdfs_nuisancesindex[ch][p].size(); tj++){
+										    if((par[vvv_pdfs_nuisancesindex[ch][p][tj]])!=vvvv_pdfs_ChProcSetParVals[ch][p][ti][tj]) break;
+										    if(tj==vvv_pdfs_nuisancesindex[ch][p].size()-1)TMP_vvpdfs_chprocINT[ch][p] = ti ;
+									    }
+								    }	
+							    }
+
+							    if(TMP_vvpdfs_chprocINT[ch][p]>=0){
+								    tmp3 = vvvv_pdfs_ChProcSetEvtVals[ch][p][TMP_vvpdfs_chprocINT[ch][p]][i];
+								    //  float tmp4 =	_w_varied->pdf(vv_pdfs[ch][p].c_str())->getVal(&vars);  //give some warning message when r=0
+								    //  float tmp5 =	_w_varied->pdf(vv_pdfs[ch][p].c_str())->getVal(&vars);  //give some warning message when r=0
+								    if(0){
+									    //	cout<<" tmp3="<<tmp3<<" tmp4="<<tmp4<<" tmp4p="<<tmp5<<endl;
+									    cout<<" tmp3_0="<<vvvv_pdfs_ChProcSetEvtVals[ch][p][TMP_vvpdfs_chprocINT[ch][p]][0]<<endl;	
+									    for(int tii=0; tii<maxsets_forcaching; tii++){
+										    cout<<" tii="<<tii<<" tmp3="<<vvvv_pdfs_ChProcSetEvtVals[ch][p][tii][0]<<"  "<<vvvv_pdfs_ChProcSetEvtVals[ch][p][tii][1]<<endl;
+									    }
+
+									    int tmpii = TMP_vvpdfs_chprocINT[ch][p];
+									    for(int ppi=0; ppi<vvvv_pdfs_ChProcSetParVals[ch][p][tmpii].size(); ppi++)cout<<" TTTT "<< vvvv_pdfs_ChProcSetParVals[ch][p][tmpii][ppi]/*<<"  name="<<v_uncname[vvv_pdfs_nuisancesindex[ch][p][ppi]-1]*/<<" index= "<<vvv_pdfs_nuisancesindex[ch][p][ppi]<<endl;
+									    cout<<" PPPPP "<<par[1]<<" name="<<v_uncname[0] <<endl;
+									    cout<<" PPPPP "<<par[2]<<" name="<<v_uncname[1] <<endl;
+									    cout<<" PPPPP "<<par[3]<<" name="<<v_uncname[2] <<endl;
+									    cout<<" PPPPP "<<par[4]<<" name="<<v_uncname[3] <<endl;
+
+
+
+
+
+									    exit(1); //
+
+								    }
+							    }else{	
+								    if(i==0 && maxsets_forcaching>0){ // move to next set, and if >= maxsets_forcaching, take the mode 
+									    vv_pdfs_curSetIndex[ch][p]+=1; 
+									    //cout<<" curSetIndex = "<<vv_pdfs_curSetIndex[ch][p]<<endl;
+									    if(vv_pdfs_curSetIndex[ch][p]>=maxsets_forcaching) vv_pdfs_curSetIndex[ch][p]-=maxsets_forcaching;
+									    for(int tj=0; tj<vvv_pdfs_nuisancesindex[ch][p].size(); tj++){
+										    vvvv_pdfs_ChProcSetParVals[ch][p][vv_pdfs_curSetIndex[ch][p]][tj]=(par[vvv_pdfs_nuisancesindex[ch][p][tj]]);
+										    //// make it to not work ,   ---> to test timing
+										    //if(tj==vvv_pdfs_nuisancesindex[ch][p].size()-1) vvvv_pdfs_ChProcSetParVals[ch][p][vv_pdfs_curSetIndex[ch][p]][tj]=-9999998.;
+									    }
+								    }
+								    tmp3 =	_w_varied->pdf(vv_pdfs[ch][p].c_str())->getVal(&vars);  //give some warning message when r=0
+								    //  cout<<" i "<<i<<" val="<<tmp3<<"   *********ch"<<ch<<"p"<<p<<"  before val="<<vvvv_pdfs_ChProcSetEvtVals[ch][p][vv_pdfs_curSetIndex[ch][p]][i]<<endl;
+								    if(maxsets_forcaching>0)vvvv_pdfs_ChProcSetEvtVals[ch][p][vv_pdfs_curSetIndex[ch][p]][i] = tmp3; // update the value of the chosen set 
+								    _countPdfEvaluation ++ ;
+								    //   cout<<" i "<<i<<" val="<<tmp3<<"   *********ch"<<ch<<"p"<<p<<"  curSetIndex="<<vv_pdfs_curSetIndex[ch][p]<<"  after val="<<vvvv_pdfs_ChProcSetEvtVals[ch][p][vv_pdfs_curSetIndex[ch][p]][i]<<endl;
+							    }
 							    if(p<nsigproc) firstSigProcPdfVal = tmp3;
 						    }
 						    //bupdated = true;

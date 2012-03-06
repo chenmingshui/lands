@@ -14,6 +14,7 @@
 #include "PlotUtilities.h"
 #include "CLsLimit.h"
 #include "SignificanceBands.h"
+#include "MLLxsBands.h"
 #include "RooRandom.h"
 #include "TStopwatch.h"
 #include "RooDataSet.h"
@@ -152,6 +153,7 @@ TString scanRAroundBand = "all";
 
 
 bool bConstructAsimovbFromNominal = false;
+bool bConstructAsimovsbFromFit = false;
 
 bool bRedefineObservableRange = false;
 double ObservableRangeMin = 0;
@@ -159,6 +161,7 @@ double ObservableRangeMax = 0;
 int ObservableBins = 100;
 
 bool bDumpFitResults = false;
+int maxsets_forcaching = 0;
 
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
@@ -258,6 +261,7 @@ int main(int argc, const char*argv[]){
 	cms_global->Set_nuisancesRange(nuisancesRange);
 	cms_global->Set_maximumFunctionCallsInAFit(maximumFunctionCallsInAFit);
 	
+	cms_global->Set_maxSetsCaching(maxsets_forcaching);
 
 	TPaveText *pt = SetTPaveText(0.2, 0.7, 0.3, 0.9);
 	if(customRMax!=customRMin) {_customRMin=customRMin; _customRMax = customRMax;}
@@ -268,7 +272,7 @@ int main(int argc, const char*argv[]){
 	bConstructAsimovbFromNominal = true;
 	if(method == "Asymptotic") bConstructAsimovbFromNominal = false;
 	cms->ConstructAsimovData(0, bConstructAsimovbFromNominal); // b-only asimov 
-	cms->ConstructAsimovData(1); // sb asimov
+	cms->ConstructAsimovData(1, bConstructAsimovsbFromFit); // sb asimov
 	if(dataset == "asimov_b")cms->UseAsimovData(0);
 	else if(dataset == "asimov_sb")cms->UseAsimovData(1);
 
@@ -982,6 +986,11 @@ int main(int argc, const char*argv[]){
 			
 			SaveResults(jobname+"_maxllfit", HiggsMass, 0, 0, 0, 0, 0, mu_hat_low, 0, mu_hat, mu_hat_up, 0);
 			if(bDumpFitResults)cms->DumpFitResults(pars, jobname+"_fittedShape_floatMu");
+			
+			double *pars_maxll = new double[cms->Get_max_uncorrelation()+1]; 
+			for(int i=0; i<=cms->Get_max_uncorrelation(); i++) pars_maxll[i]=pars[i];
+			cms->Set_fittedParsInData_sb(pars_maxll);
+			
 
 
 			double y0_3, mu_hat2, mu_hat_up2, mu_hat_low2;
@@ -1168,6 +1177,42 @@ int main(int argc, const char*argv[]){
 				watch.Print();
 				return 0;
 			}
+			if(doExpectation){
+				MLLxsBands lb(cms);	
+				lb.SetDebug(debug);
+				int noutcomes = toys;
+				lb.Bands(noutcomes);
+				double rmean, rm1s, rm2s, rp1s, rp2s;	
+				rmean=lb.GetMLLxsMean();
+				rm1s=lb.GetMLLxs(-1);rm2s=lb.GetMLLxs(-2);rp1s=lb.GetMLLxs(1);rp2s=lb.GetMLLxs(2);
+				difflimits=lb.GetDifferentialMLLxs();
+
+				TString ts=jobname; ts+="_maxlls";
+				FillTree(ts, difflimits);
+
+				TCanvas *c=new TCanvas("csig","cSig");
+				c->SetLogy(1);
+				TH1F *h=new TH1F("h","; #hat{#mu}; entries", 200, 0, 8);	
+				for(int i=0; i<difflimits.size(); i++) h->Fill(difflimits[i]);
+				h->Draw();
+				Save(c, (jobname+"differential_muhat").Data());
+
+				vector<double> all_calculated_R95s;
+				vector<double> cummulativeProbabilities; // all_calculated_R95s has been sorted, each of them has a cummulative probability
+				SortAndCumulative(difflimits, all_calculated_R95s, cummulativeProbabilities);
+
+				pt = SetTPaveText(0.67, 0.4, 0.8, 0.7);
+				pt->AddText("#hat{#mu} statistical bands");
+				string ssave=(jobname+"_cummulativeMuhat").Data();
+				string stitle="; #hat{#mu}; cumulative probability;";
+				PlotXvsCummulativeProb plotRvsP(all_calculated_R95s, cummulativeProbabilities,
+						rm1s, rp1s, rm2s, rp2s,ssave, stitle, pt);
+				plotRvsP.draw();
+
+				cout<<" Expected MLLxs:   median       = "<<rmean<<endl;
+				cout<<" Expected MLLxs:   68\% coverage = ["<<rm1s<< "," <<rp1s<<"]"<<endl;
+				cout<<" Expected MLLxs:   95\% coverage = ["<<rm2s<< "," <<rp2s<<"]"<<endl;
+			}
 
 
 		}else{
@@ -1328,6 +1373,10 @@ int main(int argc, const char*argv[]){
 			PlotXvsCummulativeProb plotRvsP(all_calculated_R95s, cummulativeProbabilities,
 					rm1s, rp1s, rm2s, rp2s,ssave, stitle, pt);
 			plotRvsP.draw();
+
+			cout<<" Expected Significance:   median       = "<<rmean<<endl;
+			cout<<" Expected Significance:   68\% coverage = ["<<rm1s<< "," <<rp1s<<"]"<<endl;
+			cout<<" Expected Significance:   95\% coverage = ["<<rm2s<< "," <<rp2s<<"]"<<endl;
 		}
 	}
 
@@ -1413,6 +1462,7 @@ void processParameters(int argc, const char* argv[]){
 	if(isWordInMap("--bForceSymmetryError", options)) bForceSymmetryError = true;
 	if(isWordInMap("--bMultiSigProcShareSamePDF", options)) bMultiSigProcShareSamePDF = true;
 	if(isWordInMap("--bConstructAsimovbFromNominal", options)) bConstructAsimovbFromNominal = true;
+	if(isWordInMap("--bConstructAsimovsbFromFit", options)) bConstructAsimovsbFromFit = true;
 
 	tmpv= options["-L"];if(tmpv.size()==0)tmpv=options["--LoadLibraries"];
 	librariesToBeLoaded = tmpv;
@@ -1801,6 +1851,10 @@ void processParameters(int argc, const char* argv[]){
 
 
 	if(isWordInMap("--bDumpFitResults", options)) bDumpFitResults = true; 
+
+	tmpv = options["--maxsets_caching"]; 
+	if( tmpv.size()!=1 ) { maxsets_forcaching = 0; }
+	else { maxsets_forcaching = tmpv[0].Atoi(); }
 
 
 	printf("\n\n[ Summary of configuration in this job: ]\n");
@@ -2714,8 +2768,10 @@ void PrintHelpMessage(){
 	printf("--bFixNuisancsAtNominal               fix nuisances to nominal value instead of fitting to data in case of LHC-CLs\n");
 	printf("--scanRAroundBand  (=all)            scan signal strengths around band (-2, -1, 0, 1, 2, obs, all)\n");
 	printf("--bConstructAsimovbFromNominal	      construct asimov_b dataset from nominal nuisances   (default is from fitted nuisances) \n");
+	printf("--bConstructAsimovsbFromFit	      construct asimov_sb dataset from global fitted nuisances   (default is from nominal nuisances) \n");
 	printf("--bRedefineObservableRange, --ObservableRangeMin, --ObservableRangeMax, --ObservableBins :  for hzz4l pdf extraction\n");
 	printf("--bDumpFitResults                     dump fit results and also the fitted shape if there is any shape input (only binned supported) \n");
+	printf("--maxsets_caching arg (=0)            number of sets of cached pdf values,  the larger it is, the larger memory required    \n");
 
 	printf(" \n");
 	printf("------------------some comand lines-----------------------------------------------\n");
