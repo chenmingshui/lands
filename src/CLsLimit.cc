@@ -79,6 +79,8 @@ namespace lands{
 
 		f = 0; // fabs(cms_global->GetRdm()->Gaus() ) ;
 		if(par[0]<0 && _bPositiveSignalStrength) { f = -9e10; return; }
+
+		if(par[0]>9e10) {f=-9e10; return;}
 		
 		bool bAllChannelsAreFlagged = false;
 		npar = cms_global->Get_max_uncorrelation()+1;
@@ -333,6 +335,10 @@ namespace lands{
 		// to be identical with ATLAS TDR description, for limit only
 		f=chisq;
 
+		if(cms_global->GetPrintParameter() >= 0 ){
+			int i = cms_global->GetPrintParameter();
+			if(i<npar) printf("PAR %.6f \n", par[i]);
+		}
 
 		if(cms_global->GetDebug()>100){
 			cout<<"PARS ";
