@@ -972,6 +972,7 @@ If we need to change it later, it will be easy to do.
         double tmp ; 
         vector<double> vrdm; vrdm.clear();
         v_pdfs_floatParamsVaried.clear();
+	int nit;
         if(par==0){
             for(int i=0; i<v_pdftype.size(); i++){
                 if(_debug>=100)cout<<" vpdftype: "<<i<<"th --> "<<v_pdftype[i]<<endl;
@@ -986,20 +987,22 @@ If we need to change it later, it will be easy to do.
 
                     case typeTruncatedGaussian:
                         //      another way is to throw normal gaus random number and regenerate if x<-1, it's more transparent
-                        tmp = -2;
-                        while(tmp<-1){
-                            // FIXME  need to be care about range of nuisances, since we change the central values
-                            //vrdm.back()=_rdm->Gaus(bUseBestEstimateToCalcQ!=2?0:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]), v_TruncatedGaussian_maxUnc[i]);
-                            tmp = _rdm->Gaus(bUseBestEstimateToCalcQ!=2?0:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]), v_TruncatedGaussian_maxUnc[i]);
-			    
-                        }
-                        vrdm.back()=tmp;
-                        break;
+			tmp = _rdm->Gaus(bUseBestEstimateToCalcQ!=2?0:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]), 1);
+			nit = 0;
+			while(tmp * v_TruncatedGaussian_maxUnc[i] < -1 ) {
+				// FIXME  need to be care about range of nuisances, since we change the central values
+				//tmp = _rdm->Gaus(bUseBestEstimateToCalcQ!=2?0:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]), v_TruncatedGaussian_maxUnc[i]);
+				tmp = _rdm->Gaus(bUseBestEstimateToCalcQ!=2?0:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]), 1);
+				nit++;
+				if(nit > 1000 ) break;
+			}
+			vrdm.back()=tmp;
+			break;
 
-                    case typeGamma:
-                        //vrdm.back()=_rdm->Gamma(v_GammaN[i]);
-                        //frequentist way, need to toss integer number 
-                        if(_tossToyConvention)vrdm.back()=(int)_rdm->Gamma(bUseBestEstimateToCalcQ!=2?v_GammaN[i]:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i])); 
+		    case typeGamma:
+			//vrdm.back()=_rdm->Gamma(v_GammaN[i]);
+			//frequentist way, need to toss integer number 
+			if(_tossToyConvention)vrdm.back()=(int)_rdm->Gamma(bUseBestEstimateToCalcQ!=2?v_GammaN[i]:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i])); 
                         else vrdm.back()=_rdm->Gamma(bUseBestEstimateToCalcQ!=2?v_GammaN[i]:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]));
                         if(_debug>=10)cout<<"DELETEME gamma N="<<(bUseBestEstimateToCalcQ!=2?v_GammaN[i]:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]))<<endl;
                         if(_debug>=10)cout<<"DELETEME -->rdm = "<<vrdm.back()<<endl;
@@ -1152,7 +1155,8 @@ If we need to change it later, it will be easy to do.
                                 break;
 
                             case typeTruncatedGaussian :
-                                vv[ch][isam]*=( 1+vvvv_uncpar[ch][isam][iunc][(ran>0?1:0)] / v_TruncatedGaussian_maxUnc[indexcorrl] * ran );		
+                                //vv[ch][isam]*=( 1+vvvv_uncpar[ch][isam][iunc][(ran>0?1:0)] / v_TruncatedGaussian_maxUnc[indexcorrl] * ran );		
+                                vv[ch][isam]*=( 1+vvvv_uncpar[ch][isam][iunc][(ran>0?1:0)] * ran );		
                                 break;
 
                             case typeGamma :
@@ -1254,7 +1258,8 @@ If we need to change it later, it will be easy to do.
 
                             case typeTruncatedGaussian :
                                 if(_debug>=100) cout<<" in FluctuatedNumbers, bHasParametricShape: ch["<<ch<<"] isam["<<isam<<"] iunc["<<iunc<<"]"<<" pdftype="<<pdftype<<endl;
-                                vv_pdfs_norm_varied[ch][isam]*=( 1+vvv_pdfs_normvariation[ch][isam][iunc][(ran>0?1:0)] / v_TruncatedGaussian_maxUnc[indexcorrl] * ran );		
+                                //vv_pdfs_norm_varied[ch][isam]*=( 1+vvv_pdfs_normvariation[ch][isam][iunc][(ran>0?1:0)] / v_TruncatedGaussian_maxUnc[indexcorrl] * ran );		
+                                vv_pdfs_norm_varied[ch][isam]*=( 1+vvv_pdfs_normvariation[ch][isam][iunc][(ran>0?1:0)] * ran );		
                                 if(_debug>=100) cout<<" norm varied after this unc = "<<vv_pdfs_norm_varied[ch][isam]<<endl;
                                 break;
 
