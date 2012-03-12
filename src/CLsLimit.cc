@@ -270,7 +270,7 @@ namespace lands{
 				chisq +=( tc - vdata_global[c]);
 				//			chisq +=( tc ); //- vdata_global[c]); // to be identical with ATLAS TDR description, for limit only
 			}else { 
-				if(tc<=0) {f=10e9; return;} // tc < 0, which means non-physical, return f = 10e9
+				//if(tc<=0) {f=10e9; return;} // tc < 0, which means non-physical, return f = 10e9
 				chisq += (tc-vdata_global[c] - vdata_global[c]*log(tc/vdata_global[c]));
 			}
 			//		else chisq += (tc - vdata_global[c]*log(tc));   // to be identical with ATLAS TDR description, for limit only
@@ -278,6 +278,11 @@ namespace lands{
 		if(cms_global->hasParametricShape()){
 			chisq+=	cms_global->EvaluateChi2(par, vvv_cachPdfValues);// use default, norminal sigbkgs for evaluation, not randomized one 		
 		}
+		if(isnan(chisq)){ 
+			cout<<" DELETEME ** ** ** ** chi2=nan"<<endl;
+			cms_global->UnFlagAllChannels(bAllChannelsAreFlagged?1:0);
+			f=10e9; return; 
+		} // checking if it's nan  
 		// to be identical with ATLAS TDR description, for limit only
 		//http://cdsweb.cern.ch/record/1159618/files/Higgs%20Boson%20%28p1197%29.pdf
 		chisq*=2;  //
@@ -293,7 +298,7 @@ namespace lands{
 					case typeShapeGaussianLinearMorph:
 					case typeLogNormal:
 						chisq += pow(par[u]-_inputNuisances[u],2); // make sure if doing lep/tev type and also data fit, then _inputNuisances = norminal set 
-						if(isnan(chisq)) {cout<<"DELETEME chi2=nan _inputNuisances["<<u<<"]="<<_inputNuisances[u]<<endl;}
+						//if(isnan(chisq)) {cout<<"DELETEME chi2=nan _inputNuisances["<<u<<"]="<<_inputNuisances[u]<<endl;}
 						break;
 					case typeGamma:
 						// this is important, one need constraint on the pdf 
