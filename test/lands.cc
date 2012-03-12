@@ -162,7 +162,8 @@ int ObservableBins = 100;
 
 bool bDumpFitResults = false;
 int maxsets_forcaching = 0;
-int PrintParameter = -1;
+int PrintParameterFrom = -1;
+int PrintParameterTo = -1;
 
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
@@ -263,7 +264,7 @@ int main(int argc, const char*argv[]){
 	cms_global->Set_maximumFunctionCallsInAFit(maximumFunctionCallsInAFit);
 	
 	cms_global->Set_maxSetsCaching(maxsets_forcaching);
-	cms_global->Set_PrintParameter(PrintParameter);
+	cms_global->Set_PrintParameter(PrintParameterFrom, PrintParameterTo);
 
 	TPaveText *pt = SetTPaveText(0.2, 0.7, 0.3, 0.9);
 	if(customRMax!=customRMin) {_customRMin=customRMin; _customRMax = customRMax;}
@@ -1855,8 +1856,11 @@ void processParameters(int argc, const char* argv[]){
 	if(isWordInMap("--bDumpFitResults", options)) bDumpFitResults = true; 
 
 	tmpv = options["--PrintParameter"]; 
-	if( tmpv.size()!=1 ) { PrintParameter = -1; }
-	else { PrintParameter = tmpv[0].Atoi(); }
+	if( tmpv.size()==2 ) { PrintParameterFrom = tmpv[0].Atoi(); 
+		PrintParameterTo = tmpv[1].Atoi(); }
+	else if(tmpv.size()==1){ PrintParameterFrom = tmpv[0].Atoi(); 
+		PrintParameterTo = tmpv[0].Atoi(); }
+	else { PrintParameterFrom = -1; PrintParameterTo=-1; }
 
 	tmpv = options["--maxsets_caching"]; 
 	if( tmpv.size()!=1 ) { maxsets_forcaching = 0; }
@@ -2778,7 +2782,7 @@ void PrintHelpMessage(){
 	printf("--bRedefineObservableRange, --ObservableRangeMin, --ObservableRangeMax, --ObservableBins :  for hzz4l pdf extraction\n");
 	printf("--bDumpFitResults                     dump fit results and also the fitted shape if there is any shape input (only binned supported) \n");
 	printf("--maxsets_caching arg (=0)            number of sets of cached pdf values,  the larger it is, the larger memory required    \n");
-	printf("--PrintParameter arg (=-1)            print intermediate values of the parameter specified    \n");
+	printf("--PrintParameter arg1 arg2 (= -1 -1)    print intermediate values of the parameters specified in the range [arg1, arg2]    \n");
 	printf("--rMin arg (=0)                       force signal strength to be >= rMin \n");
 	printf("--rMax arg (=0)                       force signal strength to be <= rMax \n");
 

@@ -335,9 +335,13 @@ namespace lands{
 		// to be identical with ATLAS TDR description, for limit only
 		f=chisq;
 
-		if(cms_global->GetPrintParameter() >= 0 ){
-			int i = cms_global->GetPrintParameter();
-			if(i<npar) printf("PAR %.6f \n", par[i]);
+		if( (cms_global->GetPrintParameterFrom() >= 0) && (cms_global->GetPrintParameterTo() >= cms_global->GetPrintParameterFrom()) ){
+			if(npar>=cms_global->GetPrintParameterFrom()) 
+				printf("PAR ");
+			for(int i=cms_global->GetPrintParameterFrom(); i<=cms_global->GetPrintParameterTo(); i++)
+				if(i<npar) printf( " %7.4f ", par[i]);
+			if(npar>=cms_global->GetPrintParameterFrom()) 
+				printf("\n");
 		}
 
 		if(cms_global->GetDebug()>100){

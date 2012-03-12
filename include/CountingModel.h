@@ -295,8 +295,9 @@ namespace lands{
 
 			void DumpFitResults(double *pars, TString ssave);
 			void Set_maxSetsCaching(int i){maxsets_forcaching=i;};
-			void Set_PrintParameter(int i){PrintParameter=i;};
-			int GetPrintParameter(){return PrintParameter;};
+			void Set_PrintParameter(int i, int j){PrintParameterFrom =i; PrintParameterTo = j;};
+			int GetPrintParameterFrom(){return PrintParameterFrom;};
+			int GetPrintParameterTo(){return PrintParameterTo;};
 		private:
 			VDChannel v_data; // could be pseudo-data for bands
 			VDChannel v_data_real; // real data, not changed during entire run 
@@ -441,7 +442,8 @@ namespace lands{
 			double nuisancesRange;
 			int maximumFunctionCallsInAFit;
 			int maxsets_forcaching;
-			int PrintParameter;
+			int PrintParameterFrom;
+			int PrintParameterTo;
 
 
 			int _PhysicsModel;
