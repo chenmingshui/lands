@@ -270,7 +270,7 @@ namespace lands{
 				chisq +=( tc - vdata_global[c]);
 				//			chisq +=( tc ); //- vdata_global[c]); // to be identical with ATLAS TDR description, for limit only
 			}else { 
-				//if(tc<=0) {f=10e9; return;} // tc < 0, which means non-physical, return f = 10e9
+				if(tc<=0) {f=10e9;cms_global->FlagAllChannels(); return;} // tc < 0, which means non-physical, return f = 10e9
 				chisq += (tc-vdata_global[c] - vdata_global[c]*log(tc/vdata_global[c]));
 			}
 			//		else chisq += (tc - vdata_global[c]*log(tc));   // to be identical with ATLAS TDR description, for limit only
@@ -278,9 +278,9 @@ namespace lands{
 		if(cms_global->hasParametricShape()){
 			chisq+=	cms_global->EvaluateChi2(par, vvv_cachPdfValues);// use default, norminal sigbkgs for evaluation, not randomized one 		
 		}
-		if(isnan(chisq)){ 
+		if(isnan(chisq) || chisq>=10e9){ 
 			cout<<" DELETEME ** ** ** ** chi2=nan"<<endl;
-			cms_global->UnFlagAllChannels(bAllChannelsAreFlagged?1:0);
+			cms_global->FlagAllChannels();
 			f=10e9; return; 
 		} // checking if it's nan  
 		// to be identical with ATLAS TDR description, for limit only

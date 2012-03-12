@@ -2909,9 +2909,12 @@ If we need to change it later, it will be easy to do.
 					    }
 					    tmp +=tmp2;
 				    }
-			    }
+				    if(isnan(tmp)) {cout<<" DELETEME * pdf nan "<<endl;
+					    FlagAllChannels();
+					    return 10e9;}
+			    }//loop over process
 			    retch -= (tmp>0?log(tmp):0)*weight;
-		    }
+		    }//loop over events
 		    //if(bupdated) cout<<stemp<<endl;
 
 		    retch+=stot;
@@ -2924,7 +2927,7 @@ If we need to change it later, it will be easy to do.
 			    _w_varied->pdf(v_pdfs_sb[ch])->getParameters(*(_w->var(v_pdfs_observables[ch])))->Print("V");
 		    }
 		    ret+=retch;
-	    }
+	    }// loop over channels
 	    return ret;
     }
 
