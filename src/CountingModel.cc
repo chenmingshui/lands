@@ -2909,9 +2909,11 @@ If we need to change it later, it will be easy to do.
 					    }
 					    tmp +=tmp2;
 				    }
-				    if(isnan(tmp) || isinf(tmp)) {cout<<" DELETEME * pdf  "<<tmp<<endl;
+				    if(isnan(tmp) || isinf(tmp)) {
+					    cout<<" DELETEME * pdf  "<<tmp<<endl;
 					    FlagAllChannels();
-					    return 10e9;}
+					    return 10e9;
+				    }
 			    }//loop over process
 			    retch -= (tmp>0?log(tmp):0)*weight;
 		    }//loop over events
@@ -2928,6 +2930,7 @@ If we need to change it later, it will be easy to do.
 		    }
 		    ret+=retch;
 	    }// loop over channels
+	   if(isnan(ret) || isinf(ret)) cout<<" DELETEME **** pdfs ret = "<<ret<<endl;
 	    return ret;
     }
 
