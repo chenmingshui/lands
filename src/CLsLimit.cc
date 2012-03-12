@@ -275,11 +275,16 @@ namespace lands{
 			}
 			//		else chisq += (tc - vdata_global[c]*log(tc));   // to be identical with ATLAS TDR description, for limit only
 		}
+		if(isnan(chisq) || chisq>=10e9){ 
+			cout<<" DELETEME ** ** ** ** chi2="<<chisq<<endl;
+			cms_global->FlagAllChannels();
+			f=10e9; return; 
+		} // checking if it's nan  
 		if(cms_global->hasParametricShape()){
 			chisq+=	cms_global->EvaluateChi2(par, vvv_cachPdfValues);// use default, norminal sigbkgs for evaluation, not randomized one 		
 		}
 		if(isnan(chisq) || chisq>=10e9){ 
-			cout<<" DELETEME ** ** ** ** chi2=nan"<<endl;
+			cout<<" DELETEME ** ** ** ** chi2="<<chisq<<endl;
 			cms_global->FlagAllChannels();
 			f=10e9; return; 
 		} // checking if it's nan  
