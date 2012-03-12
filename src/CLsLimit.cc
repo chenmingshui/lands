@@ -62,7 +62,6 @@ namespace lands{
 	double del_oldn = 0; double del_newn =0 ; //DELETEME
 	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag){
 
-
 		int debug = cms_global->GetDebug();
 		// par[0] for the ratio of cross section, common signal strength ....
 		if(!cms_global)  {
@@ -270,7 +269,10 @@ namespace lands{
 			if(vdata_global[c]<=0){
 				chisq +=( tc - vdata_global[c]);
 				//			chisq +=( tc ); //- vdata_global[c]); // to be identical with ATLAS TDR description, for limit only
-			}else chisq += (tc-vdata_global[c] - vdata_global[c]*log(tc/vdata_global[c]));
+			}else { 
+				if(tc<=0) {f=10e9; return;} // tc < 0, which means non-physical, return f = 10e9
+				chisq += (tc-vdata_global[c] - vdata_global[c]*log(tc/vdata_global[c]));
+			}
 			//		else chisq += (tc - vdata_global[c]*log(tc));   // to be identical with ATLAS TDR description, for limit only
 		}
 		if(cms_global->hasParametricShape()){
@@ -291,6 +293,7 @@ namespace lands{
 					case typeShapeGaussianLinearMorph:
 					case typeLogNormal:
 						chisq += pow(par[u]-_inputNuisances[u],2); // make sure if doing lep/tev type and also data fit, then _inputNuisances = norminal set 
+						if(isnan(chisq)) {cout<<"DELETEME chi2=nan _inputNuisances["<<u<<"]="<<_inputNuisances[u]<<endl;}
 						break;
 					case typeGamma:
 						// this is important, one need constraint on the pdf 
@@ -335,13 +338,15 @@ namespace lands{
 		// to be identical with ATLAS TDR description, for limit only
 		f=chisq;
 
+		if(isnan(f)) f=10e9; // checking if it's nan  
+
 		if( (cms_global->GetPrintParameterFrom() >= 0) && (cms_global->GetPrintParameterTo() >= cms_global->GetPrintParameterFrom()) ){
 			if(npar>=cms_global->GetPrintParameterFrom()) 
 				printf("PAR ");
 			for(int i=cms_global->GetPrintParameterFrom(); i<=cms_global->GetPrintParameterTo(); i++)
 				if(i<npar) printf( " %7.4f ", par[i]);
 			if(npar>=cms_global->GetPrintParameterFrom()) 
-				printf("\n");
+				printf(" f=%10.4f\n", f);
 		}
 
 		if(cms_global->GetDebug()>100){
