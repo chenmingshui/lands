@@ -2909,7 +2909,7 @@ If we need to change it later, it will be easy to do.
 					    }
 					    tmp +=tmp2;
 				    }
-				    if(isnan(tmp)) {cout<<" DELETEME * pdf nan "<<endl;
+				    if(isnan(tmp) || isinf(tmp)) {cout<<" DELETEME * pdf  "<<tmp<<endl;
 					    FlagAllChannels();
 					    return 10e9;}
 			    }//loop over process
