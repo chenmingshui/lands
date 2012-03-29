@@ -1012,14 +1012,14 @@ int main(int argc, const char*argv[]){
 					double x1, s1, x2, s2; 
 					myMinuit->GetParameter(0, x1, s1);
 					myMinuit->GetParameter(idMH, x2, s2);
-					RooEllipse *contour= new RooEllipse("contour",x1,x2,s1,s2,corr_ij);
+					RooEllipse *contour= new RooEllipse("contour",x2,x1,s2,s1,corr_ij);
 					contour->SetLineWidth(2) ;
 					for(int i=0; i<contour->GetN(); i++){
-						double r, m; contour->GetPoint(i, r,m);
-						contour -> SetPoint(i, r, m*v_paramsUnc[idMH][1] + v_paramsUnc[idMH][3]);
+						double r, m; contour->GetPoint(i, m,r);
+						contour -> SetPoint(i, m*v_paramsUnc[idMH][1] + v_paramsUnc[idMH][3], r);
 					}
 					TCanvas c("ellipse","ellipse", 600, 600);
-					contour->SetTitle("1 #sigma contour ;signal strength; mass [GeV]");
+					contour->SetTitle("1 #sigma contour ;mass [GeV]; #mu");
 					contour->Draw("AC");
 					c.Print(jobname+"_ellipse_RM1sigma.pdf");
 					c.Print(jobname+"_ellipse_RM1sigma.root");
@@ -1066,14 +1066,14 @@ int main(int argc, const char*argv[]){
 						double x1, s1, x2, s2; 
 						myMinuit->GetParameter(0, x1, s1);
 						myMinuit->GetParameter(idMH, x2, s2);
-						RooEllipse *contour= new RooEllipse("contour",x1,x2,s1,s2,corr_ij);
+						RooEllipse *contour= new RooEllipse("contour",x2,x1,s2,s1,corr_ij);
 						contour->SetLineWidth(2) ;
 						for(int i=0; i<contour->GetN(); i++){
-							double r, m; contour->GetPoint(i, r,m);
-							contour -> SetPoint(i, r, m*v_paramsUnc[idMH][1] + v_paramsUnc[idMH][3]);
+							double r, m; contour->GetPoint(i, m, r);
+							contour -> SetPoint(i, m*v_paramsUnc[idMH][1] + v_paramsUnc[idMH][3], r);
 						}
 						TCanvas c("ellipse","ellipse", 600, 600);
-						contour->SetTitle("1 #sigma contour ;signal strength; mass [GeV]");
+						contour->SetTitle("1 #sigma contour ;mass [GeV]; #mu");
 						contour->Draw("AC");
 						c.Print(jobname+"_ellipse_RM2sigma.pdf");
 						c.Print(jobname+"_ellipse_RM2sigma.root");
@@ -1219,7 +1219,7 @@ int main(int argc, const char*argv[]){
 				if(idMH<0) {cout<<" no MH parameter, exit"<<endl;  exit(1);}
 
 				
-				vrm.push_back(make_pair(pars[0], pars[idMH]*v_paramsUnc[idMH][1]+v_paramsUnc[idMH][3]) );vc.push_back(y0_2-y0_2);
+				vrm.push_back(make_pair(pars[idMH]*v_paramsUnc[idMH][1]+v_paramsUnc[idMH][3], pars[0]) );vc.push_back(y0_2-y0_2);
 
 				for(int i=0; i<vR_toEval.size(); i++){
 					double testr = vR_toEval[i];
@@ -1230,7 +1230,7 @@ int main(int argc, const char*argv[]){
 						double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, false, debug);
 						if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
 						if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
-						vrm.push_back(make_pair(testr, testm));
+						vrm.push_back(make_pair(testm, testr));
 						vc.push_back(y0_1-y0_2);
 						TString sj = jobname; sj+="_fittedShape_r"; sj+=testr; sj+="_m"; sj+=testm;
 						if(bDumpFitResults)cms->DumpFitResults(pars, sj);
@@ -1239,11 +1239,11 @@ int main(int argc, const char*argv[]){
 				if(debug){
 					printf("\n results of scanned r,m vs. q: \n");
 					for(int i=0; i<vrm.size(); i++){
-						printf("  [ r=%10.3f, m=%10.3f],  delta_q=%7.5f\n", vrm[i].first, vrm[i].second, vc[i]);
+						printf("  [ m=%10.3f, r=%10.3f],  delta_q=%7.5f\n", vrm[i].first, vrm[i].second, vc[i]);
 					}
 				}
 				if(bPlots){
-					DrawTGraph2D d2d(vrm, vc, "#delta(2lnQ); r ; m", (jobname+"_scanned_rm_vs_q").Data(), pt);
+					DrawTGraph2D d2d(vrm, vc, "#delta(2lnQ); mass [GeV]; #mu", (jobname+"_scanned_rm_vs_q").Data(), pt);
 					d2d.draw();
 					d2d.save();
 				}
