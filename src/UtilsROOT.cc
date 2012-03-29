@@ -2576,8 +2576,31 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 		if(pdf==typeFlat && ss[1]=="flatParam"){
 			if(debug)cout<<" typeFlat "<<endl;
 			// FIXME add hoc implementation of flat param  uncertainties ....  need to think about also for normalization terms
+			bool succes= false;
 			if(ss.size()<2) {cout<<"ERROR: parameter line with type flatParam should have at least two columns "<<endl; exit(1);}
-			bool succes=cms->AddUncertaintyOnShapeParam(indexcorrelation);
+			else if(ss.size()==2){
+				succes=cms->AddUncertaintyOnShapeParam(indexcorrelation);
+			}else if(ss.size()==3){
+				double norminalValue = TString(ss[2]).Atof();
+				succes=cms->AddFlatParam(indexcorrelation, norminalValue, norminalValue, norminalValue);// fix the param at norminalValue
+			}else if(ss.size()>3){
+				double norminalValue = TString(ss[2]).Atof();
+				double rangeMin=norminalValue, rangeMax=norminalValue;
+				TString sr = ss[3];
+				if(sr.BeginsWith("[") and sr.EndsWith("]") and sr.Contains(",") ){
+					sr.ReplaceAll("[", "");
+					sr.ReplaceAll("]", "");
+					vector<string> asymetricerrors; asymetricerrors.clear();
+					StringSplit(asymetricerrors, sr.Data(), ",");
+					rangeMin= (TString(asymetricerrors[0])).Atof(); // downside 
+					rangeMax= (TString(asymetricerrors[1])).Atof();  // upside
+				}else{
+					cout<<" Error:  flatParam format should be:  "<<endl;
+					cout<<" UncName flatParam norminalValue [min,max] "<<endl;
+					exit(1); 
+				}
+				succes=cms->AddFlatParam(indexcorrelation, norminalValue, rangeMin, rangeMax);// fix the param at norminalValue
+			}
 			if(succes)cms->TagUncertaintyFloatInFit(indexcorrelation, bUncIsFloatInFit);
 		}
 

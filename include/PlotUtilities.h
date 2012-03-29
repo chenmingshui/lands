@@ -5,6 +5,7 @@
 #include <TPaveText.h>
 #include <TLegend.h>
 #include <TGraph.h>
+#include <TGraph2D.h>
 #include <TGraphErrors.h>
 #include <TH1F.h>
 #include <TF1.h>
@@ -171,6 +172,37 @@ class DrawEvolution2D{
 		TLine *lineOne;
 		TGraph *graph;
 };
+class DrawTGraph2D{
+	public:
+		DrawTGraph2D(vector< std::pair<double, double> > vxy, vector<double> vz, string stitle, string ssave, TPaveText *pt, bool debug=0);
+		~DrawTGraph2D();
+
+		void draw();
+		void save();
+		TCanvas *getCanvas(){return cCanvas;};
+		TLegend *getLegend(){return legend;};
+		void setSavePath(string tmp){_ssave=tmp;};
+		void drawLegend(string s_tot, string s_s, string s_b){};
+		void setLogY(bool b){_logY=b;};
+		void setDebug(bool b){_debug=b;};
+		TPaveText *getTitlePT(){return _pt;};
+		TGraph2D *getGraph(){return graph;};
+		TLine *getLine(){return lineOne;};
+	private:
+		TCanvas *cCanvas;
+		string _ssave;
+		string _stitle;
+		bool _logY;
+		TLegend *legend;
+		bool _debug;
+		TPaveText *_pt;
+
+		vector<double> _vx, _vy, _vz;
+		
+		TLine *lineOne;
+		TGraph2D *graph;
+};
+
 class PlotXvsCummulativeProb{
 	public:
 		PlotXvsCummulativeProb(

@@ -22,6 +22,7 @@
 #include "RooMsgService.h"
 #include "TMath.h"
 #include "TGraphAsymmErrors.h"
+#include "RooEllipse.h"
 
 #ifdef LANDS_PROFILE
   #include <google/profiler.h>
@@ -64,7 +65,9 @@ double rRelAcc;// 0.01; Relative accuracy on r to reach to terminate the scan
 bool singlePoint;
 double testR;
 int scanRs;
+int scanMs;
 int nSteps;
+int nMsteps;
 int bPlots = 0;
 int tossToyConvention;
 int tossPseudoDataConvention;
@@ -100,6 +103,7 @@ vector<TString> librariesToBeLoaded;
 
 bool bOnlyEvalCL_forVR = false;
 vector<double> vR_toEval;
+vector<double> vM_toEval;
 
 int makeCLsBands = 0;
 
@@ -265,6 +269,11 @@ int main(int argc, const char*argv[]){
 	
 	cms_global->Set_maxSetsCaching(maxsets_forcaching);
 	cms_global->Set_PrintParameter(PrintParameterFrom, PrintParameterTo);
+
+	structPOI poiMU("signal_strength", 0, 0, 0);
+	structPOI poiM("MH", 0, 0, 0);
+	cms_global->addPOI(poiMU);
+	cms_global->addPOI(poiM);
 
 	TPaveText *pt = SetTPaveText(0.2, 0.7, 0.3, 0.9);
 	if(customRMax!=customRMin) {_customRMin=customRMin; _customRMax = customRMax;}
@@ -986,6 +995,40 @@ int main(int argc, const char*argv[]){
 			double mu_hat_up = tmpr;
 			double mu_hat_low = tmperr;
 
+
+			{  // check covariance matrix and plot the ellipse if MH variable present in the floating parameter list 
+				int npar = cms_global->Get_max_uncorrelation()+1;
+				TMatrixDSym mat(npar); 
+				myMinuit->mnemat( mat.GetMatrixArray(), npar);
+				if(debug)mat.Print();
+	
+				int idMH=-1;
+				vector<string> v_uncname = cms_global->Get_v_uncname();
+				for(int i=1; i<v_uncname.size(); i++) if(v_uncname[i-1]=="MH") idMH=i;
+				if(idMH>0){
+					vector< vector<double> > v_paramsUnc = cms_global->Get_v_pdfs_floatParamsUnc();
+					double corr_ij = mat(0, idMH)/sqrt(mat(0,0)*mat(idMH,idMH));
+					cout<<corr_ij<<endl;
+					double x1, s1, x2, s2; 
+					myMinuit->GetParameter(0, x1, s1);
+					myMinuit->GetParameter(idMH, x2, s2);
+					RooEllipse *contour= new RooEllipse("contour",x1,x2,s1,s2,corr_ij);
+					contour->SetLineWidth(2) ;
+					for(int i=0; i<contour->GetN(); i++){
+						double r, m; contour->GetPoint(i, r,m);
+						contour -> SetPoint(i, r, m*v_paramsUnc[idMH][1] + v_paramsUnc[idMH][3]);
+					}
+					TCanvas c("ellipse","ellipse", 600, 600);
+					contour->SetTitle("1 #sigma contour ;signal strength; mass [GeV]");
+					contour->Draw("AC");
+					c.Print(jobname+"_ellipse_RM1sigma.pdf");
+					c.Print(jobname+"_ellipse_RM1sigma.root");
+				}
+
+				cout<<" 	68% CL : "<<endl;
+				cout<<" POI: mu = "<<cms_global->POIs()[0].value<<" + "<<cms_global->POIs()[0].errUp<<" - "<<fabs(cms_global->POIs()[0].errDown)<<endl;
+				if(idMH>0)cout<<" POI: MH = "<<cms_global->POIs()[1].value<<" + "<<cms_global->POIs()[1].errUp<<" - "<<fabs(cms_global->POIs()[1].errDown)<<endl;
+			}
 			
 			SaveResults(jobname+"_maxllfit", HiggsMass, 0, 0, 0, 0, 0, mu_hat_low, 0, mu_hat, mu_hat_up, 0);
 			if(bDumpFitResults)cms->DumpFitResults(pars, jobname+"_fittedShape_floatMu");
@@ -1006,6 +1049,40 @@ int main(int argc, const char*argv[]){
 				mu_hat2 = pars[0];
 				mu_hat_up2 = tmpr;
 				mu_hat_low2 = tmperr;
+
+				{  // check covariance matrix and plot the ellipse if MH variable present in the floating parameter list 
+					int npar = cms_global->Get_max_uncorrelation()+1;
+					TMatrixDSym mat(npar); 
+					myMinuit->mnemat( mat.GetMatrixArray(), npar);
+					if(debug)mat.Print();
+
+					int idMH=-1;
+					vector<string> v_uncname = cms_global->Get_v_uncname();
+					for(int i=1; i<v_uncname.size(); i++) if(v_uncname[i-1]=="MH") idMH=i;
+					if(idMH>0){
+						vector< vector<double> > v_paramsUnc = cms_global->Get_v_pdfs_floatParamsUnc();
+						double corr_ij = mat(0, idMH)/sqrt(mat(0,0)*mat(idMH,idMH));
+						cout<<corr_ij<<endl;
+						double x1, s1, x2, s2; 
+						myMinuit->GetParameter(0, x1, s1);
+						myMinuit->GetParameter(idMH, x2, s2);
+						RooEllipse *contour= new RooEllipse("contour",x1,x2,s1,s2,corr_ij);
+						contour->SetLineWidth(2) ;
+						for(int i=0; i<contour->GetN(); i++){
+							double r, m; contour->GetPoint(i, r,m);
+							contour -> SetPoint(i, r, m*v_paramsUnc[idMH][1] + v_paramsUnc[idMH][3]);
+						}
+						TCanvas c("ellipse","ellipse", 600, 600);
+						contour->SetTitle("1 #sigma contour ;signal strength; mass [GeV]");
+						contour->Draw("AC");
+						c.Print(jobname+"_ellipse_RM2sigma.pdf");
+						c.Print(jobname+"_ellipse_RM2sigma.root");
+					}
+					cout<<" 	95% CL : "<<endl;
+					cout<<" POI: mu = "<<cms_global->POIs()[0].value<<" + "<<cms_global->POIs()[0].errUp<<" - "<<fabs(cms_global->POIs()[0].errDown)<<endl;
+					if(idMH>0)cout<<" POI: MH = "<<cms_global->POIs()[1].value<<" + "<<cms_global->POIs()[1].errUp<<" - "<<fabs(cms_global->POIs()[1].errDown)<<endl;
+				}
+
 			}
 
 
@@ -1129,56 +1206,130 @@ int main(int argc, const char*argv[]){
 					f.WriteTObject(ge2);
 				}
 			}
+			if(scanRs and scanMs){
 
-			if(scanRs){
-				vector<double> vr, vc; vr.clear(); vc.clear();
-				vr.push_back(pars[0]);vc.push_back(y0_2-y0_2);
+				vector< std::pair<double, double> > vrm; vrm.clear(); 
+				vector<double> vc; vc.clear();
+				
+				int idMH=-1;
+				vector<string> v_uncname = cms_global->Get_v_uncname();
+				vector< vector<double> > v_paramsUnc = cms_global->Get_v_pdfs_floatParamsUnc();
+				for(int i=1; i<v_uncname.size(); i++) if(v_uncname[i-1]=="MH") idMH=i;
+
+				if(idMH<0) {cout<<" no MH parameter, exit"<<endl;  exit(1);}
+
+				
+				vrm.push_back(make_pair(pars[0], pars[idMH]*v_paramsUnc[idMH][1]+v_paramsUnc[idMH][3]) );vc.push_back(y0_2-y0_2);
+
 				for(int i=0; i<vR_toEval.size(); i++){
 					double testr = vR_toEval[i];
-					_countPdfEvaluation = 0;
-					double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, false, debug);
-					if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
-					if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
-					vr.push_back(testr);
-					vc.push_back(y0_1-y0_2);
-					TString sj = jobname; sj+="_fittedShape_mu"; sj+=testr;
-					if(bDumpFitResults)cms->DumpFitResults(pars, sj);
-				}
-				if( scanRs >= 2) {
-					if(mu_hat<vR_toEval[0]){
-						double dr = (vR_toEval[0] - mu_hat)/10.;
-						if(dr<0.2) dr=0.2;
-						for(double testr = mu_hat+0.2; testr<vR_toEval[0]; testr+=dr){
-							double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, false, debug);
-							if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
-							vr.push_back(testr);
-							vc.push_back(y0_1-y0_2);
-						}
-					}
-					if(mu_hat_up>vR_toEval.back()){
-						double dr = (mu_hat_up - vR_toEval.back())/10.;
-						if(dr<0.2) dr=0.2;
-						for(double testr = vR_toEval.back(); testr<=mu_hat_up+0.2; testr+=dr){
-							double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, false, debug);
-							if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
-							vr.push_back(testr);
-							vc.push_back(y0_1-y0_2);
-						}
+					for(int j=0; j<vM_toEval.size(); j++){
+						double testm = vM_toEval[j];
+						_countPdfEvaluation = 0;
+						cms_global->SetPOItoBeFixed("MH",testm);
+						double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, false, debug);
+						if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
+						if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
+						vrm.push_back(make_pair(testr, testm));
+						vc.push_back(y0_1-y0_2);
+						TString sj = jobname; sj+="_fittedShape_r"; sj+=testr; sj+="_m"; sj+=testm;
+						if(bDumpFitResults)cms->DumpFitResults(pars, sj);
 					}
 				}
-
-				printf("\n results of scanned r vs. q: \n");
-				for(int i=0; i<vr.size(); i++){
-					printf("   r=%10.3f  delta_q=%7.5f\n", vr[i], vc[i]);
+				if(debug){
+					printf("\n results of scanned r,m vs. q: \n");
+					for(int i=0; i<vrm.size(); i++){
+						printf("  [ r=%10.3f, m=%10.3f],  delta_q=%7.5f\n", vrm[i].first, vrm[i].second, vc[i]);
+					}
 				}
 				if(bPlots){
-					DrawEvolution2D d2d(vr, vc, "; r ; q", (jobname+"_scanned_r_vs_q").Data(), pt);
+					DrawTGraph2D d2d(vrm, vc, "#delta(2lnQ); r ; m", (jobname+"_scanned_rm_vs_q").Data(), pt);
 					d2d.draw();
 					d2d.save();
 				}
+				
 
 				watch.Print();
 				return 0;
+			}
+			else {
+				if(scanRs){
+					vector<double> vr, vc; vr.clear(); vc.clear();
+					vr.push_back(pars[0]);vc.push_back(y0_2-y0_2);
+					for(int i=0; i<vR_toEval.size(); i++){
+						double testr = vR_toEval[i];
+						_countPdfEvaluation = 0;
+						double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, false, debug);
+						if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
+						if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
+						vr.push_back(testr);
+						vc.push_back(y0_1-y0_2);
+						TString sj = jobname; sj+="_fittedShape_mu"; sj+=testr;
+						if(bDumpFitResults)cms->DumpFitResults(pars, sj);
+					}
+					if( scanRs >= 2) {
+						if(mu_hat<vR_toEval[0]){
+							double dr = (vR_toEval[0] - mu_hat)/10.;
+							if(dr<0.2) dr=0.2;
+							for(double testr = mu_hat+0.2; testr<vR_toEval[0]; testr+=dr){
+								double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, false, debug);
+								if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
+								vr.push_back(testr);
+								vc.push_back(y0_1-y0_2);
+							}
+						}
+						if(mu_hat_up>vR_toEval.back()){
+							double dr = (mu_hat_up - vR_toEval.back())/10.;
+							if(dr<0.2) dr=0.2;
+							for(double testr = vR_toEval.back(); testr<=mu_hat_up+0.2; testr+=dr){
+								double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, false, debug);
+								if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
+								vr.push_back(testr);
+								vc.push_back(y0_1-y0_2);
+							}
+						}
+					}
+
+					printf("\n results of scanned r vs. q: \n");
+					for(int i=0; i<vr.size(); i++){
+						printf("   r=%10.3f  delta_q=%7.5f\n", vr[i], vc[i]);
+					}
+					if(bPlots){
+						DrawEvolution2D d2d(vr, vc, "; r ; q", (jobname+"_scanned_r_vs_q").Data(), pt);
+						d2d.draw();
+						d2d.save();
+					}
+
+					watch.Print();
+					return 0;
+				}
+				if(scanMs){
+					vector<double> vr, vc; vr.clear(); vc.clear();
+					vr.push_back(pars[0]);vc.push_back(y0_2-y0_2);
+					for(int i=0; i<vM_toEval.size(); i++){
+						double testr = vM_toEval[i];
+						_countPdfEvaluation = 0;
+						cms_global->SetPOItoBeFixed("MH",testr);
+						double y0_1 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //202, 201, 2:  allow mu to be negative
+						if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
+						vr.push_back(testr);
+						vc.push_back(y0_1-y0_2);
+						TString sj = jobname; sj+="_fittedShape_m"; sj+=testr;
+						if(bDumpFitResults)cms->DumpFitResults(pars, sj);
+					}
+					printf("\n results of scanned m vs. q: \n");
+					for(int i=0; i<vr.size(); i++){
+						printf("   r=%10.3f  delta_q=%7.5f\n", vr[i], vc[i]);
+					}
+					if(bPlots){
+						DrawEvolution2D d2d(vr, vc, "; m ; q", (jobname+"_scanned_m_vs_q").Data(), pt);
+						d2d.draw();
+						d2d.save();
+					}
+
+					watch.Print();
+					return 0;
+				}
 			}
 			if(doExpectation){
 				MLLxsBands lb(cms);	
@@ -1658,6 +1809,10 @@ void processParameters(int argc, const char* argv[]){
 	if( tmpv.size()!=1 ) { scanRs= 0; }
 	else { scanRs= tmpv[0].Atoi(); nSteps = tmpv[0].Atoi(); }
 
+	tmpv = options["--scanMs"]; 
+	if( tmpv.size()!=1 ) { scanMs= 0; }
+	else { scanMs= tmpv[0].Atoi(); nMsteps = tmpv[0].Atoi(); }
+
 	tmpv = options["--testStat"]; 
 	if( tmpv.size()!=1 ) { testStat = 1; }
 	else {
@@ -1824,6 +1979,40 @@ void processParameters(int argc, const char* argv[]){
 		it = std::unique(vR_toEval.begin(), vR_toEval.end());
 		vR_toEval.resize(it - vR_toEval.begin());
 	}
+
+	tmpv = options["-vM"];
+	if( scanMs and tmpv.size()==0) { cout<<"ERROR: args of -vM empty "<<endl; exit(1); }
+	else{
+		for(int i=0; i<tmpv.size(); i++){
+			if(tmpv[i].IsFloat()) vM_toEval.push_back(tmpv[i].Atof());
+			else if(tmpv[i].BeginsWith("[") and tmpv[i].EndsWith("]")){
+				tmpv[i].ReplaceAll("[","");tmpv[i].ReplaceAll("]","");	
+				vector<string> vstr;
+				StringSplit(vstr, tmpv[i].Data(), ",");
+				if(vstr.size()==3 and (TString(vstr[2]).IsFloat() or TString(vstr[2]).BeginsWith("x")) ){
+					double r0 = TString(vstr[0]).Atof(), r1=TString(vstr[1]).Atof();	
+					if(r0>r1 or r0<0) continue;
+					if(TString(vstr[2]).BeginsWith("x")) {
+						if(r0==0) continue;
+						double step = TString(vstr[2]).ReplaceAll("x", "").Atof();
+						if(step<=1) continue;
+						for(double r=r0; r<=r1; r*=step) vM_toEval.push_back(r);
+					}else{
+						double step = TString(vstr[2]).Atof();
+						if(step<=0) continue;
+						for(double r=r0; r<=r1; r+=step) vM_toEval.push_back(r);
+					};
+				}else{
+					cout<<"ERROR: wrong format of -vM, should be sth like [1.2,2.0,x1.05] or [1.2,2.0,0.05]"<<endl; exit(1);
+				};
+			}else {cout<<"ERROR: wrong format of args of -vM:  \""<<tmpv[i]<<"\""<<endl; exit(1);}
+		}
+		std::sort(vM_toEval.begin(), vM_toEval.end());
+		vector<double>::iterator it;
+		it = std::unique(vM_toEval.begin(), vM_toEval.end());
+		vM_toEval.resize(it - vM_toEval.begin());
+	}
+
 
 	if(makeCLsBands>=2){
 		bSkipM2lnQ = 1; doExpectation = 0;
@@ -2785,6 +2974,9 @@ void PrintHelpMessage(){
 	printf("--PrintParameter arg1 arg2 (= -1 -1)    print intermediate values of the parameters specified in the range [arg1, arg2]    \n");
 	printf("--rMin arg (=0)                       force signal strength to be >= rMin \n");
 	printf("--rMax arg (=0)                       force signal strength to be <= rMax \n");
+	printf("-vM args                              sth like \"1.2 1.3 1.4 [1.5,3.0,x1.05] [3.0,10.0,0.5]\", for scanning mass  \n");
+	printf("--scanMs arg (=0)                     scanning LLR vs. M \n"); 
+	printf("--bAlsoExtract2SigmErrorBar           for Maximum LL fit\n"); 
 
 	printf(" \n");
 	printf("------------------some comand lines-----------------------------------------------\n");

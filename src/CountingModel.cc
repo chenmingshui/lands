@@ -145,6 +145,10 @@ namespace lands{
         vvp_connectNuisBinProc.clear();
         vvp_pdfs_connectNuisBinProc.clear();
 
+	_bFixingPOIs = false;
+	vsPOIsToBeFixed.clear();
+
+
         minuitSTRATEGY = 0; 
         maximumFunctionCallsInAFit=5000;
 	minuitTolerance = 0.001;
@@ -884,6 +888,8 @@ If we need to change it later, it will be easy to do.
         _norminalPars = new double[max_uncorrelation+1];
         _norminalParsSigma = new double[max_uncorrelation+1];
         _randomizedPars= new double[max_uncorrelation+1];
+	_norminalPars[0]=0;
+	_norminalParsSigma[0]=-9999;
         for(int i=1; i<=max_uncorrelation; i++){
             if(_debug)cout<<" ** DELETEME wrong"<<i<<" "<<v_uncname[i-1]<<" v_pdftype = "<<v_pdftype[i]<<endl;
             switch (v_pdftype[i]){
@@ -3198,8 +3204,7 @@ If we need to change it later, it will be easy to do.
 	    }
 	    return ret;
     }
-
-    bool CountingModel::AddUncertaintyOnShapeParam(string pname){ // add flatParam
+   bool CountingModel::AddUncertaintyOnShapeParam(string pname){ // add flatParam   // taken from workspace
 	    if(_debug>=10)cout<<"In AddUncertaintyOnShapeParam  Adding floating parameter with flatParam: "<<pname<<endl;
 	    if(_w_varied->var(pname.c_str())==NULL) {
 		    cout<<" parameter "<<pname<<" not exist in the added channels,   skip it"<<endl;
@@ -3250,6 +3255,65 @@ If we need to change it later, it will be easy to do.
 	    v_pdfs_floatParamsName.push_back(pname);
 	    v_pdfs_floatParamsIndcorr.push_back(index_correlation);
 	    v_pdfs_floatParamsType.push_back(typeFlat);
+
+	    if(_debug)cout<<"FlatParam "<<pname<<": nominal value = "<<norminalValue<<" ["<<rangeMin<<","<<rangeMax<<"]"<<endl;
+
+	    return true;
+    }
+    bool CountingModel::AddFlatParam(string pname, double norminalValue, double rangeMin, double rangeMax){ // add flatParam,  taken from text file , ie. data cards
+	    if(_debug>=10)cout<<"In AddUncertaintyOnShapeParam  Adding floating parameter with flatParam: "<<pname<<endl;
+	    if(_w_varied->var(pname.c_str())==NULL) {
+		    cout<<" parameter "<<pname<<" not exist in the added channels,   skip it"<<endl;
+		    if(_w_varied->arg(pname.c_str())) cout<<" but it exist as RooAbsArg"<<endl;
+		    _w_varied->Print();
+		    return false;
+	    }
+
+	    int index_correlation = -1; // numeration starts from 1
+	    for(int i=0; i<v_uncname.size(); i++){
+		    if(v_uncname[i]==pname){
+			    index_correlation = i+1;	
+			    cout<<" There are two shape parameters with same name = "<<pname<<", skip it"<<endl;
+			    return false;
+		    }
+	    }
+	    if(index_correlation<0)  {
+		    index_correlation = v_uncname.size()+1;
+		    v_uncname.push_back(pname);
+		    v_uncFloatInFit.push_back(1);
+	    }
+
+	    RooRealVar* rrv = (RooRealVar*)_w_varied->var(pname.c_str());
+/*
+	    double norminalValue = rrv->getVal();
+	    double rangeMin = rrv->getMin();
+	    double rangeMax = rrv->getMax();
+*/	    if(_debug) {
+		    rrv->Print();
+		    cout<<norminalValue<<", ["<<rangeMin<<", "<<rangeMax<<"]"<<endl;
+	    }
+
+
+	    vector<double> vunc; vunc.clear(); 
+	    vunc.push_back(norminalValue);
+	    vunc.push_back(rangeMax-rangeMin);
+	    vunc.push_back(0);
+	    vunc.push_back(rangeMin);
+	    vunc.push_back(rangeMax);
+	    if(v_pdfs_floatParamsUnc.size() <= index_correlation){
+		    for(int i = v_pdfs_floatParamsUnc.size(); i<=index_correlation; i++){
+			    v_pdfs_floatParamsUnc.push_back(vunc);
+		    }
+	    }else v_pdfs_floatParamsUnc[index_correlation] = vunc;
+	    if(_debug) cout<<" v_pdfs_floatParamsUnc.size() = "<<v_pdfs_floatParamsUnc.size()<<" index_correlation="<<index_correlation<<endl;
+	    if(_debug)cout<<" * Adding flat floating parameter: "<<pname<<endl;
+
+	    TString s = pname;
+	    v_pdfs_floatParamsName.push_back(pname);
+	    v_pdfs_floatParamsIndcorr.push_back(index_correlation);
+	    v_pdfs_floatParamsType.push_back(typeFlat);
+
+	    if(_debug)cout<<"FlatParam "<<pname<<": nominal value = "<<norminalValue<<" ["<<rangeMin<<","<<rangeMax<<"]"<<endl;
 
 	    return true;
     }

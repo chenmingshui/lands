@@ -556,10 +556,48 @@ namespace lands{
 				return 0;
 			}
 
+
+			// Setting POIs to be fixed ,  for scanning LL vs. POIs .  need for 2D scan, like mass vs. cross_section 
+			if(cms_global->bFixingPOIs()) {
+				vector< std::pair<TString, double> > vsPOIsToBeFixed = cms_global->GetPOIsToBeFixed();
+				for(int i=0; i<vsPOIsToBeFixed.size(); i++){
+					if(vsPOIsToBeFixed[i].first =="signal_strength") {
+						myMinuit->mnparm(0, "ratio", vsPOIsToBeFixed[i].second, 0.1, -100, 9e10, ierflg);
+						myMinuit->FixParameter(0);
+						break;
+					}
+					if(cms_global->GetWorkSpaceVaried()->var(vsPOIsToBeFixed[i].first) != NULL){
+						// POIs can be only signal_strength or  some parameters in Workspace, e.g. MH 
+						for(int j=1; j<=npars; j++){
+							TString sname=v_uncname[j-1]; 
+							if(vsPOIsToBeFixed[i].first==sname) {
+								switch  (v_pdftype[j]){
+
+									case typeBifurcatedGaussian:
+										myMinuit->mnparm(j, sname, vsPOIsToBeFixed[i].second, minuitStep, v_paramsUnc[j][3], v_paramsUnc[j][4], ierflg  );
+										break;
+									case typeFlat:
+										if(v_paramsUnc[j][1]==0) break;
+										myMinuit->mnparm(j, sname, (vsPOIsToBeFixed[i].second - v_paramsUnc[j][3])/v_paramsUnc[j][1], minuitStep, 0, 1, ierflg  );
+										break;
+									default:
+										break;
+								}
+								myMinuit->FixParameter(j);
+							}
+						}
+					}
+				}
+				cms_global->SetbFixingPOIs(false); 
+			}			
+
+
+
+
 			//if(debug>=10) cout<<"DELETEME in MinuitFit    2"<<endl;
 
 			arglist[0] = 1;
-			if(model==101 || model==102 || model==1001)arglist[0] = mu; // ErrorDef for Minos,  just temporaliry using mu ...
+			if(model==101 || model==102 || model==202 || model==1001)arglist[0] = mu; // ErrorDef for Minos,  just temporaliry using mu ...
 			myMinuit->mnexcm("SET ERR", arglist ,1,ierflg);
 			// Now ready for minimization step
 			arglist[0] = cms_global->Get_maximumFunctionCallsInAFit(); // to be good at minization, need set this number to be 5000 (from experience of hgg+hww+hzz combination)
@@ -603,6 +641,38 @@ namespace lands{
 			if(model==101 or model==102 or model == 202){
 				myMinuit->mnstat(amin,edm,errdef,nvpar,nparx,icstat);
 				myMinuit->mnerrs(0, errUp, errLow, errParab, gcor);
+				if(errUp==0 and errLow==0) {
+					errUp = er;
+					errLow = -er;
+				}
+				if(cms_global->POIs().size()>0){
+					cms_global->setPOI(0, r, errUp, errLow);
+
+					Double_t errUp1, errLow1, errParab1=0, gcor1=0; 
+					// POIs can be only signal_strength or  some parameters in Workspace, e.g. MH 
+					for(int p=1; p<cms_global->POIs().size(); p++) { // 0 is always signal strength
+						for(int j=1; j<=npars; j++){
+							TString sname=v_uncname[j-1]; 
+							if(cms_global->POIs()[p].name ==sname) {
+								double poi, poierr;
+								myMinuit->GetParameter(j, poi, poierr);
+								myMinuit->mnstat(amin,edm,errdef,nvpar,nparx,icstat);
+								myMinuit->mnerrs(j, errUp1, errLow1, errParab1, gcor1);
+								if(errUp1==0 and errLow1==0) {
+									errUp1 = poierr;
+									errLow1 = -poierr;
+								}
+								if(v_pdftype[j]==typeFlat){
+									poi = v_paramsUnc[j][3] + v_paramsUnc[j][1] * poi;
+									errUp1 = v_paramsUnc[j][1] * errUp1;
+									errLow1 = v_paramsUnc[j][1] * errLow1;
+								}
+								cms_global->setPOI(j, poi, errUp1, errLow1);
+							}
+						}
+					}
+				}
+
 				if(debug)cout<<"DELETEME errUp="<<errUp<<" errLow="<<errLow<<" errParab="<<errParab<<" gcor="<<gcor<<endl;
 			}
 
@@ -624,12 +694,18 @@ namespace lands{
 			if(debug || pars || ierflg){
 				_inputNuisancesSigma = cms_global->Get_norminalParsSigma();
 
-				if(debug || ierflg || _bDumpFinalFitResults )printf("  par                 name         fitted_value                      input_value                start_value        dx/s_in,s_out/s_in\n");
+				if(debug || ierflg || _bDumpFinalFitResults )printf("  par                 name         fitted_value                      input_value                start_value        dx/s_in,s_out/s_in      (flatParam +/- error)\n");
 				for(int i=0; i<=npars; i++){
 					double tmp, tmpe;
 					myMinuit->GetParameter(i, tmp, tmpe);
-					if(debug || ierflg || _bDumpFinalFitResults ) printf("  par %30s      %.6f +/- %.6f      %.6f +/- %.6f    %.6f     %.2f, %.2f\n", i>0?v_uncname[i-1].c_str():"signal_strength", tmp, tmpe, _inputNuisances[i], _inputNuisancesSigma[i], _startNuisances[i],  _inputNuisancesSigma[i]==0?0:(tmp-_inputNuisances[i])/_inputNuisancesSigma[i], _inputNuisancesSigma[i]==0?0:tmpe/_inputNuisancesSigma[i]);
-					if(pars && !hasBestFitted)pars[i] = tmp;
+					if(debug || ierflg || _bDumpFinalFitResults ) { 
+						printf("  par %30s      %.6f +/- %.6f      %.6f +/- %.6f    %.6f     %.2f, %.2f", i>0?v_uncname[i-1].c_str():"signal_strength", tmp, tmpe, _inputNuisances[i], _inputNuisancesSigma[i], _startNuisances[i],  _inputNuisancesSigma[i]==0?0:(tmp-_inputNuisances[i])/_inputNuisancesSigma[i], _inputNuisancesSigma[i]==0?0:tmpe/_inputNuisancesSigma[i]);
+						if(i>0 and cms_global->GetWorkSpace()->var(v_uncname[i-1].c_str()) != NULL and v_pdftype[i]==typeFlat) {
+							printf("       %.6f +/- %.6f", cms_global->GetWorkSpaceVaried()->var(i>0?v_uncname[i-1].c_str():"signal_strength")->getVal(), tmpe * v_paramsUnc[i][1] );
+						}
+						printf("\n");
+					}
+								if(pars && !hasBestFitted)pars[i] = tmp;
 					//if(pars)pars[i] = tmp;
 				}
 			}

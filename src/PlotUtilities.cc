@@ -361,7 +361,6 @@ void DrawSigBkgPdfs::drawLegend(string s_tot, string s_s, string s_b){
 	legend->AddEntry(hs,s_s.c_str(), "l");
 	legend->AddEntry(hb,s_b.c_str(), "l");
 }
-
 DrawEvolution2D::DrawEvolution2D(vector<double> vx, vector<double> vy, string stitle, string ssave, TPaveText *pt, bool debug){
 	_vx=vx; _vy=vy; _stitle=stitle; _ssave=ssave; _pt=pt; _debug=debug;	
 	_logY=0; cCanvas=0; legend=0; 
@@ -436,6 +435,61 @@ void DrawEvolution2D::save(){
 	  cCanvas->Print(sroot.c_str());
 	  cCanvas->Print(seps.c_str());
 	  cCanvas->Print(sgif.c_str());*/
+}
+
+
+DrawTGraph2D::DrawTGraph2D(vector< std::pair<double, double> > vxy, vector<double> vz, string stitle, string ssave, TPaveText *pt, bool debug){
+	for(int i=0; i<vxy.size(); i++) { _vx.push_back(vxy[i].first); _vy.push_back(vxy[i].second);}
+	_vz = vz;
+	_stitle=stitle; _ssave=ssave; _pt=pt; _debug=debug;	
+	_logY=0; cCanvas=0; legend=0; 
+	lineOne=0; graph=0;
+}
+DrawTGraph2D::~DrawTGraph2D(){
+	if(legend)delete legend; if(lineOne)delete lineOne; if(graph)delete graph;
+	cCanvas=0; _pt=0;
+}
+void DrawTGraph2D::draw(){
+	cCanvas= new TCanvas("c","c");	
+	cCanvas->SetLogy(_logY);
+	int nr = _vx.size();
+	/*double *rtmp=new double[nr];
+	double *cls_btmp = new double[nr];
+	for(int i=0; i<nr; i++){
+		rtmp[i]=_vx[i]; cls_btmp[i]=_vy[i];
+	}
+	int *ir=new int[nr];
+	Sort(nr, rtmp, ir, 0);
+	*/
+	double *x=new double[nr]; 
+	double *y= new double[nr];
+	double *z= new double[nr];
+	for(int i=0; i<nr; i++){
+		x[i]=_vx[i];
+		y[i]=_vy[i];
+		z[i]=_vz[i];
+		//cout<<"DELETE "<<x[i]<<" "<<y[i]<<" "<<z[i]<<endl;
+	}
+
+	graph = new TGraph2D(nr, x, y, z);
+	graph->SetMarkerStyle(21);
+	graph->SetMarkerColor(kBlue);
+	graph->SetLineWidth(2);
+	graph->SetLineColor(kBlue);
+	graph->SetTitle(_stitle.c_str());
+	graph->Draw("colz");
+
+
+	_pt->Draw();
+
+	save();
+
+	delete [] x; 
+	delete [] y;
+	delete [] z;
+}
+void DrawTGraph2D::save(){
+	Save(cCanvas,_ssave);
 }
 PlotXvsCummulativeProb::PlotXvsCummulativeProb(
 		double* vx_not_sorted, int nexps,

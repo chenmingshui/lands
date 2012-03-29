@@ -46,6 +46,14 @@ namespace lands{
 	
 	enum enumPhysicsModel {typeStandardModel=1, typeChargedHiggs=2};
 
+	struct structPOI {
+		TString name;
+		double value;
+		double errUp;
+		double errDown;
+		structPOI(TString s, double v, double eu, double ed):name(s),value(v),errUp(eu),errDown(ed){}
+	};
+
 	class CountingModel
 	{ 
 		public:
@@ -229,6 +237,7 @@ namespace lands{
 			const vector<TString>& Get_v_pdfs_b(){return v_pdfs_b;}
 			const vector<TString>& Get_v_pdfs_observables(){return v_pdfs_observables;}
 			RooWorkspace * GetWorkSpace(){return _w;}
+			RooWorkspace * GetWorkSpaceVaried(){return _w_varied;}
 
 			const vector< vector< vector<int> > >& Get_vvv_pdfs_nuisancesindex(){return vvv_pdfs_nuisancesindex;}
 			const VChannelVSampleVUncertaintyVParameter& Get_vvvv_pdfs_ChProcSetEvtVals(){return vvvv_pdfs_ChProcSetEvtVals;}
@@ -258,7 +267,8 @@ namespace lands{
 			void AddUncertaintyOnShapeNorm(int index_channel, int index_sample, double rho, double rho_err, double B, int pdf_type, int index_correlation );
 
 			bool AddUncertaintyOnShapeParam(string pname, double mean, double sigmaL, double sigmaR, double rangeMin=0, double rangeMax=0 );
-			bool AddUncertaintyOnShapeParam(string pname);// add flatParam
+			bool AddUncertaintyOnShapeParam(string pname);// add flatParam,  values(norminal, range) taken from workspace 
+			bool AddFlatParam(string pname, double norminal, double rangeMin, double rangeMax);// add flatParam, values taken from text file
 
 			void AddUncertaintyAffectingShapeParam(string uname, string pname, double sigmaL, double sigmaR);
 
@@ -298,6 +308,15 @@ namespace lands{
 			void Set_PrintParameter(int i, int j){PrintParameterFrom =i; PrintParameterTo = j;};
 			int GetPrintParameterFrom(){return PrintParameterFrom;};
 			int GetPrintParameterTo(){return PrintParameterTo;};
+
+
+			bool bFixingPOIs(){return _bFixingPOIs;};
+			const vector< std::pair<TString, double> > & GetPOIsToBeFixed(){return vsPOIsToBeFixed;}
+			void SetbFixingPOIs(bool b){_bFixingPOIs = b; if(!b) vsPOIsToBeFixed.clear();};
+			void SetPOItoBeFixed(TString sp, double p){ vsPOIsToBeFixed.push_back(std::make_pair(sp,p)); _bFixingPOIs = true;};
+			const vector<structPOI> & POIs(){return vPOIs;};
+			void addPOI(structPOI p) {vPOIs.push_back(p);};
+			void setPOI(int i, double v, double eu, double ed){vPOIs[i].value=v; vPOIs[i].errUp=eu; vPOIs[i].errDown=ed;};
 		private:
 			VDChannel v_data; // could be pseudo-data for bands
 			VDChannel v_data_real; // real data, not changed during entire run 
@@ -436,6 +455,13 @@ namespace lands{
 			vector< vector<std::pair<int, int> > > vvp_connectNuisBinProc;// keep in memory:  a nuisance affects a list of [channel, process]
 
 			vector< vector< int > > TMP_vvpdfs_chprocINT; 
+
+
+			bool _bFixingPOIs;
+			vector< std::pair<TString, double> > vsPOIsToBeFixed;
+			
+			vector<structPOI> vPOIs; 
+			
 
 			int minuitSTRATEGY;
 			double minuitTolerance;
