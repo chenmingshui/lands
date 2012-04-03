@@ -320,6 +320,9 @@ namespace lands{
 
 			void Set_minuitPrintLevel(int i){minuitPrintLevel = i;};
 			int Get_minuitPrintLevel(){return minuitPrintLevel;};
+
+			void SetNoErrorEstimation(bool b){noErrorEstimation=b;};
+			bool GetNoErrorEstimation(){return noErrorEstimation;};
 		private:
 			VDChannel v_data; // could be pseudo-data for bands
 			VDChannel v_data_real; // real data, not changed during entire run 
@@ -477,6 +480,8 @@ namespace lands{
 			int minuitPrintLevel;
 
 			int _PhysicsModel;
+
+			bool noErrorEstimation; // running minos, but without error estimation
 
 	};
 	CountingModel* CombineModels(CountingModel *cms1, CountingModel *cms2);

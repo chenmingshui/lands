@@ -615,8 +615,8 @@ namespace lands{
 			if(debug)cout<<" Maximum Function Calls="<<arglist[0]<<endl;
 			arglist[1] = cms_global->Get_minuitTolerance();  // tolerance 
 			//arglist[1] = 0.009991;
-			if(!UseMinos)myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
-			if(UseMinos==2)myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
+			if(!UseMinos or UseMinos==2)myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
+			//if(UseMinos==2)myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
 			if(debug || ierflg)cout <<" MIGRAD Number of function calls in Minuit: " << myMinuit->fNfcn << endl;
 			if(debug || ierflg)cout <<" MIGRAD return errflg = "<<ierflg<<endl;
 			if(debug || ierflg)cout <<" MinuitFit("<<model<<")"<<endl;
@@ -659,6 +659,7 @@ namespace lands{
 				}
 				//arglist[2] = 2;
 				//myMinuit->mnexcm("MINOS", arglist , 2, ierflg);
+				if(cms_global->GetNoErrorEstimation()) npois=0;
 				myMinuit->mnexcm("MINOS", arglist , npois+1, ierflg);
 				/*
 				   MINOs  [maxcalls] [parno] [parno] ....      parno starts from 1  instead of 0 ... 

@@ -2448,7 +2448,10 @@ bool runAsymptoticCLs(){
 			cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
 			//cms_global->FluctuatedNumbers();
 			//L_asimovb_glbmin =  MinuitFit(201, tmpr, tmperr, 0.1, cms_global->Get_randomizedPars(), true, debug, success) ;
+			
+			cms_global->SetNoErrorEstimation(1);
 			L_asimovb_glbmin =  MinuitFit(201, tmpr, tmperr, 0.1, pars, false, debug, success) ;
+			cms_global->SetNoErrorEstimation(0);
 		}
 		minuitSTRATEGY = minuitSTRATEGY_old;
 		cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
@@ -2625,7 +2628,9 @@ bool runAsymptoticLimits(){
 			cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
 			//cms_global->FluctuatedNumbers();
 			//L_asimovb_glbmin =  MinuitFit(201, tmpr, tmperr, 0.1, cms_global->Get_randomizedPars(), true, debug, success) ;
+			cms_global->SetNoErrorEstimation(1);
 			L_asimovb_glbmin =  MinuitFit(201, tmpr, tmperr, 0.1, pars, false, debug, success) ;
+			cms_global->SetNoErrorEstimation(0);
 			cout<<" fitted r = "<<tmpr<<" nllmin = "<<L_asimovb_glbmin<<endl;
 		}
 		if(tmpr<0) {
