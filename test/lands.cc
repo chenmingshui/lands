@@ -115,6 +115,7 @@ int nTries = 1;
 
 int maximumFunctionCallsInAFit = 5000;
 int minuitSTRATEGY = 0;
+int minuitPrintLevel= -1;
 double minuitTolerance = 0.001;
 double nuisancesRange = 5.;
 
@@ -168,6 +169,7 @@ bool bDumpFitResults = false;
 int maxsets_forcaching = 0;
 int PrintParameterFrom = -1;
 int PrintParameterTo = -1;
+bool bRunMinuitContour = false;
 
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
@@ -263,6 +265,7 @@ int main(int argc, const char*argv[]){
 	cms_global= cms;
 	cms_global->SetDebug(debug);
 	cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
+	cms_global->Set_minuitPrintLevel(minuitPrintLevel);
 	cms_global->Set_minuitTolerance(minuitTolerance);
 	cms_global->Set_nuisancesRange(nuisancesRange);
 	cms_global->Set_maximumFunctionCallsInAFit(maximumFunctionCallsInAFit);
@@ -287,6 +290,8 @@ int main(int argc, const char*argv[]){
 	cms->ConstructAsimovData(1, bConstructAsimovsbFromFit); // sb asimov
 	if(dataset == "asimov_b")cms->UseAsimovData(0);
 	else if(dataset == "asimov_sb")cms->UseAsimovData(1);
+
+	cms->Set_minuitPrintLevel(minuitPrintLevel);
 
 	if(calcsignificance==0){// calc limits
 		if(method == "Bayesian"){
@@ -971,6 +976,11 @@ int main(int argc, const char*argv[]){
 			watch.Print();
 			return 0;
 		}else if(method == "ScanningMuFit"){
+			int idMH=-1;
+			vector<string> v_uncname = cms_global->Get_v_uncname();
+			for(int i=1; i<=v_uncname.size(); i++) if(v_uncname[i-1]=="MH") idMH=i;
+			vector< vector<double> > v_paramsUnc = cms_global->Get_v_pdfs_floatParamsUnc();
+
 			cms_global= cms;
 			vdata_global=cms->Get_v_data();
 			cms_global->SetDebug(debug);
@@ -995,6 +1005,36 @@ int main(int argc, const char*argv[]){
 			double mu_hat_up = tmpr;
 			double mu_hat_low = tmperr;
 
+			if(bRunMinuitContour && idMH>0 ){
+				
+				TFile f(jobname+"_contourRvsM.root","RECREATE");
+
+				// using mncont to extract points around contour = 1 or 2 sigma   
+				myMinuit->SetErrorDef(TMath::ChisquareQuantile(0.68, 1));
+				TGraph * g1sigma = (TGraph*)myMinuit->Contour(100, 0, idMH);
+				if(g1sigma){
+					g1sigma->SetName("ContourRvsM_1");
+					for(int i=0; i<g1sigma->GetN(); i++){
+						double r, m; g1sigma->GetPoint(i, r,m);
+						g1sigma-> SetPoint(i, m*v_paramsUnc[idMH][1] + v_paramsUnc[idMH][3], r);
+					}
+					f.WriteTObject(g1sigma); 
+				} else {cout<<" WARNING: minuit doesn't give 1 sigma contour (return 0 points) "<<endl;}
+					
+
+				myMinuit->SetErrorDef(TMath::ChisquareQuantile(0.95, 1));
+				TGraph * g2sigma = (TGraph*)myMinuit->Contour(100, 0, idMH);
+				if(g2sigma){
+					g2sigma->SetName("ContourRvsM_2");
+					for(int i=0; i<g2sigma->GetN(); i++){
+						double r, m; g2sigma->GetPoint(i, r,m);
+						g2sigma-> SetPoint(i, m*v_paramsUnc[idMH][1] + v_paramsUnc[idMH][3], r);
+					}
+					f.WriteTObject(g2sigma);
+				} else {cout<<" WARNING: minuit doesn't give 2 sigma contour (return 0 points) "<<endl;}
+				f.Close();
+			}
+
 
 			{  // check covariance matrix and plot the ellipse if MH variable present in the floating parameter list 
 				int npar = cms_global->Get_max_uncorrelation()+1;
@@ -1002,9 +1042,6 @@ int main(int argc, const char*argv[]){
 				myMinuit->mnemat( mat.GetMatrixArray(), npar);
 				if(debug)mat.Print();
 	
-				int idMH=-1;
-				vector<string> v_uncname = cms_global->Get_v_uncname();
-				for(int i=1; i<v_uncname.size(); i++) if(v_uncname[i-1]=="MH") idMH=i;
 				if(idMH>0){
 					vector< vector<double> > v_paramsUnc = cms_global->Get_v_pdfs_floatParamsUnc();
 					double corr_ij = mat(0, idMH)/sqrt(mat(0,0)*mat(idMH,idMH));
@@ -1023,6 +1060,30 @@ int main(int argc, const char*argv[]){
 					contour->Draw("AC");
 					c.Print(jobname+"_ellipse_RM1sigma.pdf");
 					c.Print(jobname+"_ellipse_RM1sigma.root");
+
+					TFile f(jobname+"_ellipse_RM1sigma.root", "UPDATE");
+					double m[1] = { x2 * v_paramsUnc[idMH][1]+ v_paramsUnc[idMH][3] };
+					double merr[1] = { s2 * v_paramsUnc[idMH][1] };
+					double mu[1] = { x1 };
+					double muerr[1] = { s1 };
+					TGraphErrors tge(1, m, mu, merr, muerr);
+					tge.SetName("pointWithError");
+					f.WriteTObject(&tge);
+
+					double merrup[1] = { cms_global->POIs()[1].errUp};
+					double merrdown[1] = { fabs(cms_global->POIs()[1].errDown)};
+					double muerrup[1] = { cms_global->POIs()[0].errUp};
+					double muerrdown[1] = { fabs(cms_global->POIs()[0].errDown)};
+					TGraphAsymmErrors tgae(1, m, mu, merrdown, merrup, muerrdown, muerrup);
+					tgae.SetName("pointWithAsymError");
+					f.WriteTObject(&tgae);
+
+					TString snumbers5  = "corr_"; snumbers5+=corr_ij;
+					TObjString tsnumbers5(snumbers5);
+					tsnumbers5.Write("corr");
+					//f.WriteTObject(&tsnumbers5);
+					f.Close();
+				
 				}
 
 				cout<<" 	68% CL : "<<endl;
@@ -1056,9 +1117,6 @@ int main(int argc, const char*argv[]){
 					myMinuit->mnemat( mat.GetMatrixArray(), npar);
 					if(debug)mat.Print();
 
-					int idMH=-1;
-					vector<string> v_uncname = cms_global->Get_v_uncname();
-					for(int i=1; i<v_uncname.size(); i++) if(v_uncname[i-1]=="MH") idMH=i;
 					if(idMH>0){
 						vector< vector<double> > v_paramsUnc = cms_global->Get_v_pdfs_floatParamsUnc();
 						double corr_ij = mat(0, idMH)/sqrt(mat(0,0)*mat(idMH,idMH));
@@ -1077,6 +1135,28 @@ int main(int argc, const char*argv[]){
 						contour->Draw("AC");
 						c.Print(jobname+"_ellipse_RM2sigma.pdf");
 						c.Print(jobname+"_ellipse_RM2sigma.root");
+
+					TFile f(jobname+"_ellipse_RM2sigma.root", "UPDATE");
+					double m[1] = { x2 * v_paramsUnc[idMH][1]+ v_paramsUnc[idMH][3] };
+					double merr[1] = { s2 * v_paramsUnc[idMH][1] };
+					double mu[1] = { x1 };
+					double muerr[1] = { s1 };
+					TGraphErrors tge(1, m, mu, merr, muerr);
+					tge.SetName("pointWithError");
+					f.WriteTObject(&tge);
+					
+					double merrup[1] = { cms_global->POIs()[1].errUp};
+					double merrdown[1] = { fabs(cms_global->POIs()[1].errDown)};
+					double muerrup[1] = { cms_global->POIs()[0].errUp};
+					double muerrdown[1] = { fabs(cms_global->POIs()[0].errDown)};
+					TGraphAsymmErrors tgae(1, m, mu, merrdown, merrup, muerrdown, muerrup);
+					tgae.SetName("pointWithAsymError");
+					f.WriteTObject(&tgae);
+
+					TString snumbers5  = "corr_"; snumbers5+=corr_ij;
+					TObjString tsnumbers5(snumbers5);
+					tsnumbers5.Write("corr");
+					f.Close();
 					}
 					cout<<" 	95% CL : "<<endl;
 					cout<<" POI: mu = "<<cms_global->POIs()[0].value<<" + "<<cms_global->POIs()[0].errUp<<" - "<<fabs(cms_global->POIs()[0].errDown)<<endl;
@@ -1211,10 +1291,6 @@ int main(int argc, const char*argv[]){
 				vector< std::pair<double, double> > vrm; vrm.clear(); 
 				vector<double> vc; vc.clear();
 				
-				int idMH=-1;
-				vector<string> v_uncname = cms_global->Get_v_uncname();
-				vector< vector<double> > v_paramsUnc = cms_global->Get_v_pdfs_floatParamsUnc();
-				for(int i=1; i<v_uncname.size(); i++) if(v_uncname[i-1]=="MH") idMH=i;
 
 				if(idMH<0) {cout<<" no MH parameter, exit"<<endl;  exit(1);}
 
@@ -1246,8 +1322,11 @@ int main(int argc, const char*argv[]){
 					DrawTGraph2D d2d(vrm, vc, "#delta(2lnQ); mass [GeV]; #mu", (jobname+"_scanned_rm_vs_q").Data(), pt);
 					d2d.draw();
 					d2d.save();
+					TFile f(jobname+"_scanned_rm_vs_q.root", "UPDATE");
+					d2d.getGraph()->SetName("Graph2D_rm_vs_q");					
+					f.WriteTObject(d2d.getGraph());
+					f.Close();
 				}
-				
 
 				watch.Print();
 				return 0;
@@ -2022,6 +2101,11 @@ void processParameters(int argc, const char* argv[]){
 	if( tmpv.size()!=1 ) { minuitSTRATEGY= 0; }
 	else { minuitSTRATEGY = tmpv[0].Atoi(); }
 
+	tmpv = options["--minuitPrintLevel"]; 
+	if( tmpv.size()!=1 ) { minuitPrintLevel= -1; }
+	else { minuitPrintLevel = tmpv[0].Atoi(); }
+
+
 	tmpv = options["--minuitTolerance"]; 
 	if( tmpv.size()!=1 ) { minuitTolerance= 0.001; }
 	else { minuitTolerance= tmpv[0].Atof(); }
@@ -2043,6 +2127,7 @@ void processParameters(int argc, const char* argv[]){
 
 
 	if(isWordInMap("--bDumpFitResults", options)) bDumpFitResults = true; 
+	if(isWordInMap("--bRunMinuitContour", options)) bRunMinuitContour = true; 
 
 	tmpv = options["--PrintParameter"]; 
 	if( tmpv.size()==2 ) { PrintParameterFrom = tmpv[0].Atoi(); 
@@ -2977,6 +3062,8 @@ void PrintHelpMessage(){
 	printf("-vM args                              sth like \"1.2 1.3 1.4 [1.5,3.0,x1.05] [3.0,10.0,0.5]\", for scanning mass  \n");
 	printf("--scanMs arg (=0)                     scanning LLR vs. M \n"); 
 	printf("--bAlsoExtract2SigmErrorBar           for Maximum LL fit\n"); 
+	printf("--minuitPrintLevel arg(=-1)           minuit print level in fit, for debugging \n"); 
+	printf("--bRunMinuitContour                   Run MNCONT for two POIs, requiring computing time \n");
 
 	printf(" \n");
 	printf("------------------some comand lines-----------------------------------------------\n");
