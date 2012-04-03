@@ -80,6 +80,7 @@ namespace lands{
 		if(par[0]<0 && _bPositiveSignalStrength) { f = -9e10; return; }
 
 		if(par[0]>9e10) {f=-9e10; return;}
+		for(int i=0; i<npar; i++) {if(isnan(par[i]) or isinf(par[i])) f=9e20; return;}
 		
 		bool bAllChannelsAreFlagged = false;
 		npar = cms_global->Get_max_uncorrelation()+1;
@@ -190,6 +191,7 @@ namespace lands{
 							if(added){
 								if(h<=0) { h=10e-9;} // cout<<" *h<0* "<<endl; 
 								bs = h*normalization*(s<nsigproc?par[0]:1);
+								if(isnan(bs)) {cout<<" morphing bs=nan "<<bs<<" c "<<c<<" s="<<s<<" h=" << h<<" normalization="<<normalization<<endl; }
 							}
 						}
 						for(u=0; u<vvv_pdftype[c][s].size(); u++){
@@ -236,6 +238,7 @@ namespace lands{
 									break;
 								case typeLogNormal:
 									bs*=(pow( 1+ (*(uncpars+ (ran>0?1:0))), ran) );
+									if(isnan(bs)) {cout<<" typeLogNormal bs=nan "<<bs<<" c "<<c<<" s="<<s<<" uncpars "<<uncpars[0]<<" "<<uncpars[1]<<" ran="<<ran<<endl;}
 									break;
 								case typeTruncatedGaussian:
 									bs*=(1+ (*(uncpars+ (ran>0?1:0)))*ran);
@@ -258,6 +261,7 @@ namespace lands{
 									cout<<"pdf_type = "<<vvv_pdftype[c][s][u]<<" not defined yet"<<endl;
 									exit(0);
 							}
+							if(isnan(bs)) {cout<<" bs=nan "<<bs<<" c "<<cms_global->GetChannelName(c).c_str()<<" s="<<cms_global->GetProcessNames(c)[s].c_str()<<" pdftype="<<vvv_pdftype[c][s][u]<<endl; }
 						}
 					}
 					vv_cachCountingParts[c][s]=bs;
@@ -265,6 +269,7 @@ namespace lands{
 					bs=vv_cachCountingParts[c][s];
 				}
 				tc+=bs;
+				if(isnan(tc)) {cout<<" tc=nan "<<"  bs="<<bs<<" c "<<c<<" s="<<s<<endl; }
 			}
 			if(vdata_global[c]<=0){
 				chisq +=( tc - vdata_global[c]);
@@ -272,11 +277,12 @@ namespace lands{
 			}else { 
 				if(tc<=0) {f=10e9;cms_global->FlagAllChannels(); return;} // tc < 0, which means non-physical, return f = 10e9
 				chisq += (tc-vdata_global[c] - vdata_global[c]*log(tc/vdata_global[c]));
+				if(isnan(chisq)) {cout<<" chisq = nan "<<" tc="<<tc<<" data="<<vdata_global[c]<<" in channel: "<<c<<endl;}
 			}
 			//		else chisq += (tc - vdata_global[c]*log(tc));   // to be identical with ATLAS TDR description, for limit only
 		}
 		if(isnan(chisq) || chisq>=10e9){ 
-			cout<<" DELETEME ** ** ** ** chi2="<<chisq<<endl;
+			cout<<" DELETEME counting ** ** ** ** chi2="<<chisq<<endl;
 			cms_global->FlagAllChannels();
 			f=10e9; return; 
 		} // checking if it's nan  
@@ -284,7 +290,7 @@ namespace lands{
 			chisq+=	cms_global->EvaluateChi2(par, vvv_cachPdfValues);// use default, norminal sigbkgs for evaluation, not randomized one 		
 		}
 		if(isnan(chisq) || chisq>=10e9){ 
-			cout<<" DELETEME ** ** ** ** chi2="<<chisq<<endl;
+			cout<<" DELETEME shaping ** ** ** ** chi2="<<chisq<<endl;
 			cms_global->FlagAllChannels();
 			f=10e9; return; 
 		} // checking if it's nan  
@@ -425,6 +431,10 @@ namespace lands{
 				myMinuit -> mnexcm("SET NOW", arglist, 1, ierflg);
 
 			}
+			if(cms_global->Get_minuitPrintLevel() >=0 ){
+				arglist[0]=cms_global->Get_minuitPrintLevel();
+				myMinuit -> mnexcm("SET PRINT", arglist, 1, ierflg);
+			}
 
 			arglist[0] = cms_global->Get_minuitSTRATEGY(); // set to be 0 (was default 1), reduce lots of function calls, ---> speed up by a factor of 6 
 			if(debug)cout<<" SET STRATEGY "<<arglist[0]<<endl;
@@ -559,12 +569,13 @@ namespace lands{
 
 			// Setting POIs to be fixed ,  for scanning LL vs. POIs .  need for 2D scan, like mass vs. cross_section 
 			if(cms_global->bFixingPOIs()) {
+				int npois = 0;
 				vector< std::pair<TString, double> > vsPOIsToBeFixed = cms_global->GetPOIsToBeFixed();
 				for(int i=0; i<vsPOIsToBeFixed.size(); i++){
 					if(vsPOIsToBeFixed[i].first =="signal_strength") {
 						myMinuit->mnparm(0, "ratio", vsPOIsToBeFixed[i].second, 0.1, -100, 9e10, ierflg);
 						myMinuit->FixParameter(0);
-						break;
+						continue;
 					}
 					if(cms_global->GetWorkSpaceVaried()->var(vsPOIsToBeFixed[i].first) != NULL){
 						// POIs can be only signal_strength or  some parameters in Workspace, e.g. MH 
@@ -614,6 +625,20 @@ namespace lands{
 				if(model==102 or model==202)cout<<" starting mu = "<<r<<endl;
 			}
 
+			if(myMinuit->fNfcn==0) {
+				double *par;
+				par = new double[npars+1];
+				double pdel, pdelerr; 
+				for(int p=0; p<npars+1; p++) {
+					myMinuit->GetParameter(p, pdel, pdelerr);
+					par[p]=pdel;
+				}
+				int tmp;
+				double l;
+				Chisquare(tmp, 0, l, par, 0);
+				cms_global->SetSignalScaleFactor(_signalScale);
+				return l;
+			}
 			//	myMinuit->mnexcm("MINI", arglist ,2,ierflg);
 			//	myMinuit->mnexcm("IMPROVE", arglist ,2,ierflg);
 
@@ -621,14 +646,37 @@ namespace lands{
 
 			if(UseMinos){
 				arglist[0] = cms_global->Get_maximumFunctionCallsInAFit(); // to be good at minization, need set this number to be 5000 (from experience of hgg+hww+hzz combination)
-				arglist[1] = 1;
-				myMinuit->mnexcm("MINOS", arglist , 2, ierflg);
+				arglist[1] = 1; // first parameter : signal strength
+				int npois = 1;
+				for(int p=1; p<cms_global->POIs().size(); p++) { // 0 is always signal strength
+					for(int j=1; j<=npars; j++){
+						TString sname=v_uncname[j-1]; 
+						if(cms_global->POIs()[p].name ==sname) {
+							npois += 1;
+							arglist[npois]=j+1;
+						}
+					}
+				}
+				//arglist[2] = 2;
+				//myMinuit->mnexcm("MINOS", arglist , 2, ierflg);
+				myMinuit->mnexcm("MINOS", arglist , npois+1, ierflg);
+				/*
+				   MINOs  [maxcalls] [parno] [parno] ....      parno starts from 1  instead of 0 ... 
+				   Causes a Minos error analysis to be performed on the parameters whose numbers are specified. 
+				   If none are specified, Minos errors are calculated for all variable parameters. 
+				   Minos errors may be expensive to calculate, but are very reliable since they take account of non-linearities
+				   in the problem as well as parameter correlations, and are in general asymmetric. The optional argument
+				   specifies the (approximate) maximum number of function calls per parameter requested,
+				   after which the calculation will be stopped for that parameter.
+				 */
 				if(debug || ierflg )cout << " MINOS Number of function calls in Minuit: " << myMinuit->fNfcn << endl;
 				if(debug || ierflg )cout << " MINOS return errflg = "<<ierflg<<endl;
 				if(ierflg){
 					cout<<"WARNING: Minos fit fails, try other options"<<endl;
 				}
 				if(success) success[0]=ierflg;
+				if(debug>=10)myMinuit->mnexcm("SHOW COVariance", arglist, 2, ierflg);
+				if(debug>=10)myMinuit->mnexcm("SHOW CORrelations", arglist, 2, ierflg);
 			}
 
 			myMinuit->GetParameter(0, r, er);
@@ -645,6 +693,7 @@ namespace lands{
 					errUp = er;
 					errLow = -er;
 				}
+				if(debug)cout<<"DELETEME mu: errUp="<<errUp<<" errLow="<<errLow<<" errParab="<<errParab<<" gcor="<<gcor<<endl;
 				if(cms_global->POIs().size()>0){
 					cms_global->setPOI(0, r, errUp, errLow);
 
@@ -668,12 +717,12 @@ namespace lands{
 									errLow1 = v_paramsUnc[j][1] * errLow1;
 								}
 								cms_global->setPOI(j, poi, errUp1, errLow1);
+								if(debug)cout<<"DELETEME "<<sname<<": errUp="<<errUp1<<" errLow="<<errLow1<<" errParab="<<errParab1<<" gcor="<<gcor1<<endl;
 							}
 						}
 					}
 				}
 
-				if(debug)cout<<"DELETEME errUp="<<errUp<<" errLow="<<errLow<<" errParab="<<errParab<<" gcor="<<gcor<<endl;
 			}
 
 			double l = myMinuit->fAmin;
@@ -701,7 +750,7 @@ namespace lands{
 					if(debug || ierflg || _bDumpFinalFitResults ) { 
 						printf("  par %30s      %.6f +/- %.6f      %.6f +/- %.6f    %.6f     %.2f, %.2f", i>0?v_uncname[i-1].c_str():"signal_strength", tmp, tmpe, _inputNuisances[i], _inputNuisancesSigma[i], _startNuisances[i],  _inputNuisancesSigma[i]==0?0:(tmp-_inputNuisances[i])/_inputNuisancesSigma[i], _inputNuisancesSigma[i]==0?0:tmpe/_inputNuisancesSigma[i]);
 						if(i>0 and cms_global->GetWorkSpace()->var(v_uncname[i-1].c_str()) != NULL and v_pdftype[i]==typeFlat) {
-							printf("       %.6f +/- %.6f", cms_global->GetWorkSpaceVaried()->var(i>0?v_uncname[i-1].c_str():"signal_strength")->getVal(), tmpe * v_paramsUnc[i][1] );
+							printf("       %.6f +/- %.6f", tmp*v_paramsUnc[i][1]+v_paramsUnc[i][3], tmpe * v_paramsUnc[i][1] );
 						}
 						printf("\n");
 					}
