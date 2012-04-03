@@ -317,6 +317,9 @@ namespace lands{
 			const vector<structPOI> & POIs(){return vPOIs;};
 			void addPOI(structPOI p) {vPOIs.push_back(p);};
 			void setPOI(int i, double v, double eu, double ed){vPOIs[i].value=v; vPOIs[i].errUp=eu; vPOIs[i].errDown=ed;};
+
+			void Set_minuitPrintLevel(int i){minuitPrintLevel = i;};
+			int Get_minuitPrintLevel(){return minuitPrintLevel;};
 		private:
 			VDChannel v_data; // could be pseudo-data for bands
 			VDChannel v_data_real; // real data, not changed during entire run 
@@ -471,6 +474,7 @@ namespace lands{
 			int PrintParameterFrom;
 			int PrintParameterTo;
 
+			int minuitPrintLevel;
 
 			int _PhysicsModel;
 
