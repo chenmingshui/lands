@@ -1665,7 +1665,7 @@ bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripp
 			double err, errup, rho;  // to allow asymetric uncertainties
 			double shape[8];
 			if(pdf==typeLogNormal){
-				if(ss[p+2]=="-") {
+				if(ss[p+2]=="-" || TString(ss[p+2]).Atof()==0) {
 					tmps+= "    -   ";
 					continue;
 				}
@@ -1685,7 +1685,7 @@ bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripp
 					errup = err;
 				}
 				tmps+= TString::Format("%7.2f ",err+1.0);
-				if(err < -1 or errup <-1) {
+				if(err <= -1 or errup <=-1) {
 					cout<<"ERROR: Kappa in lognormal  can't be negative, please check your input card at "<<s+1<<"th source, "<<p+2<<"th entry"<<endl;
 					exit(0);
 				}
@@ -2358,7 +2358,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 			}
 
 			if(pdf==typeLogNormal){
-				if(ss[p+2]=="-") {
+				if(ss[p+2]=="-" || TString(ss[p+2]).Atof()==0) {
 					tmps+= "    -   ";
 					continue;
 				}
@@ -2377,7 +2377,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 					errup = err;
 				}
 				tmps+= TString::Format("%7.2f ",err+1.0);
-				if(err < -1 or errup <-1) {
+				if(err <= -1 or errup <= -1) {
 					cout<<"ERROR: Kappa in lognormal  can't be negative, please check your input card at "<<s+1<<"th source, "<<p+2<<"th entry"<<endl;
 					exit(0);
 				}
