@@ -80,7 +80,7 @@ namespace lands{
 		if(par[0]<0 && _bPositiveSignalStrength) { f = -9e10; return; }
 
 		if(par[0]>9e10) {f=-9e10; return;}
-		for(int i=0; i<npar; i++) {if(isnan(par[i]) or isinf(par[i])) f=9e20; return;}
+		for(int i=0; i<npar; i++) {if(isnan(par[i]) or isinf(par[i])) {f=9e20; return;} }
 		
 		bool bAllChannelsAreFlagged = false;
 		npar = cms_global->Get_max_uncorrelation()+1;
