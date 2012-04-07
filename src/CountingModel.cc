@@ -3265,7 +3265,7 @@ If we need to change it later, it will be easy to do.
 	    if(_w_varied->var(pname.c_str())==NULL) {
 		    cout<<" parameter "<<pname<<" not exist in the added channels,   skip it"<<endl;
 		    if(_w_varied->arg(pname.c_str())) cout<<" but it exist as RooAbsArg"<<endl;
-		    _w_varied->Print();
+		    if(_debug)_w_varied->Print();
 		    return false;
 	    }
 
@@ -3273,7 +3273,12 @@ If we need to change it later, it will be easy to do.
 	    for(int i=0; i<v_uncname.size(); i++){
 		    if(v_uncname[i]==pname){
 			    index_correlation = i+1;	
-			    cout<<" There are two shape parameters with same name = "<<pname<<", skip it"<<endl;
+			    cout<<" There are two shape parameters with same name = "<<pname<<", using the latest one "<<endl;
+			    v_pdfs_floatParamsUnc[index_correlation][0] = norminalValue;  
+			    v_pdfs_floatParamsUnc[index_correlation][1] = rangeMax - rangeMin;  
+			    v_pdfs_floatParamsUnc[index_correlation][3] = rangeMin;  
+			    v_pdfs_floatParamsUnc[index_correlation][4] = rangeMax;  
+			    
 			    return false;
 		    }
 	    }

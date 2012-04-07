@@ -51,7 +51,9 @@ namespace lands{
 		double value;
 		double errUp;
 		double errDown;
-		structPOI(TString s, double v, double eu, double ed):name(s),value(v),errUp(eu),errDown(ed){}
+		double minV;
+		double maxV;
+		structPOI(TString s, double v, double eu, double ed, double minv, double maxv):name(s),value(v),errUp(eu),errDown(ed),minV(minv), maxV(maxv){}
 	};
 
 	class CountingModel
@@ -315,7 +317,7 @@ namespace lands{
 			void SetbFixingPOIs(bool b){_bFixingPOIs = b; if(!b) vsPOIsToBeFixed.clear();};
 			void SetPOItoBeFixed(TString sp, double p){ vsPOIsToBeFixed.push_back(std::make_pair(sp,p)); _bFixingPOIs = true;};
 			const vector<structPOI> & POIs(){return vPOIs;};
-			void addPOI(structPOI p) {vPOIs.push_back(p);};
+			void addPOI(structPOI p) {bool b=false; for(int i=0; i<vPOIs.size(); i++) {if(vPOIs[i].name==p.name) b=true;} if(!b)vPOIs.push_back(p); };
 			void setPOI(int i, double v, double eu, double ed){vPOIs[i].value=v; vPOIs[i].errUp=eu; vPOIs[i].errDown=ed;};
 
 			void Set_minuitPrintLevel(int i){minuitPrintLevel = i;};

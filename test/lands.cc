@@ -171,6 +171,8 @@ int PrintParameterFrom = -1;
 int PrintParameterTo = -1;
 bool bRunMinuitContour = false;
 
+vector<structPOI> addtionalPOIs;
+
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
 
@@ -222,6 +224,11 @@ int main(int argc, const char*argv[]){
 		if(sFileLimitsDistribution=="" && makeCLsBands<2 && sFileBonlyM2lnQ=="") exit(0);
 	}
 	cout<<"totally "<<datacards.size()<<" data cards combined"<<endl;
+
+	for(int i=0; i<addtionalPOIs.size(); i++){
+		cms->AddFlatParam(addtionalPOIs[i].name.Data(), addtionalPOIs[i].value, addtionalPOIs[i].minV, addtionalPOIs[i].maxV );
+	}
+
 	cms->SetUseSystematicErrors(systematics);
 	// done combination
 
@@ -273,10 +280,11 @@ int main(int argc, const char*argv[]){
 	cms_global->Set_maxSetsCaching(maxsets_forcaching);
 	cms_global->Set_PrintParameter(PrintParameterFrom, PrintParameterTo);
 
-	structPOI poiMU("signal_strength", 0, 0, 0);
-	structPOI poiM("MH", 0, 0, 0);
+	structPOI poiMU("signal_strength", 0, 0, 0, 0, 0);
+	structPOI poiM("MH", 0, 0, 0, 0, 0);
 	cms_global->addPOI(poiMU);
 	cms_global->addPOI(poiM);
+	for(int i=0; i<addtionalPOIs.size(); i++) cms_global->addPOI(addtionalPOIs[i]);
 
 	TPaveText *pt = SetTPaveText(0.2, 0.7, 0.3, 0.9);
 	if(customRMax!=customRMin) {_customRMin=customRMin; _customRMax = customRMax;}
@@ -2141,6 +2149,25 @@ void processParameters(int argc, const char* argv[]){
 	else { maxsets_forcaching = tmpv[0].Atoi(); }
 
 
+	tmpv = options["--POIs"];
+	if(tmpv.size()==4 or tmpv.size()==8){ // currently support only at most two additional POIs 
+		double initv = tmpv[1].Atof();
+		double minv = tmpv[2].Atof();
+		double maxv = tmpv[3].Atof();
+		if(minv>maxv or initv<minv or initv>maxv) { cout<<" POI args are wrong: name "<<tmpv[0]<<" initV "<<tmpv[1]<<" minV "<<tmpv[2]<<" maxV "<<tmpv[3]<<endl; exit(1);}
+		structPOI poi(tmpv[0], initv, 0, 0, minv, maxv);	
+		addtionalPOIs.push_back(poi);
+		if(tmpv.size()==8){
+			initv = tmpv[5].Atof();
+			minv = tmpv[6].Atof();
+			maxv = tmpv[7].Atof();
+			if(minv>maxv or initv<minv or initv>maxv) { cout<<" POI args are wrong: name "<<tmpv[4]<<" initV "<<tmpv[5]<<" minV "<<tmpv[6]<<" maxV "<<tmpv[7]<<endl; exit(1);}
+			structPOI poi2(tmpv[4], initv, 0, 0, minv, maxv);	
+			addtionalPOIs.push_back(poi2);
+		}	
+	}else if(tmpv.size()==0){}
+	else{ cout<<" --POIs args[4 or 8 args]"<<endl;  exit(1);}
+
 	printf("\n\n[ Summary of configuration in this job: ]\n");
 	if(sPhysicsModel=="ChargedHiggs")cout<<" PhysicsModel:  Charged Higgs"<<endl;
 	cout<<"  Calculating "<<(calcsignificance?"significance":"limit")<<" with "<<method<<" method "<<endl;
@@ -3069,6 +3096,7 @@ void PrintHelpMessage(){
 	printf("--bAlsoExtract2SigmErrorBar           for Maximum LL fit\n"); 
 	printf("--minuitPrintLevel arg(=-1)           minuit print level in fit, for debugging \n"); 
 	printf("--bRunMinuitContour                   Run MNCONT for two POIs, requiring computing time \n");
+	printf("--POIs args (='NAME InitVal Min Max') Specify other POIs (like MH), which should be in the input workspace\n");
 
 	printf(" \n");
 	printf("------------------some comand lines-----------------------------------------------\n");

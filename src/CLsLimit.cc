@@ -717,8 +717,9 @@ namespace lands{
 									errUp1 = v_paramsUnc[j][1] * errUp1;
 									errLow1 = v_paramsUnc[j][1] * errLow1;
 								}
-								cms_global->setPOI(j, poi, errUp1, errLow1);
+								cms_global->setPOI(p, poi, errUp1, errLow1);
 								if(debug)cout<<"DELETEME "<<sname<<": errUp="<<errUp1<<" errLow="<<errLow1<<" errParab="<<errParab1<<" gcor="<<gcor1<<endl;
+								if(debug)cout<<"DELETEME p=" << p <<" j=" <<j <<endl;
 							}
 						}
 					}
