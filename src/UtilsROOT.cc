@@ -2206,7 +2206,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 				RooAbsArg * extraNom = (RooAbsArg*)GetExtraNorm(channelnames[c], tmpprocn[i], parametricShapeLines, mass);
 				pdf->SetName(TString(channelnames[c])+"_"+tmpprocn[i]+"_"+pdf->GetName());
 				//if(extraNom)extraNom->SetName(TString(pdf->GetName())+"_"+"extranorm");
-				if(extraNom) extraNom->SetName(TString(channelnames[c])+extraNom->GetName());
+				//if(extraNom) extraNom->SetName(TString(channelnames[c])+extraNom->GetName());
 				if(i<nsigproc[c]){
 					vspdf.push_back(pdf);
 					vsExtraNorm.push_back(extraNom);

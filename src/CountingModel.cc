@@ -2307,8 +2307,8 @@ If we need to change it later, it will be easy to do.
 
 
 		    if(vsExtraNorm[i]) { 
-			    _w->import(*vsExtraNorm[i], RecycleConflictNodes());
-			    _w_varied->import(*vsExtraNorm[i], RecycleConflictNodes());
+			    _w->import(*vsExtraNorm[i], RenameConflictNodes(channel_name.c_str()));
+			    _w_varied->import(*vsExtraNorm[i], RenameConflictNodes(channel_name.c_str()));
 			    vextranorm.push_back(vsExtraNorm[i]->GetName());
 			    //cout<<vextranorm.back()<<endl;
 			    if((RooAbsReal*)(_w_varied->arg(vextranorm.back()))) {
@@ -3209,7 +3209,7 @@ If we need to change it later, it will be easy to do.
 	    if(_w_varied->var(pname.c_str())==NULL) {
 		    cout<<" parameter "<<pname<<" not exist in the added channels,   skip it"<<endl;
 		    if(_w_varied->arg(pname.c_str())) cout<<" but it exist as RooAbsArg"<<endl;
-		    _w_varied->Print();
+		    if(_debug)_w_varied->Print();
 		    return false;
 	    }
 
