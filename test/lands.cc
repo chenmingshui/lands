@@ -235,6 +235,7 @@ int main(int argc, const char*argv[]){
 	cms->MultiSigProcShareSamePDF(bMultiSigProcShareSamePDF);
 
 	CRandom *rdm = new CRandom(seed);  //initilize a random generator
+	if(seed==0) cout<<" TrueRandom Seed = "<<rdm->GetSeed()<<endl;
 	RooRandom::randomGenerator()->SetSeed(rdm->GetSeed());
 
 	// common operations
