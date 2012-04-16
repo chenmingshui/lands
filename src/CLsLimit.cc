@@ -750,11 +750,14 @@ namespace lands{
 					double tmp, tmpe;
 					myMinuit->GetParameter(i, tmp, tmpe);
 					if(debug || ierflg || _bDumpFinalFitResults ) { 
+						double *tmppointer = _startNuisances;
+						if(bestFitPars)_startNuisances = bestFitPars;
 						printf("  par %30s      %.6f +/- %.6f      %.6f +/- %.6f    %.6f     %.2f, %.2f", i>0?v_uncname[i-1].c_str():"signal_strength", tmp, tmpe, _inputNuisances[i], _inputNuisancesSigma[i], _startNuisances[i],  _inputNuisancesSigma[i]==0?0:(tmp-_inputNuisances[i])/_inputNuisancesSigma[i], _inputNuisancesSigma[i]==0?0:tmpe/_inputNuisancesSigma[i]);
 						if(i>0 and cms_global->GetWorkSpace()->var(v_uncname[i-1].c_str()) != NULL and v_pdftype[i]==typeFlat) {
 							printf("       %.6f +/- %.6f", tmp*v_paramsUnc[i][1]+v_paramsUnc[i][3], tmpe * v_paramsUnc[i][1] );
 						}
 						printf("\n");
+						_startNuisances=tmppointer;
 					}
 								if(pars && !hasBestFitted)pars[i] = tmp;
 					//if(pars)pars[i] = tmp;
