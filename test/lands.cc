@@ -999,6 +999,9 @@ int main(int argc, const char*argv[]){
 			if(bDumpFitResults)cms->DumpFitResults(_inputNuisances, jobname+"_nominalShape");
 
 			double *pars = new double[cms->Get_max_uncorrelation()+1]; // nsys + r
+			
+			double bestFitPars[cms->Get_maximumFunctionCallsInAFit()+1];
+
 			double tmp=0, tmpr = 0, tmperr=0;
 			double ErrorDef = TMath::ChisquareQuantile(0.68 , 1);// (confidenceLevel, ndf)
 			int success[1]={0};
@@ -1013,6 +1016,10 @@ int main(int argc, const char*argv[]){
 			double mu_hat = pars[0];
 			double mu_hat_up = tmpr;
 			double mu_hat_low = tmperr;
+
+			for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
+				bestFitPars[i]=pars[i];
+			}
 
 			if(bRunMinuitContour && idMH>0 ){
 				
@@ -1312,7 +1319,7 @@ int main(int argc, const char*argv[]){
 						double testm = vM_toEval[j];
 						_countPdfEvaluation = 0;
 						cms_global->SetPOItoBeFixed("MH",testm);
-						double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, false, debug);
+						double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, true, debug, 0, bestFitPars);
 						if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
 						if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
 						vrm.push_back(make_pair(testm, testr));
@@ -1523,7 +1530,7 @@ int main(int argc, const char*argv[]){
 				m2lnQ = 0;
 			}else{
 				_countPdfEvaluation = 0;
-				m2lnQ = MinuitFit(3,tmp, tmp, 0, fittedPars, true, debug, success) - x2; // mu=0
+				m2lnQ = MinuitFit(3,tmp, tmp, 0, fittedPars, true, debug, success, fittedPars) - x2; // mu=0
 				if(debug) cout<<" _countPdfEvaluation ="<<_countPdfEvaluation<<endl;
 			}
 			sig_data = sqrt(fabs(m2lnQ));
@@ -2312,7 +2319,7 @@ double runProfileLikelihoodApproximation(double neg2_llr){
 		cout<<" best fitted r, upper bound = "<<upperL<<", nllmin="<<y0_2<<endl;
 		if(upperL==lowerL){
 			cout<<"WARNING: First Attempt Fails, try one more time with different set of starting values"<<endl;
-			y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, true, debug) ;
+			y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, true, debug, 0, pars) ;
 			if(upperL==lowerL){
 				cout<<"ERROR: need to be investigate --> two attempts fails "<<endl;
 				cout<<" -----> trying Migrad"<<endl;
@@ -2415,14 +2422,14 @@ double runProfileLikelihoodApproximation(double neg2_llr){
 	SaveResults(jobname+"_plrObsLimit", HiggsMass, r95, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
 	if(bPlots){ // show a plot for  -log(Lambda(mu)) vs. mu 
-		double x0 =  MinuitFit(21, tmp, tmperr, 0, pars, true, debug);
+		double x0 =  MinuitFit(21, tmp, tmperr, 0, pars, true, debug, 0, pars);
 		//double x0 = y0;
 		cout<<" x0 = "<<x0<<" optimized r="<<tmp<<endl;
 		vector<double> vrxsec, vmlnq; 
 		vrxsec.clear(); vmlnq.clear();
 		for(double r=0; r<=2*r95; r+=r95/10.){
 			vrxsec.push_back(r);
-			double x3 = MinuitFit(3,tmp, tmp, r, pars, true, debug) ;
+			double x3 = MinuitFit(3,tmp, tmp, r, pars, true, debug, 0, pars) ;
 			cout<<"r= "<<r<<", x3 = "<<x3<<endl;
 			double m2lnQ = x3 - x0;
 			cout<<"Profiled:  r ="<<r<<"	m2lnQ="<<m2lnQ<<endl;
@@ -3081,12 +3088,12 @@ void PrintHelpMessage(){
 	printf("\n");
 	printf("random arguments, need to be cleaned\n");
 	printf("--bForceSymmetryError                 make the asymmetry uncertainties  be symmetry in a conservative way inside code\n");
-	printf("--bMultiSigProcShareSamePDF           e.g. in hzz4l, the ggH, WH, ZH, ttH and VBF have the same signal pdf, when evaluating LL, we can avoid duplicated calculations \n");
+	printf("--bMultiSigProcShareSamePDF           e.g. in hhiggs4l, the ggH, WH, ZH, ttH and VBF have the same signal pdf, when evaluating LL, we can avoid duplicated calculations \n");
 	printf("--bFixNuisancsAtNominal               fix nuisances to nominal value instead of fitting to data in case of LHC-CLs\n");
 	printf("--scanRAroundBand  (=all)            scan signal strengths around band (-2, -1, 0, 1, 2, obs, all)\n");
 	printf("--bConstructAsimovbFromNominal	      construct asimov_b dataset from nominal nuisances   (default is from fitted nuisances) \n");
 	printf("--bConstructAsimovsbFromFit	      construct asimov_sb dataset from global fitted nuisances   (default is from nominal nuisances) \n");
-	printf("--bRedefineObservableRange, --ObservableRangeMin, --ObservableRangeMax, --ObservableBins :  for hzz4l pdf extraction\n");
+	printf("--bRedefineObservableRange, --ObservableRangeMin, --ObservableRangeMax, --ObservableBins :  for hhiggs4l pdf extraction\n");
 	printf("--bDumpFitResults                     dump fit results and also the fitted shape if there is any shape input (only binned supported) \n");
 	printf("--maxsets_caching arg (=0)            number of sets of cached pdf values,  the larger it is, the larger memory required    \n");
 	printf("--PrintParameter arg1 arg2 (= -1 -1)    print intermediate values of the parameters specified in the range [arg1, arg2]    \n");

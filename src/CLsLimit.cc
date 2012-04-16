@@ -377,7 +377,7 @@ namespace lands{
 
 	}
 
-	double MinuitFit(int model, double &r , double &er, double mu /* or ErrorDef for Minos*/, double *pars, bool hasBestFitted, int debug, int *success ){
+	double MinuitFit(int model, double &r , double &er, double mu /* or ErrorDef for Minos*/, double *pars, bool hasBestFitted, int debug, int *success, double *bestFitPars ){
 				//	for(int i=1; i<=cms_global->Get_max_uncorrelation(); i++) {
 				//		cout<<"DELETEMEfitstart par "<<i<<" "<<_inputNuisances[i]<<endl;
 				//	}
@@ -386,7 +386,7 @@ namespace lands{
 
 
 		RooAbsArg::setDirtyInhibit(1);
-		if(!(pars && hasBestFitted)){
+		if(!(bestFitPars && hasBestFitted)){ 
 			_lastParams.clear();	_currParams.clear();
 			vvv_cachPdfValues.clear();
 			vv_cachCountingParts.clear();
@@ -467,7 +467,7 @@ namespace lands{
 						// FIXME need to be smart here ,  when calc significance, if the S > 5 at the end, print out the WARNING message to change the range setting here 
 						// or try to get the option of significance from main program 
 						// but now [-20, 20] cause some problem in minuit fitting for non-signifcant deviation .... 
-						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_startNuisances[i], minuitStep, -nuisancesFitRange, nuisancesFitRange, ierflg); // was 5,  causing problem with significance larger than > 7 
+						myMinuit->mnparm(i, sname, bestFitPars?bestFitPars[i]:_startNuisances[i], minuitStep, -nuisancesFitRange, nuisancesFitRange, ierflg); // was 5,  causing problem with significance larger than > 7 
 						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_startNuisances[i], minuitStep, -10, 10,ierflg); // was 5,  causing problem with significance larger than > 7 
 						break;
 					case typeTruncatedGaussian :
@@ -477,22 +477,22 @@ namespace lands{
 						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, maxunc, 20,ierflg); // was 5
 						// FIXME need to be smart here ,  when calc significance, if the S > 5 at the end, print out the WARNING message to change the range setting here 
 						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, maxunc, 5,ierflg); // was 5
-						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_startNuisances[i], minuitStep, maxunc, 5,ierflg); // was 5
+						myMinuit->mnparm(i, sname, bestFitPars?bestFitPars[i]:_startNuisances[i], minuitStep, maxunc, 5,ierflg); // was 5
 						break;
 					case typeGamma:
 						//myMinuit->mnparm(i, sname, v_GammaN[i], 0.5, 0, 100000, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
 						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, 0, (v_GammaN[i]+1)*5, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
-						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_startNuisances[i], minuitStep, 0, (v_GammaN[i]+1)*5, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
+						myMinuit->mnparm(i, sname, bestFitPars?bestFitPars[i]:_startNuisances[i], minuitStep, 0, (v_GammaN[i]+1)*5, ierflg); // FIXME,  could be 100 times the N if N>0,  100 if N==0
 						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], 1, 0, v_GammaN[i]+4*sqrt(v_GammaN[i]+1), ierflg); // FIXME,  could be smarter in +/-5sigma stat range
 						break;
 					case typeBifurcatedGaussian:
 						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, v_paramsUnc[i][3], v_paramsUnc[i][4], ierflg  );
 						if(debug>=10) cout<<" _startNuisances = "<<_startNuisances[i]<<endl;
-						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_startNuisances[i], minuitStep, v_paramsUnc[i][3], v_paramsUnc[i][4], ierflg  );
+						myMinuit->mnparm(i, sname, bestFitPars?bestFitPars[i]:_startNuisances[i], minuitStep, v_paramsUnc[i][3], v_paramsUnc[i][4], ierflg  );
 						break;
 					case typeFlat:
 						//myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_inputNuisances[i], minuitStep, 0, 1, ierflg  );
-						myMinuit->mnparm(i, sname, hasBestFitted?pars[i]:_startNuisances[i], minuitStep, 0, 1, ierflg  );
+						myMinuit->mnparm(i, sname, bestFitPars?bestFitPars[i]:_startNuisances[i], minuitStep, 0, 1, ierflg  );
 						break;
 					default:
 						cout<<"pdftype not yet defined:  "<<v_pdftype[i]<<", npars="<<npars<<", i="<<i<<endl;
@@ -2617,7 +2617,7 @@ double CLsBase::M2lnQ(bool & successful, int checkFailure, int dataOrToy){
 		double * fittedPars = new double[_model->Get_max_uncorrelation()+1];
 		minchi2tmp = MinuitFit(21, tmp1, tmp2, 0, fittedPars, false, checkFailure?_debug:(_debug?1:0), success);  // MinuitFit(mode, r, err_r)
 		if(success[0]!=0){
-			minchi2tmp = MinuitFit(21, tmp1, tmp2, 0, _model->Get_norminalPars(), true, checkFailure?_debug:(_debug?1:0), success);  // MinuitFit(mode, r, err_r)
+			minchi2tmp = MinuitFit(21, tmp1, tmp2, 0, _model->Get_norminalPars(), true, checkFailure?_debug:(_debug?1:0), success, _model->Get_norminalPars());  // MinuitFit(mode, r, err_r)
 		}
 		if(success[0]!=0 and checkFailure) { 
 			cout<<"ERROR WARNING data fit failed, try to dump info:  this failure sometimes related to ROOT versions, potential bugs in TMinuit. "<<endl;
@@ -2639,20 +2639,20 @@ double CLsBase::M2lnQ(bool & successful, int checkFailure, int dataOrToy){
 		}
 
 		double fitted_r = tmp1;
-		if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(0, tmp1, tmp2, 0, fittedPars, true);  // MinuitFit(mode, r, err_r),  want r to be >=0
+		if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(0, tmp1, tmp2, 0, fittedPars, true, 0, success, fittedPars);  // MinuitFit(mode, r, err_r),  want r to be >=0
 		if(test_statistics==5){ // for evaluating one-sided limit 
 			if(fitted_r>=_model->GetSignalScaleFactor()) q=0;
 			else {
-				q = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor(), fittedPars, true, _debug?1:0, success2) - minchi2tmp);
+				q = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor(), fittedPars, true, _debug?1:0, success2, fittedPars) - minchi2tmp);
 				if(success2[0]!=0){
-					q = -(MinuitFit(3, tmp1, tmp2, _model->GetSignalScaleFactor(), _model->Get_norminalPars(), true, _debug?1:0, success2) - minchi2tmp);
+					q = -(MinuitFit(3, tmp1, tmp2, _model->GetSignalScaleFactor(), _model->Get_norminalPars(), true, _debug?1:0, success2, _model->Get_norminalPars()) - minchi2tmp);
 				}
 			}
 
 		}else if(test_statistics==6){// for evaluating significance
-			q = -(MinuitFit(3, tmp1, tmp1, 0/*fixed at mu=0*/, fittedPars, true, _debug?1:0, success2) - minchi2tmp);
+			q = -(MinuitFit(3, tmp1, tmp1, 0/*fixed at mu=0*/, fittedPars, true, _debug?1:0, success2, fittedPars) - minchi2tmp);
 			if(success2[0]!=0){
-				q = -(MinuitFit(3, tmp1, tmp2, 0, _model->Get_norminalPars(), true, _debug?1:0, success2) - minchi2tmp);
+				q = -(MinuitFit(3, tmp1, tmp2, 0, _model->Get_norminalPars(), true, _debug?1:0, success2, _model->Get_norminalPars()) - minchi2tmp);
 			}
 		}
 		if(_debug>=100)cout<<" testStat["<<test_statistics<<"]: q = "<<q<<" fitted_r="<<fitted_r<<" minchi2tmp="<<minchi2tmp<<" tmp1="<<tmp1<<endl;
