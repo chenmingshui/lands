@@ -1313,6 +1313,7 @@ int main(int argc, const char*argv[]){
 				for(int i=0; i<vR_toEval.size(); i++){
 					double testr = vR_toEval[i];
 					for(int j=0; j<vM_toEval.size(); j++){
+						if(debug)watch.Start();
 						double testm = vM_toEval[j];
 						_countPdfEvaluation = 0;
 						cms_global->SetPOItoBeFixed("MH",testm);
@@ -1332,7 +1333,10 @@ int main(int argc, const char*argv[]){
 						vc.push_back(y0_1-y0_2);
 						TString sj = jobname; sj+="_fittedShape_r"; sj+=testr; sj+="_m"; sj+=testm;
 						if(bDumpFitResults)cms->DumpFitResults(pars, sj);
-						if(debug)watch.Print();
+						if(debug){
+							watch.Stop();
+							watch.Print();
+						}
 					}
 				}
 				if(debug){
