@@ -1017,10 +1017,6 @@ int main(int argc, const char*argv[]){
 			double mu_hat_up = tmpr;
 			double mu_hat_low = tmperr;
 
-			for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
-				bestFitPars[i]=pars[i];
-			}
-
 			if(bRunMinuitContour && idMH>0 ){
 				
 				TFile f(jobname+"_contourRvsM.root","RECREATE");
@@ -1313,19 +1309,30 @@ int main(int argc, const char*argv[]){
 				
 				vrm.push_back(make_pair(pars[idMH]*v_paramsUnc[idMH][1]+v_paramsUnc[idMH][3], pars[0]) );vc.push_back(y0_2-y0_2);
 
+				bool best = false;
 				for(int i=0; i<vR_toEval.size(); i++){
 					double testr = vR_toEval[i];
 					for(int j=0; j<vM_toEval.size(); j++){
 						double testm = vM_toEval[j];
 						_countPdfEvaluation = 0;
 						cms_global->SetPOItoBeFixed("MH",testm);
-						double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, true, debug, 0, bestFitPars);
+						double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, best?true:false, debug, 0, best?bestFitPars:0);
+
+						for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
+							double tmp, tmpe;
+							myMinuit->GetParameter(i, tmp, tmpe);
+							bestFitPars[i]=tmp;
+						}
+						best = true;
+
+
 						if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
 						if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
 						vrm.push_back(make_pair(testm, testr));
 						vc.push_back(y0_1-y0_2);
 						TString sj = jobname; sj+="_fittedShape_r"; sj+=testr; sj+="_m"; sj+=testm;
 						if(bDumpFitResults)cms->DumpFitResults(pars, sj);
+						if(debug)watch.Print();
 					}
 				}
 				if(debug){
