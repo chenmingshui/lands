@@ -27,6 +27,7 @@
 #include "TLine.h"
 #include "TGraphErrors.h"
 
+#include "TStopwatch.h"
 
 #include "RooAbsData.h"
 #include "RooWorkspace.h"
@@ -58,6 +59,9 @@ namespace lands{
 	double _countPdfEvaluation = 0;
 
 	bool _bDumpFinalFitResults = 0;
+
+	double _initialRforFit = 1;
+	double _maxRforFit = 300;
 
 	double del_oldn = 0; double del_newn =0 ; //DELETEME
 	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag){
@@ -383,7 +387,11 @@ namespace lands{
 				//	}
 
 		//cout<<" ********************   MinuitFit **************** "<<endl;
-
+		TStopwatch* watch;
+		if(debug){
+			watch = new TStopwatch();
+			watch->Start();
+		}
 
 		RooAbsArg::setDirtyInhibit(1);
 		if(!(bestFitPars && hasBestFitted)){ 
@@ -526,10 +534,10 @@ namespace lands{
 				_bPositiveSignalStrength = false;
 			}
 			else if(model==21 || model==101 || model==102){ // S+B,  float r
-				double rmin = 0, rmax = 300; 
+				double rmin = 0, rmax = _maxRforFit; // default 300;  will change to mu*1.1 when doing freq limit (LHC-CLs) 
 				if(_customRMax != _customRMin) {rmin=_customRMin; rmax=_customRMax; if (rmin<0) rmin=0;}
 				//myMinuit->mnparm(0, "ratio", _startNuisances[0], minuitStep, 0.0, 300, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
-				myMinuit->mnparm(0, "ratio", 1, minuitStep, rmin, rmax, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
+				myMinuit->mnparm(0, "ratio", _initialRforFit, minuitStep, rmin, rmax, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
 				if(model==102) myMinuit->mnparm(0, "ratio", r, minuitStep, rmin, rmax, ierflg); //make starting r configurable
 				_bPositiveSignalStrength = true;
 			}
@@ -563,6 +571,7 @@ namespace lands{
 
 			}else {
 				cout<<"Model not specified correctly:  0-3"<<endl;
+				cms_global->SetSignalScaleFactor(_signalScale);
 				return 0;
 			}
 
@@ -784,6 +793,8 @@ namespace lands{
 		}
 		cms_global->SetSignalScaleFactor(_signalScale);
 		RooAbsArg::setDirtyInhibit(0);
+
+		if(debug)watch->Print();
 		return 0.0;
 	}	
 
@@ -2229,6 +2240,7 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys, bool bWriteToys){ 
 				//		cout<<"DELETEMEb par "<<i<<" "<<_inputNuisances[i]<<endl;
 				//	}
 				}
+				_initialRforFit = 10e-10;
 
 				break;
 			default:
@@ -2245,6 +2257,7 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys, bool bWriteToys){ 
 			i-=1;
 			cout<<"WARNING: skip a failed toy, regenerating "<<endl;
 		}
+		_initialRforFit = 1;
 	}
 
 	if(bWriteToys){
@@ -2533,6 +2546,7 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys){
 					//	cout<<"DELETEME1 par "<<i<<" "<<_inputNuisances[i]<<endl;
 					//}
 				}
+				_initialRforFit = _model->GetSignalScaleFactor();
 
 				break;
 			default:
@@ -2549,6 +2563,7 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys){
 			i-=1;
 			cout<<"WARNING: skip a failed toy, regenerating "<<endl;
 		}
+		_initialRforFit = 1.;
 	}
 
 	if(bWriteToys){
@@ -2607,6 +2622,8 @@ double CLsBase::M2lnQ(bool & successful, int checkFailure, int dataOrToy){
 		if(_debug>=100)cout<<" testStat["<<test_statistics<<"]: q = "<<q<<" fitted_r="<<fitted_r<<" minchi2tmp="<<minchi2tmp<<" tmp1="<<tmp1<<" minchi2tmp2="<<minchi2tmp2<<endl;
 	}else if(test_statistics==5 or test_statistics==6){ // LHC type, agreed at LHC-HCG meeting on 18.05.2011   5 for upperlimit one-side, 6 for significance 
 		// here Q =  2ln(L_sb/L_b),  will correct in later stage to -2lnQ
+
+		if(test_statistics==5) _maxRforFit = _model->GetSignalScaleFactor() * 1.1;
 
 		if(_debug>=100){
 			cout<<" * data in fit: ";
