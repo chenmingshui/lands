@@ -253,6 +253,7 @@ int main(int argc, const char*argv[]){
 
 	cms->SetMass(HiggsMass);
 
+	if(debug) cms->GetWorkSpace()->Print();
 	//**********************  setValueDirty() takes a lot of timing ************************
 	//RooAbsArg::setDirtyInhibit(0);
 
@@ -301,6 +302,7 @@ int main(int argc, const char*argv[]){
 	else if(dataset == "asimov_sb")cms->UseAsimovData(1);
 
 	cms->Set_minuitPrintLevel(minuitPrintLevel);
+
 
 	if(calcsignificance==0){// calc limits
 		if(method == "Bayesian"){

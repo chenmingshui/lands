@@ -2307,8 +2307,9 @@ If we need to change it later, it will be easy to do.
 
 
 		    if(vsExtraNorm[i]) { 
-			    _w->import(*vsExtraNorm[i], RenameConflictNodes(channel_name.c_str()));
-			    _w_varied->import(*vsExtraNorm[i], RenameConflictNodes(channel_name.c_str()));
+			    if(_w->arg(vsExtraNorm[i]->GetName())!=NULL) vsExtraNorm[i]->SetName(TString(channel_name.c_str())+vsExtraNorm[i]->GetName());
+			    _w->import(*vsExtraNorm[i], RecycleConflictNodes());
+			    _w_varied->import(*vsExtraNorm[i], RecycleConflictNodes());
 			    vextranorm.push_back(vsExtraNorm[i]->GetName());
 			    //cout<<vextranorm.back()<<endl;
 			    if((RooAbsReal*)(_w_varied->arg(vextranorm.back()))) {
@@ -2373,8 +2374,9 @@ If we need to change it later, it will be easy to do.
 		    vrrvnorm.push_back(sn);
 
 		    if(vbExtraNorm[i]) { 
-			    _w->import(*vbExtraNorm[i]);
-			    _w_varied->import(*vbExtraNorm[i]);
+			    if(_w->arg(vbExtraNorm[i]->GetName())!=NULL) vbExtraNorm[i]->SetName(TString(channel_name.c_str())+vbExtraNorm[i]->GetName());
+			    _w->import(*vbExtraNorm[i], RecycleConflictNodes());
+			    _w_varied->import(*vbExtraNorm[i], RecycleConflictNodes());
 			    vextranorm.push_back(vbExtraNorm[i]->GetName());
 			    rrv->setVal(bkgNorms[i]*(((RooAbsReal*)vbExtraNorm[i])->getVal()));
 		    }else{
