@@ -388,7 +388,7 @@ namespace lands{
 
 		//cout<<" ********************   MinuitFit **************** "<<endl;
 		TStopwatch* watch;
-		if(debug){
+		if(cms_global->GetDebug()){
 			watch = new TStopwatch();
 			watch->Start();
 		}
@@ -794,7 +794,7 @@ namespace lands{
 		cms_global->SetSignalScaleFactor(_signalScale);
 		RooAbsArg::setDirtyInhibit(0);
 
-		if(debug)watch->Print();
+		if(cms_global->GetDebug())watch->Print();
 		return 0.0;
 	}	
 
