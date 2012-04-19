@@ -2214,13 +2214,14 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys, bool bWriteToys){ 
 						}
 					}
 				}
+					_startNuisances = _model->Get_fittedParsInData_b();
+					_inputNuisances = _model->Get_fittedParsInData_b();
 				if(!_model->UseBestEstimateToCalcQ()){
 					//generate nuisance around b^hat_0 
 				if(_debug>=1000)cout<<" ---- DELETEME in BuildM2lnQ_b "<<" before fluctuatenumber "<<endl;
 					VChannelVSample vv =  _model->FluctuatedNumbers(0, false, 2); // toss nuisance around fitted b_hat_0 in data  
 				if(_debug>=1000)cout<<" ---- DELETEME in BuildM2lnQ_b "<<" after fluctuatenumber "<<endl;
 					_inputNuisances = _model->Get_randomizedPars();	
-					_startNuisances = _model->Get_fittedParsInData_b();
 					for(int itmp=0; itmp<_model->Get_v_pdftype().size(); itmp++){
 						if(_model->Get_v_pdftype()[itmp]==typeGamma) _inputNuisances[itmp]+=1;
 					}
@@ -2520,10 +2521,11 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys){
 						}
 					}
 				}
+					_startNuisances = _model->Get_fittedParsInData_sb();
+					_inputNuisances = _model->Get_fittedParsInData_sb();
 				if(!_model->UseBestEstimateToCalcQ()){
 					VChannelVSample vv =  _model->FluctuatedNumbers(0, true, 2); // toss nuisance around fitted b_hat_mu in data 
 					_inputNuisances = _model->Get_randomizedPars();	
-					_startNuisances = _model->Get_fittedParsInData_sb();
 					for(int itmp=0; itmp<_model->Get_v_pdftype().size(); itmp++){
 						if(_model->Get_v_pdftype()[itmp]==typeGamma) _inputNuisances[itmp]+=1;
 					}

@@ -1301,7 +1301,8 @@ int main(int argc, const char*argv[]){
 				}
 			}
 			if(scanRs and scanMs){
-
+				TStopwatch watch2;
+				watch2.Start();
 				vector< std::pair<double, double> > vrm; vrm.clear(); 
 				vector<double> vc; vc.clear();
 				
@@ -1357,23 +1358,35 @@ int main(int argc, const char*argv[]){
 					f.Close();
 				}
 
-				watch.Print();
+				watch2.Stop();
+				cout<<"Scanning total takes: "<<endl;
+				watch2.Print();
 				return 0;
 			}
 			else {
+				watch.Start();
 				if(scanRs){
 					vector<double> vr, vc; vr.clear(); vc.clear();
 					vr.push_back(pars[0]);vc.push_back(y0_2-y0_2);
+					bool best = false;
 					for(int i=0; i<vR_toEval.size(); i++){
 						double testr = vR_toEval[i];
 						_countPdfEvaluation = 0;
-						double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, false, debug);
+						double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, best?true:false, debug, 0, best?bestFitPars:0);
 						if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
 						if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
 						vr.push_back(testr);
 						vc.push_back(y0_1-y0_2);
 						TString sj = jobname; sj+="_fittedShape_mu"; sj+=testr;
 						if(bDumpFitResults)cms->DumpFitResults(pars, sj);
+
+						for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
+							double tmp, tmpe;
+							myMinuit->GetParameter(i, tmp, tmpe);
+							bestFitPars[i]=tmp;
+						}
+						best = true;
+
 					}
 					if( scanRs >= 2) {
 						if(mu_hat<vR_toEval[0]){
@@ -1407,23 +1420,32 @@ int main(int argc, const char*argv[]){
 						d2d.draw();
 						d2d.save();
 					}
-
+					watch.Stop();
 					watch.Print();
 					return 0;
 				}
 				if(scanMs){
+					bool best = false;
 					vector<double> vr, vc; vr.clear(); vc.clear();
 					vr.push_back(pars[0]);vc.push_back(y0_2-y0_2);
 					for(int i=0; i<vM_toEval.size(); i++){
 						double testr = vM_toEval[i];
 						_countPdfEvaluation = 0;
 						cms_global->SetPOItoBeFixed("MH",testr);
-						double y0_1 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //202, 201, 2:  allow mu to be negative
+						double y0_1 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, ErrorDef, pars, best?true:false, debug, success, best?bestFitPars:0) ;  //202, 201, 2:  allow mu to be negative
 						if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
 						vr.push_back(testr);
 						vc.push_back(y0_1-y0_2);
 						TString sj = jobname; sj+="_fittedShape_m"; sj+=testr;
 						if(bDumpFitResults)cms->DumpFitResults(pars, sj);
+
+						for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
+							double tmp, tmpe;
+							myMinuit->GetParameter(i, tmp, tmpe);
+							bestFitPars[i]=tmp;
+						}
+						best = true;
+
 					}
 					printf("\n results of scanned m vs. q: \n");
 					for(int i=0; i<vr.size(); i++){
@@ -1435,6 +1457,7 @@ int main(int argc, const char*argv[]){
 						d2d.save();
 					}
 
+					watch.Stop();
 					watch.Print();
 					return 0;
 				}
@@ -1980,12 +2003,6 @@ void processParameters(int argc, const char* argv[]){
 	else {
 		tossPseudoDataConvention = tmpv[0].Atoi();
 	}
-	// 
-	tmpv = options["--UseBestEstimateToCalcQ"];
-	if( tmpv.size()!=1 ) { UseBestEstimateToCalcQ= 1; }
-	else {
-		UseBestEstimateToCalcQ = tmpv[0].Atoi();
-	}
 
 	if(isWordInMap("--freq", options)){
 		tossToyConvention = 1;
@@ -1995,6 +2012,9 @@ void processParameters(int argc, const char* argv[]){
 			testStat = 6; // LHC  for one-sided upper limit
 		else testStat=5; //PL for significance evaluation
 	}
+	// 
+	if(isWordInMap("--UseBestEstimateToCalcQ", options))
+		UseBestEstimateToCalcQ= 1; 
 
 	if(isWordInMap("--bReadPars", options)) bReadPars = true;
 	if(isWordInMap("--bWritePars", options)) bWritePars = true;
