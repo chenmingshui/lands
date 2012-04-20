@@ -2695,8 +2695,9 @@ double CLsBase::M2lnQ(bool & successful, int checkFailure, int dataOrToy){
 						myMinuit->GetParameter(i, tmp, tmpe);
 						fittedPars[i]=tmp;
 					}
-					
+
 					q = -(MinuitFit(3, tmp1, tmp2, _model->GetSignalScaleFactor(), _model->Get_norminalPars(), true, _debug?1:0, success2, fittedPars) - minchi2tmp);
+
 				}
 			}
 
