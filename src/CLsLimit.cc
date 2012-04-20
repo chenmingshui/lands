@@ -399,7 +399,16 @@ namespace lands{
 		RooAbsArg::setDirtyInhibit(1);
 		if(!(bestFitPars && hasBestFitted)){ 
 			_lastParams.clear();	_currParams.clear();
+			for( int i=0; i<vvv_cachPdfValues.size(); i++){
+				for( int j=0; j<vvv_cachPdfValues[i].size(); j++){
+					vvv_cachPdfValues[i][j].clear();
+				}
+				vvv_cachPdfValues[i].clear();
+			}
 			vvv_cachPdfValues.clear();
+			for(int i=0; i<vv_cachCountingParts.size(); i++){
+				vv_cachCountingParts[i].clear();	
+			}
 			vv_cachCountingParts.clear();
 		}
 
@@ -660,7 +669,7 @@ namespace lands{
 				success[0]=ierflg;
 				if(success[0]!=0) {
 					cout<<" ierflg= "<<ierflg<<", Unconverged, EDM = "<<myMinuit->fEDM<<endl;
-					if(myMinuit->fEDM < 10E-3) success[0] = 0; 
+					if(myMinuit->fEDM < 1.) success[0] = 0; 
 				}
 			}
 
