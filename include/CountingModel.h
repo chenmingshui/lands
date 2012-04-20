@@ -251,7 +251,7 @@ namespace lands{
 				       	vector<RooAbsPdf*> bkgPdfs, vector<double> bkgNorms, vector<RooAbsArg*> vbExtraNorm);
 			// need to add names of each parameter .... 
 			double EvaluateLnQ(int ch, int dataOrToy); // for Likelihood ratio
-			double EvaluateChi2(double *par, vector< vector< vector<float> > >& vvv_cachPdfValues, int bUseBestEstimateToCalcQ=1);          // for Chi2
+			double EvaluateChi2(double *par, vector< vector< vector<float> > >& vvv_cachPdfValuestmp, int bUseBestEstimateToCalcQ=1);          // for Chi2
 			double EvaluateGL(int ch, double xr); // for bayesian 
 			double EvaluateGL(vector< vector<double> > vvnorms, vector<double> vparams, double xr, VChannelVSample& vvs, VChannelVSample&vvb); // for bayesian 
 			void AddObservedDataSet(int index_channel, RooAbsData* rds);

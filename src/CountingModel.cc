@@ -2714,20 +2714,20 @@ If we need to change it later, it will be easy to do.
 	    }
 	    AddObservedDataSet(ch, rds);
     }
-    double CountingModel::EvaluateChi2(double *par, vector< vector< vector<float> > > & vvv_cachPdfValues, int bUseBestEstimateToCalcQ){ 
+    double CountingModel::EvaluateChi2(double *par, vector< vector< vector<float> > > & vvv_cachPdfValues2, int bUseBestEstimateToCalcQ){ 
 	    double ret=0;
 
 	    FluctuatedNumbers(par, true, bUseBestEstimateToCalcQ, false);
 
 	    RooRealVar * tmprrv;
 
-	    if(vvv_cachPdfValues.size()==0){
-		    vvv_cachPdfValues.resize(vv_pdfs.size());
+	    if(vvv_cachPdfValues2.size()==0){
+		    vvv_cachPdfValues2.resize(vv_pdfs.size());
 		    for(int ch=0; ch<vv_pdfs.size(); ch++){
-			    vvv_cachPdfValues[ch].resize(vv_pdfs[ch].size());
+			    vvv_cachPdfValues2[ch].resize(vv_pdfs[ch].size());
 			    int ntot = int(v_pdfs_roodataset_tmp[ch]->numEntries());
 			    for(int p=0; p<vv_pdfs[ch].size();p++){
-				    vvv_cachPdfValues[ch][p].resize(ntot);
+				    vvv_cachPdfValues2[ch][p].resize(ntot);
 			    }
 		    }
 	    }
@@ -2839,11 +2839,11 @@ If we need to change it later, it will be easy to do.
 				    if(vv_pdfs_norm_varied[ch][p]!=0){
 					    if(_debug>=100&&i==0){
 						    cout<<"DELETEME 1.1: "<<vv_pdfs_norm_varied[ch][p]<<endl;
-						    cout<<vvv_cachPdfValues.size()<<endl;
+						    cout<<vvv_cachPdfValues2.size()<<endl;
 						    cout<<" ch="<<ch<<" p="<<p<<endl;
 						    cout<<" Updated ? "<<(vv_pdfs_statusUpdated[ch][p])<<endl;
-						    cout<<"v[ch].size="<<vvv_cachPdfValues[ch].size()<<endl;
-						    cout<<"v[ch][p].size="<<vvv_cachPdfValues[ch][p].size()<<endl;
+						    cout<<"v[ch].size="<<vvv_cachPdfValues2[ch].size()<<endl;
+						    cout<<"v[ch][p].size="<<vvv_cachPdfValues2[ch][p].size()<<endl;
 					    }
 					    if(vv_pdfs_statusUpdated[ch][p]){
 						    if( p<nsigproc && firstSigProcPdfVal >= 0 && b_MultiSigProcShareSamePDF){
@@ -2906,14 +2906,14 @@ If we need to change it later, it will be easy to do.
 						    }
 						    //bupdated = true;
 						    tmp2 = vv_pdfs_norm_varied[ch][p]*tmp3;
-						    vvv_cachPdfValues[ch][p][i]=tmp3;
+						    vvv_cachPdfValues2[ch][p][i]=tmp3;
 						    if(_debug>=100&&i==0)cout<<" new: "<<tmp3<<endl;
 						    //stemp+=" val "; stemp+=tmp3;
 					    }else {
 						    if(_debug==102)tmp3 =	_w_varied->pdf(vv_pdfs[ch][p].c_str())->getVal(&vars);  //give some warning message when r=0
-						    tmp2=vv_pdfs_norm_varied[ch][p]*vvv_cachPdfValues[ch][p][i];
+						    tmp2=vv_pdfs_norm_varied[ch][p]*vvv_cachPdfValues2[ch][p][i];
 
-						    if(_debug==102 && i==0)cout<<" caching comparison: "<<tmp3<<" "<<vvv_cachPdfValues[ch][p][i]<<endl;
+						    if(_debug==102 && i==0)cout<<" caching comparison: "<<tmp3<<" "<<vvv_cachPdfValues2[ch][p][i]<<endl;
 					    }
 					    tmp +=tmp2;
 				    }
