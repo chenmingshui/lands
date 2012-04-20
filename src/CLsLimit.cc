@@ -386,6 +386,9 @@ namespace lands{
 				//		cout<<"DELETEMEfitstart par "<<i<<" "<<_inputNuisances[i]<<endl;
 				//	}
 
+// Minuit Output Description **  http://wwwasd.web.cern.ch/wwwasd/cgi-bin/listpawfaqs.pl/43
+
+
 		//cout<<" ********************   MinuitFit **************** "<<endl;
 		TStopwatch* watch;
 		if(cms_global->GetDebug()){
@@ -624,7 +627,8 @@ namespace lands{
 			if(debug)cout<<" Maximum Function Calls="<<arglist[0]<<endl;
 			arglist[1] = cms_global->Get_minuitTolerance();  // tolerance 
 			//arglist[1] = 0.009991;
-			if(!UseMinos or UseMinos==2)myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
+			//if(!UseMinos or UseMinos==2)myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
+			myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);  // always perform migrad 
 			//if(UseMinos==2)myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
 			if(debug || ierflg)cout <<" MIGRAD Number of function calls in Minuit: " << myMinuit->fNfcn << endl;
 			if(debug || ierflg)cout <<" MIGRAD return errflg = "<<ierflg<<endl;
@@ -651,7 +655,14 @@ namespace lands{
 			//	myMinuit->mnexcm("MINI", arglist ,2,ierflg);
 			//	myMinuit->mnexcm("IMPROVE", arglist ,2,ierflg);
 
-			if(success) success[0]=ierflg;
+			if(success) {
+				//EDM is the most important quantity, and is usually meaningful: it is the estimated distance to minimum in function value (chisquare or likelihood), so it is the expected improvement that can still be made in F. After a good fit, it should be very small, like 10E-5 or smaller. If it is 10E-2 or 10E-3, that is a little suspicious. If it is bigger than one, the fit didn't converge completely. If it is bigger than 100, the fit is completely meaningless.
+				success[0]=ierflg;
+				if(success[0]!=0) {
+					cout<<" ierflg= "<<ierflg<<", Unconverged, EDM = "<<myMinuit->fEDM<<endl;
+					if(myMinuit->fEDM < 10E-3) success[0] = 0; 
+				}
+			}
 
 			if(UseMinos){
 				arglist[0] = cms_global->Get_maximumFunctionCallsInAFit(); // to be good at minization, need set this number to be 5000 (from experience of hgg+hww+hzz combination)
@@ -684,7 +695,13 @@ namespace lands{
 				if(ierflg){
 					cout<<"WARNING: Minos fit fails, try other options"<<endl;
 				}
-				if(success) success[0]=ierflg;
+				if(success){
+					success[0]=ierflg;
+					if(success[0]!=0) {
+						cout<<" ierflg= "<<ierflg<<", Unconverged, EDM = "<<myMinuit->fEDM<<endl;
+						if(myMinuit->fEDM < 10E-3) success[0] = 0; 
+					}
+				}
 				if(debug>=10)myMinuit->mnexcm("SHOW COVariance", arglist, 2, ierflg);
 				if(debug>=10)myMinuit->mnexcm("SHOW CORrelations", arglist, 2, ierflg);
 			}
@@ -778,6 +795,7 @@ namespace lands{
 				//	}
 			cms_global->SetSignalScaleFactor(_signalScale);
 			RooAbsArg::setDirtyInhibit(0);
+			if(cms_global->GetDebug())watch->Print();
 			return l;
 		}else{
 			double par[1];
@@ -2665,9 +2683,20 @@ double CLsBase::M2lnQ(bool & successful, int checkFailure, int dataOrToy){
 		if(test_statistics==5){ // for evaluating one-sided limit 
 			if(fitted_r>=_model->GetSignalScaleFactor()) q=0;
 			else {
+				if( dataOrToy == 0 && _model->Get_fittedParsInData_sb() != NULL ) {
+					for(int i=0; i<_model->Get_max_uncorrelation()+1; i++){
+						fittedPars[i] = _model->Get_fittedParsInData_sb()[i];
+					}
+				}
 				q = -(MinuitFit(3, tmp1, tmp1, _model->GetSignalScaleFactor(), fittedPars, true, _debug?1:0, success2, fittedPars) - minchi2tmp);
 				if(success2[0]!=0){
-					q = -(MinuitFit(3, tmp1, tmp2, _model->GetSignalScaleFactor(), _model->Get_norminalPars(), true, _debug?1:0, success2, _model->Get_norminalPars()) - minchi2tmp);
+					for(int i=0; i<_model->Get_max_uncorrelation()+1; i++){
+						double tmp, tmpe;
+						myMinuit->GetParameter(i, tmp, tmpe);
+						fittedPars[i]=tmp;
+					}
+					
+					q = -(MinuitFit(3, tmp1, tmp2, _model->GetSignalScaleFactor(), _model->Get_norminalPars(), true, _debug?1:0, success2, fittedPars) - minchi2tmp);
 				}
 			}
 
