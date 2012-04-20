@@ -1216,7 +1216,7 @@ namespace lands{
 		tmpp = Significance(tmpp);
 		tmpm = Significance(tmpm);
 
-		cout<<" p value of data = "<< pvalue << ",  significance = "<< significance << " +"<<tmpp-significance<<" -"<<significance-tmpm<<endl;
+		cout<<" p value of data = "<< pvalue << " +/- "<<(sqrt(tmpn)/(double)ntoys_for_b)<<",  significance = "<< significance << " +"<<tmpp-significance<<" -"<<significance-tmpm<<endl;
 		return significance;
 	}
 	double CLsBase::SignificanceForData(double qdata, vector<double> vq){
@@ -1242,7 +1242,7 @@ namespace lands{
 		tmpp = Significance(tmpp);
 		tmpm = Significance(tmpm);
 
-		cout<<" p value of data = "<< pvalue << ",  significance = "<< significance << " +"<<tmpp-significance<<" -"<<significance-tmpm<<endl;
+		cout<<" p value of data = "<< pvalue << " +/- "<<(sqrt(tmpn)/(double)ntoys_for_b)<<",  significance = "<< significance << " +"<<tmpp-significance<<" -"<<significance-tmpm<<endl;
 		return significance;
 	}
 	/*
@@ -2277,7 +2277,7 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys, bool bWriteToys){ 
 		int checkFailure = (_debug>=10?1:0);
 		bool success = true;
 		if(bWriteToys) Q_b[i]=0;
-		else Q_b[i] = M2lnQ(success, checkFailure);
+		else Q_b[i] = M2lnQ(success, checkFailure, 2); // b-only toys
 		if(success==false) {
 			// skip this toy and regenerate it   --> any bias ? 
 			// caveat: it may go to infinite loop if all toys fails
@@ -2583,7 +2583,7 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys){
 		int checkFailure = (_debug>=10?1:0);
 		bool success = true;
 		if(bWriteToys) Q_sb[i]=0;
-		else Q_sb[i] = M2lnQ(success, checkFailure);
+		else Q_sb[i] = M2lnQ(success, checkFailure, 1); // s+b toys
 		if(success==false) {
 			// skip this toy and regenerate it   --> any bias ? 
 			// caveat: it may go to infinite loop if all toys fails
@@ -2664,7 +2664,13 @@ double CLsBase::M2lnQ(bool & successful, int checkFailure, int dataOrToy){
 		int success[1];success[0]=0;
 		int success2[1];success2[0]=0;
 		double * fittedPars = new double[_model->Get_max_uncorrelation()+1];
-		minchi2tmp = MinuitFit(21, tmp1, tmp2, 0, fittedPars, false, checkFailure?_debug:(_debug?1:0), success);  // MinuitFit(mode, r, err_r)
+		if(dataOrToy == 2) { // background only toys 
+			for(int i=0; i<_model->Get_max_uncorrelation()+1; i++) {
+				fittedPars[i] = _inputNuisances[i];
+				if(_model->Get_v_pdftype()[i]==typeFlat) fittedPars[i]= _model->Get_fittedParsInData_b()[i];
+			}
+		}
+		minchi2tmp = MinuitFit(21, tmp1, tmp2, 0, fittedPars, dataOrToy==2?true:false, checkFailure?_debug:(_debug?1:0), success, dataOrToy==2?fittedPars:0);  // MinuitFit(mode, r, err_r)
 		if(success[0]!=0){
 			minchi2tmp = MinuitFit(21, tmp1, tmp2, 0, _model->Get_norminalPars(), true, checkFailure?_debug:(_debug?1:0), success, _model->Get_norminalPars());  // MinuitFit(mode, r, err_r)
 		}
