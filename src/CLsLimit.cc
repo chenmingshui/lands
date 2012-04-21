@@ -81,7 +81,11 @@ namespace lands{
 		}
 
 		f = 0; // fabs(cms_global->GetRdm()->Gaus() ) ;
-		if(par[0]<0 && _bPositiveSignalStrength) { f = -9e10; return; }
+		//if(par[0]<0 && _bPositiveSignalStrength ) { f = -9e10; return; }
+		if(_bPositiveSignalStrength){
+			if(par[0]<0 && (_customRMax==_customRMin) ) { f = -9e10; return; }
+			if(par[0]<0 && (_customRMax > _customRMin) && par[0]<_customRMin ) { f = -9e10; return; }
+		}
 
 		if(par[0]>9e10) {f=-9e10; return;}
 		for(int i=0; i<npar; i++) {if(isnan(par[i]) or isinf(par[i])) {f=9e20; return;} }
@@ -547,7 +551,7 @@ namespace lands{
 			}
 			else if(model==21 || model==101 || model==102){ // S+B,  float r
 				double rmin = 0, rmax = _maxRforFit; // default 300;  will change to mu*1.1 when doing freq limit (LHC-CLs) 
-				if(_customRMax != _customRMin) {rmin=_customRMin; rmax=_customRMax; if (rmin<0) rmin=0;}
+				if(_customRMax != _customRMin) {rmin=_customRMin; rmax=_customRMax; if (rmin<-1e-5) rmin=-1e-5;}
 				//myMinuit->mnparm(0, "ratio", _startNuisances[0], minuitStep, 0.0, 300, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
 				myMinuit->mnparm(0, "ratio", _initialRforFit, minuitStep, rmin, rmax, ierflg);  // ATLAS suggestion,   mu hat >=0:   will screw up in case of very downward fluctuation
 				if(model==102) myMinuit->mnparm(0, "ratio", r, minuitStep, rmin, rmax, ierflg); //make starting r configurable
@@ -2664,13 +2668,14 @@ double CLsBase::M2lnQ(bool & successful, int checkFailure, int dataOrToy){
 		int success[1];success[0]=0;
 		int success2[1];success2[0]=0;
 		double * fittedPars = new double[_model->Get_max_uncorrelation()+1];
-		if(dataOrToy == 2) { // background only toys 
+		/*if(dataOrToy == 2) { // background only toys 
 			for(int i=0; i<_model->Get_max_uncorrelation()+1; i++) {
 				fittedPars[i] = _inputNuisances[i];
 				if(_model->Get_v_pdftype()[i]==typeFlat) fittedPars[i]= _model->Get_fittedParsInData_b()[i];
 			}
-		}
-		minchi2tmp = MinuitFit(21, tmp1, tmp2, 0, fittedPars, dataOrToy==2?true:false, checkFailure?_debug:(_debug?1:0), success, dataOrToy==2?fittedPars:0);  // MinuitFit(mode, r, err_r)
+		}*/
+		//minchi2tmp = MinuitFit(21, tmp1, tmp2, 0, fittedPars, dataOrToy==2?true:false, checkFailure?_debug:(_debug?1:0), success, dataOrToy==2?fittedPars:0);  // MinuitFit(mode, r, err_r)
+		minchi2tmp = MinuitFit(21, tmp1, tmp2, 0, fittedPars, false, checkFailure?_debug:(_debug?1:0), success, 0);  // MinuitFit(mode, r, err_r)
 		if(success[0]!=0){
 			minchi2tmp = MinuitFit(21, tmp1, tmp2, 0, _model->Get_norminalPars(), true, checkFailure?_debug:(_debug?1:0), success, _model->Get_norminalPars());  // MinuitFit(mode, r, err_r)
 		}
@@ -2694,6 +2699,14 @@ double CLsBase::M2lnQ(bool & successful, int checkFailure, int dataOrToy){
 		}
 
 		double fitted_r = tmp1;
+
+		if(test_statistics==6 and fitted_r<=0) { // LHC type test-statistic for pvalue 
+			q=0;
+			if(_debug) cout<<"-2lnQ = "<<q<<endl;
+			if(fittedPars)delete [] fittedPars;
+			return q;
+		} 
+
 		if(_model->AllowNegativeSignalStrength()==false && fitted_r<0) minchi2tmp = MinuitFit(0, tmp1, tmp2, 0, fittedPars, true, 0, success, fittedPars);  // MinuitFit(mode, r, err_r),  want r to be >=0
 		if(test_statistics==5){ // for evaluating one-sided limit 
 			if(fitted_r>=_model->GetSignalScaleFactor()) q=0;
@@ -2740,6 +2753,9 @@ double CLsBase::M2lnQ(bool & successful, int checkFailure, int dataOrToy){
 		if((success2[0]==0 and success[0]==0) && !checkFailure && _debug) cout<<"SUCCESSFUL_TOY : fit converged"<<endl;
 		if((success2[0]==0 and success[0]==0) && checkFailure && _debug) cout<<"SUCCESSFUL_DATA : fit converged"<<endl;
 		if(success[0]!=0 or success2[0]!=0) successful = false;
+		
+		if(_debug) cout<<"-2lnQ = "<<q<<endl;
+		
 	}
 	if(_debug>=100) cout<<"-2lnQ = "<<q<<endl;
 	return q;
