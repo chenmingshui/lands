@@ -573,16 +573,29 @@ namespace lands{
             exit(0);
         }
         vector<double> vunc; vunc.clear(); 
-        if(b_ForceSymmetryError) {
+        if(b_ForceSymmetryError && pdf_type!=typeFlat && pdf_type!=typeGamma) {
             if (uncertainty_in_relative_fraction_up > uncertainty_in_relative_fraction_down) uncertainty_in_relative_fraction_down=uncertainty_in_relative_fraction_up;
             if(uncertainty_in_relative_fraction_down > uncertainty_in_relative_fraction_up ) uncertainty_in_relative_fraction_up = uncertainty_in_relative_fraction_down;
         }
+	
+	for(int i=0; i<vvv_idcorrl.at(index_channel).at(index_sample).size(); i++){
+		if(index_correlation==vvv_idcorrl.at(index_channel).at(index_sample).at(i)) { cout<<" Warning adding Coupling  Already In the list "<<endl; return;}
+	}
+	
         vunc.push_back(uncertainty_in_relative_fraction_down);
         vunc.push_back(uncertainty_in_relative_fraction_up);
         vvvv_uncpar.at(index_channel).at(index_sample).push_back(vunc);
         vvv_pdftype.at(index_channel).at(index_sample).push_back(pdf_type);
         vvv_idcorrl.at(index_channel).at(index_sample).push_back(index_correlation);
         //ConfigUncertaintyPdfs();
+	    if(pdf_type==typeFlat){
+		    vunc.clear();
+		    vunc.push_back(0.5); 
+		    vunc.push_back(uncertainty_in_relative_fraction_down);
+		    vunc.push_back(uncertainty_in_relative_fraction_up);
+		    Set_flatPars(std::make_pair(v_uncname[index_correlation-1], vunc ));	
+	    }
+
     }
     void CountingModel::AddUncertainty(int index_channel, int index_sample, int npar, double *par, int pdf_type, int index_correlation ){
         if(pdf_type!=typeShapeGaussianQuadraticMorph  && pdf_type!=typeShapeGaussianLinearMorph ) {
@@ -1286,7 +1299,8 @@ If we need to change it later, it will be easy to do.
                                 if(_debug>=100) cout<<" norm varied after this unc = "<<vv_pdfs_norm_varied[ch][isam]<<endl;
                                 break;
                             case typeFlat:
-                                cout<<"WARNING: typeFlat pdf on normalization not yet implemented, skip it "<<endl;
+                                vv_pdfs_norm_varied[ch][isam]*=( vvv_pdfs_normvariation[ch][isam][iunc][0] + (vvv_pdfs_normvariation[ch][isam][iunc][1]-vvv_pdfs_normvariation[ch][isam][iunc][0])*ran );
+                                //cout<<"WARNING: typeFlat pdf on normalization not yet implemented, skip it "<<endl;
                                 break;
                             default:
                                 cout<<"ERROR: for shape norm uncertainies, we have only support LogNormal (lnN), TruncatedGaussian (trG) and Gamma (gmN) currently. exit "<<endl;
@@ -2064,6 +2078,7 @@ If we need to change it later, it will be easy to do.
 			    vector<TString> vobs = ms[m]->Get_v_pdfs_observables();
 			    vector< vector<double> > vnorm = ms[m]->Get_vv_pdfs_norm_nonscaled(); 
 			    vector<string> vchnames = ms[m]->Get_v_pdfs_channelname();
+			    vector< vector<string> > vvprocnames = ms[m]->Get_vv_pdfs_procname();
 			    vector< RooAbsData* > vrds = ms[m]->Get_v_pdfs_roodataset();
 			    tmp_vvvv_uncpar = ms[m]->Get_vvv_pdfs_normvariation();
 			    tmp_vvv_pdftype=ms[m]->Get_vvv_pdfs_pdftype();	
@@ -2093,7 +2108,7 @@ If we need to change it later, it will be easy to do.
 					    }
 				    }
 				    RooRealVar*x=w->var(vobs[ch]);
-				    cms->AddChannel(vchnames[ch], x, vs, vsnorm,vsExtraNorm, vb, vbnorm, vbExtraNorm);
+				    cms->AddChannel(vchnames[ch], vvprocnames[ch], x, vs, vsnorm,vsExtraNorm, vb, vbnorm, vbExtraNorm);
 				    if(cms2->GetDebug()) cout<<"  AddChannel "<<endl;
 				    cms->AddObservedDataSet(vchnames[ch], vrds[ch]);
 				    if(cms2->GetDebug()) cout<<"  AddObservedDataSet"<<endl;
@@ -2230,7 +2245,7 @@ If we need to change it later, it will be easy to do.
 
 
     // for parametric shapes
-    void CountingModel::AddChannel(string channel_name, RooRealVar* observable, vector<RooAbsPdf*> sigPdfs, vector<double> sigNorms, vector<RooAbsArg*> vsExtraNorm,
+    void CountingModel::AddChannel(string channel_name, vector<string> vvprocnames ,RooRealVar* observable, vector<RooAbsPdf*> sigPdfs, vector<double> sigNorms, vector<RooAbsArg*> vsExtraNorm,
 		    vector<RooAbsPdf*> bkgPdfs, vector<double> bkgNorms, vector<RooAbsArg*> vbExtraNorm){
 	    int signal_processes = sigPdfs.size();
 	    int bkg_processes = bkgPdfs.size();
@@ -2256,7 +2271,7 @@ If we need to change it later, it will be easy to do.
 	    for(int i=0; i<bkgPdfs.size(); i++) {
 		    vproc.push_back(bkgPdfs[i]->GetName());
 	    }
-	    vv_pdfs_procname.push_back(vproc);
+	    vv_pdfs_procname.push_back(vvprocnames);
 
 	    double tmp_totbkg = 0;
 
@@ -3039,7 +3054,7 @@ If we need to change it later, it will be easy to do.
 		    if(pdf_type==typeTruncatedGaussian) {}; //fine
 		    if( (uncertainty_in_relative_fraction_down <-1 or uncertainty_in_relative_fraction_up <-1) && pdf_type==typeLogNormal) { cout<<"logNormal type uncertainties can't have kappa < 0, exit"<<endl; exit(0);}; //fine
 	    } 
-	    if(pdf_type!=typeLogNormal && pdf_type!= typeTruncatedGaussian && pdf_type!=typeGamma ) {
+	    if(pdf_type!=typeLogNormal && pdf_type!= typeTruncatedGaussian && pdf_type!=typeGamma && pdf_type!=typeFlat ) {
 		    cout<<"Error: Currently only implemented LogNormal, Gamma and TruncatedGaussian. Your input "<<pdf_type<<" haven't been implemented, exit"<<endl;
 		    exit(0);
 	    }
@@ -3048,7 +3063,7 @@ If we need to change it later, it will be easy to do.
 		    exit(0);
 	    }
 	    vector<double> vunc; vunc.clear(); 
-	    if(b_ForceSymmetryError) {
+	    if(b_ForceSymmetryError && pdf_type!=typeFlat && pdf_type!=typeGamma) {
 		    if (uncertainty_in_relative_fraction_up > uncertainty_in_relative_fraction_down) uncertainty_in_relative_fraction_down=uncertainty_in_relative_fraction_up;
 		    if(uncertainty_in_relative_fraction_down > uncertainty_in_relative_fraction_up ) uncertainty_in_relative_fraction_up = uncertainty_in_relative_fraction_down;
 	    }
@@ -3057,6 +3072,14 @@ If we need to change it later, it will be easy to do.
 	    vvv_pdfs_normvariation.at(index_channel).at(index_sample).push_back(vunc);
 	    vvv_pdfs_pdftype.at(index_channel).at(index_sample).push_back(pdf_type);
 	    vvv_pdfs_idcorrl.at(index_channel).at(index_sample).push_back(index_correlation);
+	
+	    if(pdf_type==typeFlat){
+		    vunc.clear();
+		    vunc.push_back(0.5); 
+		    vunc.push_back(uncertainty_in_relative_fraction_down);
+		    vunc.push_back(uncertainty_in_relative_fraction_up);
+		    Set_flatPars(std::make_pair(v_uncname[index_correlation-1], vunc ));	
+	    }
 	    //ConfigUncertaintyPdfs();
     }
     void CountingModel::AddUncertaintyOnShapeNorm(int index_channel, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, string uncname ){
@@ -3620,5 +3643,181 @@ If we need to change it later, it will be easy to do.
 		}
 	}
 	f->Close();
+    }
+    void CountingModel::AddCouplingParameter(TString s){
+	    vector<string> vstr;
+	    StringSplit(vstr, s.Data(), ":");
+	    if(vstr.size()!=3) { 
+		    cout<<" Coupling input is incorrect '"<<s<<"'"<<endl;
+		    cout<<" Correct input should be like 'parName:[initVal,min,max]:FinalState|ProductionMode'"<<endl;
+		    exit(1);
+	    }
+	    TString spar = "Coupling_"; spar+=vstr[0].c_str();
+
+	    TString s2(vstr[1].c_str());
+	    double initVal, pMin, pMax;
+	    if(s2.BeginsWith("[") and s2.EndsWith("]")){
+		    s2.ReplaceAll("[","");
+		    s2.ReplaceAll("]","");
+		    vector<string> vstr2;
+		    StringSplit(vstr2, s2.Data(), ",");
+		    if(vstr2.size()==3){
+			    if(TString(vstr2[0]).IsFloat() and TString(vstr2[1]).IsFloat() and TString(vstr2[2]).IsFloat()){
+				    initVal = TString(vstr2[0]).Atof();	
+				    pMin= TString(vstr2[1]).Atof();	
+				    pMax= TString(vstr2[2]).Atof();	
+				    if( initVal<pMin or initVal>pMax or pMax<pMin) 
+				    {cout<<" Coupling input is incorrect: "<<vstr[0]<<"'s setting1 ='"<<s2<<"',   while it should be [initVal,min,max]"<<endl; exit(1);}
+			    }else{ cout<<" Coupling input is incorrect: "<<vstr[0]<<"'s setting2 ='"<<s2<<"',   while it should be [initVal,min,max]"<<endl; exit(1);}
+		    }else{ cout<<" Coupling input is incorrect: "<<vstr[0]<<"'s setting3 ='"<<s2<<"',   while it should be [initVal,min,max]"<<endl; exit(1);}
+	    }else{ cout<<" Coupling input is incorrect: "<<vstr[0]<<"'s setting4 ='"<<s2<<"',   while it should be [initVal,min,max]"<<endl; exit(1);}
+	    
+		
+	    TString s3(vstr[2].c_str());
+	    vector<string> vstr3;
+	    StringSplit(vstr3, s3.Data(), ",");
+	    //split by "," and then by "|" 
+	    for(int i=0; i<vstr3.size(); i++){ 
+		    bool added = false;
+			bool channelExist = false;
+		    TString s3i(vstr3[i].c_str());
+		    vector<string> vstr3i;
+		    StringSplit(vstr3i, s3i.Data(), "|");
+		    if(vstr3i.size()!=2) {cout<<"coupling format is incorrect:  "<<s3i<<", should be channelName|processName"<<endl; exit(1);}
+		    TString schn=vstr3i[0]; 
+		    TString sprc=vstr3i[1]; 
+		    //counting part
+		    for(int c=0; c<v_channelname.size(); c++){
+			    if(v_channelname[c]==schn.Data() or TString(v_channelname[c]).BeginsWith("TH1F_"+schn+"_")){
+					channelExist = true;
+				    for(int p=0; p<vv_procname[c].size(); p++){
+					    if(vv_procname[c][p]==sprc.Data()){
+						    AddUncertainty(v_channelname[c], p, pMin, pMax, typeFlat, spar.Data());
+						    SetFlatParInitVal(spar.Data(), initVal);
+						    added = true;
+					    }
+				    }
+			    }
+		    }
+		    //roofit part
+		    for(int c=0; c<v_pdfs_channelname.size(); c++){
+			    if(v_pdfs_channelname[c]==schn.Data()){ 
+					channelExist = true;
+				    for(int p=0; p<vv_pdfs_procname[c].size(); p++){
+					    if(vv_pdfs_procname[c][p]==sprc.Data()){
+						    AddUncertaintyOnShapeNorm(v_pdfs_channelname[c], p, pMin, pMax, typeFlat, spar.Data());
+						    SetFlatParInitVal(spar.Data(), initVal);
+						    added = true;
+					    }
+				    }
+			    }
+		    }
+		    if(added) cout<<" Coupling Added for "<<vstr[0]<<":"<<vstr3[i]<<endl;
+		    else { 
+			    cout<<" **WARNING: not exist channel or process for coupling: "<<vstr[0]<<":"<<vstr3[i]<<endl;
+			    if(1) { 
+				    cout<<"** list of channels : "<<endl;
+				    for(int c=0; c<v_channelname.size(); c++) cout<<"  "<<v_channelname[c];
+				    cout<<endl;
+				    for(int c=0; c<v_pdfs_channelname.size(); c++) {
+  					cout<<"  "<<v_pdfs_channelname[c];
+				    }
+				    cout<<endl;
+				    if(channelExist==true){ // but process doesn't exist
+					    for(int c=0; c<v_channelname.size(); c++) {
+						    if(v_channelname[c]!=schn.Data() or TString(v_channelname[c]).BeginsWith("TH1F_"+schn+"_")) continue;
+						    cout<<" In  "<<schn<<", there is no process -> "<<sprc<<endl;
+						    for(int p=0; p<vv_procname[c].size(); p++){
+							    cout<<"  "<<vv_procname[c][p];
+						    }
+						    cout<<endl;
+					    }
+
+					    for(int c=0; c<v_pdfs_channelname.size(); c++) {
+						    if(v_pdfs_channelname[c]!=schn.Data()) continue;
+						    cout<<" In  "<<schn<<", there is no process -> "<<sprc<<endl;
+						    for(int p=0; p<vv_pdfs_procname[c].size(); p++){
+							    cout<<"  "<<vv_pdfs_procname[c][p];
+						    }
+						    cout<<endl;
+					    }
+				    }
+			    }
+				exit(1);
+		    }
+	    }
+	    //  need some more sanity checks:
+	    //  do we allow  two Coupling parameter  effect on  a channel|process ?
+	    //  using wild characters  "?", "*"
+	    //  sanity check, whether some ch/proc are not in the coupling list
+    }
+    void CountingModel::Set_flatPars(pair<string, vector<double> > f){
+	map_flatPars[f.first] = f.second;
+    }
+    void CountingModel::SetFlatParInitVal(string s, double d) {
+	    MapStrV::iterator iter = map_flatPars.find(s);
+	    if (iter != map_flatPars.end() ) {
+		    (iter->second)[0] = d;
+	    }else{
+		    cout<<"Error: flat "<<s<<" not yet added!"<<endl; exit(1);
+	    }
+    }
+
+    void CountingModel::CheckCouplingSet(){
+		cout<<" *****++++ Coupling Parameters : "<<endl;
+	    for(int i=0; i<v_uncname.size(); i++ ){
+		if(TString(v_uncname[i]).BeginsWith("Coupling_")) {
+			cout<< v_uncname[i] << "   ";	
+		}
+	    }
+		cout<<endl<<endl;
+
+	    for(int i=0; i<v_uncname.size(); i++ ){
+		if(TString(v_uncname[i]).BeginsWith("Coupling_")) {
+			cout<<"* " << v_uncname[i] << "  couples to : "<<endl;
+			for(int c=0; c<vvv_idcorrl.size(); c++){
+				for(int p=0; p<vvv_idcorrl[c].size(); p++){
+					for(int u=0; u<vvv_idcorrl[c][p].size(); u++)
+						if(vvv_idcorrl[c][p][u]==(i+1)) cout<<" "<<v_channelname[c]<<"|"<<vv_procname[c][p]<<",";
+				}
+			}
+			for(int c=0; c<vvv_pdfs_idcorrl.size(); c++){
+				for(int p=0; p<vvv_pdfs_idcorrl[c].size(); p++){
+					for(int u=0; u<vvv_pdfs_idcorrl[c][p].size(); u++)
+						if(vvv_pdfs_idcorrl[c][p][u]==(i+1)) cout<<" "<<v_pdfs_channelname[c]<<"|"<<vv_pdfs_procname[c][p]<<",";
+				}
+			}
+			cout<<endl;
+		}
+	    }
+		cout<<endl<<"** Following ch|proc are not coupled to above parameters !"<<endl;
+		for(int c=0; c<vvv_idcorrl.size(); c++){
+			for(int p=0; p<vvv_idcorrl[c].size(); p++){
+			if(p>=v_sigproc[c])continue; 
+				bool bcoupled=false;
+				for(int u=0; u<vvv_idcorrl[c][p].size(); u++)
+					for(int i=0; i<v_uncname.size(); i++ ){
+						if(TString(v_uncname[i]).BeginsWith("Coupling_")) {
+							if(vvv_idcorrl[c][p][u]==i+1) bcoupled = true;
+						}
+					}
+				if(!bcoupled) cout<< v_channelname[c]<<"|"<< vv_procname[c][p]<<",";
+			}
+		}
+		for(int c=0; c<vvv_pdfs_idcorrl.size(); c++){
+			for(int p=0; p<vvv_pdfs_idcorrl[c].size(); p++){
+			if(p>=v_pdfs_sigproc[c])continue; 
+				bool bcoupled=false;
+				for(int u=0; u<vvv_pdfs_idcorrl[c][p].size(); u++){
+					for(int i=0; i<v_uncname.size(); i++ ){
+						if(TString(v_uncname[i]).BeginsWith("Coupling_")) {
+							if(vvv_pdfs_idcorrl[c][p][u]==i+1) bcoupled = true;
+						}
+					}}
+				if(!bcoupled) cout<< v_pdfs_channelname[c]<<"|"<< vv_pdfs_procname[c][p]<<",";
+			}
+		}
+
+		cout<<endl<<endl;
     }
 };

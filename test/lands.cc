@@ -23,6 +23,9 @@
 #include "TMath.h"
 #include "TGraphAsymmErrors.h"
 #include "RooEllipse.h"
+#include "TMatrixD.h"
+#include "TH2D.h"
+#include "RooMultiVarGaussian.h"
 
 #ifdef LANDS_PROFILE
   #include <google/profiler.h>
@@ -173,6 +176,8 @@ bool bRunMinuitContour = false;
 
 vector<structPOI> addtionalPOIs;
 
+vector<TString> vCouplingsDef;
+
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
 
@@ -229,7 +234,16 @@ int main(int argc, const char*argv[]){
 		cms->AddFlatParam(addtionalPOIs[i].name.Data(), addtionalPOIs[i].value, addtionalPOIs[i].minV, addtionalPOIs[i].maxV );
 	}
 
+	for(int i=0; i<vCouplingsDef.size(); i++){
+		cms->AddCouplingParameter(vCouplingsDef[i]);
+	}
+
 	cms->SetUseSystematicErrors(systematics);
+
+
+	if(vCouplingsDef.size()>0){
+		cms->CheckCouplingSet();
+	}
 	// done combination
 
 	cms->MultiSigProcShareSamePDF(bMultiSigProcShareSamePDF);
@@ -986,7 +1000,7 @@ int main(int argc, const char*argv[]){
 			runAsymptoticLimits();
 			watch.Print();
 			return 0;
-		}else if(method == "ScanningMuFit"){
+		}else if(method == "ScanningMuFit" or method=="MaxLikelihoodFit"){
 			int idMH=-1;
 			vector<string> v_uncname = cms_global->Get_v_uncname();
 			for(int i=1; i<=v_uncname.size(); i++) if(v_uncname[i-1]=="MH") idMH=i;
@@ -1011,7 +1025,9 @@ int main(int argc, const char*argv[]){
 			if(bDumpFitResults){
 				lands::_bDumpFinalFitResults = true;
 			}
-			double y0_2 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //202, 201, 2:  allow mu to be negative
+			double y0_2;
+			if(vCouplingsDef.size()==0) y0_2 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //202, 201, 2:  allow mu to be negative
+			else { y0_2 =  MinuitFit(3, tmp, tmperr, 1.0, pars, false, debug, 0, 0); }
 			//double y0_2 =  MinuitFit(102, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //102, 101, 21:  don't allow mu to be negative
 			if(debug) cout<<" _countPdfEvaluation = "<<_countPdfEvaluation<<endl;
 			cout<<y0_2<<" fitter u="<<pars[0]<<", from minos fit asymmetry 68% CL:  ["<<tmperr<<","<<tmpr<<"]"<<endl; // upperL, lowerL
@@ -1054,8 +1070,148 @@ int main(int argc, const char*argv[]){
 				int npar = cms_global->Get_max_uncorrelation()+1;
 				TMatrixDSym mat(npar); 
 				myMinuit->mnemat( mat.GetMatrixArray(), npar);
-				if(debug)mat.Print();
-	
+				if(debug) {
+					mat.Print();
+				}
+				if(1){
+
+					TMatrixDSym *cormat = (TMatrixDSym*)mat.Clone();
+					for (Int_t i=0 ; i<cormat->GetNrows() ; i++) {
+						for (Int_t j=0 ; j<cormat->GetNcols() ; j++) {
+							if (i!=j) {
+								(*cormat)(i,j) = (*cormat)(i,j) / sqrt((*cormat)(i,i)*(*cormat)(j,j)) ;
+							}
+						}
+					}
+					for (Int_t i=0 ; i<cormat->GetNrows() ; i++) {
+						(*cormat)(i,i) = 1.0 ;
+					}
+
+					if(debug)cormat->Print();
+
+					if(vCouplingsDef.size() > 0){
+						//  the signal_strength is fixed at 1.
+						// it's put in the last par in the matrix
+						vector<int> map1, map2 ;
+
+						for(int i=0; i<cms->Get_max_uncorrelation();  i++){
+							map1.push_back(i);
+						} 
+						map2.push_back(cms->Get_max_uncorrelation()); // the last par is swtiched to be signal_strength 
+
+						TMatrixDSym S11, S22 ;
+						TMatrixD S12, S21 ;
+						RooMultiVarGaussian::blockDecompose(mat,map1,map2,S11,S12,S21,S22) ;
+						if(debug>=10)S11.Print();
+						
+						map1.clear(); map2.clear();
+						vector<TString> scpPars; 
+						for(int i=0; i<cms->Get_max_uncorrelation();  i++){
+							if(TString(cms->Get_v_uncname()[i]).BeginsWith("Coupling_")){
+								map1.push_back(i);
+								scpPars.push_back(TString(cms->Get_v_uncname()[i]).ReplaceAll("Coupling_",""));
+							}
+							else map2.push_back(i);
+						} 
+						TMatrixDSym Scp;
+						RooMultiVarGaussian::blockDecompose(S11,map1,map2,Scp,S12,S21,S22) ;
+						Scp.Print();
+
+						TMatrixDSym *cormat_cp = (TMatrixDSym*)Scp.Clone();
+						for (Int_t i=0 ; i<cormat_cp->GetNrows() ; i++) {
+							for (Int_t j=0 ; j<cormat_cp->GetNcols() ; j++) {
+								if (i!=j) {
+									(*cormat_cp)(i,j) = (*cormat_cp)(i,j) / sqrt((*cormat_cp)(i,i)*(*cormat_cp)(j,j)) ;
+								}
+							}
+						}
+						for (Int_t i=0 ; i<cormat_cp->GetNrows() ; i++) {
+							(*cormat_cp)(i,i) = 1.0 ;
+						}
+
+						cormat_cp->Print();
+
+						// Construct TH2D of correlation matrix 
+						Int_t n = cormat_cp->GetNcols() ;
+
+						TH2D* hh = new TH2D("CouplingCorrelationMatrix","Coupling Correlation Matrix",n,0,n,n,0,n) ;
+
+						for (Int_t i = 0 ; i<n ; i++) {
+							for (Int_t j = 0 ; j<n; j++) {
+								hh->Fill(i+0.5,n-j-0.5,(*cormat_cp)(i,j)) ;
+							}
+							hh->GetXaxis()->SetBinLabel(i+1,scpPars[i]);
+							hh->GetYaxis()->SetBinLabel(n-i,scpPars[i]);
+						}
+						hh->SetMinimum(-1) ;
+						hh->SetMaximum(+1) ;
+						TFile f(jobname+"_coupling.root","RECREATE");
+						f.WriteTObject(hh); f.Close();
+
+					}
+
+					/*
+
+
+
+
+					//_____________________________________________________________________________
+					TMatrixDSym RooFitResult::reducedCovarianceMatrix(const RooArgList& params) const 
+{
+  // Return a reduced covariance matrix (Note that Vred _is_ a simple sub-matrix of V,
+  // row/columns are ordered to matched the convention given in input argument 'params'
+
+  const TMatrixDSym& V = covarianceMatrix() ;
+
+  // Handle case where V==Vred here
+  if (V.GetNcols()==params.getSize()) {
+    return V ;
+  }
+
+
+  // Make sure that all given params were floating parameters in the represented fit
+  RooArgList params2 ;
+  TIterator* iter = params.createIterator() ;
+  RooAbsArg* arg ;
+  while((arg=(RooAbsArg*)iter->Next())) {
+    if (_finalPars->find(arg->GetName())) {
+      params2.add(*arg) ;
+    } else {
+      coutW(InputArguments) << "RooFitResult::reducedCovarianceMatrix(" << GetName() << ") WARNING input variable " 
+			    << arg->GetName() << " was not a floating parameters in fit result and is ignored" << endl ;
+    }
+  }
+  delete iter ;
+
+  // Need to order params in vector in same order as in covariance matrix
+  RooArgList params3 ;
+  iter = _finalPars->createIterator() ;
+  while((arg=(RooAbsArg*)iter->Next())) {
+    if (params2.find(arg->GetName())) {
+      params3.add(*arg) ;
+    }
+  }
+  delete iter ;
+
+  // Find (subset) of parameters that are stored in the covariance matrix
+  vector<int> map1, map2 ;
+  for (int i=0 ; i<_finalPars->getSize() ; i++) {
+    if (params3.find(_finalPars->at(i)->GetName())) {
+      map1.push_back(i) ;
+    } else {
+      map2.push_back(i) ;
+    }
+  }
+
+  TMatrixDSym S11, S22 ;
+  TMatrixD S12, S21 ;
+  RooMultiVarGaussian::blockDecompose(V,map1,map2,S11,S12,S21,S22) ;
+
+  return S11 ;
+}
+*/
+
+}	
 				if(idMH>0){
 					vector< vector<double> > v_paramsUnc = cms_global->Get_v_pdfs_floatParamsUnc();
 					double corr_ij = mat(0, idMH)/sqrt(mat(0,0)*mat(idMH,idMH));
@@ -1112,7 +1268,7 @@ int main(int argc, const char*argv[]){
 			for(int i=0; i<=cms->Get_max_uncorrelation(); i++) pars_maxll[i]=pars[i];
 			cms->Set_fittedParsInData_sb(pars_maxll);
 			
-
+			if(vCouplingsDef.size()) return 0;
 
 			double y0_3, mu_hat2, mu_hat_up2, mu_hat_low2;
 
@@ -1778,7 +1934,7 @@ void processParameters(int argc, const char* argv[]){
 				(method!="ProfiledLikelihood" and method!="Hybrid" and method!="ProfileLikelihood")
 		  ){cout<<"ERROR You are trying to use "<<method<<", which is not supported currently to calculate Significance"<<endl; exit(0);}
 		if( !calcsignificance && 
-				(method!="ProfiledLikelihood" and method!="Hybrid" and method!="Bayesian" and method!="FeldmanCousins" and method!="ProfileLikelihood" and method!="AsymptoticCLs" and method!="Asymptotic" and method!="ScanningMuFit")
+				(method!="ProfiledLikelihood" and method!="Hybrid" and method!="Bayesian" and method!="FeldmanCousins" and method!="ProfileLikelihood" and method!="AsymptoticCLs" and method!="Asymptotic" and method!="ScanningMuFit" and method!="MaxLikelihoodFit")
 		  ){cout<<"ERROR You are trying to use "<<method<<", which is not supported currently to calculate limit "<<endl; exit(0);}
 	}
 
@@ -2209,6 +2365,9 @@ void processParameters(int argc, const char* argv[]){
 	}else if(tmpv.size()==0){}
 	else{ cout<<" --POIs args[4 or 8 args]"<<endl;  exit(1);}
 
+	tmpv= options["--Couplings"];
+	vCouplingsDef = tmpv;
+
 	printf("\n\n[ Summary of configuration in this job: ]\n");
 	if(sPhysicsModel=="ChargedHiggs")cout<<" PhysicsModel:  Charged Higgs"<<endl;
 	cout<<"  Calculating "<<(calcsignificance?"significance":"limit")<<" with "<<method<<" method "<<endl;
@@ -2283,7 +2442,7 @@ void processParameters(int argc, const char* argv[]){
 		cout<<"  for expected : "<<scanRAroundBand<<endl;
 	}else if(method=="AsymptoticCLs"){
 		cout<<"  RUNNING Asymptotic CLs"<<endl;
-	}else if(method=="ScanningMuFit"){
+	}else if(method=="ScanningMuFit" or method=="MaxLikelihoodFit"){
 		cout<<"  RUNNING ScanningMuFit"<<endl;
 	}
 	if(makeCLsBands) cout<<"  makeCLsBands = "<<makeCLsBands<<endl;
@@ -3138,6 +3297,7 @@ void PrintHelpMessage(){
 	printf("--minuitPrintLevel arg(=-1)           minuit print level in fit, for debugging \n"); 
 	printf("--bRunMinuitContour                   Run MNCONT for two POIs, requiring computing time \n");
 	printf("--POIs args (='NAME InitVal Min Max') Specify other POIs (like MH), which should be in the input workspace\n");
+	printf("--Couplings (='ggH:[0.9,0,5]:*|ggH,hzz4l_4mu|ggH,hzz2l2nu_ee|ggH  parName:[initVal,min,max]:FinalState|ProductionMode')\n");
 
 	printf(" \n");
 	printf("------------------some comand lines-----------------------------------------------\n");
@@ -3159,7 +3319,7 @@ void PrintHelpMessage(){
 	printf("            *scanning mu with fit and make plots\n");
 	printf("lands.exe -d data.txt -M ScanningMuFit --scanRs 20 --initialRmin 0 --initialRmax 2  --plot\n");
 	printf("            *maximum LL fit with floating mu and mu=0,  printing fitted results with -v 1 \n");
-	printf("lands.exe -d data.txt -M ScanningMuFit --scanRs 1 -vR 0 -v 1 --minuitSTRATEGY 1\n");
+	printf("lands.exe -d data.txt -M MaxLikelihoodFit --scanRs 1 -vR 0 -v 1 --minuitSTRATEGY 1\n");
 
 	exit(0);
 }

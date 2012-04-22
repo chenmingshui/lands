@@ -2261,7 +2261,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 			RooAbsData* reducedData = (RooAbsData*)data->reduce(*(vspdf[0]->getObservables(data)), cuts);
 			//RooRealVar* x = dynamic_cast<RooRealVar*> (data->get()->first());
 			RooRealVar* x = dynamic_cast<RooRealVar*> (observables->first());
-			cms->AddChannel(channelnames[c], x, vspdf, vsnorm, vsExtraNorm, vbpdf, vbnorm, vbExtraNorm);
+			cms->AddChannel(channelnames[c], tmpprocn, x, vspdf, vsnorm, vsExtraNorm, vbpdf, vbnorm, vbExtraNorm);
 			cms->AddObservedDataSet(channelnames[c], reducedData);
 		}
 	}	

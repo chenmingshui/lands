@@ -38,6 +38,7 @@ namespace lands{
 	typedef vector< vector< vector< vector<double> > > > VChannelVSampleVUncertaintyVParameter;
 	typedef vector< vector< vector< vector<float> > > > VChannelVSampleVsetVval;
 	typedef map< string, vector< vector<double> > > MapStrVV;
+	typedef map< string, vector<double> > MapStrV;
 
 	enum enumPdfType {typeLogNormal=1, typeTruncatedGaussian=2, typeGamma=3, typeShapeGaussianLinearMorph=4, typeShapeGaussianQuadraticMorph=5, 
 		typeBifurcatedGaussian=6, typeFlat=7, typeControlSampleInferredLogNormal=11 };
@@ -160,6 +161,10 @@ namespace lands{
 			int GetNSigprocInChannel(int i){return v_sigproc.at(i);} //need make check
 			const vector<int>& Get_v_sigproc(){return v_sigproc;}
 
+			MapStrV Get_map_flatPars(){return map_flatPars;}
+			void Set_flatPars(pair<string, vector<double> > f);
+			void SetFlatParInitVal(string s, double d);
+
 			void SetProcessNames(int ch, vector<std::string> vproc); //need make check
 			void SetProcessNames(string ch, vector<std::string> vproc); //need make check
 			const vector<std::string>& GetProcessNames(int ch){return vv_procname[ch];}  //need make check
@@ -234,6 +239,7 @@ namespace lands{
 			const vector<int>& Get_v_pdfs_floatParamsType() {return v_pdfs_floatParamsType;}      // only for params
 
 			const vector<string>& Get_v_pdfs_channelname(){return v_pdfs_channelname;}
+			const vector< vector<string> >& Get_vv_pdfs_procname(){return vv_pdfs_procname;}
 			const vector<TString>& Get_v_pdfs_sb(){return v_pdfs_sb;}
 			const vector<TString>& Get_v_pdfs_s(){return v_pdfs_s;}
 			const vector<TString>& Get_v_pdfs_b(){return v_pdfs_b;}
@@ -247,7 +253,7 @@ namespace lands{
 			const VChannelVSampleVUncertaintyVParameter& Get_vvvv_pdfs_ChProcSetParVals(){return vvvv_pdfs_ChProcSetParVals;}
 			void Set_vvvv_pdfs_ChProcSetParVals(const VChannelVSampleVUncertaintyVParameter& vvvv_pdfs){vvvv_pdfs_ChProcSetParVals=vvvv_pdfs;}
 
-			void AddChannel(string channel_name, RooRealVar* observable, vector<RooAbsPdf*> sigPdfs, vector<double> sigNorms, vector<RooAbsArg*> vsExtraNorm, 
+			void AddChannel(string channel_name, vector<string> vprocname , RooRealVar* observable, vector<RooAbsPdf*> sigPdfs, vector<double> sigNorms, vector<RooAbsArg*> vsExtraNorm, 
 				       	vector<RooAbsPdf*> bkgPdfs, vector<double> bkgNorms, vector<RooAbsArg*> vbExtraNorm);
 			// need to add names of each parameter .... 
 			double EvaluateLnQ(int ch, int dataOrToy); // for Likelihood ratio
@@ -325,6 +331,9 @@ namespace lands{
 
 			void SetNoErrorEstimation(bool b){noErrorEstimation=b;};
 			bool GetNoErrorEstimation(){return noErrorEstimation;};
+
+			void AddCouplingParameter(TString s);
+			void CheckCouplingSet();
 		private:
 			VDChannel v_data; // could be pseudo-data for bands
 			VDChannel v_data_real; // real data, not changed during entire run 
@@ -355,6 +364,8 @@ namespace lands{
 			bool b_AllowNegativeSignalStrength;
 
 			vector<double> v_GammaN; // record the number of sideband(or MC raw) events for each uncorrelated source
+
+			MapStrV map_flatPars;  // mainly on normalization
 
 			vector<std::string> v_uncname; // start from 0,   if take a name for idcorrl, then the indice is idcorrl-1; 
 			vector<bool> v_uncFloatInFit; // start from 0,   if take a name for idcorrl, then the indice is idcorrl-1; 

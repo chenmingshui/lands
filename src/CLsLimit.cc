@@ -782,6 +782,7 @@ namespace lands{
 			}
 
 			if(debug || pars || ierflg){
+				MapStrV map_flatPars = cms_global->Get_map_flatPars();
 				_inputNuisancesSigma = cms_global->Get_norminalParsSigma();
 
 				if(debug || ierflg || _bDumpFinalFitResults )printf("  par                 name         fitted_value                      input_value                start_value        dx/s_in,s_out/s_in      (flatParam +/- error)\n");
@@ -794,6 +795,12 @@ namespace lands{
 						printf("  par %30s      %.6f +/- %.6f      %.6f +/- %.6f    %.6f     %.2f, %.2f", i>0?v_uncname[i-1].c_str():"signal_strength", tmp, tmpe, _inputNuisances[i], _inputNuisancesSigma[i], _startNuisances[i],  _inputNuisancesSigma[i]==0?0:(tmp-_inputNuisances[i])/_inputNuisancesSigma[i], _inputNuisancesSigma[i]==0?0:tmpe/_inputNuisancesSigma[i]);
 						if(i>0 and cms_global->GetWorkSpace()->var(v_uncname[i-1].c_str()) != NULL and v_pdftype[i]==typeFlat) {
 							printf("       %.6f +/- %.6f", tmp*v_paramsUnc[i][1]+v_paramsUnc[i][3], tmpe * v_paramsUnc[i][1] );
+						}
+						else if(i>0 and cms_global->GetWorkSpace()->var(v_uncname[i-1].c_str()) == NULL and v_pdftype[i]==typeFlat) {
+							MapStrV::iterator iter = map_flatPars.find(v_uncname[i-1].c_str());
+							if (iter != map_flatPars.end() ) {
+								printf("       %.6f +/- %.6f", tmp*(iter->second[2]-iter->second[1])+iter->second[1], tmpe * (iter->second[2]-iter->second[1]) );
+							}
 						}
 						printf("\n");
 						_startNuisances=tmppointer;
