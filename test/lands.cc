@@ -1765,13 +1765,20 @@ int main(int argc, const char*argv[]){
 				cout<<"\n Running "<<ntoysToDoSignificance<<" toys to evaluate significance for data "<<endl;
 				signi = frequentist.SignificanceForData(ntoysToDoSignificance);
 
-				cout<<"Q_b_data = "<<frequentist.Get_m2lnQ_data()<<endl;	
+				//cout<<"Q_b_data = "<<frequentist.Get_m2lnQ_data()<<endl;	
+				printf("Q_b_data = %.10f\n",frequentist.Get_m2lnQ_data());	
 				vclb = frequentist.Get_m2logQ_b();
 				TString  s = jobname; 
 				s+="_hybridSig_ts"; s+=testStat;
 				s+="_seed"; s+=seed;
-				TString s_qdata = TString::Format("%.5f",frequentist.Get_m2lnQ_data());
+				TString s_qdata = TString::Format("%.10f",frequentist.Get_m2lnQ_data());
 				FillTree(s, vclb, s_qdata);
+				//signi = frequentist.SignificanceForData(-s_qdata.Atof(), vclb);
+				//cout<<"  "<<s_qdata.Atof()<<"  "<<frequentist.Get_m2lnQ_data()<<endl;
+
+				//for(int i=0; i<vclb.size(); i++){
+				//printf("Q_b_toy = %.10f\n", vclb[i]);
+				//}
 			}else{
 				cout<<"\n reading toys to evaluate significance for data "<<endl;
 				TString s_qdata = "";

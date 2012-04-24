@@ -652,16 +652,15 @@ namespace lands{
 			}
 
 			if(myMinuit->fNfcn==0) {
-				double *par;
-				par = new double[npars+1];
+				if(!pars) { pars = new double[npars+1]; }
 				double pdel, pdelerr; 
 				for(int p=0; p<npars+1; p++) {
 					myMinuit->GetParameter(p, pdel, pdelerr);
-					par[p]=pdel;
+					pars[p]=pdel;
 				}
 				int tmp;
 				double l;
-				Chisquare(tmp, 0, l, par, 0);
+				Chisquare(tmp, 0, l, pars, 0);
 				cms_global->SetSignalScaleFactor(_signalScale);
 				return l;
 			}
@@ -818,14 +817,14 @@ namespace lands{
 			if(cms_global->GetDebug())watch->Print();
 			return l;
 		}else{
-			double par[1];
+			if(!pars) { pars = new double[npars+1]; }
 			int tmp;
 			double l;
-			if(model==0) par[0]=0;
-			else if (model == 1) par[0]=1;
-			else if (model == 3) par[0]=mu;
+			if(model==0) pars[0]=0;
+			else if (model == 1) pars[0]=1;
+			else if (model == 3) pars[0]=mu;
 			else {cout<<"model is 2, but going to fix "<<endl; exit(0);}
-			Chisquare(tmp, 0, l, par, 0);
+			Chisquare(tmp, 0, l, pars, 0);
 			cms_global->SetSignalScaleFactor(_signalScale);
 			return l;
 		}
@@ -991,6 +990,7 @@ namespace lands{
 		}else{ // Standard ProfiledLikelihood ration  
 			for(int i=0; i<_nexps; i++){ 
 				if(Q_b[iq_b[i]] > lnq)  {
+				//if(Q_b[iq_b[i]] >= lnq)  {
 					ret = i/(double)_nexps;	
 					break;
 				}else{
@@ -2278,7 +2278,10 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys, bool bWriteToys){ 
 				//		cout<<"DELETEMEb par "<<i<<" "<<_inputNuisances[i]<<endl;
 				//	}
 				}
-				_initialRforFit = 10e-10;
+				if(_model -> Get_v_sigproc().size() >2 or _model->Get_v_pdfs_sigproc().size()>0 )_initialRforFit = 10e-10;
+				// in case of no systematic uncertainties,  or single channel with unc only on signal --> counting experiments 
+				// need to be sure the toys (=data) and data give identical -2lnQ ,  which require the fit condition should be exact the same , includes the initial value
+				if(_model -> IsUsingSystematicsErrors() == false) _initialRforFit = 1;
 
 				break;
 			default:
