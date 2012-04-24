@@ -1722,8 +1722,11 @@ int main(int argc, const char*argv[]){
 				m2lnQ = 0;
 			}else{
 				_countPdfEvaluation = 0;
-				m2lnQ = MinuitFit(3,tmp, tmp, 0, fittedPars, true, debug, success, fittedPars) - x2; // mu=0
+				double * fittedPars2 = new double[cms->Get_max_uncorrelation()+1];
+				m2lnQ = MinuitFit(3,tmp, tmp, 0, fittedPars2, true, debug, success, fittedPars) - x2; // mu=0
+				if(debug)cout<<"   x2 = "<<x2<<",  m2lnQ = "<<m2lnQ<<endl;
 				if(debug) cout<<" _countPdfEvaluation ="<<_countPdfEvaluation<<endl;
+				delete fittedPars2;
 			}
 			sig_data = sqrt(fabs(m2lnQ));
 			if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";

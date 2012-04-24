@@ -88,7 +88,7 @@ namespace lands{
 		}
 
 		if(par[0]>9e10) {f=-9e10; return;}
-		for(int i=0; i<npar; i++) {if(isnan(par[i]) or isinf(par[i])) {f=9e20; return;} }
+		for(int i=0; i<npar; i++) {if(isnan(par[i]) or isinf(par[i])) {f=9e20; if(cms_global->GetDebug())  cout<<" i="<<i<<", p="<<par[i]<<endl; return;} }
 		
 		bool bAllChannelsAreFlagged = false;
 		npar = cms_global->Get_max_uncorrelation()+1;
@@ -818,7 +818,7 @@ namespace lands{
 			return l;
 		}else{
 			if(!pars) { pars = new double[npars+1]; }
-			int tmp;
+			int tmp=0;
 			double l;
 			if(model==0) pars[0]=0;
 			else if (model == 1) pars[0]=1;
