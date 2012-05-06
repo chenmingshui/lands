@@ -1,5 +1,6 @@
 #include "UtilsROOT.h"
 #include <memory>
+#include <math.h>
 #include "TFile.h"
 #include "TH1F.h"
 #include <iostream>
@@ -430,6 +431,7 @@ string GetUncertainy(int c, int p, vector< vector<string> >vv_procnames, vector<
 	else return ss1[stop+p+2];
 }
 bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileContentStripped, int debug){
+      TString smass = ""; if(fmod(mass,1)==0) smass.Form("%.0f",mass);else smass.Form("%.1f",mass); 
 	//int debug = 0;
 	vector<TString> lines;
 	lines = SplitIntoLines(ifileContentStripped, debug);
@@ -803,6 +805,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 								newline[INDEXofChannel] = channelnames[c]; newline[INDEXofProcess]=vv_procnames[c][p];
 								newline[4] = TString(newline[4]).ReplaceAll("$CHANNEL", channelnames[c]);
 								newline[4] = TString(newline[4]).ReplaceAll("$PROCESS", vv_procnames[c][p]);
+								newline[4] = TString(newline[4]).ReplaceAll("$MASS", smass);
 								shape.push_back(newline);
 								if(newline.size()>5){
 									if(debug) cout<<"debug 0"<<endl;
@@ -826,6 +829,8 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 													newline[5] = TString(newline[5]).ReplaceAll("$PROCESS", vv_procnames[c][p]);
 													newline[6] = TString(newline[6]).ReplaceAll("$CHANNEL", channelnames[c]);
 													newline[6] = TString(newline[6]).ReplaceAll("$PROCESS", vv_procnames[c][p]);
+								newline[5] = TString(newline[5]).ReplaceAll("$MASS", smass);
+								newline[6] = TString(newline[6]).ReplaceAll("$MASS", smass);
 													shapeuncertainties.push_back(newline);
 													newline[5] = n5; newline[6]=n6;
 												}
@@ -841,6 +846,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 							newline[INDEXofChannel] = channelnames[c]; newline[INDEXofProcess]="data_obs";
 							newline[4] = TString(newline[4]).ReplaceAll("$CHANNEL", channelnames[c]);
 							newline[4] = TString(newline[4]).ReplaceAll("$PROCESS", "data_obs");
+							newline[4] = TString(newline[4]).ReplaceAll("$MASS", smass);
 							shape.push_back(newline);
 						}
 					}
@@ -857,6 +863,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 								newline[INDEXofChannel] = channelnames[c]; newline[INDEXofProcess]=vv_procnames[c][p];
 								newline[4] = TString(newline[4]).ReplaceAll("$CHANNEL", channelnames[c]);
 								newline[4] = TString(newline[4]).ReplaceAll("$PROCESS", vv_procnames[c][p]);
+								newline[4] = TString(newline[4]).ReplaceAll("$MASS", smass);
 								shape.push_back(newline);
 								if(newline.size()>5){
 									if(debug) cout<<"debug 0"<<endl;
@@ -880,6 +887,8 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 													newline[5] = TString(newline[5]).ReplaceAll("$PROCESS", vv_procnames[c][p]);
 													newline[6] = TString(newline[6]).ReplaceAll("$CHANNEL", channelnames[c]);
 													newline[6] = TString(newline[6]).ReplaceAll("$PROCESS", vv_procnames[c][p]);
+													newline[5] = TString(newline[5]).ReplaceAll("$MASS", smass);
+													newline[6] = TString(newline[6]).ReplaceAll("$MASS", smass);
 													shapeuncertainties.push_back(newline);
 													newline[5] = n5; newline[6]=n6;
 												}
@@ -895,6 +904,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 							newline[INDEXofChannel] = channelnames[c]; newline[INDEXofProcess]="data_obs";
 							newline[4] = TString(newline[4]).ReplaceAll("$CHANNEL", channelnames[c]);
 							newline[4] = TString(newline[4]).ReplaceAll("$PROCESS", "data_obs");
+							newline[4] = TString(newline[4]).ReplaceAll("$MASS", smass);
 							shape.push_back(newline);
 						}
 					}
@@ -1286,6 +1296,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 }
 
 bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripped, int debug){
+      TString smass = ""; if(fmod(mass,1)==0) smass.Form("%.0f",mass);else smass.Form("%.1f",mass); 
 	// channel index starts from 1
 	// systematics source index also starts from 1
 
@@ -1857,6 +1868,7 @@ bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripp
 }
 
 bool ConfigureModel(CountingModel *cms, double mass, const char* fileName, int debug){
+      TString smass = ""; if(fmod(mass,1)==0) smass.Form("%.0f",mass);else smass.Form("%.1f",mass); 
 	TString s = ReadFile(fileName);
 	cout<<"data card name = "<<fileName<<endl;
 	cms->SetModelName(fileName);
@@ -1912,6 +1924,7 @@ vector<TString> SplitIntoLines(TString ifileContentStripped, bool debug){
 	return lines;
 }
 bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentStripped, vector< vector<string> > parametricShapeLines, vector< vector<string> > uncerlinesAffectingShapes, int debug){
+      TString smass = ""; if(fmod(mass,1)==0) smass.Form("%.0f",mass);else smass.Form("%.1f",mass); 
 	// channel index starts from 1
 	// systematics source index also starts from 1
 	if(debug)for(int i=0; i<parametricShapeLines.size(); i++){
