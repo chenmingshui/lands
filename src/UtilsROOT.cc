@@ -431,7 +431,9 @@ string GetUncertainy(int c, int p, vector< vector<string> >vv_procnames, vector<
 	else return ss1[stop+p+2];
 }
 bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileContentStripped, int debug){
-      TString smass = ""; if(fmod(mass,1)==0) smass.Form("%.0f",mass);else smass.Form("%.1f",mass); 
+	TString smass;
+	if(fmod(mass,1)==0) smass.Form("%.0f",mass);
+	else smass.Form("%.1f",mass); 
 	//int debug = 0;
 	vector<TString> lines;
 	lines = SplitIntoLines(ifileContentStripped, debug);
@@ -780,6 +782,8 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 										if(unc.IsFloat() && unc.Atof()>0){ // number should be > 0
 											ss[5] = TString(ss[5]).ReplaceAll("$SYSTEMATIC", ss[4]+"Up");
 											ss[6] = TString(ss[6]).ReplaceAll("$SYSTEMATIC", ss[4]+"Down");
+											ss[5] = TString(ss[5]).ReplaceAll("$MASS", smass);
+											ss[6] = TString(ss[6]).ReplaceAll("$MASS", smass);
 											shapeuncertainties.push_back(ss);
 											ss[5] = n5; ss[6]=n6;
 										}
@@ -854,7 +858,8 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 			}
 		}
 		for(int i=0; i<xx_needtointerpret.size(); i++){
-			if(xx_needtointerpret[i][INDEXofChannel]=="*" or xx_needtointerpret[i][INDEXofProcess]=="*"){
+			if(xx_needtointerpret[i][INDEXofChannel]=="*" and xx_needtointerpret[i][INDEXofProcess]=="*"){
+			//if(xx_needtointerpret[i][INDEXofChannel]!="*" or xx_needtointerpret[i][INDEXofProcess]!="*"){
 				for(int c=0; c<nchannel; c++){
 					if(xx_needtointerpret[i][INDEXofChannel]=="*" or xx_needtointerpret[i][INDEXofChannel]==channelnames[c]){
 						for(int p=0; p<vv_procnames[c].size(); p++){
@@ -928,8 +933,11 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 		for(int i=0; i<shapeuncertainties.size(); i++){// for histogram morphing ....    keyword:  shapeN, shapeL, shape, shapeQ ,  alternative two sets of histogram for the variations w.r.t a particular source of systematics
 //need to implement shape2 and shapeN2  which do interpolation in log scale   instead of  linear scale 
 			for(int j=i+1; j<shapeuncertainties.size(); j++){
+				TString stmpi = shapeuncertainties[i][5], stmpj = shapeuncertainties[j][5];
+				stmpi.ReplaceAll(smass,"");
+				stmpj.ReplaceAll(smass,"");
 				if(shapeuncertainties[j][1]==shapeuncertainties[i][1] and shapeuncertainties[j][2]==shapeuncertainties[i][2]
-						and shapeuncertainties[j][5] == shapeuncertainties[i][5]
+						and (shapeuncertainties[j][5] == shapeuncertainties[i][5] or stmpi==stmpj)
 				  ) {
 					shapeuncertainties[j][0] = "##";
 					shapeuncertainties[j][1] = "##";
