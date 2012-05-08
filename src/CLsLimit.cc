@@ -160,6 +160,23 @@ namespace lands{
 			for(s = 0; s<vvv_pdftype[c].size(); s++){
 				if(cms_global->Get_vv_statusUpdated()[c][s]){
 					bs = vv_sigbks[c][s];	
+				
+				if(cms_global->GetPhysicsModel()==typeChargedHiggs) {
+					// HH_ltau
+					double br = cms_global->GetSignalScaleFactor();
+					if(s==0)bs = (br*br*bs); // HH -> r^2 * HH
+					// WH_ltau
+					else if(s==1)bs = (2*br*(1-br)*bs); //WH -> 2*r*(1-r)*WH
+					// WW_ltau (tt->ltau, real tau) 
+					else if(s==2){
+						bs =  ((1-br)*(1-br)*bs); //WW -> (1-r)*(1-r)*WW
+					}
+					// WW_ltau (tt~->ll, also part of WW, one lepton fakes as tau) 
+					else if(s==3){
+						bs =  ((1-br)*(1-br)*bs); //WW -> (1-r)*(1-r)*WW
+					}
+				}
+
 					if(cms_global->IsUsingSystematicsErrors()){
 						if(cms_global->GetMoveUpShapeUncertainties()){
 							const vector<int> &shapeuncs = cms_global->GetListOfShapeUncertainties(c, s);
@@ -276,7 +293,8 @@ namespace lands{
 				}else {
 					bs=vv_cachCountingParts[c][s];
 				}
-				tc+=bs;
+
+					tc+=bs;
 				if(isnan(tc)) {cout<<" tc=nan "<<"  bs="<<bs<<" c "<<c<<" s="<<s<<endl; }
 			}
 			if(vdata_global[c]<=0){
