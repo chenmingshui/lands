@@ -160,6 +160,10 @@ namespace lands{
 			for(s = 0; s<vvv_pdftype[c].size(); s++){
 				if(cms_global->Get_vv_statusUpdated()[c][s]){
 					bs = vv_sigbks[c][s];	
+					if(bs==0) {
+						vv_cachCountingParts[c][s]=bs;
+						continue;
+					}
 			/*	
 				if(cms_global->GetPhysicsModel()==typeChargedHiggs) {
 					// HH_ltau
@@ -260,6 +264,7 @@ namespace lands{
 									//cout<<*(uncpars+5)<<" "<<*(uncpars+4)<<endl;
 									bs*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran>0?ran*(*(uncpars+6)): -ran*(*(uncpars+6)));
 									//bs*=pow( (ran>0? *(uncpars+4):*(uncpars+5)) , ran>0?ran*(*(uncpars+6)): -ran*(*(uncpars+6)));
+									if(isnan(bs)) {cout<<" typeShapeGaussianQuadraticMorph bs=nan "<<bs<<" c "<<c<<" s="<<s<<" uncpars4: "<<uncpars[4]<<" 5: "<<uncpars[5]<<" 6:"<<uncpars[6]<<" ran="<<ran<<endl;}
 									break;
 								case typeLogNormal:
 									bs*=(pow( 1+ (*(uncpars+ (ran>0?1:0))), ran) );

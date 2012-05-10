@@ -1093,6 +1093,7 @@ If we need to change it later, it will be easy to do.
 	    for(int ch=0; ch<vvv_idcorrl.size(); ch++){
                 nsigproc = v_sigproc[ch];
                 for(isam=0; isam<vvv_idcorrl[ch].size(); isam++){
+			if(vv[ch][isam]==0) continue;
                     if(bMoveUpShapeUncertainties){
                         shapeuncs = vvv_shapeuncindex[ch][isam];
                         h=0;
