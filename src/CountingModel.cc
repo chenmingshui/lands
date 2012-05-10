@@ -706,9 +706,9 @@ namespace lands{
             double tmpmax=-1;
             for(int ch=0; ch<vvv_idcorrl.size(); ch++){
                 for(int isam=0; isam<vvv_idcorrl.at(ch).size(); isam++){
-                    if(i==0 && isam<v_sigproc[ch])vvp_connectNuisBinProc[0].push_back(std::make_pair(ch, isam));
-                    for(int iunc=0; iunc<vvv_idcorrl.at(ch).at(isam).size(); iunc++){
-//cout<<" *** DELETEME ConfigUncertaintyPdfs,  vvv_pdftype[ch][isam][iunc]="<<vvv_pdftype.at(ch).at(isam).at(iunc)<<endl;
+                    if(i==0 && isam< ( _PhysicsModel==typeChargedHiggs?(v_sigproc[ch]+2):v_sigproc[ch]) )vvp_connectNuisBinProc[0].push_back(std::make_pair(ch, isam));
+		    for(int iunc=0; iunc<vvv_idcorrl.at(ch).at(isam).size(); iunc++){
+			    //cout<<" *** DELETEME ConfigUncertaintyPdfs,  vvv_pdftype[ch][isam][iunc]="<<vvv_pdftype.at(ch).at(isam).at(iunc)<<endl;
                         if(_debug>=101)	 cout<< "in counting ConfigUncertaintyPdfs: ch "<<ch<<" isam "<<isam<<" iunc "<<iunc<<endl;
                         int indexcorrl = vvv_idcorrl.at(ch).at(isam).at(iunc);
                         if(indexcorrl==i && v_pdftype.back()<0 ){
@@ -1856,7 +1856,7 @@ If we need to change it later, it will be easy to do.
 			    //_fittedParsInData_bonly = pars;
 			    Set_fittedParsInData_b(pars);
 
-			    VChannelVSample vv = FluctuatedNumbers(_fittedParsInData_bonly);
+			    VChannelVSample vv = FluctuatedNumbers(_fittedParsInData_bonly, false);
 			    v_data_asimovb = v_data;
 			    for(unsigned int i=0; i<v_sigproc.size(); i++){
 				    v_data_asimovb[i]=0;

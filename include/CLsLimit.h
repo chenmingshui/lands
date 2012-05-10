@@ -34,6 +34,7 @@ namespace lands{
 	extern bool _bDumpFinalFitResults;
 	extern double _initialRforFit; // for toys   
 	extern double _maxRforFit;   // for toys/data in freq limits :  force the muhat < mu in probe
+	extern bool _IsToy;
 	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag); 
 	double MinuitFit(int model, double &r, double &er, double mu=0, double *pars=0, bool hasBestFitted = false, int debug=0, int *success=0, double *bestFitPars=0);
 	bool DoAfit(double mu, vector<double> vdata, vector<RooAbsData*> vrds, double* pars);

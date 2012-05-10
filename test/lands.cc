@@ -195,6 +195,7 @@ int main(int argc, const char*argv[]){
 	cms = new CountingModel();
 	cms->SetDebug(debug);
 	cms->ForceSymmetryError(bForceSymmetryError);
+	if(sPhysicsModel=="ChargedHiggs") cms->SetPhysicsModel(typeChargedHiggs);
 	if(bRedefineObservableRange) cms->SetObservableRange(ObservableBins, ObservableRangeMin, ObservableRangeMax);
 
 	/*
@@ -209,6 +210,7 @@ int main(int argc, const char*argv[]){
 		tmp[i] -> ForceSymmetryError(bForceSymmetryError);
 		if(bRedefineObservableRange) tmp[i]->SetObservableRange(ObservableBins, ObservableRangeMin, ObservableRangeMax);
 		ConfigureModel(tmp[i], HiggsMass, datacards[i].Data(), debug);
+		if(sPhysicsModel=="ChargedHiggs") tmp[i]->SetPhysicsModel(typeChargedHiggs);
 		tmp[i]->SetUseSystematicErrors(true);
 	}
 	if(debug)cout<<"totally "<<datacards.size()<<" data cards processed"<<endl;
@@ -221,6 +223,7 @@ int main(int argc, const char*argv[]){
 			if(debug)cout<<"Adding "<<i+1<<" data cards have been combined"<<endl;
 			tmp1[i] = CombineModels(tmp1[i-1], tmp[i]);
 			tmp1[i]->SetDebug(debug);
+			if(sPhysicsModel=="ChargedHiggs") tmp1[i]->SetPhysicsModel(typeChargedHiggs);
 			tmp1[i]->SetUseSystematicErrors(true);
 			if(debug)cout<<i+1<<" data cards have been combined"<<endl;
 		}	
@@ -238,6 +241,7 @@ int main(int argc, const char*argv[]){
 		cms->AddCouplingParameter(vCouplingsDef[i]);
 	}
 
+	if(sPhysicsModel=="ChargedHiggs") cms->SetPhysicsModel(typeChargedHiggs);
 	cms->SetUseSystematicErrors(systematics);
 
 
@@ -283,7 +287,6 @@ int main(int argc, const char*argv[]){
 	}
 #endif
 
-	if(sPhysicsModel=="ChargedHiggs") cms->SetPhysicsModel(typeChargedHiggs);
 
 	cms_global= cms;
 	cms_global->SetDebug(debug);

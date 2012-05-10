@@ -62,6 +62,7 @@ namespace lands{
 
 	double _initialRforFit = 1;
 	double _maxRforFit = 300;
+	bool _IsToy = false;
 
 	double del_oldn = 0; double del_newn =0 ; //DELETEME
 	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag){
@@ -695,7 +696,7 @@ namespace lands{
 				success[0]=ierflg;
 				if(success[0]!=0) {
 					cout<<" ierflg= "<<ierflg<<", Unconverged, EDM = "<<myMinuit->fEDM<<endl;
-					if(myMinuit->fEDM < 1.) success[0] = 0; 
+					if( _IsToy && myMinuit->fEDM < 1.) success[0] = 0; 
 				}
 			}
 
@@ -807,6 +808,7 @@ namespace lands{
 				MapStrV map_flatPars = cms_global->Get_map_flatPars();
 				_inputNuisancesSigma = cms_global->Get_norminalParsSigma();
 
+				if(fabs(_inputNuisances[0])>10e10) _inputNuisances[0]=0;
 				if(debug || ierflg || _bDumpFinalFitResults )printf("  par                 name         fitted_value                      input_value                start_value        dx/s_in,s_out/s_in      (flatParam +/- error)\n");
 				for(int i=0; i<=npars; i++){
 					double tmp, tmpe;
@@ -2171,6 +2173,7 @@ double CLsLimit::FeldmanCousins(CountingModel *cms,
 }
 
 bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys, bool bWriteToys){  // 0 for sbANDb, 1 for bOnly, 2 for sbOnly, 3 for data only 
+		_IsToy = true;
 	RooWorkspace * wtmp = new RooWorkspace("w");
 	_inputNuisances = _model->Get_norminalPars();	
 	_startNuisances= _model->Get_norminalPars();	
@@ -2323,6 +2326,7 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys, bool bWriteToys){ 
 		}
 		_initialRforFit = 1;
 	}
+		_IsToy = false;
 
 	if(bWriteToys){
 		TString stmp = "PseudoData_b_seed"; stmp+=_model->GetRdm()->GetSeed(); stmp+=".root";
@@ -2483,6 +2487,7 @@ bool CLsBase::BuildM2lnQ_data(){
 }
 
 bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys){  
+		_IsToy = true;
 
 	_inputNuisances = _model->Get_norminalPars();	
 	_startNuisances = _model->Get_norminalPars();	
@@ -2630,6 +2635,7 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys){
 		_initialRforFit = 1.;
 	}
 
+		_IsToy = false;
 	if(bWriteToys){
 		TString stmp = "PseudoData_sb_seed"; stmp+=_model->GetRdm()->GetSeed(); stmp+=".root";
 		TFile *f = new TFile(stmp, "RECREATE");
