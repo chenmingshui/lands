@@ -160,7 +160,7 @@ namespace lands{
 			for(s = 0; s<vvv_pdftype[c].size(); s++){
 				if(cms_global->Get_vv_statusUpdated()[c][s]){
 					bs = vv_sigbks[c][s];	
-				
+			/*	
 				if(cms_global->GetPhysicsModel()==typeChargedHiggs) {
 					// HH_ltau
 					double br = cms_global->GetSignalScaleFactor();
@@ -176,7 +176,7 @@ namespace lands{
 						bs =  ((1-br)*(1-br)*bs); //WW -> (1-r)*(1-r)*WW
 					}
 				}
-
+			*/
 					if(cms_global->IsUsingSystematicsErrors()){
 						if(cms_global->GetMoveUpShapeUncertainties()){
 							const vector<int> &shapeuncs = cms_global->GetListOfShapeUncertainties(c, s);
@@ -2804,6 +2804,8 @@ void CLsBase::prepareLogNoverB(){ // only necessary when evaluating LEP type sta
 		}
 
 		if(_model->GetPhysicsModel()==typeChargedHiggs){
+			const VChannelVSample & vv_noscale = _model->Get_vv_exp_sigbkgs_nonscaled();
+/*
 			// ************** for charged higgs    generalized for all channels
 			double tmp = 0;
 			// HH_ltau
@@ -2819,8 +2821,12 @@ void CLsBase::prepareLogNoverB(){ // only necessary when evaluating LEP type sta
 			tmp -= vv[i][3];
 
 			totsig = tmp;
+*/
+
+			totsig = vv[i][0] + vv[i][1] + vv[i][2] + vv[i][3] - vv_noscale[i][2] - vv_noscale[i][3];
+			totbkg -= ( vv[i][2] + vv[i][3] - vv_noscale[i][2] - vv_noscale[i][3]);
 			// -----------------end  for charged higgs
-			cout<<" BRANCH ratio = "<<br<<" totsig in channel ["<<i<<"]:  totsig = "<<totsig<<endl;
+			if(_debug) cout<<" BRANCH ratio = "<<br<<" totsig in channel ["<<i<<"]:  totsig = "<<totsig<<endl;
 		}
 
 
@@ -2837,7 +2843,7 @@ void CLsBase::prepareLogNoverB(){ // only necessary when evaluating LEP type sta
 	_lognoverb=new double[_nchannels];
 	for(int i=0; i<_nchannels; i++){	
 		// skip a channle in which nsig==0 || ntotbkg==0
-		if(( _model->AllowNegativeSignalStrength()==true || vs[i] > 0) && vb[i] > 0) {
+		if(( _model->AllowNegativeSignalStrength()==true || vs[i] > 0 || _model->GetPhysicsModel()==typeChargedHiggs) && vb[i] > 0) {
 			n=vs[i]+vb[i];
 			noverb=n/vb[i];
 			_lognoverb[i]= ( n>0 ?log(noverb):0 );

@@ -949,6 +949,7 @@ If we need to change it later, it will be easy to do.
 
     }	
     void CountingModel::MakeListOfShapeUncertainties(){
+	//cout<<"new card"<<endl;
         vvv_shapeuncindex.clear();
         for(int ch=0; ch<vvv_idcorrl.size(); ch++){
             vector< vector<int> > vvp; vvp.clear();
@@ -956,7 +957,8 @@ If we need to change it later, it will be easy to do.
                 vector<int> vshape; vshape.clear();
                 for(int iunc=0; iunc<vvv_idcorrl.at(ch).at(isam).size(); iunc++){
                     int indexcorrl = vvv_idcorrl.at(ch).at(isam).at(iunc);
-                    if(v_pdftype[indexcorrl]==typeShapeGaussianQuadraticMorph or v_pdftype[indexcorrl]==typeShapeGaussianLinearMorph){
+                    //if(v_pdftype[indexcorrl]==typeShapeGaussianQuadraticMorph or v_pdftype[indexcorrl]==typeShapeGaussianLinearMorph){
+                    if(vvv_pdftype[ch][isam][iunc]==typeShapeGaussianQuadraticMorph or vvv_pdftype[ch][isam][iunc]==typeShapeGaussianLinearMorph){
                         vshape.push_back(iunc);
                     }
                 }
@@ -964,6 +966,7 @@ If we need to change it later, it will be easy to do.
             }
             vvv_shapeuncindex.push_back(vvp);
         }
+
 
     }
     VChannelVSample CountingModel::FluctuatedNumbers(double *par, bool scaled, int bUseBestEstimateToCalcQ, bool includeCountingParts){
@@ -1401,7 +1404,8 @@ If we need to change it later, it will be easy to do.
     }	
     VIChannel CountingModel::GetToyData_H0(double *pars){
         // background only hypothesis
-        VChannelVSample vv = FluctuatedNumbers(pars);
+        VChannelVSample vv ; 
+	vv = ( _PhysicsModel==typeChargedHiggs?FluctuatedNumbers(pars,false):FluctuatedNumbers(pars) );
 
         VIChannel v; v.clear();
         double tmp;
@@ -1477,8 +1481,9 @@ If we need to change it later, it will be easy to do.
                 tmp+=vv[ch][isam];	
             }
 
+/*
             if(_PhysicsModel == typeChargedHiggs){
-                //****************** start ---  for charged higgs
+                // ****************** start ---  for charged higgs
                 tmp=0;
                 for(int isam=v_sigproc[ch]; isam<vv[ch].size(); isam++){
                     //start from 1,  don't add signal
@@ -1498,9 +1503,9 @@ If we need to change it later, it will be easy to do.
                 tmp -= vv[ch][2];
                 tmp -= vv[ch][3];
 
-                //********************** end --  for charged higgs
+                // ********************** end --  for charged higgs
             }
-
+*/
             v.push_back(_rdm->Poisson(tmp));
         }
 
@@ -1725,6 +1730,21 @@ If we need to change it later, it will be easy to do.
 
         if(_PhysicsModel==typeChargedHiggs){
             // do nothing....   scaling signal will be done in somewhere else
+		for(int ch=0; ch<vv_exp_sigbkgs_scaled.size(); ch++){
+			// HH_ltau
+			//tmp +=  (br*br*vv[i][0]); // HH -> r^2 * HH
+			vv_exp_sigbkgs_scaled[ch][0] = r*r*vv_exp_sigbkgs[ch][0];
+			// WH_ltau
+			//tmp +=  (2*br*(1-br)*vv[ch][1]); //WH -> 2*r*(1-r)*WH
+			vv_exp_sigbkgs_scaled[ch][1] = 2*r*(1-r)*vv_exp_sigbkgs[ch][1];
+			// WW_ltau (tt->ltau, real tau) 
+			//tmp +=  ((1-br)*(1-br)*vv[ch][2]); //WW -> (1-r)*(1-r)*WW
+			vv_exp_sigbkgs_scaled[ch][2] = (1-r)*(1-r)*vv_exp_sigbkgs[ch][2];
+			// WW_ltau (tt~->ll, also part of WW, one lepton fakes as tau) 
+			//tmp +=  ((1-br)*(1-br)*vv[ch][3]); //WW -> (1-r)*(1-r)*WW
+			vv_exp_sigbkgs_scaled[ch][3] = (1-r)*(1-r)*vv_exp_sigbkgs[ch][3];
+		}
+	
         }else{
             for(int ch=0; ch<vv_exp_sigbkgs_scaled.size(); ch++){
                 for(int isam=0; isam<v_sigproc[ch]; isam++){
