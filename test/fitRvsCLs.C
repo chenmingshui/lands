@@ -57,8 +57,11 @@ double rRelAccuracy_ = 0.02;
 bool bPlotInFittedRange = false;
 double extractLimitAtQuantile(TString inFileName, TString plotName, double d_quantile = -1 );
 double _m2s = 0, _m1s=0;
+double scanRmin=-1, scanRmax=-1;
 void fitRvsCLs(){
+	scanRmin=-1; scanRmax=-1;
 }
+void setScanRange(double rmin, double rmax){scanRmax=rmin; scanRmax=rmax;};
 void SaveResults(TString sfile, double mH, double _limit, double _limitErr, double significance, double pvalue, double rm2s, double rm1s, double rmedian, double rmean, double rp1s, double rp2s){
 	TFile fTrees(sfile+".root", "RECREATE");
 	TTree *tree = new TTree("T","T"); 
@@ -99,7 +102,7 @@ void run(TString inFileName, TString plotName, TString sfile="bands", double mH 
 	cout<<med<<"+/-"<<med_err<<", ";
 	cout<<p1s<<"+/-"<<p1s_err<<", "<<p2s<<"+/-"<<p2s_err<<endl;
 
-	cout<<"Observed data limit: "<<dat<<endl;
+	//cout<<"Observed data limit: "<<dat<<endl;
 	cout<<"Observed data limit: "<<dat<<" +/- "<<dat_err<<endl;
 	cout<<"expected median limit: "<<med<<" +/- "<<med_err<<endl;
 	SaveResults(sfile, mH, dat, dat_err, 0, 0, m2s, m1s, med, 0, p1s, p2s);
@@ -295,6 +298,10 @@ void readAllToysFromFile(TGraphErrors*tge, TFile*f, double d_quantile) {
 		if(cls>0.9) continue;
 		if(cls<0.0001) continue;
 		if(clserr>=cls)continue;
+
+		if( scanRmin >= 0 && itg->first < scanRmin ) continue; 
+		if( scanRmax >= 0 && itg->first > scanRmax ) continue; 
+
 		n_valid+=1;
 		tge->Set(n_valid);
 		tge->SetPoint(     n_valid-1, itg->first, cls   ); 
