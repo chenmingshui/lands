@@ -47,6 +47,7 @@ namespace lands{
 	
 	enum enumPhysicsModel {typeStandardModel=1, typeChargedHiggs=2};
 
+	enum enumDecayMode {decayHZZ=1, decayHWW=2, decayHTT=3, decayHBB=4, decayHGG=5}; // add more later
 	struct structPOI {
 		TString name;
 		double value;
@@ -168,8 +169,9 @@ namespace lands{
 			void SetProcessNames(int ch, vector<std::string> vproc); //need make check
 			void SetProcessNames(string ch, vector<std::string> vproc); //need make check
 			const vector<std::string>& GetProcessNames(int ch){return vv_procname[ch];}  //need make check
-			void SetModelName(const std::string& s){_modelName = s;}
+			void SetModelName(const std::string& s);
 			const std::string& GetModelName(){return _modelName;}
+			int GetDecayMode(){return _decayMode;}
 			void MakeListOfShapeUncertainties();
 			const vector<int>& GetListOfShapeUncertainties(int c, int p){ return vvv_shapeuncindex[c][p]; } // need make check
 			void SetMoveUpShapeUncertainties(bool b){bMoveUpShapeUncertainties=b;}
@@ -334,6 +336,11 @@ namespace lands{
 
 			void AddCouplingParameter(TString s);
 			void CheckCouplingSet();
+
+		const	vector<int> & Get_v_channelDecayMode(){return v_channelDecayMode;};
+		const	vector<int> & Get_v_pdfs_channelDecayMode(){return v_pdfs_channelDecayMode;};
+		int DecayMode(const std::string & s);
+
 		private:
 			VDChannel v_data; // could be pseudo-data for bands
 			VDChannel v_data_real; // real data, not changed during entire run 
@@ -375,6 +382,7 @@ namespace lands{
 			vector< vector<std::string> > vv_procname; //name of each process in each channel
 
 			std::string _modelName;
+			int _decayMode;
 
 			vector< vector< vector<int> > > vvv_shapeuncindex; //channel:process:shapeunc
 
@@ -495,6 +503,10 @@ namespace lands{
 			int _PhysicsModel;
 
 			bool noErrorEstimation; // running minos, but without error estimation
+
+
+			vector<int> v_channelDecayMode;
+			vector<int> v_pdfs_channelDecayMode;
 
 	};
 	CountingModel* CombineModels(CountingModel *cms1, CountingModel *cms2);

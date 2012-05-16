@@ -70,6 +70,7 @@ namespace lands{
         vv_procname.clear();
         _debug=0;
         _modelName = "model";
+        _decayMode= 0; 
         vvv_shapeuncindex.clear();
         bMoveUpShapeUncertainties = false;
 
@@ -285,14 +286,16 @@ namespace lands{
             //	exit(0);
         }
 
+	int dm = DecayMode(channel_name);
+	if(dm==0){dm=_decayMode;}
         if(channel_name==""){
             char tmp[256];
-            sprintf(tmp, "channel_%d", v_channelname.size());
+            sprintf(tmp, "channel_%d", int(v_channelname.size()));
             channel_name==tmp;
             v_channelname.push_back(channel_name);
-
         }
         else v_channelname.push_back(channel_name);
+	v_channelDecayMode.push_back(dm);
 
 
         double tmp_totbkg = 0;
@@ -396,14 +399,17 @@ namespace lands{
         if(bkg_processes<=0)  {cout<<"ERROR: you add a channel with number of bkg_processes <=0 "<<endl; exit(0);}
         v_sigproc.push_back(signal_processes);
 
+	int dm=DecayMode(channel_name);
+	if(dm==0) dm=_decayMode;
         if(channel_name==""){
             char tmp[256];
-            sprintf(tmp, "channel_%d", v_channelname.size());
+            sprintf(tmp, "channel_%d", int(v_channelname.size()));
             channel_name==tmp;
             v_channelname.push_back(channel_name);
 
         }
         else v_channelname.push_back(channel_name);
+	v_channelDecayMode.push_back(dm);
 
         double tmp_totbkg = 0;
 
@@ -442,7 +448,7 @@ namespace lands{
         vector<string> vproc; vproc.clear();
         for(int i=0; i<num_expected_signals.size(); i++) {
             char tmp[256];
-            sprintf(tmp, "%d", i-num_expected_signals.size()+1);
+            sprintf(tmp, "%d", int(i-num_expected_signals.size()+1));
             vproc.push_back(tmp);
         }
         for(int i=0; i<num_expected_bkgs.size(); i++) {
@@ -2242,6 +2248,7 @@ If we need to change it later, it will be easy to do.
 			    v_data_real.erase( v_data_real.begin()+position );
 			    v_sigproc.erase( v_sigproc.begin()+position );
 			    v_channelname.erase(v_channelname.begin()+position);
+			    v_channelDecayMode.erase(v_channelDecayMode.begin()+position);
 			    vv_exp_sigbkgs_scaled.erase( vv_exp_sigbkgs_scaled.begin()+position );
 			    vvvv_uncpar.erase( vvvv_uncpar.begin()+position );
 			    vvv_pdftype.erase( vvv_pdftype.begin()+position );
@@ -2274,14 +2281,17 @@ If we need to change it later, it will be easy to do.
 	    if(bkg_processes<=0)  {cout<<"ERROR: you add a channel with number of bkg_processes <=0 "<<endl; exit(0);}
 	    v_pdfs_sigproc.push_back(signal_processes);
 
+	    int dm=DecayMode(channel_name);
+		if(dm==0) dm=_decayMode;
 	    if(channel_name==""){
 		    char tmp[256];
-		    sprintf(tmp, "channel_%d", v_pdfs_channelname.size());
+		    sprintf(tmp, "channel_%d", int(v_pdfs_channelname.size()));
 		    channel_name==tmp;
 		    v_pdfs_channelname.push_back(channel_name);
 
 	    }
 	    else v_pdfs_channelname.push_back(channel_name);
+	    v_pdfs_channelDecayMode.push_back(dm);
 
 
 	    if(_debug)cout<<" adding channel "<<channel_name<<": "<<sigPdfs.size()<<" signal processes and "<<bkgPdfs.size()<<" bkg processes"<<endl;
@@ -3841,4 +3851,19 @@ If we need to change it later, it will be easy to do.
 
 		cout<<endl<<endl;
     }
+void CountingModel::SetModelName(const std::string& s){
+	_decayMode = DecayMode(s);
+	_modelName = s;
+}
+int CountingModel::DecayMode(const std::string & s){
+	int dm =0 ;
+	TString ts = s;
+	if(ts.Contains("ZZ") or ts.Contains("zz")) dm = decayHZZ;
+	if(ts.Contains("WW") or ts.Contains("ww")) dm = decayHWW;
+	if(ts.Contains("vh3l")) dm = decayHWW;
+	if(ts.Contains("TT") or ts.Contains("tt")) dm = decayHTT;
+	if(ts.Contains("BB") or ts.Contains("bb")) dm = decayHBB;
+	if(ts.Contains("GG") or ts.Contains("gg")) dm = decayHGG;
+	return dm;
+}
 };

@@ -287,6 +287,8 @@ namespace lands{
 									break;	
 								case typeFlat:
 									bs*=(*uncpars + (*(uncpars+1) - *uncpars)*ran);
+									// for coupling
+									// check channel name, process name, parameter name:   -->  manipulate them 
 									break;
 								default:
 									cout<<"pdf_type = "<<vvv_pdftype[c][s][u]<<" not defined yet"<<endl;

@@ -209,8 +209,8 @@ int main(int argc, const char*argv[]){
 		tmp[i] -> SetDebug(debug);
 		tmp[i] -> ForceSymmetryError(bForceSymmetryError);
 		if(bRedefineObservableRange) tmp[i]->SetObservableRange(ObservableBins, ObservableRangeMin, ObservableRangeMax);
-		ConfigureModel(tmp[i], HiggsMass, datacards[i].Data(), debug);
 		if(sPhysicsModel=="ChargedHiggs") tmp[i]->SetPhysicsModel(typeChargedHiggs);
+		ConfigureModel(tmp[i], HiggsMass, datacards[i].Data(), debug);
 		tmp[i]->SetUseSystematicErrors(true);
 	}
 	if(debug)cout<<"totally "<<datacards.size()<<" data cards processed"<<endl;
