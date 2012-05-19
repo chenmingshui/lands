@@ -1,6 +1,7 @@
 LIB  := lands.so
 EXEC :=	test/CLs.exe \
 	test/Bayesian.exe \
+	test/fakerate.exe \
 	test/lands.exe 
 
 SOURCES := $(wildcard src/*.cc)
