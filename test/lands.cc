@@ -178,6 +178,9 @@ vector<structPOI> addtionalPOIs;
 
 vector<TString> vCouplingsDef;
 
+TString sSMBrFile;
+vector<TString> CVsetting, CFsetting;
+
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
 
@@ -241,7 +244,11 @@ int main(int argc, const char*argv[]){
 		cms->AddCouplingParameter(vCouplingsDef[i]);
 	}
 
+	vector<structPOI> vpoi_cvcf;
 	if(sPhysicsModel=="ChargedHiggs") cms->SetPhysicsModel(typeChargedHiggs);
+	if(sPhysicsModel=="C5Higgs") {cms->SetPhysicsModel(typeC5Higgs); }//cms->AddC5();}
+	if(sPhysicsModel=="CvCfHiggs") {cms->SetPhysicsModel(typeCvCfHiggs); vpoi_cvcf = cms->AddCvCf( CVsetting, CFsetting); vCouplingsDef.push_back("CV"); vCouplingsDef.push_back("CF");}
+	if(sPhysicsModel=="CvCfHiggs" or sPhysicsModel=="C5Higgs") { cms->GetSMHiggsBuilder()->readSMBr(sSMBrFile);}	
 	cms->SetUseSystematicErrors(systematics);
 
 
@@ -304,6 +311,11 @@ int main(int argc, const char*argv[]){
 	cms_global->addPOI(poiMU);
 	cms_global->addPOI(poiM);
 	for(int i=0; i<addtionalPOIs.size(); i++) cms_global->addPOI(addtionalPOIs[i]);
+	if(sPhysicsModel=="CvCfHiggs"){
+		for(int i=0; i<vpoi_cvcf.size(); i++) {
+			cms_global->addPOI(vpoi_cvcf[i]);
+		}
+	} 
 
 	TPaveText *pt = SetTPaveText(0.2, 0.7, 0.3, 0.9);
 	if(customRMax!=customRMin) {_customRMin=customRMin; _customRMax = customRMax;}
@@ -1969,7 +1981,8 @@ void processParameters(int argc, const char* argv[]){
 	if( tmpv.size()!=1 ) { sPhysicsModel = "StandardModelHiggs"; }
 	else {
 		sPhysicsModel = tmpv[0];
-		if(sPhysicsModel!="StandardModelHiggs" and sPhysicsModel!="ChargedHiggs")  {cout<<"ERROR --PhysicsModel can only be StandardModelHiggs or ChargedHiggs as arg"<<endl; exit(0);}
+		if(sPhysicsModel!="StandardModelHiggs" and sPhysicsModel!="ChargedHiggs" and sPhysicsModel!="CvCfHiggs" and sPhysicsModel!="C5Higgs")  {
+			cout<<"ERROR --PhysicsModel can only be StandardModelHiggs or ChargedHiggs or CvCfHiggs or C5Higgs as arg"<<endl; exit(0);}
 	}
 
 	tmpv = options["--doExpectation"]; 
@@ -2357,8 +2370,7 @@ void processParameters(int argc, const char* argv[]){
 	tmpv = options["--maxsets_caching"]; 
 	if( tmpv.size()!=1 ) { maxsets_forcaching = 0; }
 	else { maxsets_forcaching = tmpv[0].Atoi(); }
-
-
+	
 	tmpv = options["--POIs"];
 	if(tmpv.size()==4 or tmpv.size()==8){ // currently support only at most two additional POIs 
 		double initv = tmpv[1].Atof();
@@ -2381,8 +2393,17 @@ void processParameters(int argc, const char* argv[]){
 	tmpv= options["--Couplings"];
 	vCouplingsDef = tmpv;
 
+	tmpv= options["--smbr"];
+	if(tmpv.size()!=0)sSMBrFile = tmpv[0];
+
+	tmpv= options["--CV"];
+	for(int i=0; i<tmpv.size(); i++) CVsetting.push_back(tmpv[i]);
+	tmpv= options["--CF"];
+	for(int i=0; i<tmpv.size(); i++) CFsetting.push_back(tmpv[i]);
+
+
 	printf("\n\n[ Summary of configuration in this job: ]\n");
-	if(sPhysicsModel=="ChargedHiggs")cout<<" PhysicsModel:  Charged Higgs"<<endl;
+	if(sPhysicsModel!="StandardModelHiggs")cout<<" PhysicsModel:  "<<sPhysicsModel<<endl;
 	cout<<"  Calculating "<<(calcsignificance?"significance":"limit")<<" with "<<method<<" method "<<endl;
 	if(HiggsMass>0) cout<<" higgs mass = "<<HiggsMass<<endl;
 	if(!bCalcObservedLimit) cout<<" not calc observed one"<<endl;
@@ -3217,7 +3238,7 @@ void PrintHelpMessage(){
 	printf("-v [ --verbose ] arg (=0)             Verbosity level \n"); 
 	printf("-L [ --LoadLibraries]                 custom libs to be loaded \n"); 
 	printf("--plot 	                              make plots when appropriate \n");
-	printf("--PhysicsModel arg (=StandardModelHiggs) could be StandardModelHiggs or ChargedHiggs \n");
+	printf("--PhysicsModel arg (=StandardModelHiggs) could be StandardModelHiggs, ChargedHiggs, CvCfHiggs, C5Higgs  \n");
 	printf("-n [ --name ] arg                     Name of the job,  default is \"datacard\"+\"method\" \n"); 
 	printf("-d [ --datacards ] args               Datacard files,  can contain \"*, ?\" \n"); 
 	printf("-D [ --dataset ] arg (=data_obs)      Dataset for observed limit,  data_obs,  asimov_b, asimov_sb \n"); 
@@ -3311,6 +3332,8 @@ void PrintHelpMessage(){
 	printf("--bRunMinuitContour                   Run MNCONT for two POIs, requiring computing time \n");
 	printf("--POIs args (='NAME InitVal Min Max') Specify other POIs (like MH), which should be in the input workspace\n");
 	printf("--Couplings (='ggH:[0.9,0,5]:*|ggH,hzz4l_4mu|ggH,hzz2l2nu_ee|ggH  parName:[initVal,min,max]:FinalState|ProductionMode')\n");
+	printf("--smbr arg (=FilePath)                for SMHiggsBuilder, path of the file containing SM Br\n");
+	printf("--CV init min max --CF init min max   settings for CvCfHiggs\n");
 
 	printf(" \n");
 	printf("------------------some comand lines-----------------------------------------------\n");

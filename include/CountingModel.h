@@ -21,6 +21,7 @@
 #include <string>
 #include "CRandom.h"
 #include "Utilities.h"
+#include "SMHiggsBuilder.h"
 #include "RooAbsPdf.h"
 #include "RooRealVar.h"
 #include "RooBifurGauss.h"
@@ -45,9 +46,10 @@ namespace lands{
 	// for uncertainties only affecting Shape, we can choose different morphing algorithm.  in commom, user must provide three templates:  norminal,  shift_1sigma_up, shift_1sigma_down
 	// i.e. 3 parameters for each shape uncertainty in each bin .... ,  the interface alway do normalization (to unity) for all three templates.
 	
-	enum enumPhysicsModel {typeStandardModel=1, typeChargedHiggs=2};
+	enum enumPhysicsModel {typeModelBegin=0,typeStandardModel=1, typeChargedHiggs=2, typeCvCfHiggs=3, typeC5Higgs=4, typeModelEnd};
 
-	enum enumDecayMode {decayHZZ=1, decayHWW=2, decayHTT=3, decayHBB=4, decayHGG=5}; // add more later
+	enum enumDecayMode {decayHZZ=11, decayHWW=10, decayHTT=2, decayHBB=1, decayHGG=8, decayHZG=9, decayHCC=5, decayHTopTop=6, decayHGluGlu=7}; // add more later
+	enum enumProductionMode {productionGGH=1, productionVH=2, productionQQH=3, productionTTH=4};
 	struct structPOI {
 		TString name;
 		double value;
@@ -306,7 +308,12 @@ namespace lands{
 			void Set_maximumFunctionCallsInAFit(int i){maximumFunctionCallsInAFit=i;};
 			int Get_maximumFunctionCallsInAFit(){return maximumFunctionCallsInAFit;};
 
-			void SetPhysicsModel(int i){_PhysicsModel=i; if(i!=1 && i!=2){ cout<<"ERROR: we only support typeStandardModel and typeChargedHiggs"<<endl; exit(1);}};
+			void SetPhysicsModel(int i){
+				_PhysicsModel=i;
+				if(i<=typeModelBegin && i>=typeModelEnd)
+				{ cout<<"ERROR: we only support typeStandardModel and typeChargedHiggs, typeCvCfHiggs, typeC5Higgs"<<endl; exit(1);}
+				if(i==typeCvCfHiggs or i==typeC5Higgs){ _smhb = new SMHiggsBuilder(); }
+			};
 			int GetPhysicsModel(){return _PhysicsModel;};
 
 			void ForceSymmetryError(bool b){b_ForceSymmetryError = b;};
@@ -339,7 +346,20 @@ namespace lands{
 
 		const	vector<int> & Get_v_channelDecayMode(){return v_channelDecayMode;};
 		const	vector<int> & Get_v_pdfs_channelDecayMode(){return v_pdfs_channelDecayMode;};
+		const	vector< vector<int> > & Get_vv_productionMode(){return vv_productionMode;};
+		const	vector< vector<int> > & Get_vv_pdfs_productionMode(){return vv_pdfs_productionMode;};
 		int DecayMode(const std::string & s);
+		int ProductionMode(const std::string & s);
+		void Set_Cv_i(int i){_Cv_i=i;};
+		void Set_Cf_i(int i){_Cf_i=i;};
+		int Get_Cv_i(){return _Cv_i;};
+		int Get_Cf_i(){return _Cf_i;};
+		double ScaleCvCfHiggs(int countingOrParametric, int dm, int pm, int c, int s, double bs, const double *par);// counting 1,  parametric 2
+		SMHiggsBuilder* GetSMHiggsBuilder(){if(_smhb)return _smhb; else {cout<<"ERROR SMHiggsBuilder not inited yet !"<<endl;exit(1);}};
+		void SetFlatPars(double *pars);
+		double CalcGammaTot();
+		vector<structPOI> AddCvCf(vector<TString> scv, vector<TString> scf);
+		
 
 		private:
 			VDChannel v_data; // could be pseudo-data for bands
@@ -373,6 +393,9 @@ namespace lands{
 			vector<double> v_GammaN; // record the number of sideband(or MC raw) events for each uncorrelated source
 
 			MapStrV map_flatPars;  // mainly on normalization
+			vector< vector<double> > v_Pars; // on all flat parameters (nuisances and pois)  ,  index is the same as v_pdftype
+			// for flat:   0. modified value,  1. init value,  2., 3., 4,  
+			vector<int>  v_flatparId; // only store the flat nuisances which are not in workspaces 
 
 			vector<std::string> v_uncname; // start from 0,   if take a name for idcorrl, then the indice is idcorrl-1; 
 			vector<bool> v_uncFloatInFit; // start from 0,   if take a name for idcorrl, then the indice is idcorrl-1; 
@@ -507,6 +530,17 @@ namespace lands{
 
 			vector<int> v_channelDecayMode;
 			vector<int> v_pdfs_channelDecayMode;
+			vector< vector<int> >vv_productionMode;
+			vector< vector<int> >vv_pdfs_productionMode;
+
+			int _Cv_i, _Cf_i;  // for CvCfHiggs
+
+			SMHiggsBuilder *_smhb;
+			double _HiggsMass; // when no "MH" parameter, then set it to model 
+			double _GammaTot; // for recalc total decay width when coupling changes 
+			double *_pardm; // to replace vrdm in FluctuatedNumbers
+
+			int _MH_i;
 
 	};
 	CountingModel* CombineModels(CountingModel *cms1, CountingModel *cms2);

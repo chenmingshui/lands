@@ -155,6 +155,12 @@ namespace lands{
 			}
 		}
 
+		cout<<"DEBUGING CVCF"<<endl;
+		cms_global->SetFlatPars(par);
+		cout<<"DEBUGING CVCF 2"<<endl;
+		cms_global->CalcGammaTot();
+		cout<<"DEBUGING CVCF 3"<<endl;
+
 		for(c=0; c<nchs; c++){
 			nsigproc = cms_global->GetNSigprocInChannel(c);	
 			tc=0; 
@@ -286,9 +292,12 @@ namespace lands{
 									}
 									break;	
 								case typeFlat:
-									bs*=(*uncpars + (*(uncpars+1) - *uncpars)*ran);
 									// for coupling
 									// check channel name, process name, parameter name:   -->  manipulate them 
+									// three places:  here, fluctuateNumbers, EvaluateChi2 for parametric shapes 
+									if(cms_global->GetPhysicsModel()==typeCvCfHiggs) break;
+									bs*=(*uncpars + (*(uncpars+1) - *uncpars)*ran);
+									
 									break;
 								default:
 									cout<<"pdf_type = "<<vvv_pdftype[c][s][u]<<" not defined yet"<<endl;
@@ -296,6 +305,12 @@ namespace lands{
 							}
 							if(isnan(bs)) {cout<<" bs=nan "<<bs<<" c "<<cms_global->GetChannelName(c).c_str()<<" s="<<cms_global->GetProcessNames(c)[s].c_str()<<" pdftype="<<vvv_pdftype[c][s][u]<<endl; }
 						}
+					}
+
+					if(cms_global->GetPhysicsModel() == typeCvCfHiggs) {
+						cout<<"hi"<<endl;
+						bs = cms_global->ScaleCvCfHiggs(1, cms_global->Get_v_channelDecayMode()[c], cms_global->Get_vv_productionMode()[c][s], c, s, bs, par);
+						cout<<"hi2"<<endl;
 					}
 					vv_cachCountingParts[c][s]=bs;
 				}else {

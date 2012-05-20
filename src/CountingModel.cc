@@ -121,6 +121,10 @@ namespace lands{
         v_pdfs_floatParamsType.clear();
         v_pdfs_floatParamsUnc.clear();
 
+        v_channelDecayMode.clear();
+	v_pdfs_channelDecayMode.clear();
+	vv_productionMode.clear();
+	vv_pdfs_productionMode.clear();
 
         _w = new RooWorkspace("w");
         _w_varied = new RooWorkspace();
@@ -156,6 +160,16 @@ namespace lands{
 	nuisancesRange = 5.;
 
         _PhysicsModel = typeStandardModel;
+
+	_Cv_i = -1;
+	_Cf_i = -1;
+
+	v_Pars.clear();
+	v_flatparId.clear();
+
+	_GammaTot = 1;
+
+	_MH_i = -1;
     }
     CountingModel::~CountingModel(){
         v_data.clear();
@@ -231,6 +245,10 @@ namespace lands{
         v_pdfs_floatParamsType.clear();
         v_pdfs_floatParamsUnc.clear();
 
+        v_channelDecayMode.clear();
+	v_pdfs_channelDecayMode.clear();
+	vv_productionMode.clear();
+	vv_pdfs_productionMode.clear();
         /*
            if(_fittedParsInData_bonly) delete [] _fittedParsInData_bonly;
            if(_fittedParsInData_sb) delete [] _fittedParsInData_sb;
@@ -254,12 +272,15 @@ namespace lands{
         vvp_connectNuisBinProc.clear();
         vvp_pdfs_connectNuisBinProc.clear();
 
+	v_Pars.clear();
+	v_flatparId.clear();
         delete _w;
         delete _w_varied;
 
         if(_norminalPars) delete _norminalPars;
         if(_norminalParsSigma) delete _norminalParsSigma;
         if(_randomizedPars) delete _randomizedPars;
+	if(_pardm) delete _pardm;
     }
     void CountingModel::AddChannel(std::string channel_name, double num_expected_signal, double num_expected_bkg_1, double num_expected_bkg_2, 
             double num_expected_bkg_3, double num_expected_bkg_4, double num_expected_bkg_5, double num_expected_bkg_6 ){
@@ -364,12 +385,15 @@ namespace lands{
         vvv_idcorrl.push_back(vvidcorrl);
         v_sigproc.push_back(1);
         vector<string> vproc; vproc.clear();
+	vector<int> vprodm; vprodm.clear();
         for(int i=0; i<7; i++) {
             char tmp[256];
             sprintf(tmp, "%d", i);
             vproc.push_back(tmp);
+	    vprodm.push_back(0);	
         }
         vv_procname.push_back(vproc);
+	vv_productionMode.push_back(vprodm);
     }
     void CountingModel::AddChannel(double num_expected_signal, double num_expected_bkg_1, double num_expected_bkg_2, 
             double num_expected_bkg_3, double num_expected_bkg_4, double num_expected_bkg_5, double num_expected_bkg_6 ){
@@ -446,17 +470,21 @@ namespace lands{
         vvv_idcorrl.push_back(vvidcorrl);
         if(_debug>=100)cout<<"channel "<<channel_name<<": tot.size="<<signal_processes+bkg_processes<<" bkg.size="<<bkg_processes<<endl;
         vector<string> vproc; vproc.clear();
+        vector<int> vprodm; vprodm.clear();
         for(int i=0; i<num_expected_signals.size(); i++) {
             char tmp[256];
             sprintf(tmp, "%d", int(i-num_expected_signals.size()+1));
             vproc.push_back(tmp);
+	    vprodm.push_back(0);
         }
         for(int i=0; i<num_expected_bkgs.size(); i++) {
             char tmp[256];
             sprintf(tmp, "%d", i+1);
             vproc.push_back(tmp);
+	    vprodm.push_back(0);
         }
         vv_procname.push_back(vproc);
+	vv_productionMode.push_back(vprodm);
     }
     void CountingModel::AddChannel(string channel_name, double num_expected_signal, vector<double> num_expected_bkgs){
         vector<double> num_expected_signals; num_expected_signals.clear();
@@ -601,6 +629,15 @@ namespace lands{
 		    vunc.push_back(uncertainty_in_relative_fraction_up);
 		    Set_flatPars(std::make_pair(v_uncname[index_correlation-1], vunc ));	
 	    }
+	if(v_Pars.size() <= index_correlation){
+		vector<double> v;
+		v_Pars.push_back(v);
+		if(index_correlation==1){
+			v_Pars.push_back(v);
+		}
+	}else{
+		if(pdf_type==typeFlat)v_Pars[index_correlation]=vunc; 
+	}	
 
     }
     void CountingModel::AddUncertainty(int index_channel, int index_sample, int npar, double *par, int pdf_type, int index_correlation ){
@@ -618,6 +655,13 @@ namespace lands{
         vvv_pdftype.at(index_channel).at(index_sample).push_back(pdf_type);
         vvv_idcorrl.at(index_channel).at(index_sample).push_back(index_correlation);
         //ConfigUncertaintyPdfs();
+	if(v_Pars.size() <= index_correlation){
+		vector<double> v;
+		v_Pars.push_back(v);
+		if(index_correlation==1){
+			v_Pars.push_back(v);
+		}
+	}
     }
 
     // From SideBand
@@ -644,6 +688,14 @@ namespace lands{
         vvv_pdftype.at(index_channel).at(index_sample).push_back(pdf_type);
         vvv_idcorrl.at(index_channel).at(index_sample).push_back(index_correlation);
         //ConfigUncertaintyPdfs();
+	if(v_Pars.size() <= index_correlation){
+		vector<double> v;
+		v_Pars.push_back(v);
+		if(index_correlation==1){
+			v_Pars.push_back(v);
+		}
+	}
+
     }
     void CountingModel::AddObservedData(int index_channel, double num_data){
         v_data.at(index_channel)=num_data;
@@ -660,13 +712,17 @@ namespace lands{
 
     void CountingModel::SetProcessNames(int index_channel, vector<string> vproc){
         vv_procname.at(index_channel)=vproc;
+	for(int i=0; i<vproc.size(); i++){
+		int pm = ProductionMode(vproc[i]);
+		vv_productionMode.at(index_channel).at(i)=pm;
+	}
     }
     void CountingModel::SetProcessNames(string c, vector<string> vproc){
         int index_channel = -1;
         for(int i=0; i<v_channelname.size(); i++){
             if(v_channelname[i]==c) index_channel=i;
         }
-        vv_procname.at(index_channel)=vproc;
+	SetProcessNames(index_channel, vproc);
     }
     void CountingModel::ConfigUncertaintyPdfs(){
         v_TruncatedGaussian_maxUnc.clear();
@@ -901,7 +957,17 @@ If we need to change it later, it will be easy to do.
             // and update the vvp_pdfs_connectNuisBinProc
 
 	    //cout<<"DELETEME v_pdftype[i+1]="<<v_pdftype[i+1]<<endl;
+	    if(TString(v_uncname[i])=="CV") _Cv_i = i+1;
+	    if(TString(v_uncname[i])=="CF") _Cf_i = i+1;
         }
+
+	v_flatparId.clear();
+	for(int i=1; i<v_pdftype.size(); i++){
+		if ((_w->var(v_uncname[i-1].c_str()) == NULL and v_pdftype[i]==typeFlat) or v_uncname[i-1]=="MH") {
+			v_flatparId.push_back(i);
+		}
+	}
+
         MakeListOfShapeUncertainties();
 
         _norminalPars = new double[max_uncorrelation+1];
@@ -998,19 +1064,22 @@ If we need to change it later, it will be easy to do.
         }
 
         double tmp ; 
-        vector<double> vrdm; vrdm.clear();
+        //vector<double> vrdm; vrdm.clear();
+	if(_pardm==NULL) _pardm = new double[max_uncorrelation];
+	double *vrdm=_pardm;
+
         v_pdfs_floatParamsVaried.clear();
 	int nit;
         if(par==0){
             for(int i=0; i<v_pdftype.size(); i++){
                 if(_debug>=100)cout<<" vpdftype: "<<i<<"th --> "<<v_pdftype[i]<<endl;
-                vrdm.push_back(-999);
+                //vrdm.push_back(-999);
                 switch (v_pdftype[i]){
                     case typeLogNormal:
                     case typeShapeGaussianLinearMorph:
                     case typeShapeGaussianQuadraticMorph:
                         // for LHC-type frequentist method 
-                        vrdm.back()=_rdm->Gaus(bUseBestEstimateToCalcQ!=2?0:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]));
+                        vrdm[i]=_rdm->Gaus(bUseBestEstimateToCalcQ!=2?0:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]));
                         break;
 
                     case typeTruncatedGaussian:
@@ -1024,16 +1093,16 @@ If we need to change it later, it will be easy to do.
 				nit++;
 				if(nit > 1000 ) break;
 			}
-			vrdm.back()=tmp;
+			vrdm[i]=tmp;
 			break;
 
 		    case typeGamma:
 			//vrdm.back()=_rdm->Gamma(v_GammaN[i]);
 			//frequentist way, need to toss integer number 
-			if(_tossToyConvention)vrdm.back()=(int)_rdm->Gamma(bUseBestEstimateToCalcQ!=2?v_GammaN[i]:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i])); 
-                        else vrdm.back()=_rdm->Gamma(bUseBestEstimateToCalcQ!=2?v_GammaN[i]:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]));
+			if(_tossToyConvention)vrdm[i]=(int)_rdm->Gamma(bUseBestEstimateToCalcQ!=2?v_GammaN[i]:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i])); 
+                        else vrdm[i]=_rdm->Gamma(bUseBestEstimateToCalcQ!=2?v_GammaN[i]:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]));
                         if(_debug>=10)cout<<"DELETEME gamma N="<<(bUseBestEstimateToCalcQ!=2?v_GammaN[i]:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]))<<endl;
-                        if(_debug>=10)cout<<"DELETEME -->rdm = "<<vrdm.back()<<endl;
+                        if(_debug>=10)cout<<"DELETEME -->rdm = "<<vrdm[i]<<endl;
                         break;
                     case typeBifurcatedGaussian:
                         {
@@ -1045,14 +1114,14 @@ If we need to change it later, it will be easy to do.
 
                             RooAbsData *tmpRDS = (RooAbsData*) _w_varied->pdf(TString::Format("%s_bfg",v_uncname[i-1].c_str()))
                                 ->generate(RooArgSet(*_w_varied->var(TString::Format("%s_x", v_uncname[i-1].c_str()))), 1);
-                            vrdm.back()= dynamic_cast<RooRealVar*> ( tmpRDS->get(0)->first() )->getVal();
+                            vrdm[i]= dynamic_cast<RooRealVar*> ( tmpRDS->get(0)->first() )->getVal();
                             delete tmpRDS;
-                            if(_debug>=100) cout<<"  "<<vrdm.back()<<endl;
+                            if(_debug>=100) cout<<"  "<<vrdm[i]<<endl;
                             break;
                         }
                     case typeFlat:
                         //vrdm.back()=_rdm->Rndm(bUseBestEstimateToCalcQ!=2?0:(scaled?_fittedParsInData_sb[i]:_fittedParsInData_bonly[i]));
-                        vrdm.back() = _rdm->Rndm(); // FIXME HGG  how to toss flat random number around fitted data
+                        vrdm[i] = _rdm->Rndm(); // FIXME HGG  how to toss flat random number around fitted data
                         break;
 
                     case typeControlSampleInferredLogNormal:
@@ -1069,13 +1138,20 @@ If we need to change it later, it will be easy to do.
                 //if(_debug) cout<<"done for random gen "<<i<<endl;
             }
         }else{
-            vrdm.push_back(0);
+            vrdm[0]=0;
             for(int i=1; i<v_pdftype.size(); i++){
-                vrdm.push_back(par[i]);
+                vrdm[i]=(par[i]);
                 if(_debug>=100)cout<<" index "<<i<<": "<<par[i]<<endl;
             }
         }		
         //if(_debug) cout<<"done for random gen"<<endl;
+
+	if(v_flatparId.size()>0){	
+		for(int i=0; i<v_flatparId.size(); i++){
+			int id = v_flatparId[i];
+			v_Pars[id][0]=( v_Pars[id][1]+(v_Pars[id][2]-v_Pars[id][1])*vrdm[id]) ;
+		}
+	}
 
         VChannelVSample vv;
         int indexcorrl, pdftype, isam, iunc;
@@ -1208,7 +1284,9 @@ If we need to change it later, it will be easy to do.
                                 break;
                             case typeFlat:
                                 //cout<<"Rndm = "<<ran<<endl;
-                                vv[ch][isam]*=( vvvv_uncpar[ch][isam][iunc][0] + (vvvv_uncpar[ch][isam][iunc][1]-vvvv_uncpar[ch][isam][iunc][0])*ran );
+                                //vv[ch][isam]*=( vvvv_uncpar[ch][isam][iunc][0] + (vvvv_uncpar[ch][isam][iunc][1]-vvvv_uncpar[ch][isam][iunc][0])*ran );
+				if(_PhysicsModel==typeCvCfHiggs) break;
+                                vv[ch][isam]*=v_Pars[indexcorrl][0];
                                 //cout<<"Rndm -> b = "<<vv[ch][isam]<<endl;
                                 // 0: min,  1: max, 2: range
                                 //cout<<"WARNING: typeFlat pdf on normalization not yet implemented, skip it "<<endl;
@@ -1262,6 +1340,12 @@ If we need to change it later, it will be easy to do.
                         }
 
                     }
+			
+		    if(_PhysicsModel == typeCvCfHiggs) {
+			    vv[ch][isam]= ScaleCvCfHiggs(1, v_channelDecayMode[ch], vv_productionMode[ch][isam], ch, isam, vv[ch][isam], vrdm);
+		    }
+
+			
                 }
             }
         }
@@ -1309,7 +1393,9 @@ If we need to change it later, it will be easy to do.
                                 if(_debug>=100) cout<<" norm varied after this unc = "<<vv_pdfs_norm_varied[ch][isam]<<endl;
                                 break;
                             case typeFlat:
-                                vv_pdfs_norm_varied[ch][isam]*=( vvv_pdfs_normvariation[ch][isam][iunc][0] + (vvv_pdfs_normvariation[ch][isam][iunc][1]-vvv_pdfs_normvariation[ch][isam][iunc][0])*ran );
+				if(_PhysicsModel==typeCvCfHiggs) break;
+                                //vv_pdfs_norm_varied[ch][isam]*=( vvv_pdfs_normvariation[ch][isam][iunc][0] + (vvv_pdfs_normvariation[ch][isam][iunc][1]-vvv_pdfs_normvariation[ch][isam][iunc][0])*ran );
+                                vv_pdfs_norm_varied[ch][isam]*=v_Pars[indexcorrl][0];
                                 //cout<<"WARNING: typeFlat pdf on normalization not yet implemented, skip it "<<endl;
                                 break;
                             default:
@@ -1318,6 +1404,9 @@ If we need to change it later, it will be easy to do.
                                 break;	
                         }
                     }
+		    if(_PhysicsModel == typeCvCfHiggs) {
+			    vv_pdfs_norm_varied[ch][isam]= ScaleCvCfHiggs(2,v_pdfs_channelDecayMode[ch], vv_pdfs_productionMode[ch][isam], ch, isam, vv_pdfs_norm_scaled[ch][isam], vrdm);
+		    }
                     if(_debug>=100) cout<<" **norm varied after all unc = "<<vv_pdfs_norm_varied[ch][isam]<<endl;
                     tmprrv = _w_varied->var(vv_pdfs_normNAME[ch][isam]);
                     //tmprrv->setDirtyInhibit(1);
@@ -1407,6 +1496,8 @@ If we need to change it later, it will be easy to do.
                 //if(par==0)cout<<" par "<<i<<" "<<_randomizedPars[i]<<endl;
             }
         }
+
+
         return vv;
     }	
     VIChannel CountingModel::GetToyData_H0(double *pars){
@@ -2254,6 +2345,7 @@ If we need to change it later, it will be easy to do.
 			    vvv_pdftype.erase( vvv_pdftype.begin()+position );
 			    vvv_idcorrl.erase( vvv_idcorrl.begin()+position );
 			    vv_procname.erase( vv_procname.begin()+position );
+			    vv_productionMode.erase( vv_productionMode.begin()+position );
 			    vvv_shapeuncindex.erase(vvv_shapeuncindex.begin()+position );
 
 			    if( (king==1||king==2) && sig<=0 )skippedchannels_s++;
@@ -2296,13 +2388,19 @@ If we need to change it later, it will be easy to do.
 
 	    if(_debug)cout<<" adding channel "<<channel_name<<": "<<sigPdfs.size()<<" signal processes and "<<bkgPdfs.size()<<" bkg processes"<<endl;
 	    vector<string> vproc; vproc.clear();
+	    vector<int> vprodm; vprodm.clear();
 	    for(int i=0; i<sigPdfs.size(); i++) {
 		    vproc.push_back(sigPdfs[i]->GetName());
+		   int pm = ProductionMode(sigPdfs[i]->GetName());
+			vprodm.push_back(pm);
 	    }
 	    for(int i=0; i<bkgPdfs.size(); i++) {
 		    vproc.push_back(bkgPdfs[i]->GetName());
+		   int pm = ProductionMode(bkgPdfs[i]->GetName());
+			vprodm.push_back(pm);
 	    }
 	    vv_pdfs_procname.push_back(vvprocnames);
+		vv_pdfs_productionMode.push_back(vprodm);
 
 	    double tmp_totbkg = 0;
 
@@ -3112,6 +3210,17 @@ If we need to change it later, it will be easy to do.
 		    Set_flatPars(std::make_pair(v_uncname[index_correlation-1], vunc ));	
 	    }
 	    //ConfigUncertaintyPdfs();
+	if(v_Pars.size() <= index_correlation){
+		vector<double> v;
+		v_Pars.push_back(v);
+		if(index_correlation==1){
+			v_Pars.push_back(v);
+		}
+	}else{
+		if(pdf_type==typeFlat)v_Pars[index_correlation]=vunc; 
+	}	
+
+
     }
     void CountingModel::AddUncertaintyOnShapeNorm(int index_channel, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, string uncname ){
 	    int index_correlation = -1; // numeration starts from 1
@@ -3184,6 +3293,13 @@ If we need to change it later, it will be easy to do.
 	    vvv_pdfs_normvariation.at(index_channel).at(index_sample).push_back(vunc);
 	    vvv_pdfs_pdftype.at(index_channel).at(index_sample).push_back(pdf_type);
 	    vvv_pdfs_idcorrl.at(index_channel).at(index_sample).push_back(index_correlation);
+	if(v_Pars.size() <= index_correlation){
+		vector<double> v;
+		v_Pars.push_back(v);
+		if(index_correlation==1){
+			v_Pars.push_back(v);
+		}
+	}
     }
     double CountingModel::EvaluateGL(vector< vector<double> > vnorms, vector<double> vparams, double xr, vector< vector<double> > & vvs, vector< vector<double> > &vvb){ 
 	    double ret=0;
@@ -3314,6 +3430,13 @@ If we need to change it later, it will be easy to do.
 
 	    if(_debug)cout<<"FlatParam "<<pname<<": nominal value = "<<norminalValue<<" ["<<rangeMin<<","<<rangeMax<<"]"<<endl;
 
+	if(v_Pars.size() <= index_correlation){
+		vector<double> v;
+		v_Pars.push_back(v);
+		if(index_correlation==1){
+			v_Pars.push_back(v);
+		}
+	}
 	    return true;
     }
     bool CountingModel::AddFlatParam(string pname, double norminalValue, double rangeMin, double rangeMax){ // add flatParam,  taken from text file , ie. data cards
@@ -3343,6 +3466,7 @@ If we need to change it later, it will be easy to do.
 		    v_uncname.push_back(pname);
 		    v_uncFloatInFit.push_back(1);
 	    }
+	    if(pname=="MH") _MH_i = index_correlation;
 
 	    RooRealVar* rrv = (RooRealVar*)_w_varied->var(pname.c_str());
 /*
@@ -3375,7 +3499,16 @@ If we need to change it later, it will be easy to do.
 	    v_pdfs_floatParamsType.push_back(typeFlat);
 
 	    if(_debug)cout<<"FlatParam "<<pname<<": nominal value = "<<norminalValue<<" ["<<rangeMin<<","<<rangeMax<<"]"<<endl;
-
+	if(v_Pars.size() <= index_correlation){
+		vector<double> v;
+		v_Pars.push_back(v);
+		if(index_correlation==1){
+			v_Pars.push_back(v);
+		}
+	}else{
+		vector<double> vunctmp; vunctmp.push_back(norminalValue); vunctmp.push_back(rangeMin); vunctmp.push_back(rangeMax);
+		v_Pars[index_correlation]=vunctmp; 
+	}	
 	    return true;
     }
     bool CountingModel::AddUncertaintyOnShapeParam(string pname, double mean, double sigmaL, double sigmaR, double rangeMin, double rangeMax ){
@@ -3444,7 +3577,13 @@ If we need to change it later, it will be easy to do.
 	    v_pdfs_floatParamsName.push_back(pname);
 	    v_pdfs_floatParamsIndcorr.push_back(index_correlation);
 	    v_pdfs_floatParamsType.push_back(typeBifurcatedGaussian);
-
+	if(v_Pars.size() <= index_correlation){
+		vector<double> v;
+		v_Pars.push_back(v);
+		if(index_correlation==1){
+			v_Pars.push_back(v);
+		}
+	}
 	    return true;
     }
 
@@ -3509,6 +3648,9 @@ If we need to change it later, it will be easy to do.
 			    _w->var("MH")->setVal(m);
 			    _w_varied->var("MH")->setVal(m);
 		    }
+		    else{
+			_HiggsMass = m;
+			}
 	    }else{
 		    cout<<"ERROR: SetMass() must be invoked after ConfigureModel"<<endl; exit(1);
 	    }
@@ -3851,19 +3993,176 @@ If we need to change it later, it will be easy to do.
 
 		cout<<endl<<endl;
     }
-void CountingModel::SetModelName(const std::string& s){
-	_decayMode = DecayMode(s);
-	_modelName = s;
-}
-int CountingModel::DecayMode(const std::string & s){
-	int dm =0 ;
-	TString ts = s;
-	if(ts.Contains("ZZ") or ts.Contains("zz")) dm = decayHZZ;
-	if(ts.Contains("WW") or ts.Contains("ww")) dm = decayHWW;
-	if(ts.Contains("vh3l")) dm = decayHWW;
-	if(ts.Contains("TT") or ts.Contains("tt")) dm = decayHTT;
-	if(ts.Contains("BB") or ts.Contains("bb")) dm = decayHBB;
-	if(ts.Contains("GG") or ts.Contains("gg")) dm = decayHGG;
-	return dm;
-}
-};
+    double CountingModel::ScaleCvCfHiggs(int countingOrParametric, int dm, int pm, int c, int s, double bs, const double *par){
+	    int id;
+	    double cv=1, cf=1;
+
+	    if(countingOrParametric==1){  // for counting part
+		    for(int u=0; u<vvv_pdftype[c][s].size(); u++){
+			    if (vvv_pdftype[c][s][u]==typeFlat){
+				    id = (vvv_idcorrl)[c][s][u];
+				    if(id==_Cv_i || id==_Cf_i) { 
+					    (id==_Cv_i?cv:cf) = v_Pars[id][0];
+				    }else {
+					    bs*=v_Pars[id][0];
+				    }
+			    }
+		    }
+	    }else {  // countingOrParametric == 2   for Parametric part 
+		    for(int u=0; u<vvv_pdfs_pdftype[c][s].size(); u++){
+			    if (vvv_pdfs_pdftype[c][s][u]==typeFlat){
+				    id = (vvv_pdfs_idcorrl)[c][s][u];
+				    if(_w_varied->var(v_uncname[id-1].c_str()) != NULL) continue;
+				    if(id==_Cv_i || id==_Cf_i) { 
+					    (id==_Cv_i?cv:cf) = v_Pars[id][0];
+				    }else {
+					    bs*=v_Pars[id][0];
+				    }
+			    }
+		    }
+
+	    }
+	    if(dm==decayHWW or dm==decayHZZ){
+		    if(pm==productionGGH or pm==productionTTH) bs*=(cv*cv/_GammaTot*cf*cf);
+		    else bs*=(cv*cv/_GammaTot*cv*cv);
+	    }else if(dm==decayHTT or dm==decayHBB){
+		    if(pm==productionGGH or pm==productionTTH) bs*=(cf*cf/_GammaTot*cf*cf);
+		    else bs*=(cv*cv/_GammaTot*cf*cf);
+	    }else if(dm==decayHGG){
+		    double m = 0;
+		    if( _w_varied->var("MH") ) {
+			    m=v_Pars[_MH_i][0];
+		    }else{
+			    m = _HiggsMass;
+		    }	
+		    if(m<=0){
+			    cout<<"Error : in CvCf_Gamma, while higgs mass = "<<m<<endl;
+			    exit(1);
+		    }
+
+		    double cvcf_gamma = 0.;
+		    //imported from  combine
+		    //## Coefficient for couplings to photons
+		    //#      arXiv 1202.3144v2, below eq. 2.6:  2/9*cF - 1.04*cV, and then normalize to SM 
+		    //#      FIXME: this should be replaced with the proper MH dependency
+		    //#self.modelBuilder.factory_("expr::CvCf_cgamma(\"-0.271*@0+1.27*@1\",CF,CV)")
+		    //#
+		    //# Taylor series around MH=125 to (MH-125)^2 in Horner polynomial form
+		    cvcf_gamma = v_Pars[_Cv_i][0]*(1.2259236555204187 + (0.00216740776385032 - 0.000013693587140986294*m)*m) +
+			    v_Pars[_Cf_i][0]*(-0.22592365552041888 + (-0.002167407763850317 + 0.000013693587140986278*m)*m);
+
+		    if(pm==productionGGH or pm==productionTTH) bs*=(cvcf_gamma*cvcf_gamma/_GammaTot*cf*cf);
+		    else bs*=(cvcf_gamma*cvcf_gamma/_GammaTot*cv*cv);
+	    }
+	    return bs;
+    }
+    void CountingModel::SetModelName(const std::string& s){
+	    _decayMode = DecayMode(s);
+	    _modelName = s;
+    }
+    int CountingModel::DecayMode(const std::string & s){
+	    int dm =0 ;
+	    TString ts = s;
+	    if(ts.Contains("ZZ") or ts.Contains("zz")) dm = decayHZZ;
+	    if(ts.Contains("WW") or ts.Contains("ww")) dm = decayHWW;
+	    if(ts.Contains("vh3l")) dm = decayHWW;
+	    if(ts.Contains("TT") or ts.Contains("tt")) dm = decayHTT;
+	    if(ts.Contains("BB") or ts.Contains("bb")) dm = decayHBB;
+	    if(ts.Contains("GG") or ts.Contains("gg")) dm = decayHGG;
+	    return dm;
+    }
+    int CountingModel::ProductionMode(const std::string & s){
+	    int pm=0 ;
+	    TString ts = s;
+	    if(ts.Contains("ggH")) pm = productionGGH; 
+	    if(ts.Contains("VH") or ts.Contains("WH") or ts.Contains("ZH")) pm = productionVH; 
+	    if(ts.Contains("qqH")) pm = productionQQH; 
+	    if(ts.Contains("ttH")) pm = productionTTH; 
+	    return pm;
+    }
+
+    void CountingModel::SetFlatPars(double *pars){
+	    if(v_flatparId.size()>0){	
+		    for(int i=0; i<v_flatparId.size(); i++){
+			    int id = v_flatparId[i];
+			    v_Pars[id][0]=( v_Pars[id][1]+(v_Pars[id][2]-v_Pars[id][1])*pars[id]) ;
+		    }
+	    }
+    }
+
+    double CountingModel::CalcGammaTot(){
+//  Speed can be improved here to cach  
+//  _Cv  _Cf  mH  gammaTot  gammaV  gammaF
+	    if(_PhysicsModel==typeCvCfHiggs){
+		    double m = 0;
+		    if( _w_varied->var("MH") ) {
+			    m=v_Pars[_MH_i][0];
+		    }else{
+			    m = _HiggsMass;
+		    }	
+		    if(m<=0){
+			    cout<<"Error : in CalcGammaTot, while higgs mass = "<<m<<endl;
+			    exit(1);
+		    }
+
+cout<<"DEBUG CVCF 4"<<endl;
+		    double gammaV = _smhb->br(decayHWW, m) + _smhb->br(decayHZZ,m);
+cout<<"DEBUG CVCF 5"<<endl;
+		    double gammaF = _smhb->br(decayHBB, m) + _smhb->br(decayHCC,m)+_smhb->br(decayHGluGlu,m)+_smhb->br(decayHTT,m)+_smhb->br(decayHTopTop,m);
+cout<<"DEBUG CVCF 6"<<endl;
+		cout<<"DEBUG CVCF  _Cv_i = "<<_Cv_i<<endl;
+		cout<<"DEBUG CVCF  _Cf_i = "<<_Cf_i<<endl;
+		cout<<"DEBUG CVCF  v_Pars.size = "<<v_Pars.size()<<endl;
+		    _GammaTot = v_Pars[_Cv_i][0]*v_Pars[_Cv_i][0]*gammaV +  v_Pars[_Cf_i][0]*v_Pars[_Cf_i][0]*gammaF; 
+cout<<"DEBUG CVCF 7"<<endl;
+		    return _GammaTot;
+
+	    }else if(_PhysicsModel==typeC5Higgs){
+		    return 1;
+	    }
+	    return 1;
+    }
+    vector<structPOI> CountingModel::AddCvCf(vector<TString> scv, vector<TString> scf){
+	    vector<structPOI> vpoi;
+	    structPOI pcv("CV", 0, 0, 0, 0, 5);
+	    structPOI pcf("CF", 0, 0, 0, 0, 5); 
+	    if(scv.size()){ 
+		if(scv.size()!=3) { cout<<"ERROR: input error. should be  --CV nominal min max "<<endl;	exit(1) ;}
+		pcv.value=scv[0].Atof();
+		pcv.minV=scv[1].Atof();
+		pcv.maxV=scv[2].Atof();
+	    }
+	    if(scf.size()){
+		    if(scf.size()!=3) { cout<<"ERROR: input error. should be  --CF nominal min max "<<endl;	exit(1) ;}
+		    pcf.value=scf[0].Atof();
+		    pcf.minV=scf[1].Atof();
+		    pcf.maxV=scf[2].Atof();
+	    }
+	    vpoi.push_back(pcv); 
+	    vpoi.push_back(pcf); 
+
+	    for(int c=0; c<v_channelname.size(); c++){
+		    for(int p=0; p<v_sigproc[c]; p++){
+			    AddUncertainty(v_channelname[c], p, pcv.minV, pcv.maxV, typeFlat, "CV");
+			    SetFlatParInitVal("CV", pcv.value);
+			    AddUncertainty(v_channelname[c], p, pcf.minV, pcf.maxV, typeFlat, "CF");
+			    SetFlatParInitVal("CF", pcf.value);
+		    }
+	    }
+	    //roofit part
+	    for(int c=0; c<v_pdfs_channelname.size(); c++){
+		    for(int p=0; p<vv_pdfs_procname[c].size(); p++){
+			    AddUncertaintyOnShapeNorm(v_pdfs_channelname[c], p, pcv.minV, pcv.maxV, typeFlat, "CV");
+			    SetFlatParInitVal("CV", pcv.value);
+			    AddUncertaintyOnShapeNorm(v_pdfs_channelname[c], p, pcf.minV, pcf.maxV, typeFlat, "CF");
+			    SetFlatParInitVal("CF", pcf.value);
+		    }
+	    }
+	    //  need some more sanity checks:
+	    //  do we allow  two Coupling parameter  effect on  a channel|process ?
+	    //  sanity check, whether some ch/proc are not in the coupling list
+	    //  check if any ch/proc not couple by CV or CF
+	    return vpoi;
+    }
+    };
+
