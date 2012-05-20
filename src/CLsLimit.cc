@@ -155,11 +155,11 @@ namespace lands{
 			}
 		}
 
-		cout<<"DEBUGING CVCF"<<endl;
+		//cout<<"DEBUGING CVCF"<<endl;
 		cms_global->SetFlatPars(par);
-		cout<<"DEBUGING CVCF 2"<<endl;
+		//cout<<"DEBUGING CVCF 2"<<endl;
 		cms_global->CalcGammaTot();
-		cout<<"DEBUGING CVCF 3"<<endl;
+		//cout<<"DEBUGING CVCF 3"<<endl;
 
 		for(c=0; c<nchs; c++){
 			nsigproc = cms_global->GetNSigprocInChannel(c);	
@@ -308,9 +308,7 @@ namespace lands{
 					}
 
 					if(cms_global->GetPhysicsModel() == typeCvCfHiggs) {
-						cout<<"hi"<<endl;
 						bs = cms_global->ScaleCvCfHiggs(1, cms_global->Get_v_channelDecayMode()[c], cms_global->Get_vv_productionMode()[c][s], c, s, bs, par);
-						cout<<"hi2"<<endl;
 					}
 					vv_cachCountingParts[c][s]=bs;
 				}else {
