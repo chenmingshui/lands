@@ -635,9 +635,15 @@ namespace lands{
 		if(index_correlation==1){
 			v_Pars.push_back(v);
 		}
-	}else{
-		if(pdf_type==typeFlat)v_Pars[index_correlation]=vunc; 
-	}	
+	}
+	if(pdf_type==typeFlat)v_Pars[index_correlation]=vunc; 
+	
+
+	if(pdf_type==typeFlat and _debug) {
+		cout<< " DELETEME vunc.size="<<vunc.size()<<endl;
+		cout<<" index_correlation = "<<index_correlation<<endl;
+		cout<<" "<<v_Pars[index_correlation].size()<<endl;
+	}
 
     }
     void CountingModel::AddUncertainty(int index_channel, int index_sample, int npar, double *par, int pdf_type, int index_correlation ){
@@ -3216,9 +3222,9 @@ If we need to change it later, it will be easy to do.
 		if(index_correlation==1){
 			v_Pars.push_back(v);
 		}
-	}else{
-		if(pdf_type==typeFlat)v_Pars[index_correlation]=vunc; 
-	}	
+	}
+	if(pdf_type==typeFlat)v_Pars[index_correlation]=vunc; 
+	
 
 
     }
@@ -3505,10 +3511,9 @@ If we need to change it later, it will be easy to do.
 		if(index_correlation==1){
 			v_Pars.push_back(v);
 		}
-	}else{
-		vector<double> vunctmp; vunctmp.push_back(norminalValue); vunctmp.push_back(rangeMin); vunctmp.push_back(rangeMax);
-		v_Pars[index_correlation]=vunctmp; 
-	}	
+	}
+	vector<double> vunctmp; vunctmp.push_back(norminalValue); vunctmp.push_back(rangeMin); vunctmp.push_back(rangeMax);
+	v_Pars[index_correlation]=vunctmp; 
 	    return true;
     }
     bool CountingModel::AddUncertaintyOnShapeParam(string pname, double mean, double sigmaL, double sigmaR, double rangeMin, double rangeMax ){
@@ -4092,9 +4097,13 @@ If we need to change it later, it will be easy to do.
     }
 
     void CountingModel::SetFlatPars(double *pars){
+	//	cout<<"DELETEME v_flatparId.size="<< v_flatparId.size() <<" v_Pars.size="<<v_Pars.size()<<endl;
 	    if(v_flatparId.size()>0){	
 		    for(int i=0; i<v_flatparId.size(); i++){
 			    int id = v_flatparId[i];
+	//			cout<<"DELETEME id  = "<<id<<endl;
+	//		cout<<" v_Pars[id].size="<<v_Pars[id].size()<<endl;
+	//	for(int j=0; j<v_Pars.size(); j++) cout<<" "<<j<<": "<<v_Pars[j].size()<<endl;
 			    v_Pars[id][0]=( v_Pars[id][1]+(v_Pars[id][2]-v_Pars[id][1])*pars[id]) ;
 		    }
 	    }
@@ -4123,6 +4132,7 @@ If we need to change it later, it will be easy to do.
 //		cout<<"DEBUG CVCF  _Cv_i = "<<_Cv_i<<endl;
 //		cout<<"DEBUG CVCF  _Cf_i = "<<_Cf_i<<endl;
 //		cout<<"DEBUG CVCF  v_Pars.size = "<<v_Pars.size()<<endl;
+		    if(_Cv_i <0 or _Cf_i<0) {cout<<"ERROR _Cv_i or _Cf_i not set "<<endl; exit(1);} 
 		    _GammaTot = v_Pars[_Cv_i][0]*v_Pars[_Cv_i][0]*gammaV +  v_Pars[_Cf_i][0]*v_Pars[_Cf_i][0]*gammaF; 
 //cout<<"DEBUG CVCF 7: _GammaTot="<<_GammaTot<< endl;
 		    return _GammaTot;
@@ -4133,9 +4143,10 @@ If we need to change it later, it will be easy to do.
 	    return 1;
     }
     vector<structPOI> CountingModel::AddCvCf(vector<TString> scv, vector<TString> scf){
+		if(_debug) cout<<" begin AddCvCf"<<endl;
 	    vector<structPOI> vpoi;
-	    structPOI pcv("CV", 0, 0, 0, 0, 5);
-	    structPOI pcf("CF", 0, 0, 0, 0, 5); 
+	    structPOI pcv("CV", 1., 0, 0, 0, 5);
+	    structPOI pcf("CF", 1., 0, 0, 0, 5); 
 	    if(scv.size()){ 
 		if(scv.size()!=3) { cout<<"ERROR: input error. should be  --CV nominal min max "<<endl;	exit(1) ;}
 		pcv.value=scv[0].Atof();
@@ -4172,6 +4183,8 @@ If we need to change it later, it will be easy to do.
 	    //  do we allow  two Coupling parameter  effect on  a channel|process ?
 	    //  sanity check, whether some ch/proc are not in the coupling list
 	    //  check if any ch/proc not couple by CV or CF
+
+		if(_debug) cout<<" end AddCvCf"<<endl;
 	    return vpoi;
     }
     };
