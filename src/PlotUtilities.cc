@@ -12,6 +12,7 @@
 
 #include "PlotUtilities.h"
 #include "Utilities.h"
+#include "UtilsROOT.h"
 using namespace std;
 namespace lands{
 //------------------------------------------------------------------------------
@@ -919,6 +920,111 @@ void DrawPdfRLikelihood::draw(){
 	_pt->Draw();
 
 	DrawCMS();
+	Save(cCanvas,_ssave);
+}
+DrawTH2D::DrawTH2D(TString sbinx, TString sbiny, vector< std::pair<double, double> > vxy, vector<double> vz, string stitle, string ssave, TPaveText *pt, bool debug){
+	for(int i=0; i<vxy.size(); i++) { _vx.push_back(vxy[i].first); _vy.push_back(vxy[i].second);}
+	_vz = vz;
+	_stitle=stitle; _ssave=ssave; _pt=pt; _debug=debug;	
+	_logY=0; cCanvas=0; legend=0; 
+	lineOne=0; graph=0;
+	_sbinx = sbinx; _sbiny = sbiny;
+}
+DrawTH2D::~DrawTH2D(){
+	if(legend)delete legend; if(lineOne)delete lineOne; if(graph)delete graph;
+	cCanvas=0; _pt=0;
+}
+void DrawTH2D::draw(){
+	cCanvas= new TCanvas("c","c");	
+	cCanvas->SetLogy(_logY);
+	int nr = _vx.size();
+	/*double *rtmp=new double[nr];
+	double *cls_btmp = new double[nr];
+	for(int i=0; i<nr; i++){
+		rtmp[i]=_vx[i]; cls_btmp[i]=_vy[i];
+	}
+	int *ir=new int[nr];
+	Sort(nr, rtmp, ir, 0);
+	*/
+
+	double xmin=0, xmax=1, nbinx=1;
+	double ymin=0, ymax=1, nbiny=1;
+	if(_sbinx.BeginsWith("[") and _sbinx.EndsWith("]")){
+		_sbinx.ReplaceAll("[","");_sbinx.ReplaceAll("]","");	
+		vector<string> vstr;
+		StringSplit(vstr, _sbinx.Data(), ",");
+		if(vstr.size()==3 and (TString(vstr[2]).IsFloat() or TString(vstr[2]).BeginsWith("x")) ){
+			double r0 = TString(vstr[0]).Atof(), r1=TString(vstr[1]).Atof();	
+			//if(r0>r1 or r0<0) continue;
+			if(TString(vstr[2]).BeginsWith("x")) {
+				cout<<"ERROR: scanning to make TH2, but it's with variable binning setting, skip "<<endl;
+			}else{
+				double step = TString(vstr[2]).Atof();
+				if(step>0) {
+					nbinx = int((r1-r0)/step);
+				}
+				xmin=r0+0.5*step;
+				xmax=r1+0.5*step;
+			};
+		}else{
+			cout<<"ERROR: wrong format of should be sth like [1.2,2.0,0.05]"<<endl;	};
+	}else{
+		cout<<"ERROR: wrong format of should be sth like [1.2,2.0,0.05]"<<endl;	
+	};
+	if(_sbiny.BeginsWith("[") and _sbiny.EndsWith("]")){
+		_sbiny.ReplaceAll("[","");_sbiny.ReplaceAll("]","");	
+		vector<string> vstr;
+		StringSplit(vstr, _sbiny.Data(), ",");
+		if(vstr.size()==3 and (TString(vstr[2]).IsFloat() or TString(vstr[2]).BeginsWith("x")) ){
+			double r0 = TString(vstr[0]).Atof(), r1=TString(vstr[1]).Atof();	
+			//if(r0>r1 or r0<0) continue;
+			if(TString(vstr[2]).BeginsWith("x")) {
+				cout<<"ERROR: scanning to make TH2, but it's with variable binning setting, skip "<<endl;
+			}else{
+				double step = TString(vstr[2]).Atof();
+				if(step>0) {
+					nbiny = int((r1-r0)/step);
+				}
+				ymin=r0+0.5*step;
+				ymax=r1+0.5*step;
+			};
+		}else{
+			cout<<"ERROR: wrong format of should be sth like [1.2,2.0,0.05]"<<endl;	};
+	}else{
+		cout<<"ERROR: wrong format of should be sth like [1.2,2.0,0.05]"<<endl;	
+	};
+
+	graph = new TH2D("dummy",";;", nbinx, xmin, xmax, nbiny, ymin, ymax);
+
+	double *x=new double[nr]; 
+	double *y= new double[nr];
+	double *z= new double[nr];
+	for(int i=0; i<nr; i++){
+	//	x[i]=_vx[i];
+	//	y[i]=_vy[i];
+	//	z[i]=_vz[i];
+		//cout<<"DELETE "<<x[i]<<" "<<y[i]<<" "<<z[i]<<endl;
+		graph->SetBinContent(graph->FindBin(_vx[i], _vy[i]), _vz[i]);
+	}
+
+	//graph = new TGraph2D(nr, x, y, z);
+	graph->SetMarkerStyle(21);
+	graph->SetMarkerColor(kBlue);
+	graph->SetLineWidth(2);
+	graph->SetLineColor(kBlue);
+	graph->SetTitle(_stitle.c_str());
+	graph->Draw("colz");
+
+
+	_pt->Draw();
+
+	save();
+
+	delete [] x; 
+	delete [] y;
+	delete [] z;
+}
+void DrawTH2D::save(){
 	Save(cCanvas,_ssave);
 }
 };

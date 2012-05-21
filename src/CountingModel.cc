@@ -3997,7 +3997,9 @@ If we need to change it later, it will be easy to do.
 	    int id;
 	    double cv=1, cf=1;
 
+	double nsig=1;
 	    if(countingOrParametric==1){  // for counting part
+	nsig = v_sigproc[c];
 		    for(int u=0; u<vvv_pdftype[c][s].size(); u++){
 			    if (vvv_pdftype[c][s][u]==typeFlat){
 				    id = (vvv_idcorrl)[c][s][u];
@@ -4009,6 +4011,7 @@ If we need to change it later, it will be easy to do.
 			    }
 		    }
 	    }else {  // countingOrParametric == 2   for Parametric part 
+	nsig = v_pdfs_sigproc[c];
 		    for(int u=0; u<vvv_pdfs_pdftype[c][s].size(); u++){
 			    if (vvv_pdfs_pdftype[c][s][u]==typeFlat){
 				    id = (vvv_pdfs_idcorrl)[c][s][u];
@@ -4022,12 +4025,16 @@ If we need to change it later, it will be easy to do.
 		    }
 
 	    }
+
+	if(s >= nsig) return bs; // bkg process 
+	    double scale = 1.;
+  	
 	    if(dm==decayHWW or dm==decayHZZ){
-		    if(pm==productionGGH or pm==productionTTH) bs*=(cv*cv/_GammaTot*cf*cf);
-		    else bs*=(cv*cv/_GammaTot*cv*cv);
+		    if(pm==productionGGH or pm==productionTTH) scale=(cv*cv/_GammaTot*cf*cf);
+		    else scale=(cv*cv/_GammaTot*cv*cv);
 	    }else if(dm==decayHTT or dm==decayHBB){
-		    if(pm==productionGGH or pm==productionTTH) bs*=(cf*cf/_GammaTot*cf*cf);
-		    else bs*=(cv*cv/_GammaTot*cf*cf);
+		    if(pm==productionGGH or pm==productionTTH) scale=(cf*cf/_GammaTot*cf*cf);
+		    else scale=(cv*cv/_GammaTot*cf*cf);
 	    }else if(dm==decayHGG){
 		    double m = 0;
 		    if( _w_varied->var("MH") ) {
@@ -4051,10 +4058,13 @@ If we need to change it later, it will be easy to do.
 		    cvcf_gamma = v_Pars[_Cv_i][0]*(1.2259236555204187 + (0.00216740776385032 - 0.000013693587140986294*m)*m) +
 			    v_Pars[_Cf_i][0]*(-0.22592365552041888 + (-0.002167407763850317 + 0.000013693587140986278*m)*m);
 
-		    if(pm==productionGGH or pm==productionTTH) bs*=(cvcf_gamma*cvcf_gamma/_GammaTot*cf*cf);
-		    else bs*=(cvcf_gamma*cvcf_gamma/_GammaTot*cv*cv);
+		    if(pm==productionGGH or pm==productionTTH) scale=(cvcf_gamma*cvcf_gamma/_GammaTot*cf*cf);
+		    else scale=(cvcf_gamma*cvcf_gamma/_GammaTot*cv*cv);
 	    }
-	    return bs;
+
+	    if(_debug>=100)cout<<" DEBUG CVCF dm="<<dm<<" pm="<<pm<<" scale="<<scale<<endl;
+
+	    return bs*scale;
     }
     void CountingModel::SetModelName(const std::string& s){
 	    _decayMode = DecayMode(s);
@@ -4105,16 +4115,16 @@ If we need to change it later, it will be easy to do.
 			    exit(1);
 		    }
 
-cout<<"DEBUG CVCF 4"<<endl;
+//cout<<"DEBUG CVCF 4"<<endl;
 		    double gammaV = _smhb->br(decayHWW, m) + _smhb->br(decayHZZ,m);
-cout<<"DEBUG CVCF 5"<<endl;
+//cout<<"DEBUG CVCF 5 gammaV = "<<gammaV<<endl;
 		    double gammaF = _smhb->br(decayHBB, m) + _smhb->br(decayHCC,m)+_smhb->br(decayHGluGlu,m)+_smhb->br(decayHTT,m)+_smhb->br(decayHTopTop,m);
-cout<<"DEBUG CVCF 6"<<endl;
-		cout<<"DEBUG CVCF  _Cv_i = "<<_Cv_i<<endl;
-		cout<<"DEBUG CVCF  _Cf_i = "<<_Cf_i<<endl;
-		cout<<"DEBUG CVCF  v_Pars.size = "<<v_Pars.size()<<endl;
+//cout<<"DEBUG CVCF 6 gammaF = "<<gammaF<<endl;
+//		cout<<"DEBUG CVCF  _Cv_i = "<<_Cv_i<<endl;
+//		cout<<"DEBUG CVCF  _Cf_i = "<<_Cf_i<<endl;
+//		cout<<"DEBUG CVCF  v_Pars.size = "<<v_Pars.size()<<endl;
 		    _GammaTot = v_Pars[_Cv_i][0]*v_Pars[_Cv_i][0]*gammaV +  v_Pars[_Cf_i][0]*v_Pars[_Cf_i][0]*gammaF; 
-cout<<"DEBUG CVCF 7"<<endl;
+//cout<<"DEBUG CVCF 7: _GammaTot="<<_GammaTot<< endl;
 		    return _GammaTot;
 
 	    }else if(_PhysicsModel==typeC5Higgs){

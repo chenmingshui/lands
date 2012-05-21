@@ -360,6 +360,7 @@ namespace lands{
 		double CalcGammaTot();
 		vector<structPOI> AddCvCf(vector<TString> scv, vector<TString> scf);
 		
+			const vector< vector<double> > & Get_v_Pars(){return v_Pars;} // on all flat parameters (nuisances and pois)  ,  index is the same as v_pdftype
 
 		private:
 			VDChannel v_data; // could be pseudo-data for bands

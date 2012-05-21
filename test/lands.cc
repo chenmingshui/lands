@@ -38,6 +38,7 @@ using namespace RooFit;
 typedef std::map<TString, vector<TString> > TStrMap;
 typedef std::pair<TString, vector<TString> > TStrPair;
 TStrMap options;
+vector<double> GetListToEval(TString parname, vector<TString> tmpv);
 void processParameters(int argc, const char* argv[]);
 void PrintHelpMessage();
 
@@ -180,6 +181,11 @@ vector<TString> vCouplingsDef;
 
 TString sSMBrFile;
 vector<TString> CVsetting, CFsetting;
+bool scanCvCf=false;
+vector<double> vCv_toEval;
+vector<double> vCf_toEval;
+TString sbinningCV, sbinningCF;
+
 
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
@@ -1283,6 +1289,80 @@ int main(int argc, const char*argv[]){
 			for(int i=0; i<=cms->Get_max_uncorrelation(); i++) pars_maxll[i]=pars[i];
 			cms->Set_fittedParsInData_sb(pars_maxll);
 			
+
+			if(scanCvCf && cms_global->GetPhysicsModel()==typeCvCfHiggs){
+				TStopwatch watch2;
+				watch2.Start();
+				vector< std::pair<double, double> > vrm; vrm.clear(); 
+				vector<double> vc; vc.clear();
+				
+
+				int _Cv_i = cms_global->Get_Cv_i();
+				int _Cf_i = cms_global->Get_Cf_i();
+				if(_Cv_i<0 or _Cf_i<0) {cout<<" no CV or CF parameter, exit"<<endl;  exit(1);}
+
+			
+				vector< vector<double> > v_Pars = cms_global->Get_v_Pars();	
+				
+				vrm.push_back(make_pair(pars[_Cv_i]*(v_Pars[_Cv_i][2]-v_Pars[_Cv_i][1])+v_Pars[_Cv_i][1],  pars[_Cf_i]*(v_Pars[_Cf_i][2]-v_Pars[_Cf_i][1])+v_Pars[_Cf_i][1]) );vc.push_back(y0_2-y0_2);
+
+				bool best = false;
+				for(int i=0; i<vCv_toEval.size(); i++){
+					double testr = vCv_toEval[i];
+					for(int j=0; j<vCf_toEval.size(); j++){
+						if(debug)watch.Start();
+						double testm = vCf_toEval[j];
+						_countPdfEvaluation = 0;
+						cms_global->SetPOItoBeFixed("CV",testr);
+						cms_global->SetPOItoBeFixed("CF",testm);
+						double y0_1 =  MinuitFit(3, tmp, tmperr, 1.0, pars, best?true:false, debug, 0, best?bestFitPars:0);
+
+						for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
+							double tmp, tmpe;
+							myMinuit->GetParameter(i, tmp, tmpe);
+							bestFitPars[i]=tmp;
+						}
+						best = true;
+
+
+						if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
+						if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
+						vrm.push_back(make_pair(testr, testm));
+						vc.push_back(y0_1-y0_2);
+						TString sj = jobname; sj+="_fittedShape_cv"; sj+=testr; sj+="_cf"; sj+=testm;
+						if(bDumpFitResults)cms->DumpFitResults(pars, sj);
+						if(debug){
+							watch.Stop();
+							watch.Print();
+						}
+					}
+				}
+				if(debug){
+					printf("\n results of scanned Cv,Cf vs. q: \n");
+					for(int i=0; i<vrm.size(); i++){
+						printf("  [ Cv =%10.3f, Cf=%10.3f],  delta_q=%7.5f\n", vrm[i].first, vrm[i].second, vc[i]);
+					}
+				}
+				if(bPlots){
+					DrawTH2D d2h(sbinningCV, sbinningCF, vrm, vc, "-2lnQ; CV; CF", (jobname+"_scanned_cvcf_vs_q_TH2").Data(), pt);
+					d2h.draw();
+					d2h.save();
+					DrawTGraph2D d2d(vrm, vc, "-2lnQ; CV; CF", (jobname+"_scanned_cvcf_vs_q").Data(), pt);
+					d2d.draw();
+					d2d.save();
+					//TFile f(jobname+"_scanned_cvcf_vs_q.root", "UPDATE");
+					//d2d.getGraph()->SetName("Graph2D_cvcf_vs_q");					
+					//f.WriteTObject(d2d.getGraph());
+					//f.Close();
+				}
+
+				watch2.Stop();
+				cout<<"Scanning total takes: "<<endl;
+				watch2.Print();
+				return 0;
+			}
+
+
 			if(vCouplingsDef.size()) return 0;
 
 			double y0_3, mu_hat2, mu_hat_up2, mu_hat_low2;
@@ -1857,6 +1937,41 @@ int main(int argc, const char*argv[]){
 	watch.Print();
 	return 1;
 }
+vector<double> GetListToEval(TString parname, vector<TString> tmpv){
+	cout<<"tmpv.size="<<tmpv.size()<<endl;
+	for(int i=0; i<tmpv.size(); i++) cout<<tmpv[i]<<endl;
+	vector<double> vtoEval;vtoEval.clear();
+	for(int i=0; i<tmpv.size(); i++){
+		if(tmpv[i].IsFloat()) vtoEval.push_back(tmpv[i].Atof());
+		else if(tmpv[i].BeginsWith("[") and tmpv[i].EndsWith("]")){
+			tmpv[i].ReplaceAll("[","");tmpv[i].ReplaceAll("]","");	
+			vector<string> vstr;
+			StringSplit(vstr, tmpv[i].Data(), ",");
+			if(vstr.size()==3 and (TString(vstr[2]).IsFloat() or TString(vstr[2]).BeginsWith("x")) ){
+				double r0 = TString(vstr[0]).Atof(), r1=TString(vstr[1]).Atof();	
+				//if(r0>r1 or r0<0) continue;
+				if(TString(vstr[2]).BeginsWith("x")) {
+					//if(r0==0) continue;
+					double step = TString(vstr[2]).ReplaceAll("x", "").Atof();
+					if(step<=1) continue;
+					for(double r=r0; r<=r1; r*=step) vtoEval.push_back(r);
+				}else{
+					double step = TString(vstr[2]).Atof();
+					if(step<=0) continue;
+					for(double r=r0; r<=r1; r+=step) vtoEval.push_back(r);
+				};
+			}else{
+				cout<<"ERROR: wrong format of "<<parname<<", should be sth like [1.2,2.0,x1.05] or [1.2,2.0,0.05]"<<endl; exit(1);
+			};
+		}else {cout<<"ERROR: wrong format of args of "<<parname<<":  \""<<tmpv[i]<<"\""<<endl; exit(1);}
+	}
+	std::sort(vtoEval.begin(), vtoEval.end());
+	vector<double>::iterator it;
+	it = std::unique(vtoEval.begin(), vtoEval.end());
+	vtoEval.resize(it - vtoEval.begin());
+		cout<<parname<<"_toEval"<<vtoEval.size()<<endl;
+	return vtoEval;
+}
 
 void processParameters(int argc, const char* argv[]){
 	vector<TString> allargs;
@@ -2260,6 +2375,8 @@ void processParameters(int argc, const char* argv[]){
 	tmpv = options["-vR"];
 	if( tmpv.size()==0 && bOnlyEvalCL_forVR) { cout<<"ERROR: args of -vR empty while bOnlyEvalCL_forVR=true"<<endl; exit(1); }
 	else{
+		vR_toEval = GetListToEval("-vR",tmpv);
+/*
 		for(int i=0; i<tmpv.size(); i++){
 			if(tmpv[i].IsFloat()) vR_toEval.push_back(tmpv[i].Atof());
 			else if(tmpv[i].BeginsWith("[") and tmpv[i].EndsWith("]")){
@@ -2288,39 +2405,12 @@ void processParameters(int argc, const char* argv[]){
 		vector<double>::iterator it;
 		it = std::unique(vR_toEval.begin(), vR_toEval.end());
 		vR_toEval.resize(it - vR_toEval.begin());
-	}
+*/	}
 
 	tmpv = options["-vM"];
 	if( scanMs and tmpv.size()==0) { cout<<"ERROR: args of -vM empty "<<endl; exit(1); }
 	else{
-		for(int i=0; i<tmpv.size(); i++){
-			if(tmpv[i].IsFloat()) vM_toEval.push_back(tmpv[i].Atof());
-			else if(tmpv[i].BeginsWith("[") and tmpv[i].EndsWith("]")){
-				tmpv[i].ReplaceAll("[","");tmpv[i].ReplaceAll("]","");	
-				vector<string> vstr;
-				StringSplit(vstr, tmpv[i].Data(), ",");
-				if(vstr.size()==3 and (TString(vstr[2]).IsFloat() or TString(vstr[2]).BeginsWith("x")) ){
-					double r0 = TString(vstr[0]).Atof(), r1=TString(vstr[1]).Atof();	
-					if(r0>r1 or r0<0) continue;
-					if(TString(vstr[2]).BeginsWith("x")) {
-						if(r0==0) continue;
-						double step = TString(vstr[2]).ReplaceAll("x", "").Atof();
-						if(step<=1) continue;
-						for(double r=r0; r<=r1; r*=step) vM_toEval.push_back(r);
-					}else{
-						double step = TString(vstr[2]).Atof();
-						if(step<=0) continue;
-						for(double r=r0; r<=r1; r+=step) vM_toEval.push_back(r);
-					};
-				}else{
-					cout<<"ERROR: wrong format of -vM, should be sth like [1.2,2.0,x1.05] or [1.2,2.0,0.05]"<<endl; exit(1);
-				};
-			}else {cout<<"ERROR: wrong format of args of -vM:  \""<<tmpv[i]<<"\""<<endl; exit(1);}
-		}
-		std::sort(vM_toEval.begin(), vM_toEval.end());
-		vector<double>::iterator it;
-		it = std::unique(vM_toEval.begin(), vM_toEval.end());
-		vM_toEval.resize(it - vM_toEval.begin());
+		vM_toEval = GetListToEval("-vM",tmpv);
 	}
 
 
@@ -2401,6 +2491,20 @@ void processParameters(int argc, const char* argv[]){
 	tmpv= options["--CF"];
 	for(int i=0; i<tmpv.size(); i++) CFsetting.push_back(tmpv[i]);
 
+	if(isWordInMap("--scanCvCf", options)) scanCvCf= true; 
+
+	tmpv = options["-vCv"];
+	if( scanCvCf and tmpv.size()==0) { cout<<"ERROR: args of -vCv empty "<<endl; exit(1); }
+	else{
+		vCv_toEval = GetListToEval("-vCv",tmpv);
+		sbinningCV = tmpv[0];
+	}
+	tmpv = options["-vCf"];
+	if( scanCvCf and tmpv.size()==0) { cout<<"ERROR: args of -vCf empty "<<endl; exit(1); }
+	else{
+		vCf_toEval = GetListToEval("-vCf",tmpv);
+		sbinningCF = tmpv[0];
+	}
 
 	printf("\n\n[ Summary of configuration in this job: ]\n");
 	if(sPhysicsModel!="StandardModelHiggs")cout<<" PhysicsModel:  "<<sPhysicsModel<<endl;

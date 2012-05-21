@@ -512,6 +512,7 @@ namespace lands{
 			vector<double> v_TG_maxUnc = cms_global->Get_v_TruncatedGaussian_maxUnc();
 			vector<double> v_GammaN = cms_global->Get_v_GammaN();
 			vector< vector<double> > v_paramsUnc = cms_global->Get_v_pdfs_floatParamsUnc();
+			vector< vector<double> > v_Pars = cms_global->Get_v_Pars();
 			vector<string> v_uncname = cms_global->Get_v_uncname();
 			vector<bool> v_uncFloatInFit= cms_global->Get_v_uncFloatInFit();
 			double maxunc;
@@ -641,25 +642,27 @@ namespace lands{
 						myMinuit->FixParameter(0);
 						continue;
 					}
-					if(cms_global->GetWorkSpaceVaried()->var(vsPOIsToBeFixed[i].first) != NULL){
-						// POIs can be only signal_strength or  some parameters in Workspace, e.g. MH 
-						for(int j=1; j<=npars; j++){
-							TString sname=v_uncname[j-1]; 
-							if(vsPOIsToBeFixed[i].first==sname) {
-								switch  (v_pdftype[j]){
+					bool inWorkSpace = false;
+					if(cms_global->GetWorkSpaceVaried()->var(vsPOIsToBeFixed[i].first) != NULL){ inWorkSpace=true;}
+						/////// POIs can be only signal_strength or  some parameters in Workspace, e.g. MH 
+					for(int j=1; j<=npars; j++){
+						TString sname=v_uncname[j-1]; 
+						if(vsPOIsToBeFixed[i].first==sname) {
+							switch  (v_pdftype[j]){
 
-									case typeBifurcatedGaussian:
-										myMinuit->mnparm(j, sname, vsPOIsToBeFixed[i].second, minuitStep, v_paramsUnc[j][3], v_paramsUnc[j][4], ierflg  );
-										break;
-									case typeFlat:
+								case typeBifurcatedGaussian:
+									myMinuit->mnparm(j, sname, vsPOIsToBeFixed[i].second, minuitStep, v_paramsUnc[j][3], v_paramsUnc[j][4], ierflg  );
+									break;
+								case typeFlat:
+									if(inWorkSpace){
 										if(v_paramsUnc[j][1]==0) break;
 										myMinuit->mnparm(j, sname, (vsPOIsToBeFixed[i].second - v_paramsUnc[j][3])/v_paramsUnc[j][1], minuitStep, 0, 1, ierflg  );
-										break;
-									default:
-										break;
-								}
-								myMinuit->FixParameter(j);
+									}else myMinuit->mnparm(j, sname, (vsPOIsToBeFixed[i].second - v_Pars[j][1])/(v_Pars[j][2]-v_Pars[j][1]), minuitStep, 0, 1, ierflg);
+									break;
+								default:
+									break;
 							}
+							myMinuit->FixParameter(j);
 						}
 					}
 				}
@@ -778,6 +781,8 @@ namespace lands{
 					Double_t errUp1, errLow1, errParab1=0, gcor1=0; 
 					// POIs can be only signal_strength or  some parameters in Workspace, e.g. MH 
 					for(int p=1; p<cms_global->POIs().size(); p++) { // 0 is always signal strength
+					bool inWorkSpace = false;
+					if(cms_global->GetWorkSpaceVaried()->var(cms_global->POIs()[p].name) != NULL){ inWorkSpace=true;}
 						for(int j=1; j<=npars; j++){
 							TString sname=v_uncname[j-1]; 
 							if(cms_global->POIs()[p].name ==sname) {
@@ -790,9 +795,15 @@ namespace lands{
 									errLow1 = -poierr;
 								}
 								if(v_pdftype[j]==typeFlat){
-									poi = v_paramsUnc[j][3] + v_paramsUnc[j][1] * poi;
-									errUp1 = v_paramsUnc[j][1] * errUp1;
-									errLow1 = v_paramsUnc[j][1] * errLow1;
+									if(inWorkSpace){
+										poi = v_paramsUnc[j][3] + v_paramsUnc[j][1] * poi;
+										errUp1 = v_paramsUnc[j][1] * errUp1;
+										errLow1 = v_paramsUnc[j][1] * errLow1;
+									}else{
+										poi = v_Pars[j][1] + (v_Pars[j][2] - v_Pars[j][1]) * poi;
+										errUp1 = (v_Pars[j][2]-v_Pars[j][1] )* errUp1;
+										errLow1 = (v_Pars[j][2]-v_Pars[j][1] )* errLow1;
+									}
 								}
 								cms_global->setPOI(p, poi, errUp1, errLow1);
 								if(debug)cout<<"DELETEME "<<sname<<": errUp="<<errUp1<<" errLow="<<errLow1<<" errParab="<<errParab1<<" gcor="<<gcor1<<endl;
