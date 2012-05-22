@@ -186,6 +186,7 @@ vector<double> vCv_toEval;
 vector<double> vCf_toEval;
 TString sbinningCV, sbinningCF;
 
+double InjectingSignalStrength = 1;
 
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
@@ -332,7 +333,7 @@ int main(int argc, const char*argv[]){
 	bConstructAsimovbFromNominal = true;
 	if(method == "Asymptotic") bConstructAsimovbFromNominal = false;
 	cms->ConstructAsimovData(0, bConstructAsimovbFromNominal); // b-only asimov 
-	cms->ConstructAsimovData(1, bConstructAsimovsbFromFit); // sb asimov
+	cms->ConstructAsimovData(1, bConstructAsimovsbFromFit, InjectingSignalStrength); // sb asimov
 	if(dataset == "asimov_b")cms->UseAsimovData(0);
 	else if(dataset == "asimov_sb")cms->UseAsimovData(1);
 
@@ -1312,6 +1313,7 @@ int main(int argc, const char*argv[]){
 					for(int j=0; j<vCf_toEval.size(); j++){
 						if(debug)watch.Start();
 						double testm = vCf_toEval[j];
+						if(testm==0 and testr==0) continue;
 						_countPdfEvaluation = 0;
 						cms_global->SetPOItoBeFixed("CV",testr);
 						cms_global->SetPOItoBeFixed("CF",testm);
@@ -2086,11 +2088,12 @@ void processParameters(int argc, const char* argv[]){
 	if( tmpv.size()!=1 ) { jobname = (datacards.size()>0?datacards[0]:"")+"_"+method; }
 	else jobname = tmpv[0];
 
-	tmpv = options["-D"]; if(tmpv.size()!=1) tmpv = options["--dataset"];
-	if( tmpv.size()!=1 ) { dataset = "data_obs"; }
+	tmpv = options["-D"]; if(tmpv.size()==0) tmpv = options["--dataset"];
+	if( tmpv.size() ==0 ) { dataset = "data_obs"; }
 	else { 
 		dataset = tmpv[0];
 		if(dataset!="data_obs" and dataset!="asimov_sb" and dataset!="asimov_b"){cout<<"ERROR: dataset option must be one of data_obs, asimov_sb and asimov_b"<<endl; exit(0);}
+		if(dataset=="asimov_sb" and tmpv.size()==2) InjectingSignalStrength = tmpv[1].Atof();
 	}
 	tmpv = options["--PhysicsModel"];
 	if( tmpv.size()!=1 ) { sPhysicsModel = "StandardModelHiggs"; }
@@ -2505,6 +2508,7 @@ void processParameters(int argc, const char* argv[]){
 		vCf_toEval = GetListToEval("-vCf",tmpv);
 		sbinningCF = tmpv[0];
 	}
+
 
 	printf("\n\n[ Summary of configuration in this job: ]\n");
 	if(sPhysicsModel!="StandardModelHiggs")cout<<" PhysicsModel:  "<<sPhysicsModel<<endl;
@@ -3345,7 +3349,7 @@ void PrintHelpMessage(){
 	printf("--PhysicsModel arg (=StandardModelHiggs) could be StandardModelHiggs, ChargedHiggs, CvCfHiggs, C5Higgs  \n");
 	printf("-n [ --name ] arg                     Name of the job,  default is \"datacard\"+\"method\" \n"); 
 	printf("-d [ --datacards ] args               Datacard files,  can contain \"*, ?\" \n"); 
-	printf("-D [ --dataset ] arg (=data_obs)      Dataset for observed limit,  data_obs,  asimov_b, asimov_sb \n"); 
+	printf("-D [ --dataset ] arg (=data_obs)      Dataset for observed limit,  data_obs, asimov_b, \"asimov_sb [mu]\"\n"); 
 	printf("-M [ --method ] arg                   Method to extract upper limit. Supported methods are: Bayesian, FeldmanCousins, Hybrid, ProfiledLikelihood \n"); 
 	printf("-m [ --mass ] arg                     input higgs mass \n"); 
 	printf("--doExpectation arg (=0)              i.e calc expected bands and mean/median values     \n"); 
@@ -3437,7 +3441,10 @@ void PrintHelpMessage(){
 	printf("--POIs args (='NAME InitVal Min Max') Specify other POIs (like MH), which should be in the input workspace\n");
 	printf("--Couplings (='ggH:[0.9,0,5]:*|ggH,hzz4l_4mu|ggH,hzz2l2nu_ee|ggH  parName:[initVal,min,max]:FinalState|ProductionMode')\n");
 	printf("--smbr arg (=FilePath)                for SMHiggsBuilder, path of the file containing SM Br\n");
-	printf("--CV init min max --CF init min max   settings for CvCfHiggs\n");
+	printf("--CV init min max --CF init min max   settings for CvCfHiggs,  i.e. fit range\n");
+	printf("--scanCvCf                            to be used with -vCv, -vCf\n");
+	printf("-vCv/-vCf args                        sth like \"1.2 1.3 1.4 [1.5,3.0,x1.05] [3.0,10.0,0.5]\", for scanning CV vs. CF\n");
+	
 
 	printf(" \n");
 	printf("------------------some comand lines-----------------------------------------------\n");

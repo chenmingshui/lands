@@ -73,8 +73,8 @@ namespace lands{
 			void AddChannel(double num_expected_signal, vector<double> num_expected_bkgs);
 			void AddChannel(std::string channel_name, double num_expected_signal, vector<double> num_expected_bkgs);
 			void AddChannel(vector<double> num_expected_yields, int signal_processes=1);
-			void AddChannel(std::string channel_name, vector<double> num_expected_yields, int signal_processes=1);
-			void AddChannel(std::string channel_name, vector<double> num_expected_signals, vector<double> num_expected_bkgs);
+			void AddChannel(std::string channel_name, vector<double> num_expected_yields, int signal_processes=1, int decaymode=-1);
+			void AddChannel(std::string channel_name, vector<double> num_expected_signals, vector<double> num_expected_bkgs, int decaymode=-1);
 
 			void TagUncertaintyFloatInFit(string uncname, bool b);
 			void TagUncertaintyFloatInFit(int uncIndex, bool b);
@@ -232,7 +232,7 @@ namespace lands{
 			const vector< RooAbsData* >& Get_v_pdfs_roodataset_toy(){return v_pdfs_roodataset_toy;} // in each channel, it has a list of events
 			const vector< RooAbsData* >& Get_v_pdfs_roodataset_real(){return v_pdfs_roodataset_real;} // in each channel, it has a list of events
 			const vector< RooAbsData* >& Get_v_pdfs_roodataset_asimovb(){return v_pdfs_roodataset_asimovb;} // in each channel, it has a list of events
-			void ConstructAsimovData(int b, bool nominal=true);
+			void ConstructAsimovData(int b, bool nominal=true, double injectMu =1.);
 			const vector< RooAbsData* >& Get_v_pdfs_roodataset_asimovsb(){return v_pdfs_roodataset_asimovsb;} // in each channel, it has a list of events
 			const vector< double >& Get_v_pdfs_floatParamsVaried(){return v_pdfs_floatParamsVaried;}
 			const vector< vector< double > >& Get_v_pdfs_floatParamsUnc(){ return v_pdfs_floatParamsUnc;}
@@ -258,7 +258,7 @@ namespace lands{
 			void Set_vvvv_pdfs_ChProcSetParVals(const VChannelVSampleVUncertaintyVParameter& vvvv_pdfs){vvvv_pdfs_ChProcSetParVals=vvvv_pdfs;}
 
 			void AddChannel(string channel_name, vector<string> vprocname , RooRealVar* observable, vector<RooAbsPdf*> sigPdfs, vector<double> sigNorms, vector<RooAbsArg*> vsExtraNorm, 
-				       	vector<RooAbsPdf*> bkgPdfs, vector<double> bkgNorms, vector<RooAbsArg*> vbExtraNorm);
+				       	vector<RooAbsPdf*> bkgPdfs, vector<double> bkgNorms, vector<RooAbsArg*> vbExtraNorm, int decaymode=-1);
 			// need to add names of each parameter .... 
 			double EvaluateLnQ(int ch, int dataOrToy); // for Likelihood ratio
 			double EvaluateChi2(double *par, vector< vector< vector<float> > >& vvv_cachPdfValuestmp, int bUseBestEstimateToCalcQ=1);          // for Chi2
@@ -366,6 +366,7 @@ namespace lands{
 			VDChannel v_data; // could be pseudo-data for bands
 			VDChannel v_data_real; // real data, not changed during entire run 
 			VDChannel v_data_asimovb; // asimov data b only
+			VDChannel v_data_asimovsb; // asimov data mu*s + b 
 			VChannelVSample vv_exp_sigbkgs;
 			VChannelVSample vv_exp_sigbkgs_scaled;
 			VChannelVSample vv_randomized_sigbkgs;   

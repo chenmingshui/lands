@@ -407,24 +407,28 @@ namespace lands{
     void CountingModel::AddChannel(vector<double> num_expected_yields, int signal_processes){
         AddChannel("",  num_expected_yields);
     }
-    void CountingModel::AddChannel(string channel_name, vector<double> num_expected_yields, int signal_processes){
+    void CountingModel::AddChannel(string channel_name, vector<double> num_expected_yields, int signal_processes, int decaymode){
         if(_debug>=100)cout<<"AddChannel: nsigpro = "<<signal_processes<<endl;
         if(signal_processes<=0)  {cout<<"ERROR: you add a channel with number of signal_processes <=0 "<<endl; exit(0);}
         if(num_expected_yields.size()<=signal_processes){cout<<"ERROR: you add a channel with no background process"<<endl; exit(0);}
         vector<double> num_expected_signals(&num_expected_yields[0], &num_expected_yields[signal_processes]); 
         vector<double> num_expected_bkgs(&num_expected_yields[signal_processes], &num_expected_yields[num_expected_yields.size()]);
         if(_debug>=100)cout<<"channel "<<channel_name<<": tot.size="<<num_expected_yields.size()<<" bkg.size="<<num_expected_bkgs.size()<<endl;
-        AddChannel(channel_name, num_expected_signals,  num_expected_bkgs);
+        AddChannel(channel_name, num_expected_signals,  num_expected_bkgs, decaymode);
     }
-    void CountingModel::AddChannel(string channel_name, vector<double> num_expected_signals, vector<double> num_expected_bkgs){
+    void CountingModel::AddChannel(string channel_name, vector<double> num_expected_signals, vector<double> num_expected_bkgs, int decaymodeFromOriginalCard){
         int signal_processes = num_expected_signals.size();
         int bkg_processes = num_expected_bkgs.size();
         if(signal_processes<=0)  {cout<<"ERROR: you add a channel with number of signal_processes <=0 "<<endl; exit(0);}
         if(bkg_processes<=0)  {cout<<"ERROR: you add a channel with number of bkg_processes <=0 "<<endl; exit(0);}
         v_sigproc.push_back(signal_processes);
 
-	int dm=DecayMode(channel_name);
-	if(dm==0) dm=_decayMode;
+	int dm;
+	if(decaymodeFromOriginalCard>0){
+		dm=decaymodeFromOriginalCard;}else{
+			dm=DecayMode(channel_name);
+			if(dm==0) dm=_decayMode;}
+
         if(channel_name==""){
             char tmp[256];
             sprintf(tmp, "channel_%d", int(v_channelname.size()));
@@ -1940,16 +1944,22 @@ If we need to change it later, it will be easy to do.
 		    }
 	    }else if(b==1){
 		    if(_debug)cout<<"		Get Asimov dataset: sig+bkg hypothesis"<<endl;
-		    for(int i=0; i<v_data.size(); i++){
-			    vtmpdata[i]=0;
-			    for(int b=0; b<vv_exp_sigbkgs.at(i).size(); b++){
-				    vtmpdata[i]+= vv_exp_sigbkgs.at(i).at(b);
+		    if(v_data_asimovsb.size()>0) {
+			    return v_data_asimovsb;
+		    }else{
+
+			    for(int i=0; i<v_data.size(); i++){
+				    vtmpdata[i]=0;
+				    for(int b=0; b<vv_exp_sigbkgs.at(i).size(); b++){
+					    vtmpdata[i]+= vv_exp_sigbkgs.at(i).at(b);
+				    }
 			    }
+			    v_data_asimovsb = vtmpdata;
 		    }
 	    }
 	    return vtmpdata;
     }
-    void CountingModel::ConstructAsimovData(int b, bool nominal){// for pdf shape channels
+    void CountingModel::ConstructAsimovData(int b, bool nominal, double injectMu){// for pdf shape channels
 	    
 	    if(b==0){
 		    // FIXME, need to provide two options to construct asimov dataset,  nominal and fitted
@@ -2037,6 +2047,14 @@ If we need to change it later, it will be easy to do.
 			    }
 		    }
 	    }else if(b==1){
+		    v_data_asimovsb = v_data;
+		    for(unsigned int i=0; i<v_sigproc.size(); i++){
+			    v_data_asimovsb[i]=0;
+			    for(unsigned int b=0; b<vv_exp_sigbkgs.at(i).size(); b++){
+				    v_data_asimovsb[i]+= vv_exp_sigbkgs.at(i).at(b)*(b<v_sigproc[i]?injectMu:1.);
+			    }
+		    }
+
 		    v_pdfs_roodataset_asimovsb.clear();
 		    for(int i=0; i<v_pdfs_sb.size(); i++){
 			    //RooRealVar * observable = _w->var(v_pdfs_observables[i]);
@@ -2055,7 +2073,7 @@ If we need to change it later, it will be easy to do.
 			    for(int j=0; j<rdh_asimovsb->numEntries(); j++){
 				    RooArgSet rastmp = *rdh_asimovsb->get(j);
 				    double wtmp = rdh_asimovsb->weight();
-				    rds_asimovsb->add(rastmp, wtmp);
+				    rds_asimovsb->add(rastmp, wtmp*injectMu);
 				    if(_debug && j==0)cout<<" DELETEME 3 "<<j<<" weight = "<<rdh_asimovsb->weight()<<endl;	
 			    }
 			    if(_debug>=10){
@@ -2078,14 +2096,8 @@ If we need to change it later, it will be easy to do.
 		    v_pdfs_roodataset_tmp = v_pdfs_roodataset_asimovb;
 	    }else if(b==1){
 		    cout<<"		Using Asimov dataset: sig+bkg hypothesis"<<endl;
-		    for(int i=0; i<v_data.size(); i++){
-			    v_data[i]=0;
-			    v_data_real[i]=0;
-			    for(int b=0; b<vv_exp_sigbkgs.at(i).size(); b++){
-				    v_data[i]+= vv_exp_sigbkgs.at(i).at(b);
-				    v_data_real[i]+= vv_exp_sigbkgs.at(i).at(b);
-			    }
-		    }
+		    v_data = Get_AsimovData(1);
+		    v_data_real = Get_AsimovData(1);
 		    v_pdfs_roodataset = v_pdfs_roodataset_asimovsb;
 		    v_pdfs_roodataset_tmp = v_pdfs_roodataset_asimovsb;
 
@@ -2104,7 +2116,7 @@ If we need to change it later, it will be easy to do.
 	    for(int ch=0; ch<cms1->NumOfChannels(); ch++){
 		    //cms.AddChannel(cms1->GetExpectedNumber(ch,0),cms1->GetExpectedNumber(ch,1), cms1->GetExpectedNumber(ch,2), cms1->GetExpectedNumber(ch,3),
 		    //		cms1->GetExpectedNumber(ch,4), cms1->GetExpectedNumber(ch, 5), cms1->GetExpectedNumber(ch, 6));	
-		    cms->AddChannel(cms1->GetChannelName(ch), cms1->Get_v_exp_sigbkgs(ch), cms1->GetNSigprocInChannel(ch));
+		    cms->AddChannel(cms1->GetChannelName(ch), cms1->Get_v_exp_sigbkgs(ch), cms1->GetNSigprocInChannel(ch), cms1->Get_v_channelDecayMode()[ch]);
 		    for(int isamp=0; isamp<tmp_vvv_pdftype.at(ch).size(); isamp++){
 			    for(int iunc=0; iunc<tmp_vvv_pdftype.at(ch).at(isamp).size(); iunc++){
 				    if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeLogNormal || tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeTruncatedGaussian){
@@ -2150,7 +2162,7 @@ If we need to change it later, it will be easy to do.
 	    for(int ch=0; ch<cms2->NumOfChannels(); ch++){
 		    int newch = cms->NumOfChannels(); // like ++
 		    if(cms2->GetDebug()) cout<<"Adding ch = "<<newch<<"th channel from "<<cms2->GetModelName()<<endl;
-		    cms->AddChannel(cms2->GetChannelName(ch), cms2->Get_v_exp_sigbkgs(ch), cms2->GetNSigprocInChannel(ch));
+		    cms->AddChannel(cms2->GetChannelName(ch), cms2->Get_v_exp_sigbkgs(ch), cms2->GetNSigprocInChannel(ch), cms2->Get_v_channelDecayMode()[ch]);
 		    if(cms2->GetDebug()) cout<<"now has total "<<cms->NumOfChannels()<<endl;
 		    for(int isamp=0; isamp<tmp_vvv_pdftype.at(ch).size(); isamp++){
 			    for(int iunc=0; iunc<tmp_vvv_pdftype.at(ch).at(isamp).size(); iunc++){
@@ -2232,7 +2244,7 @@ If we need to change it later, it will be easy to do.
 					    }
 				    }
 				    RooRealVar*x=w->var(vobs[ch]);
-				    cms->AddChannel(vchnames[ch], vvprocnames[ch], x, vs, vsnorm,vsExtraNorm, vb, vbnorm, vbExtraNorm);
+				    cms->AddChannel(vchnames[ch], vvprocnames[ch], x, vs, vsnorm,vsExtraNorm, vb, vbnorm, vbExtraNorm, ms[m]->Get_v_pdfs_channelDecayMode()[ch]);
 				    if(cms2->GetDebug()) cout<<"  AddChannel "<<endl;
 				    cms->AddObservedDataSet(vchnames[ch], vrds[ch]);
 				    if(cms2->GetDebug()) cout<<"  AddObservedDataSet"<<endl;
@@ -2372,15 +2384,19 @@ If we need to change it later, it will be easy to do.
 
     // for parametric shapes
     void CountingModel::AddChannel(string channel_name, vector<string> vvprocnames ,RooRealVar* observable, vector<RooAbsPdf*> sigPdfs, vector<double> sigNorms, vector<RooAbsArg*> vsExtraNorm,
-		    vector<RooAbsPdf*> bkgPdfs, vector<double> bkgNorms, vector<RooAbsArg*> vbExtraNorm){
+		    vector<RooAbsPdf*> bkgPdfs, vector<double> bkgNorms, vector<RooAbsArg*> vbExtraNorm, int decaymodeFromOriginalCard){
 	    int signal_processes = sigPdfs.size();
 	    int bkg_processes = bkgPdfs.size();
 	    if(signal_processes<=0)  {cout<<"ERROR: you add a channel with number of signal_processes <=0 "<<endl; exit(0);}
 	    if(bkg_processes<=0)  {cout<<"ERROR: you add a channel with number of bkg_processes <=0 "<<endl; exit(0);}
 	    v_pdfs_sigproc.push_back(signal_processes);
 
-	    int dm=DecayMode(channel_name);
-		if(dm==0) dm=_decayMode;
+	    int dm;
+	    if(decaymodeFromOriginalCard>0){
+		    dm=decaymodeFromOriginalCard;}else{
+			    dm=DecayMode(channel_name);
+			    if(dm==0) dm=_decayMode;}
+
 	    if(channel_name==""){
 		    char tmp[256];
 		    sprintf(tmp, "channel_%d", int(v_pdfs_channelname.size()));
@@ -4032,7 +4048,7 @@ If we need to change it later, it will be easy to do.
 	    }
 
 	if(s >= nsig) return bs; // bkg process 
-	    double scale = 1.;
+	    double scale = -9e10;
   	
 	    if(dm==decayHWW or dm==decayHZZ){
 		    if(pm==productionGGH or pm==productionTTH) scale=(cv*cv/_GammaTot*cf*cf);
@@ -4068,6 +4084,10 @@ If we need to change it later, it will be easy to do.
 	    }
 
 	    if(_debug>=100)cout<<" DEBUG CVCF dm="<<dm<<" pm="<<pm<<" scale="<<scale<<endl;
+	    if(scale<-8e10) { 
+			cout<<" ERROR: there is a ch/proc "<<c<<"/"<<s<<"  is not coupling to Cv or Cf"<<endl;
+		cout<<"pm="<<pm<<" dm="<<dm<<endl;
+		 exit(1); }
 
 	    return bs*scale;
     }
@@ -4168,6 +4188,10 @@ If we need to change it later, it will be easy to do.
 			    SetFlatParInitVal("CV", pcv.value);
 			    AddUncertainty(v_channelname[c], p, pcf.minV, pcf.maxV, typeFlat, "CF");
 			    SetFlatParInitVal("CF", pcf.value);
+
+			    if(_debug) {
+				    cout<<" CHECKING  c="<<c<<" p="<<p<<": "<<v_channelname[c]<<"/"<<vv_procname[c][p]<<" --> "<< "dm="<<v_channelDecayMode[c]<<endl;
+			    }
 		    }
 	    }
 	    //roofit part
@@ -4177,6 +4201,9 @@ If we need to change it later, it will be easy to do.
 			    SetFlatParInitVal("CV", pcv.value);
 			    AddUncertaintyOnShapeNorm(v_pdfs_channelname[c], p, pcf.minV, pcf.maxV, typeFlat, "CF");
 			    SetFlatParInitVal("CF", pcf.value);
+			    if(_debug) {
+				    cout<<" CHECKING  c="<<c<<" p="<<p<<": "<<v_pdfs_channelname[c]<<"/"<<vv_pdfs_procname[c][p]<<" --> "<< "dm="<<v_channelDecayMode[c]<<endl;
+			    }
 		    }
 	    }
 	    //  need some more sanity checks:
