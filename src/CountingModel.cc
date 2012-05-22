@@ -168,6 +168,8 @@ namespace lands{
 	v_flatparId.clear();
 
 	_GammaTot = 1;
+	_CvCf_gg = 1;
+	_CvCf_zg = 1;
 
 	_MH_i = -1;
     }
@@ -4057,30 +4059,8 @@ If we need to change it later, it will be easy to do.
 		    if(pm==productionGGH or pm==productionTTH) scale=(cf*cf/_GammaTot*cf*cf);
 		    else scale=(cv*cv/_GammaTot*cf*cf);
 	    }else if(dm==decayHGG){
-		    double m = 0;
-		    if( _w_varied->var("MH") ) {
-			    m=v_Pars[_MH_i][0];
-		    }else{
-			    m = _HiggsMass;
-		    }	
-		    if(m<=0){
-			    cout<<"Error : in CvCf_Gamma, while higgs mass = "<<m<<endl;
-			    exit(1);
-		    }
-
-		    double cvcf_gamma = 0.;
-		    //imported from  combine
-		    //## Coefficient for couplings to photons
-		    //#      arXiv 1202.3144v2, below eq. 2.6:  2/9*cF - 1.04*cV, and then normalize to SM 
-		    //#      FIXME: this should be replaced with the proper MH dependency
-		    //#self.modelBuilder.factory_("expr::CvCf_cgamma(\"-0.271*@0+1.27*@1\",CF,CV)")
-		    //#
-		    //# Taylor series around MH=125 to (MH-125)^2 in Horner polynomial form
-		    cvcf_gamma = v_Pars[_Cv_i][0]*(1.2259236555204187 + (0.00216740776385032 - 0.000013693587140986294*m)*m) +
-			    v_Pars[_Cf_i][0]*(-0.22592365552041888 + (-0.002167407763850317 + 0.000013693587140986278*m)*m);
-
-		    if(pm==productionGGH or pm==productionTTH) scale=(cvcf_gamma*cvcf_gamma/_GammaTot*cf*cf);
-		    else scale=(cvcf_gamma*cvcf_gamma/_GammaTot*cv*cv);
+		    if(pm==productionGGH or pm==productionTTH) scale=(_CvCf_gg*_CvCf_gg/_GammaTot*cf*cf);
+		    else scale=(_CvCf_gg*_CvCf_gg/_GammaTot*cv*cv);
 	    }
 
 	    if(_debug>=100)cout<<" DEBUG CVCF dm="<<dm<<" pm="<<pm<<" scale="<<scale<<endl;
@@ -4141,6 +4121,10 @@ If we need to change it later, it will be easy to do.
 	    // g_V'/g_V = Cv*Cv    
 	    // g_Tot'/g_Tot =  (g_V' + g_F')/g_Tot = (Cv*Cv*g_V + Cf*Cf*g_F)/g_Tot =  Cv*Cv*br_V + Cf*Cf*br_F
 
+	    // if g_Tot' = g_V' + g_F' + g_GG' +g_ZG' 
+	    //  g_GG'/g_GG =  |a*Cv + b*Cf|^2 
+	    //  
+
 	    //  Speed can be improved here to cache 
 	    //  _Cv  _Cf  mH  gammaTot  gammaV  gammaF
 	    if(_PhysicsModel==typeCvCfHiggs){
@@ -4155,19 +4139,28 @@ If we need to change it later, it will be easy to do.
 			    exit(1);
 		    }
 
+		    //imported from  combine
+		    //## Coefficient for couplings to photons
+		    //#      arXiv 1202.3144v2, below eq. 2.6:  2/9*cF - 1.04*cV, and then normalize to SM 
+		    //#      FIXME: this should be replaced with the proper MH dependency
+		    //#self.modelBuilder.factory_("expr::CvCf_cgamma(\"-0.271*@0+1.27*@1\",CF,CV)")
+		    //#
+		    //# Taylor series around MH=125 to (MH-125)^2 in Horner polynomial form
+		    _CvCf_gg = v_Pars[_Cv_i][0]*(1.2259236555204187 + (0.00216740776385032 - 0.000013693587140986294*m)*m) +
+			    v_Pars[_Cf_i][0]*(-0.22592365552041888 + (-0.002167407763850317 + 0.000013693587140986278*m)*m);
+
+		    //_CvCf_zg = ..... FIXME
+
 		    //cout<<"DEBUG CVCF 4"<<endl;
 		    double gammaV = _smhb->br(decayHWW, m) + _smhb->br(decayHZZ,m);
 		    //cout<<"DEBUG CVCF 5 gammaV = "<<gammaV<<endl;
 		    double gammaF = _smhb->br(decayHBB, m) + _smhb->br(decayHCC,m)
-			    +_smhb->br(decayHGluGlu,m)+_smhb->br(decayHTT,m);
-		    //+_smhb->br(decayHSS,m)+_smhb->br(decayHMM,m);
+			    +_smhb->br(decayHGluGlu,m)+_smhb->br(decayHTT,m)
+			    +_smhb->br(decayHSS,m)+_smhb->br(decayHMM,m);
 
 		    //cout<<"DEBUG CVCF 6 gammaF = "<<gammaF<<endl;
-		    //		cout<<"DEBUG CVCF  _Cv_i = "<<_Cv_i<<endl;
-		    //		cout<<"DEBUG CVCF  _Cf_i = "<<_Cf_i<<endl;
-		    //		cout<<"DEBUG CVCF  v_Pars.size = "<<v_Pars.size()<<endl;
 		    if(_Cv_i <0 or _Cf_i<0) {cout<<"ERROR _Cv_i or _Cf_i not set "<<endl; exit(1);} 
-		    _GammaTot = v_Pars[_Cv_i][0]*v_Pars[_Cv_i][0]*gammaV +  v_Pars[_Cf_i][0]*v_Pars[_Cf_i][0]*gammaF; 
+		    _GammaTot = v_Pars[_Cv_i][0]*v_Pars[_Cv_i][0]*gammaV +  v_Pars[_Cf_i][0]*v_Pars[_Cf_i][0]*gammaF + _CvCf_gg*_smhb->br(decayHGG, m); 
 		    //cout<<"DEBUG CVCF 7: _GammaTot="<<_GammaTot<< endl;
 		    return _GammaTot;
 

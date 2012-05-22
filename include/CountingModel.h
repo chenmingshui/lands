@@ -540,6 +540,8 @@ namespace lands{
 			SMHiggsBuilder *_smhb;
 			double _HiggsMass; // when no "MH" parameter, then set it to model 
 			double _GammaTot; // for recalc total decay width when coupling changes 
+			double _CvCf_gg; // for recalc total decay width when coupling changes 
+			double _CvCf_zg; // for recalc total decay width when coupling changes 
 			double *_pardm; // to replace vrdm in FluctuatedNumbers
 
 			int _MH_i;
