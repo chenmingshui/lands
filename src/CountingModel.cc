@@ -4130,8 +4130,19 @@ If we need to change it later, it will be easy to do.
     }
 
     double CountingModel::CalcGammaTot(){
-//  Speed can be improved here to cach  
-//  _Cv  _Cf  mH  gammaTot  gammaV  gammaF
+
+	    //	g_Tot = g_V + g_F + g_GG + g_ZG   (g_F includes H->2 fermions and H->gluongluon )
+	    //   but since SM BR g_GG and g_ZG are at the level of sub-percent contribution , so we ignor them as well as because the complexity of computing them 
+	    //  also  H->mumu and H->strangestrange are discarded in the sum as the contribution is at the level of 1E-4  
+	    //  so g_Tot = g_V + g_F
+
+	    //  br_V = g_V/g_Tot 
+	    // for instance,  scale of br_V  =   br_V' / br_V =  (g_V'/g_Tot') / (g_V/g_Tot) = (g_V'/g_V) / (g_Tot'/g_Tot) 
+	    // g_V'/g_V = Cv*Cv    
+	    // g_Tot'/g_Tot =  (g_V' + g_F')/g_Tot = (Cv*Cv*g_V + Cf*Cf*g_F)/g_Tot =  Cv*Cv*br_V + Cf*Cf*br_F
+
+	    //  Speed can be improved here to cache 
+	    //  _Cv  _Cf  mH  gammaTot  gammaV  gammaF
 	    if(_PhysicsModel==typeCvCfHiggs){
 		    double m = 0;
 		    if( _w_varied->var("MH") ) {
@@ -4144,17 +4155,20 @@ If we need to change it later, it will be easy to do.
 			    exit(1);
 		    }
 
-//cout<<"DEBUG CVCF 4"<<endl;
+		    //cout<<"DEBUG CVCF 4"<<endl;
 		    double gammaV = _smhb->br(decayHWW, m) + _smhb->br(decayHZZ,m);
-//cout<<"DEBUG CVCF 5 gammaV = "<<gammaV<<endl;
-		    double gammaF = _smhb->br(decayHBB, m) + _smhb->br(decayHCC,m)+_smhb->br(decayHGluGlu,m)+_smhb->br(decayHTT,m)+_smhb->br(decayHTopTop,m);
-//cout<<"DEBUG CVCF 6 gammaF = "<<gammaF<<endl;
-//		cout<<"DEBUG CVCF  _Cv_i = "<<_Cv_i<<endl;
-//		cout<<"DEBUG CVCF  _Cf_i = "<<_Cf_i<<endl;
-//		cout<<"DEBUG CVCF  v_Pars.size = "<<v_Pars.size()<<endl;
+		    //cout<<"DEBUG CVCF 5 gammaV = "<<gammaV<<endl;
+		    double gammaF = _smhb->br(decayHBB, m) + _smhb->br(decayHCC,m)
+			    +_smhb->br(decayHGluGlu,m)+_smhb->br(decayHTT,m);
+		    //+_smhb->br(decayHSS,m)+_smhb->br(decayHMM,m);
+
+		    //cout<<"DEBUG CVCF 6 gammaF = "<<gammaF<<endl;
+		    //		cout<<"DEBUG CVCF  _Cv_i = "<<_Cv_i<<endl;
+		    //		cout<<"DEBUG CVCF  _Cf_i = "<<_Cf_i<<endl;
+		    //		cout<<"DEBUG CVCF  v_Pars.size = "<<v_Pars.size()<<endl;
 		    if(_Cv_i <0 or _Cf_i<0) {cout<<"ERROR _Cv_i or _Cf_i not set "<<endl; exit(1);} 
 		    _GammaTot = v_Pars[_Cv_i][0]*v_Pars[_Cv_i][0]*gammaV +  v_Pars[_Cf_i][0]*v_Pars[_Cf_i][0]*gammaF; 
-//cout<<"DEBUG CVCF 7: _GammaTot="<<_GammaTot<< endl;
+		    //cout<<"DEBUG CVCF 7: _GammaTot="<<_GammaTot<< endl;
 		    return _GammaTot;
 
 	    }else if(_PhysicsModel==typeC5Higgs){

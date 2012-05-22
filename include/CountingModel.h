@@ -48,7 +48,7 @@ namespace lands{
 	
 	enum enumPhysicsModel {typeModelBegin=0,typeStandardModel=1, typeChargedHiggs=2, typeCvCfHiggs=3, typeC5Higgs=4, typeModelEnd};
 
-	enum enumDecayMode {decayHZZ=11, decayHWW=10, decayHTT=2, decayHBB=1, decayHGG=8, decayHZG=9, decayHCC=5, decayHTopTop=6, decayHGluGlu=7}; // add more later
+	enum enumDecayMode {decayHZZ=11, decayHWW=10, decayHTT=2, decayHBB=1, decayHGG=8, decayHZG=9, decayHCC=5, decayHTopTop=6, decayHGluGlu=7, decayHSS=4, decayHMM=3}; // add more later
 	enum enumProductionMode {productionGGH=1, productionVH=2, productionQQH=3, productionTTH=4};
 	struct structPOI {
 		TString name;
