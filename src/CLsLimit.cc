@@ -295,7 +295,7 @@ namespace lands{
 									// for coupling
 									// check channel name, process name, parameter name:   -->  manipulate them 
 									// three places:  here, fluctuateNumbers, EvaluateChi2 for parametric shapes 
-									if(cms_global->GetPhysicsModel()==typeCvCfHiggs) break;
+									if(cms_global->GetPhysicsModel()==typeCvCfHiggs or cms_global->GetPhysicsModel()==typeC5Higgs) break;
 									bs*=(*uncpars + (*(uncpars+1) - *uncpars)*ran);
 									
 									break;
@@ -309,6 +309,9 @@ namespace lands{
 
 					if(cms_global->GetPhysicsModel() == typeCvCfHiggs) {
 						bs = cms_global->ScaleCvCfHiggs(1, cms_global->Get_v_channelDecayMode()[c], cms_global->Get_vv_productionMode()[c][s], c, s, bs, par);
+					}
+					if(cms_global->GetPhysicsModel() == typeC5Higgs) {
+						bs = cms_global->ScaleCXHiggs(1, cms_global->Get_v_channelDecayMode()[c], cms_global->Get_vv_productionMode()[c][s], c, s, bs, par);
 					}
 					vv_cachCountingParts[c][s]=bs;
 				}else {
@@ -462,6 +465,7 @@ namespace lands{
 		if(model == 101) UseMinos = 1; // PL approximation method using Minos ....  without migrad
 		if(model == 1001) UseMinos = 2; // PL approximation method using Minos ....  with migrad 
 		if(model == 201 || model==202) UseMinos = 2; // PL approximation method using Minos ....  with migrad   allowing negative mu
+		if(model == 3 and cms_global->POIs().size()>1 and cms_global->GetErrEstAlgo()=="Minos") UseMinos=2;
 
 		double minuitStep = 0.1;
 
@@ -767,7 +771,7 @@ namespace lands{
 			Double_t amin,edm,errdef;
 			Int_t nvpar,nparx,icstat;
 			Double_t errUp, errLow, errParab=0, gcor=0; 
-			if(model==101 or model==102 or model == 202){
+			if(model==101 or model==102 or model == 202 or (model==3 and cms_global->POIs().size()>1)){
 				myMinuit->mnstat(amin,edm,errdef,nvpar,nparx,icstat);
 				myMinuit->mnerrs(0, errUp, errLow, errParab, gcor);
 				if(errUp==0 and errLow==0) {

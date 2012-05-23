@@ -41,6 +41,7 @@ TStrMap options;
 vector<double> GetListToEval(TString parname, vector<TString> tmpv);
 void processParameters(int argc, const char* argv[]);
 void PrintHelpMessage();
+double Err_Bisection(CountingModel*cms, TString spar, double * bestFitPars, double fmin, double bestfitPOI, int hilo);
 
 // parameters :
 vector<TString> datacards; // enable multiple cards combination, and allow "* ?" in the input
@@ -188,6 +189,13 @@ TString sbinningCV, sbinningCF;
 
 double InjectingSignalStrength = 1;
 
+
+vector<TString> CvvSetting, CggSetting, CttSetting, CbbSetting, CglglSetting;
+bool scanCX=false;
+vector<double> vCvv_toEval, vCgg_toEval, vCtt_toEval, vCbb_toEval, vCglgl_toEval;
+
+TString ErrEstAlgo = "Minos";
+
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
 
@@ -251,10 +259,10 @@ int main(int argc, const char*argv[]){
 		cms->AddCouplingParameter(vCouplingsDef[i]);
 	}
 
-	vector<structPOI> vpoi_cvcf;
+	vector<structPOI> vpoi_cx;
 	if(sPhysicsModel=="ChargedHiggs") cms->SetPhysicsModel(typeChargedHiggs);
-	if(sPhysicsModel=="C5Higgs") {cms->SetPhysicsModel(typeC5Higgs); }//cms->AddC5();}
-	if(sPhysicsModel=="CvCfHiggs") {cms->SetPhysicsModel(typeCvCfHiggs); vpoi_cvcf = cms->AddCvCf( CVsetting, CFsetting); vCouplingsDef.push_back("CV"); vCouplingsDef.push_back("CF");}
+	if(sPhysicsModel=="C5Higgs") {cms->SetPhysicsModel(typeC5Higgs); vpoi_cx=cms->AddCX(CvvSetting, CggSetting, CttSetting, CbbSetting, CglglSetting); vCouplingsDef.push_back("Cvv"); vCouplingsDef.push_back("Cgg"); vCouplingsDef.push_back("Ctt"); vCouplingsDef.push_back("Cbb"); vCouplingsDef.push_back("Cglgl");}
+	if(sPhysicsModel=="CvCfHiggs") {cms->SetPhysicsModel(typeCvCfHiggs); vpoi_cx= cms->AddCvCf( CVsetting, CFsetting); vCouplingsDef.push_back("CV"); vCouplingsDef.push_back("CF");}
 	if(sPhysicsModel=="CvCfHiggs" or sPhysicsModel=="C5Higgs") { cms->GetSMHiggsBuilder()->readSMBr(sSMBrFile);}	
 	cms->SetUseSystematicErrors(systematics);
 
@@ -316,11 +324,11 @@ int main(int argc, const char*argv[]){
 	structPOI poiMU("signal_strength", 0, 0, 0, 0, 0);
 	structPOI poiM("MH", 0, 0, 0, 0, 0);
 	cms_global->addPOI(poiMU);
-	cms_global->addPOI(poiM);
+	if(cms_global->Get_MH_i()>0)cms_global->addPOI(poiM);
 	for(int i=0; i<addtionalPOIs.size(); i++) cms_global->addPOI(addtionalPOIs[i]);
-	if(sPhysicsModel=="CvCfHiggs"){
-		for(int i=0; i<vpoi_cvcf.size(); i++) {
-			cms_global->addPOI(vpoi_cvcf[i]);
+	if(sPhysicsModel=="CvCfHiggs" or sPhysicsModel=="C5Higgs"){
+		for(int i=0; i<vpoi_cx.size(); i++) {
+			cms_global->addPOI(vpoi_cx[i]);
 		}
 	} 
 
@@ -339,6 +347,7 @@ int main(int argc, const char*argv[]){
 
 	cms->Set_minuitPrintLevel(minuitPrintLevel);
 
+	cms->SetErrEstAlgo(ErrEstAlgo);
 
 	if(calcsignificance==0){// calc limits
 		if(method == "Bayesian"){
@@ -1057,6 +1066,43 @@ int main(int argc, const char*argv[]){
 			double mu_hat_up = tmpr;
 			double mu_hat_low = tmperr;
 
+			if(cms->GetPhysicsModel()==typeC5Higgs ){
+				if(ErrEstAlgo =="Minos"){
+					cout<<" 	68% CL : "<<endl;
+					for(int k=1; k<cms_global->POIs().size(); k++)cout<<" POI: "<<cms_global->POIs()[k].name<<"= "<<cms_global->POIs()[k].value<<" + "<<cms_global->POIs()[k].errUp<<" - "<<fabs(cms_global->POIs()[k].errDown)<<endl;
+				}
+				if(ErrEstAlgo=="Bisect"){
+					double tmp, tmpe;
+					for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
+						myMinuit->GetParameter(i, tmp, tmpe);
+						bestFitPars[i]=tmp;
+					}
+					double glbminCgg = cms->Get_v_Pars()[cms->Get_par_i("Cgg")][0];
+					double glbminCbb = cms->Get_v_Pars()[cms->Get_par_i("Cbb")][0];
+					double glbminCtt = cms->Get_v_Pars()[cms->Get_par_i("Ctt")][0];
+					double glbminCvv = cms->Get_v_Pars()[cms->Get_par_i("Cvv")][0];
+					double glbminCglgl = cms->Get_v_Pars()[cms->Get_par_i("Cglgl")][0];
+					double errhiCgg = Err_Bisection(cms, "Cgg", bestFitPars, y0_2, glbminCgg, 1);
+					double errloCgg = Err_Bisection(cms, "Cgg", bestFitPars, y0_2, glbminCgg, 0);
+					double errhiCbb = Err_Bisection(cms, "Cbb", bestFitPars, y0_2, glbminCbb, 1);
+					double errloCbb = Err_Bisection(cms, "Cbb", bestFitPars, y0_2, glbminCbb, 0);
+					double errhiCtt = Err_Bisection(cms, "Ctt", bestFitPars, y0_2, glbminCtt, 1);
+					double errloCtt = Err_Bisection(cms, "Ctt", bestFitPars, y0_2, glbminCtt, 0);
+					double errhiCglgl = Err_Bisection(cms, "Cglgl", bestFitPars, y0_2, glbminCglgl, 1);
+					double errloCglgl = Err_Bisection(cms, "Cglgl", bestFitPars, y0_2, glbminCglgl, 0);
+					double errhiCvv = Err_Bisection(cms, "Cvv", bestFitPars, y0_2, glbminCvv, 1);
+					double errloCvv = Err_Bisection(cms, "Cvv", bestFitPars, y0_2, glbminCvv, 0);
+
+					cout<<" POI Cgg: "<<glbminCgg<<" +"<<errhiCgg<<" -"<<errloCgg<<endl;
+					cout<<" POI Cvv: "<<glbminCvv<<" +"<<errhiCvv<<" -"<<errloCvv<<endl;
+					cout<<" POI Cbb: "<<glbminCbb<<" +"<<errhiCbb<<" -"<<errloCbb<<endl;
+					cout<<" POI Ctt: "<<glbminCtt<<" +"<<errhiCtt<<" -"<<errloCtt<<endl;
+					cout<<" POI Cglgl: "<<glbminCglgl<<" +"<<errhiCglgl<<" -"<<errloCglgl<<endl;
+				}
+				return 0;
+
+			}
+
 			if(bRunMinuitContour && idMH>0 ){
 				
 				TFile f(jobname+"_contourRvsM.root","RECREATE");
@@ -1280,7 +1326,8 @@ int main(int argc, const char*argv[]){
 
 				cout<<" 	68% CL : "<<endl;
 				cout<<" POI: mu = "<<cms_global->POIs()[0].value<<" + "<<cms_global->POIs()[0].errUp<<" - "<<fabs(cms_global->POIs()[0].errDown)<<endl;
-				if(idMH>0)cout<<" POI: MH = "<<cms_global->POIs()[1].value<<" + "<<cms_global->POIs()[1].errUp<<" - "<<fabs(cms_global->POIs()[1].errDown)<<endl;
+				//if(idMH>0)cout<<" POI: MH = "<<cms_global->POIs()[1].value<<" + "<<cms_global->POIs()[1].errUp<<" - "<<fabs(cms_global->POIs()[1].errDown)<<endl;
+				for(int k=1; k<cms_global->POIs().size(); k++)cout<<" POI: "<<cms_global->POIs()[k].name<<"= "<<cms_global->POIs()[k].value<<" + "<<cms_global->POIs()[k].errUp<<" - "<<fabs(cms_global->POIs()[k].errDown)<<endl;
 			}
 			
 			SaveResults(jobname+"_maxllfit", HiggsMass, 0, 0, 0, 0, 0, mu_hat_low, 0, mu_hat, mu_hat_up, 0);
@@ -1974,6 +2021,113 @@ vector<double> GetListToEval(TString parname, vector<TString> tmpv){
 		cout<<parname<<"_toEval"<<vtoEval.size()<<endl;
 	return vtoEval;
 }
+double Err_Bisection(CountingModel*cms, TString spar, double * bestFitPars, double y0_2, double glbmin, int hilo){
+	double *pars = new double[cms->Get_max_uncorrelation()+1]; // nsys + r
+	double tmp, tmpe;
+	vector< vector<double> > v_Pars = cms_global->Get_v_Pars();	
+	int par_i= cms->Get_par_i(spar);
+	int iteration=1, maxIteration=50;	
+	double precision = 1e-3;
+	double deltaq = 9999.;
+	bool best = true;
+	if(hilo==1){
+		double err=v_Pars[par_i][2]-glbmin;
+		if(err<=1e-6) { cout<<spar<<" up error at limit !"<<endl; delete pars; return err;}
+		cms_global->SetPOItoBeFixed(spar, glbmin+err);
+		double y0_1 =  MinuitFit(3, tmp, tmpe, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
+		deltaq = y0_1 - (y0_2+1);
+		double xmin = 0, xmax=err;
+		if(debug)cout<<spar<<" err = "<<err<<" deltaQ = "<<deltaq<<endl;
+		if(deltaq>precision){
+			while(deltaq > precision and iteration<=maxIteration) {
+				xmax/=2.;
+				err = xmax;
+				cms_global->SetPOItoBeFixed(spar, glbmin+err);
+				y0_1 =  MinuitFit(3, tmp, tmpe, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
+				deltaq = y0_1 - (y0_2+1);
+				iteration++;	
+				if(debug)cout<<spar<<" err = "<<err<<" deltaQ = "<<deltaq<<endl;
+			}
+			xmin = err; xmax*=2;
+		}
+		else if(deltaq<-precision){
+			cout<<spar<<" up error at limit !"<<endl; delete pars; return err;
+			/*while(deltaq<-precision and iteration<=maxIteration) {
+				xmin = xmax;xmax = xmax*2;
+				err = xmax;
+				cms_global->SetPOItoBeFixed(spar, glbmin+err);
+				y0_1 =  MinuitFit(3, tmp, tmpe, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
+				deltaq = y0_1 - (y0_2+1);
+				iteration++;	
+				if(debug)cout<<spar<<" err = "<<err<<" deltaQ = "<<deltaq<<endl;
+			}
+			xmin=xmax/2.;xmax = err;*/ 
+		}
+		if(debug)cout<<spar<<" err xmin="<<xmin<<" "<<xmax<<endl;
+
+		err = xmin + (xmax-xmin)/2.;
+		cms_global->SetPOItoBeFixed(spar, glbmin+err);
+		y0_1 =  MinuitFit(3, tmp, tmpe, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
+		deltaq = y0_1 - (y0_2+1);
+		if(debug)cout<<spar<<" err = "<<err<<" deltaQ = "<<deltaq<<endl;
+		while(fabs(deltaq)>precision and iteration<=maxIteration) {
+			if(deltaq>0) { xmax=err; err=(xmax-xmin)/2.+xmin; }
+			else {xmin=err; err= (xmax-xmin)/2.+xmin; }
+			cms_global->SetPOItoBeFixed(spar, glbmin+err);
+			y0_1 =  MinuitFit(3, tmp, tmpe, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
+			deltaq = y0_1 - (y0_2+1);
+			iteration++;	
+			if(debug)cout<<spar<<" err = "<<err<<" deltaQ = "<<deltaq<<endl;
+		}
+		if(debug)cout<<spar<<" err final = "<<err<<endl;
+		delete pars;
+		return err;
+	}
+	else {
+		double err=glbmin-v_Pars[par_i][1];
+		if(err<=1e-6) { cout<<spar<<" low error at limit !"<<endl;delete pars; return err;}
+		cms_global->SetPOItoBeFixed(spar, glbmin-err);
+		double y0_1 =  MinuitFit(3, tmp, tmpe, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
+		deltaq = y0_1 - (y0_2+1);
+		double xmin = 0, xmax=err;
+		if(debug)cout<<spar<<" err = "<<err<<" deltaQ = "<<deltaq<<endl;
+		if(deltaq>precision){
+			while(deltaq > precision and iteration<=maxIteration) {
+				xmax/=2.;
+				err = xmax;
+				cms_global->SetPOItoBeFixed(spar, glbmin-err);
+				y0_1 =  MinuitFit(3, tmp, tmpe, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
+				deltaq = y0_1 - (y0_2+1);
+				iteration++;	
+				if(debug)cout<<spar<<" err = "<<err<<" deltaQ = "<<deltaq<<endl;
+			}
+			xmin = err; xmax*=2;
+		}
+		else if(deltaq<-precision){
+			cout<<spar<<" low error at limit !"<<endl;delete pars; return err;
+		}
+		if(debug)cout<<spar<<" err xmin="<<xmin<<" "<<xmax<<endl;
+
+		err = xmin + (xmax-xmin)/2.;
+		cms_global->SetPOItoBeFixed(spar, glbmin-err);
+		y0_1 =  MinuitFit(3, tmp, tmpe, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
+		deltaq = y0_1 - (y0_2+1);
+		if(debug)cout<<spar<<" err = "<<err<<" deltaQ = "<<deltaq<<endl;
+		while(fabs(deltaq)>precision and iteration<=maxIteration) {
+			if(deltaq>0) { xmax=err; err=(xmax-xmin)/2.+xmin; }
+			else {xmin=err; err= (xmax-xmin)/2.+xmin; }
+			cms_global->SetPOItoBeFixed(spar, glbmin-err);
+			y0_1 =  MinuitFit(3, tmp, tmpe, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
+			deltaq = y0_1 - (y0_2+1);
+			iteration++;	
+			if(debug)cout<<spar<<" err = "<<err<<" deltaQ = "<<deltaq<<endl;
+		}
+		if(debug)cout<<spar<<" err final = "<<err<<endl;
+		delete pars;
+		return err;
+	}
+}
+
 
 void processParameters(int argc, const char* argv[]){
 	vector<TString> allargs;
@@ -2379,36 +2533,36 @@ void processParameters(int argc, const char* argv[]){
 	if( tmpv.size()==0 && bOnlyEvalCL_forVR) { cout<<"ERROR: args of -vR empty while bOnlyEvalCL_forVR=true"<<endl; exit(1); }
 	else{
 		vR_toEval = GetListToEval("-vR",tmpv);
-/*
-		for(int i=0; i<tmpv.size(); i++){
-			if(tmpv[i].IsFloat()) vR_toEval.push_back(tmpv[i].Atof());
-			else if(tmpv[i].BeginsWith("[") and tmpv[i].EndsWith("]")){
-				tmpv[i].ReplaceAll("[","");tmpv[i].ReplaceAll("]","");	
-				vector<string> vstr;
-				StringSplit(vstr, tmpv[i].Data(), ",");
-				if(vstr.size()==3 and (TString(vstr[2]).IsFloat() or TString(vstr[2]).BeginsWith("x")) ){
-					double r0 = TString(vstr[0]).Atof(), r1=TString(vstr[1]).Atof();	
-					if(r0>r1 or r0<0) continue;
-					if(TString(vstr[2]).BeginsWith("x")) {
-						if(r0==0) continue;
-						double step = TString(vstr[2]).ReplaceAll("x", "").Atof();
-						if(step<=1) continue;
-						for(double r=r0; r<=r1; r*=step) vR_toEval.push_back(r);
-					}else{
-						double step = TString(vstr[2]).Atof();
-						if(step<=0) continue;
-						for(double r=r0; r<=r1; r+=step) vR_toEval.push_back(r);
-					};
-				}else{
-					cout<<"ERROR: wrong format of -vR, should be sth like [1.2,2.0,x1.05] or [1.2,2.0,0.05]"<<endl; exit(1);
-				};
-			}else {cout<<"ERROR: wrong format of args of -vR:  \""<<tmpv[i]<<"\""<<endl; exit(1);}
-		}
-		std::sort(vR_toEval.begin(), vR_toEval.end());
-		vector<double>::iterator it;
-		it = std::unique(vR_toEval.begin(), vR_toEval.end());
-		vR_toEval.resize(it - vR_toEval.begin());
-*/	}
+		/*
+		   for(int i=0; i<tmpv.size(); i++){
+		   if(tmpv[i].IsFloat()) vR_toEval.push_back(tmpv[i].Atof());
+		   else if(tmpv[i].BeginsWith("[") and tmpv[i].EndsWith("]")){
+		   tmpv[i].ReplaceAll("[","");tmpv[i].ReplaceAll("]","");	
+		   vector<string> vstr;
+		   StringSplit(vstr, tmpv[i].Data(), ",");
+		   if(vstr.size()==3 and (TString(vstr[2]).IsFloat() or TString(vstr[2]).BeginsWith("x")) ){
+		   double r0 = TString(vstr[0]).Atof(), r1=TString(vstr[1]).Atof();	
+		   if(r0>r1 or r0<0) continue;
+		   if(TString(vstr[2]).BeginsWith("x")) {
+		   if(r0==0) continue;
+		   double step = TString(vstr[2]).ReplaceAll("x", "").Atof();
+		   if(step<=1) continue;
+		   for(double r=r0; r<=r1; r*=step) vR_toEval.push_back(r);
+		   }else{
+		   double step = TString(vstr[2]).Atof();
+		   if(step<=0) continue;
+		   for(double r=r0; r<=r1; r+=step) vR_toEval.push_back(r);
+		   };
+		   }else{
+		   cout<<"ERROR: wrong format of -vR, should be sth like [1.2,2.0,x1.05] or [1.2,2.0,0.05]"<<endl; exit(1);
+		   };
+		   }else {cout<<"ERROR: wrong format of args of -vR:  \""<<tmpv[i]<<"\""<<endl; exit(1);}
+		   }
+		   std::sort(vR_toEval.begin(), vR_toEval.end());
+		   vector<double>::iterator it;
+		   it = std::unique(vR_toEval.begin(), vR_toEval.end());
+		   vR_toEval.resize(it - vR_toEval.begin());
+		 */	}
 
 	tmpv = options["-vM"];
 	if( scanMs and tmpv.size()==0) { cout<<"ERROR: args of -vM empty "<<endl; exit(1); }
@@ -2463,7 +2617,7 @@ void processParameters(int argc, const char* argv[]){
 	tmpv = options["--maxsets_caching"]; 
 	if( tmpv.size()!=1 ) { maxsets_forcaching = 0; }
 	else { maxsets_forcaching = tmpv[0].Atoi(); }
-	
+
 	tmpv = options["--POIs"];
 	if(tmpv.size()==4 or tmpv.size()==8){ // currently support only at most two additional POIs 
 		double initv = tmpv[1].Atof();
@@ -2509,6 +2663,42 @@ void processParameters(int argc, const char* argv[]){
 		sbinningCF = tmpv[0];
 	}
 
+	tmpv= options["--Cvv"];
+	for(int i=0; i<tmpv.size(); i++) CvvSetting.push_back(tmpv[i]);
+	tmpv= options["--Cgg"];
+	for(int i=0; i<tmpv.size(); i++) CggSetting.push_back(tmpv[i]);
+	tmpv= options["--Ctt"];
+	for(int i=0; i<tmpv.size(); i++) CttSetting.push_back(tmpv[i]);
+	tmpv= options["--Cbb"];
+	for(int i=0; i<tmpv.size(); i++) CbbSetting.push_back(tmpv[i]);
+	tmpv= options["--Cglgl"];
+	for(int i=0; i<tmpv.size(); i++) CglglSetting.push_back(tmpv[i]);
+	if(isWordInMap("--scanCX", options)) scanCX= true; 
+	tmpv = options["-vCvv"];
+	if( scanCX and tmpv.size()==0) { cout<<"ERROR: args of -vCvv empty "<<endl; exit(1); }
+	else{
+		vCvv_toEval = GetListToEval("-vCvv",tmpv);
+	}
+	if( scanCX and tmpv.size()==0) { cout<<"ERROR: args of -vCgg empty "<<endl; exit(1); }
+	else{
+		vCgg_toEval = GetListToEval("-vCgg",tmpv);
+	}
+	if( scanCX and tmpv.size()==0) { cout<<"ERROR: args of -vCtt empty "<<endl; exit(1); }
+	else{
+		vCtt_toEval = GetListToEval("-vCtt",tmpv);
+	}
+	if( scanCX and tmpv.size()==0) { cout<<"ERROR: args of -vCbb empty "<<endl; exit(1); }
+	else{
+		vCbb_toEval = GetListToEval("-vCbb",tmpv);
+	}
+	if( scanCX and tmpv.size()==0) { cout<<"ERROR: args of -vCglgl empty "<<endl; exit(1); }
+	else{
+		vCglgl_toEval = GetListToEval("-vCglgl",tmpv);
+	}
+
+
+	tmpv=options["--ErrEstAlgo"]; 
+	if(tmpv.size()!=0) { ErrEstAlgo=tmpv[0]; if(ErrEstAlgo!="Minos" and ErrEstAlgo!="Bisect") {cout<<" ErrEstAlgo only supports Minos and Bisect"<<endl; exit(1);}}
 
 	printf("\n\n[ Summary of configuration in this job: ]\n");
 	if(sPhysicsModel!="StandardModelHiggs")cout<<" PhysicsModel:  "<<sPhysicsModel<<endl;
@@ -2646,8 +2836,8 @@ double runProfileLikelihoodApproximation(double neg2_llr){
 	if(PLalgorithm == "Minos"){
 		double upperL=1, lowerL=0; 
 		//if(dataset=="asimov_b") upperL = 0.000001; // the starting mu value in the global fit
-        // set it to be close to 0, because of it's asimov_b dataset, which may speed up fits during b-only toys
-        // but it cause some problems ,  instabilities  FIXME
+		// set it to be close to 0, because of it's asimov_b dataset, which may speed up fits during b-only toys
+		// but it cause some problems ,  instabilities  FIXME
 		double y0_2 =  MinuitFit(102, upperL, lowerL, ErrorDef, pars, false, debug) ;
 
 		cout<<" best fitted r, upper bound = "<<upperL<<", nllmin="<<y0_2<<endl;
@@ -2705,7 +2895,7 @@ double runProfileLikelihoodApproximation(double neg2_llr){
 		/*
 		   if (oneside==2) CI= 1.921;  // = 1.96**2/2 , two sided 95% CL --->  one sided 97.5%
 		   else CI = 1.64*1.64/2.; // two sided 90% CL
-		   */
+		 */
 		double precision = 0.001;
 		int nsearched = 3;
 		//1.925 for 95% CL,   ....   
@@ -2781,8 +2971,8 @@ double runProfileLikelihoodApproximation(double neg2_llr){
 bool runAsymptoticCLs(){
 	// change to use parabora approximation ....
 	CountingModel * cms = cms_global;
-    cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
-    vdata_global = cms->Get_AsimovData(0);
+	cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
+	vdata_global = cms->Get_AsimovData(0);
 	double r95;
 	double tmp;
 	double tmpr ;
@@ -2800,48 +2990,48 @@ bool runAsymptoticCLs(){
 
 	int nsteps_in_asymptotic = 0;
 	// running asymptotic limit from the hint 
-		int success[1] = {0};
-		int minuitSTRATEGY_old=minuitSTRATEGY;
-		minuitSTRATEGY = minuitSTRATEGY_old;
+	int success[1] = {0};
+	int minuitSTRATEGY_old=minuitSTRATEGY;
+	minuitSTRATEGY = minuitSTRATEGY_old;
+	cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
+
+	cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
+	vdata_global = cms->Get_AsimovData(0);
+	if(debug) cout<<" fitting asimovb with MinuitFit(2)"<<endl;
+	double L_asimovb_glbmin =  MinuitFit(2, tmpr, tmperr, 0, pars, false, debug, success) ;
+	minuitSTRATEGY_old=minuitSTRATEGY;
+	while(success[0] and minuitSTRATEGY<2) {
+		cout<<" failed global fit of asimovb with minuitSTRATEGY = "<<minuitSTRATEGY<<endl;
+		//minuitSTRATEGY +=2 ; 
+		cout<<" try minuitSTRATEGY = "<<minuitSTRATEGY<<endl;
 		cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
+		//cms_global->FluctuatedNumbers();
+		//L_asimovb_glbmin =  MinuitFit(201, tmpr, tmperr, 0.1, cms_global->Get_randomizedPars(), true, debug, success) ;
 
-		cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
-		vdata_global = cms->Get_AsimovData(0);
-		if(debug) cout<<" fitting asimovb with MinuitFit(2)"<<endl;
-		double L_asimovb_glbmin =  MinuitFit(2, tmpr, tmperr, 0, pars, false, debug, success) ;
-		minuitSTRATEGY_old=minuitSTRATEGY;
-		while(success[0] and minuitSTRATEGY<2) {
-			cout<<" failed global fit of asimovb with minuitSTRATEGY = "<<minuitSTRATEGY<<endl;
-			//minuitSTRATEGY +=2 ; 
-			cout<<" try minuitSTRATEGY = "<<minuitSTRATEGY<<endl;
-			cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
-			//cms_global->FluctuatedNumbers();
-			//L_asimovb_glbmin =  MinuitFit(201, tmpr, tmperr, 0.1, cms_global->Get_randomizedPars(), true, debug, success) ;
-			
-			cms_global->SetNoErrorEstimation(1);
-			L_asimovb_glbmin =  MinuitFit(201, tmpr, tmperr, 0.1, pars, false, debug, success) ;
-			cms_global->SetNoErrorEstimation(0);
-		}
-		minuitSTRATEGY = minuitSTRATEGY_old;
-		cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
+		cms_global->SetNoErrorEstimation(1);
+		L_asimovb_glbmin =  MinuitFit(201, tmpr, tmperr, 0.1, pars, false, debug, success) ;
+		cms_global->SetNoErrorEstimation(0);
+	}
+	minuitSTRATEGY = minuitSTRATEGY_old;
+	cms_global->Set_minuitSTRATEGY(minuitSTRATEGY);
 
-		double mu =  1.;
+	double mu =  1.;
 
-		cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
-		vdata_global = cms->Get_AsimovData(0);
-		if(debug) cout<<" fitting asimovb with MinuitFit(3)"<<endl;
-		double L_asimovb_condmin =  MinuitFit(3, tmp, tmperr, mu, pars, false, debug);
+	cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_asimovb());
+	vdata_global = cms->Get_AsimovData(0);
+	if(debug) cout<<" fitting asimovb with MinuitFit(3)"<<endl;
+	double L_asimovb_condmin =  MinuitFit(3, tmp, tmperr, mu, pars, false, debug);
 
-		nsteps_in_asymptotic +=4;
-		if(L_asimovb_condmin - L_asimovb_glbmin <0 ) {
-			cout<<"2 L_asimovb_condmin = "<<L_asimovb_condmin<<"  < "<<"L_asimovb_glbmin="<<L_asimovb_glbmin<<", exit"<<endl;
-			exit(1);
-		}
-        double L_data_condmin = L_asimovb_condmin; 
-        double L_data_glbmin = L_asimovb_glbmin;
-		double tmpcls = (  1 - ROOT::Math::normal_cdf( sqrt(L_data_condmin - L_data_glbmin) ) ) / ( ROOT::Math::normal_cdf(
-					sqrt(L_asimovb_condmin - L_asimovb_glbmin) - sqrt(L_data_condmin - L_data_glbmin)
-					) ); 
+	nsteps_in_asymptotic +=4;
+	if(L_asimovb_condmin - L_asimovb_glbmin <0 ) {
+		cout<<"2 L_asimovb_condmin = "<<L_asimovb_condmin<<"  < "<<"L_asimovb_glbmin="<<L_asimovb_glbmin<<", exit"<<endl;
+		exit(1);
+	}
+	double L_data_condmin = L_asimovb_condmin; 
+	double L_data_glbmin = L_asimovb_glbmin;
+	double tmpcls = (  1 - ROOT::Math::normal_cdf( sqrt(L_data_condmin - L_data_glbmin) ) ) / ( ROOT::Math::normal_cdf(
+				sqrt(L_asimovb_condmin - L_asimovb_glbmin) - sqrt(L_data_condmin - L_data_glbmin)
+				) ); 
 
 
 	if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
@@ -2894,41 +3084,41 @@ bool runAsymptoticLimits(){
 				preHints_median = r95;
 			}
 			/*
-			if(scanRAroundBand=="all" || scanRAroundBand=="-1"){
-				N = -1;
-				ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ; 
-				ErrorDef *= ErrorDef;	
-				if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
-				m1s = runProfileLikelihoodApproximation(ErrorDef);
-				preHints_m1s=m1s;
-			}
-			if(scanRAroundBand=="all" || scanRAroundBand=="1"){
-				N = 1;
-				ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ; 
-				ErrorDef *= ErrorDef;	
-				if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
-				p1s = runProfileLikelihoodApproximation(ErrorDef);
-				preHints_p1s=p1s;
-			}
-			if(scanRAroundBand=="all" || scanRAroundBand=="-2"){
-				N = -2;
-				ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ; 
-				ErrorDef *= ErrorDef;	
-				if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
-				m2s = runProfileLikelihoodApproximation(ErrorDef);
-				preHints_m2s=m2s;
-			}
-			if(scanRAroundBand=="all" || scanRAroundBand=="1"){
-				N = 2;
-				ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ; 
-				ErrorDef *= ErrorDef;	
-				if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
-				p2s = runProfileLikelihoodApproximation(ErrorDef);
-				preHints_p2s=p2s;
-			}
-			*/	
+			   if(scanRAroundBand=="all" || scanRAroundBand=="-1"){
+			   N = -1;
+			   ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ; 
+			   ErrorDef *= ErrorDef;	
+			   if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
+			   m1s = runProfileLikelihoodApproximation(ErrorDef);
+			   preHints_m1s=m1s;
+			   }
+			   if(scanRAroundBand=="all" || scanRAroundBand=="1"){
+			   N = 1;
+			   ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ; 
+			   ErrorDef *= ErrorDef;	
+			   if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
+			   p1s = runProfileLikelihoodApproximation(ErrorDef);
+			   preHints_p1s=p1s;
+			   }
+			   if(scanRAroundBand=="all" || scanRAroundBand=="-2"){
+			   N = -2;
+			   ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ; 
+			   ErrorDef *= ErrorDef;	
+			   if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
+			   m2s = runProfileLikelihoodApproximation(ErrorDef);
+			   preHints_m2s=m2s;
+			   }
+			   if(scanRAroundBand=="all" || scanRAroundBand=="1"){
+			   N = 2;
+			   ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ; 
+			   ErrorDef *= ErrorDef;	
+			   if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
+			   p2s = runProfileLikelihoodApproximation(ErrorDef);
+			   preHints_p2s=p2s;
+			   }
+			 */	
 
-			
+
 			// http://cms.cern.ch/iCMS/jsp/analysis/admin/analysismanagement.jsp?ancode=HIG-11-011
 			// AN 11-298
 			// equation (38) : mu_median = sigma * normal_quantile(1-0.5*alpha) 
@@ -2946,7 +3136,7 @@ bool runAsymptoticLimits(){
 			p1s = sigma *  ( TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ) ; 
 			N = 2;
 			p2s = sigma *  ( TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ) ; 
-						
+
 			preHints_p2s = p2s; preHints_p1s=p1s; preHints_m2s=m2s; preHints_m1s=m1s;
 
 			cout<<"BandsFromAsymptotic R@95%CL (from -2sigma -1sigma  mean  +1sigma  +2sigma,  median) : "<<endl;
@@ -3444,7 +3634,8 @@ void PrintHelpMessage(){
 	printf("--CV init min max --CF init min max   settings for CvCfHiggs,  i.e. fit range\n");
 	printf("--scanCvCf                            to be used with -vCv, -vCf\n");
 	printf("-vCv/-vCf args                        sth like \"1.2 1.3 1.4 [1.5,3.0,x1.05] [3.0,10.0,0.5]\", for scanning CV vs. CF\n");
-	
+	printf("--ErrEstAlgo arg                      Minos, Bisect\n");
+
 
 	printf(" \n");
 	printf("------------------some comand lines-----------------------------------------------\n");

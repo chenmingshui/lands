@@ -172,6 +172,8 @@ namespace lands{
 	_CvCf_zg = 1;
 
 	_MH_i = -1;
+	_pardm = 0;
+	_ErrEstAlgo = "Minos";
     }
     CountingModel::~CountingModel(){
         v_data.clear();
@@ -971,6 +973,11 @@ If we need to change it later, it will be easy to do.
 	    //cout<<"DELETEME v_pdftype[i+1]="<<v_pdftype[i+1]<<endl;
 	    if(TString(v_uncname[i])=="CV") _Cv_i = i+1;
 	    if(TString(v_uncname[i])=="CF") _Cf_i = i+1;
+	    if(TString(v_uncname[i])=="Cvv") _Cvv_i = i+1;
+	    if(TString(v_uncname[i])=="Cgg") _Cgg_i = i+1;
+	    if(TString(v_uncname[i])=="Cbb") _Cbb_i = i+1;
+	    if(TString(v_uncname[i])=="Ctt") _Ctt_i = i+1;
+	    if(TString(v_uncname[i])=="Cglgl") _Cglgl_i = i+1;
         }
 
 	v_flatparId.clear();
@@ -1297,7 +1304,7 @@ If we need to change it later, it will be easy to do.
                             case typeFlat:
                                 //cout<<"Rndm = "<<ran<<endl;
                                 //vv[ch][isam]*=( vvvv_uncpar[ch][isam][iunc][0] + (vvvv_uncpar[ch][isam][iunc][1]-vvvv_uncpar[ch][isam][iunc][0])*ran );
-				if(_PhysicsModel==typeCvCfHiggs) break;
+				if(_PhysicsModel==typeCvCfHiggs or _PhysicsModel==typeC5Higgs) break;
                                 vv[ch][isam]*=v_Pars[indexcorrl][0];
                                 //cout<<"Rndm -> b = "<<vv[ch][isam]<<endl;
                                 // 0: min,  1: max, 2: range
@@ -1356,6 +1363,9 @@ If we need to change it later, it will be easy to do.
 		    if(_PhysicsModel == typeCvCfHiggs) {
 			    vv[ch][isam]= ScaleCvCfHiggs(1, v_channelDecayMode[ch], vv_productionMode[ch][isam], ch, isam, vv[ch][isam], vrdm);
 		    }
+		    else if(_PhysicsModel == typeC5Higgs) {
+			    vv[ch][isam]= ScaleCXHiggs(1, v_channelDecayMode[ch], vv_productionMode[ch][isam], ch, isam, vv[ch][isam], vrdm);
+		    }
 
 			
                 }
@@ -1405,7 +1415,7 @@ If we need to change it later, it will be easy to do.
                                 if(_debug>=100) cout<<" norm varied after this unc = "<<vv_pdfs_norm_varied[ch][isam]<<endl;
                                 break;
                             case typeFlat:
-				if(_PhysicsModel==typeCvCfHiggs) break;
+				if(_PhysicsModel==typeCvCfHiggs or _PhysicsModel==typeC5Higgs) break;
                                 //vv_pdfs_norm_varied[ch][isam]*=( vvv_pdfs_normvariation[ch][isam][iunc][0] + (vvv_pdfs_normvariation[ch][isam][iunc][1]-vvv_pdfs_normvariation[ch][isam][iunc][0])*ran );
                                 vv_pdfs_norm_varied[ch][isam]*=v_Pars[indexcorrl][0];
                                 //cout<<"WARNING: typeFlat pdf on normalization not yet implemented, skip it "<<endl;
@@ -1418,6 +1428,9 @@ If we need to change it later, it will be easy to do.
                     }
 		    if(_PhysicsModel == typeCvCfHiggs) {
 			    vv_pdfs_norm_varied[ch][isam]= ScaleCvCfHiggs(2,v_pdfs_channelDecayMode[ch], vv_pdfs_productionMode[ch][isam], ch, isam, vv_pdfs_norm_scaled[ch][isam], vrdm);
+		    }
+		    else if(_PhysicsModel == typeC5Higgs) {
+			    vv_pdfs_norm_varied[ch][isam]= ScaleCXHiggs(2,v_pdfs_channelDecayMode[ch], vv_pdfs_productionMode[ch][isam], ch, isam, vv_pdfs_norm_scaled[ch][isam], vrdm);
 		    }
                     if(_debug>=100) cout<<" **norm varied after all unc = "<<vv_pdfs_norm_varied[ch][isam]<<endl;
                     tmprrv = _w_varied->var(vv_pdfs_normNAME[ch][isam]);
@@ -4164,8 +4177,27 @@ If we need to change it later, it will be easy to do.
 		    //cout<<"DEBUG CVCF 7: _GammaTot="<<_GammaTot<< endl;
 		    return _GammaTot;
 
-	    }else if(_PhysicsModel==typeC5Higgs){
-		    return 1;
+	    }else if(_PhysicsModel==typeC5Higgs){// FIXME or typeC4Higgs or typeC7Higgs){
+		    double m = 0;
+		    if( _w_varied->var("MH") ) {
+			    m=v_Pars[_MH_i][0];
+		    }else{
+			    m = _HiggsMass;
+		    }	
+		    if(m<=0){
+			    cout<<"Error : in CalcGammaTot, while higgs mass = "<<m<<endl;
+			    exit(1);
+		    }
+
+		    _GammaTot = v_Pars[_Cvv_i][0] * ( _smhb->br(decayHWW, m) + _smhb->br(decayHZZ,m) ) 
+			    + v_Pars[_Cbb_i][0] * _smhb->br(decayHBB, m) 
+			    + v_Pars[_Ctt_i][0] * _smhb->br(decayHTT, m)
+			    + v_Pars[_Cglgl_i][0] * _smhb->br(decayHGluGlu,m)
+			    + v_Pars[_Cgg_i][0] * _smhb->br(decayHGG,m)
+			    + _smhb->br(decayHCC, m) + _smhb->br(decayHSS,m) + _smhb->br(decayHMM,m)  // not couple to any POI, so probably can be ignored, will check explicitly 
+			    ;
+
+		    return _GammaTot;
 	    }
 	    return 1;
     }
@@ -4221,5 +4253,155 @@ If we need to change it later, it will be easy to do.
 		if(_debug) cout<<" end AddCvCf"<<endl;
 	    return vpoi;
     }
+    double CountingModel::ScaleCXHiggs(int countingOrParametric, int dm, int pm, int c, int s, double bs, const double *par){
+	    int id;
+	    //double cv=1, cg=1, cb=1, ct=1, cgl=1, ctop=1, czg=1, cf=1;
+
+	    double nsig=1;
+	    if(countingOrParametric==1){  // for counting part
+		    nsig = v_sigproc[c];
+		    for(int u=0; u<vvv_pdftype[c][s].size(); u++){
+			    if (vvv_pdftype[c][s][u]==typeFlat){
+				    id = (vvv_idcorrl)[c][s][u];
+				    if(id==_Cvv_i || id==_Cbb_i || id==_Ctt_i || id==_Cgg_i || id==_Cglgl_i) continue; 
+				    else bs*=v_Pars[id][0]; 
+			    }
+		    }
+	    }else {  // countingOrParametric == 2   for Parametric part 
+		    nsig = v_pdfs_sigproc[c];
+		    for(int u=0; u<vvv_pdfs_pdftype[c][s].size(); u++){
+			    if (vvv_pdfs_pdftype[c][s][u]==typeFlat){
+				    id = (vvv_pdfs_idcorrl)[c][s][u];
+				    if(_w_varied->var(v_uncname[id-1].c_str()) != NULL) continue;
+				    if(id==_Cvv_i || id==_Cbb_i || id==_Ctt_i || id==_Cgg_i || id==_Cglgl_i) continue; 
+				    else bs*=v_Pars[id][0];
+			    }
+		    }
+
+	    }
+
+	    if(s >= nsig) return bs; // bkg process 
+	    double scale = -9e10;
+
+	    switch (dm){
+		    case decayHWW:
+		    case decayHZZ:
+			    scale=v_Pars[_Cvv_i][0];
+			    break;
+		    case decayHBB:
+			    scale=v_Pars[_Cbb_i][0];
+			    break;
+		    case decayHTT:
+			    scale=v_Pars[_Ctt_i][0];
+			    break;
+		    case decayHGG:
+			    scale=v_Pars[_Cgg_i][0];
+			    break;
+		    default:
+			    break;
+	    }
+	    if(pm==productionGGH) scale*=v_Pars[_Cglgl_i][0];
+	    else scale*=v_Pars[_Cvv_i][0];
+
+	    scale/=_GammaTot;
+
+	    if(_debug>=100)cout<<" DEBUG CX dm="<<dm<<" pm="<<pm<<" scale="<<scale<<endl;
+	    if(scale<-8e10) { 
+			cout<<" ERROR: there is a ch/proc "<<c<<"/"<<s<<"  is not coupling to CX "<<endl;
+		cout<<"pm="<<pm<<" dm="<<dm<<endl;
+		 exit(1); }
+
+	    return bs*scale;
+    }
+    vector<structPOI> CountingModel::AddCX(vector<TString> scv, vector<TString> scg, vector<TString> sct, vector<TString> scb, vector<TString> scgl){ // X  can be 4, 5, 7 ...
+		if(_debug) cout<<" begin AddCvCf"<<endl;
+	    vector<structPOI> vpoi;
+	    structPOI pcv("Cvv", 1., 0, 0, 0, 10);
+	    structPOI pcg("Cgg", 1., 0, 0, 0, 10); 
+	    structPOI pct("Ctt", 1., 0, 0, 0, 10); 
+	    structPOI pcb("Cbb", 1., 0, 0, 0, 10); 
+	    structPOI pcgl("Cglgl", 1., 0, 0, 0, 10); 
+	    if(scv.size()){ 
+		if(scv.size()!=3) { cout<<"ERROR: input error. should be  --Cvv nominal min max "<<endl;	exit(1) ;}
+		pcv.value=scv[0].Atof();
+		pcv.minV=scv[1].Atof();
+		pcv.maxV=scv[2].Atof();
+	    }
+	    if(scg.size()){
+		    if(scg.size()!=3) { cout<<"ERROR: input error. should be  --Cgg nominal min max "<<endl;	exit(1) ;}
+		    pcg.value=scg[0].Atof();
+		    pcg.minV=scg[1].Atof();
+		    pcg.maxV=scg[2].Atof();
+	    }
+	    if(sct.size()){
+		    if(sct.size()!=3) { cout<<"ERROR: input error. should be  --Ctt nominal min max "<<endl;	exit(1) ;}
+		    pct.value=sct[0].Atof();
+		    pct.minV=sct[1].Atof();
+		    pct.maxV=sct[2].Atof();
+	    }
+	    if(scb.size()){
+		    if(scb.size()!=3) { cout<<"ERROR: input error. should be  --Cbb nominal min max "<<endl;	exit(1) ;}
+		    pcb.value=scb[0].Atof();
+		    pcb.minV=scb[1].Atof();
+		    pcb.maxV=scb[2].Atof();
+	    }
+	    if(scgl.size()){
+		    if(scgl.size()!=3) { cout<<"ERROR: input error. should be  --Cglgl nominal min max "<<endl;	exit(1) ;}
+		    pcgl.value=scgl[0].Atof();
+		    pcgl.minV=scgl[1].Atof();
+		    pcgl.maxV=scgl[2].Atof();
+	    }
+
+	    vpoi.push_back(pcv); 
+	    vpoi.push_back(pcg); 
+	    vpoi.push_back(pcb); 
+	    vpoi.push_back(pct); 
+	    vpoi.push_back(pcgl); 
+
+	    for(int c=0; c<v_channelname.size(); c++){
+		    for(int p=0; p<v_sigproc[c]; p++){
+			    AddUncertainty(v_channelname[c], p, pcv.minV, pcv.maxV, typeFlat, "Cvv");
+			    SetFlatParInitVal("Cvv", pcv.value);
+			    AddUncertainty(v_channelname[c], p, pcg.minV, pcg.maxV, typeFlat, "Cgg");
+			    SetFlatParInitVal("Cgg", pcg.value);
+			    AddUncertainty(v_channelname[c], p, pcb.minV, pcb.maxV, typeFlat, "Cbb");
+			    SetFlatParInitVal("Cbb", pcb.value);
+			    AddUncertainty(v_channelname[c], p, pct.minV, pct.maxV, typeFlat, "Ctt");
+			    SetFlatParInitVal("Ctt", pct.value);
+			    AddUncertainty(v_channelname[c], p, pcgl.minV, pcgl.maxV, typeFlat, "Cglgl");
+			    SetFlatParInitVal("Cglgl", pcgl.value);
+
+			    if(_debug) {
+				    cout<<" CHECKING  c="<<c<<" p="<<p<<": "<<v_channelname[c]<<"/"<<vv_procname[c][p]<<" --> "<< "dm="<<v_channelDecayMode[c]<<endl;
+			    }
+		    }
+	    }
+	    //roofit part
+	    for(int c=0; c<v_pdfs_channelname.size(); c++){
+		    for(int p=0; p<vv_pdfs_procname[c].size(); p++){
+			    AddUncertaintyOnShapeNorm(v_pdfs_channelname[c], p, pcv.minV, pcv.maxV, typeFlat, "Cvv");
+			    SetFlatParInitVal("Cvv", pcv.value);
+			    AddUncertaintyOnShapeNorm(v_pdfs_channelname[c], p, pcg.minV, pcg.maxV, typeFlat, "Cgg");
+			    SetFlatParInitVal("Cgg", pcg.value);
+			    AddUncertaintyOnShapeNorm(v_pdfs_channelname[c], p, pcb.minV, pcb.maxV, typeFlat, "Cbb");
+			    SetFlatParInitVal("Cbb", pcb.value);
+			    AddUncertaintyOnShapeNorm(v_pdfs_channelname[c], p, pct.minV, pct.maxV, typeFlat, "Ctt");
+			    SetFlatParInitVal("Ctt", pct.value);
+			    AddUncertaintyOnShapeNorm(v_pdfs_channelname[c], p, pcgl.minV, pcgl.maxV, typeFlat, "Cglgl");
+			    SetFlatParInitVal("Cglgl", pcgl.value);
+			    if(_debug) {
+				    cout<<" CHECKING  c="<<c<<" p="<<p<<": "<<v_pdfs_channelname[c]<<"/"<<vv_pdfs_procname[c][p]<<" --> "<< "dm="<<v_channelDecayMode[c]<<endl;
+			    }
+		    }
+	    }
+	    //  need some more sanity checks:
+	    //  do we allow  two Coupling parameter  effect on  a channel|process ?
+	    //  sanity check, whether some ch/proc are not in the coupling list
+	    //  check if any ch/proc not couple by CV or CF
+
+		if(_debug) cout<<" end AddCX"<<endl;
+	    return vpoi;
+    }
+
     };
 

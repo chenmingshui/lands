@@ -326,6 +326,7 @@ namespace lands{
 			int GetPrintParameterFrom(){return PrintParameterFrom;};
 			int GetPrintParameterTo(){return PrintParameterTo;};
 
+			int Get_MH_i(){return _MH_i;};
 
 			bool bFixingPOIs(){return _bFixingPOIs;};
 			const vector< std::pair<TString, double> > & GetPOIsToBeFixed(){return vsPOIsToBeFixed;}
@@ -361,7 +362,18 @@ namespace lands{
 		vector<structPOI> AddCvCf(vector<TString> scv, vector<TString> scf);
 		
 			const vector< vector<double> > & Get_v_Pars(){return v_Pars;} // on all flat parameters (nuisances and pois)  ,  index is the same as v_pdftype
+		vector<structPOI> AddCX(vector<TString> scv, vector<TString> scg, vector<TString> sct, vector<TString> scb, vector<TString> scgl);// X  can be 4, 5, 7 ...
+		double ScaleCXHiggs(int countingOrParametric, int dm, int pm, int c, int s, double bs, const double *par);// counting 1,  parametric 2
+		int Get_Cgg_i(){return _Cgg_i;};
+		int Get_Cvv_i(){return _Cvv_i;};
+		int Get_Ctt_i(){return _Ctt_i;};
+		int Get_Cbb_i(){return _Cbb_i;};
+		int Get_Cglgl_i(){return _Cglgl_i;};
 
+		int Get_par_i(TString spar){for(int i=0; i<v_uncname.size(); i++) if(v_uncname[i]==spar)return i+1;};
+
+		TString GetErrEstAlgo(){return _ErrEstAlgo;};
+		void SetErrEstAlgo(TString s){_ErrEstAlgo=s;};
 		private:
 			VDChannel v_data; // could be pseudo-data for bands
 			VDChannel v_data_real; // real data, not changed during entire run 
@@ -545,6 +557,10 @@ namespace lands{
 			double *_pardm; // to replace vrdm in FluctuatedNumbers
 
 			int _MH_i;
+
+			int _Cvv_i, _Cbb_i, _Ctt_i, _Cgg_i, _Cglgl_i, _Ctptp_i, _Czgzg_i, _Cff_i;
+
+			TString _ErrEstAlgo;
 
 	};
 	CountingModel* CombineModels(CountingModel *cms1, CountingModel *cms2);
