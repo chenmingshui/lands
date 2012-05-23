@@ -118,7 +118,7 @@ double HiggsMass = -1;
 
 int nTries = 1;
 
-int maximumFunctionCallsInAFit = 5000;
+int maximumFunctionCallsInAFit = 500000;
 int minuitSTRATEGY = 0;
 int minuitPrintLevel= -1;
 double minuitTolerance = 0.001;
