@@ -2593,7 +2593,7 @@ void processParameters(int argc, const char* argv[]){
 	else { nuisancesRange = tmpv[0].Atof(); }
 
 	tmpv = options["--maximumFunctionCallsInAFit"]; 
-	if( tmpv.size()!=1 ) { maximumFunctionCallsInAFit= 5000; }
+	if( tmpv.size()!=1 ) {}
 	else { maximumFunctionCallsInAFit = tmpv[0].Atoi(); }
 
 	// for ScanningMuFit

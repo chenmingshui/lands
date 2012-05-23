@@ -4236,13 +4236,13 @@ If we need to change it later, it will be easy to do.
 	    }
 	    //roofit part
 	    for(int c=0; c<v_pdfs_channelname.size(); c++){
-		    for(int p=0; p<vv_pdfs_procname[c].size(); p++){
+		    for(int p=0; p<v_pdfs_sigproc[c]; p++){
 			    AddUncertaintyOnShapeNorm(v_pdfs_channelname[c], p, pcv.minV, pcv.maxV, typeFlat, "CV");
 			    SetFlatParInitVal("CV", pcv.value);
 			    AddUncertaintyOnShapeNorm(v_pdfs_channelname[c], p, pcf.minV, pcf.maxV, typeFlat, "CF");
 			    SetFlatParInitVal("CF", pcf.value);
 			    if(_debug) {
-				    cout<<" CHECKING  c="<<c<<" p="<<p<<": "<<v_pdfs_channelname[c]<<"/"<<vv_pdfs_procname[c][p]<<" --> "<< "dm="<<v_channelDecayMode[c]<<endl;
+				    cout<<" CHECKING  c="<<c<<" p="<<p<<": "<<v_pdfs_channelname[c]<<"/"<<vv_pdfs_procname[c][p]<<" --> "<< "dm="<<v_pdfs_channelDecayMode[c]<<endl;
 			    }
 		    }
 	    }
