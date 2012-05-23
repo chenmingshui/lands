@@ -4142,7 +4142,7 @@ If we need to change it later, it will be easy to do.
 	    //  _Cv  _Cf  mH  gammaTot  gammaV  gammaF
 	    if(_PhysicsModel==typeCvCfHiggs){
 		    double m = 0;
-		    if( _w_varied->var("MH") ) {
+		    if( _w_varied->var("MH") and _MH_i>0 ) {
 			    m=v_Pars[_MH_i][0];
 		    }else{
 			    m = _HiggsMass;
@@ -4179,7 +4179,7 @@ If we need to change it later, it will be easy to do.
 
 	    }else if(_PhysicsModel==typeC5Higgs){// FIXME or typeC4Higgs or typeC7Higgs){
 		    double m = 0;
-		    if( _w_varied->var("MH") ) {
+		    if( _w_varied->var("MH") and _MH_i>0 ) {
 			    m=v_Pars[_MH_i][0];
 		    }else{
 			    m = _HiggsMass;
