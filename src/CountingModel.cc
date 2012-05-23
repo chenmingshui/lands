@@ -3683,6 +3683,7 @@ If we need to change it later, it will be easy to do.
 			    if(m<=0) { cout<<"ERROR: There is variable MH in workspace, but the input mass is "<<m<<endl; exit(1); };
 			    _w->var("MH")->setVal(m);
 			    _w_varied->var("MH")->setVal(m);
+			_HiggsMass = m;
 		    }
 		    else{
 			_HiggsMass = m;
