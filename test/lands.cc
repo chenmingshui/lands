@@ -1047,7 +1047,8 @@ int main(int argc, const char*argv[]){
 
 			double *pars = new double[cms->Get_max_uncorrelation()+1]; // nsys + r
 			
-			double bestFitPars[cms->Get_maximumFunctionCallsInAFit()+1];
+			//double bestFitPars[cms->Get_maximumFunctionCallsInAFit()+1];  //  not static ... not allowed 
+			double *bestFitPars= new double[cms->Get_maximumFunctionCallsInAFit()+1];
 
 			double tmp=0, tmpr = 0, tmperr=0;
 			double ErrorDef = TMath::ChisquareQuantile(0.68 , 1);// (confidenceLevel, ndf)
