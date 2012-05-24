@@ -161,6 +161,8 @@ namespace lands{
 
         _PhysicsModel = typeStandardModel;
 
+	noErrorEstimation = false;
+
 	_Cv_i = -1;
 	_Cf_i = -1;
 
