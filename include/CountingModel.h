@@ -374,6 +374,7 @@ namespace lands{
 
 		TString GetErrEstAlgo(){return _ErrEstAlgo;};
 		void SetErrEstAlgo(TString s){_ErrEstAlgo=s;};
+		void ShowCvCfHiggsScales(double *par);
 		private:
 			VDChannel v_data; // could be pseudo-data for bands
 			VDChannel v_data_real; // real data, not changed during entire run 

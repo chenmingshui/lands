@@ -1065,18 +1065,33 @@ int main(int argc, const char*argv[]){
 			double mu_hat = pars[0];
 			double mu_hat_up = tmpr;
 			double mu_hat_low = tmperr;
+			watch.Print();
 
+			double tmpe;
+			for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
+				myMinuit->GetParameter(i, tmp, tmpe);
+				bestFitPars[i]=tmp;
+			}
+
+			if(cms->GetPhysicsModel()==typeCvCfHiggs) cms->ShowCvCfHiggsScales(bestFitPars);
+			if(cms->GetPhysicsModel()==typeCvCfHiggs and debug) {
+				// check 10000 calls of GammaTot  timing 
+				TStopwatch watch2;
+				watch2.Start();
+				for(int i=0; i<500000; i++){
+					cms->SetFlatPars(bestFitPars);
+					cms->CalcGammaTot();
+				}
+				watch2.Stop();
+				cout<<"500000 GammaTot calls take: "<<endl;
+				watch2.Print();
+			}
 			if(cms->GetPhysicsModel()==typeC5Higgs ){
 				if(ErrEstAlgo =="Minos"){
 					cout<<" 	68% CL : "<<endl;
 					for(int k=1; k<cms_global->POIs().size(); k++)cout<<" POI: "<<cms_global->POIs()[k].name<<"= "<<cms_global->POIs()[k].value<<" + "<<cms_global->POIs()[k].errUp<<" - "<<fabs(cms_global->POIs()[k].errDown)<<endl;
 				}
 				if(ErrEstAlgo=="Bisect"){
-					double tmp, tmpe;
-					for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
-						myMinuit->GetParameter(i, tmp, tmpe);
-						bestFitPars[i]=tmp;
-					}
 					double glbminCgg = cms->Get_v_Pars()[cms->Get_par_i("Cgg")][0];
 					double glbminCbb = cms->Get_v_Pars()[cms->Get_par_i("Cbb")][0];
 					double glbminCtt = cms->Get_v_Pars()[cms->Get_par_i("Ctt")][0];
@@ -1099,6 +1114,7 @@ int main(int argc, const char*argv[]){
 					cout<<" POI Ctt: "<<glbminCtt<<" +"<<errhiCtt<<" -"<<errloCtt<<endl;
 					cout<<" POI Cglgl: "<<glbminCglgl<<" +"<<errhiCglgl<<" -"<<errloCglgl<<endl;
 				}
+				watch.Print();
 				return 0;
 
 			}
@@ -1138,10 +1154,10 @@ int main(int argc, const char*argv[]){
 				int npar = cms_global->Get_max_uncorrelation()+1;
 				TMatrixDSym mat(npar); 
 				myMinuit->mnemat( mat.GetMatrixArray(), npar);
-				if(debug) {
+				if(0) {
 					mat.Print();
 				}
-				if(1){
+				if(0){
 
 					TMatrixDSym *cormat = (TMatrixDSym*)mat.Clone();
 					for (Int_t i=0 ; i<cormat->GetNrows() ; i++) {
@@ -1328,6 +1344,7 @@ int main(int argc, const char*argv[]){
 				cout<<" POI: mu = "<<cms_global->POIs()[0].value<<" + "<<cms_global->POIs()[0].errUp<<" - "<<fabs(cms_global->POIs()[0].errDown)<<endl;
 				//if(idMH>0)cout<<" POI: MH = "<<cms_global->POIs()[1].value<<" + "<<cms_global->POIs()[1].errUp<<" - "<<fabs(cms_global->POIs()[1].errDown)<<endl;
 				for(int k=1; k<cms_global->POIs().size(); k++)cout<<" POI: "<<cms_global->POIs()[k].name<<"= "<<cms_global->POIs()[k].value<<" + "<<cms_global->POIs()[k].errUp<<" - "<<fabs(cms_global->POIs()[k].errDown)<<endl;
+				watch.Print();
 			}
 			
 			SaveResults(jobname+"_maxllfit", HiggsMass, 0, 0, 0, 0, 0, mu_hat_low, 0, mu_hat, mu_hat_up, 0);
@@ -1367,7 +1384,6 @@ int main(int argc, const char*argv[]){
 						double y0_1 =  MinuitFit(3, tmp, tmperr, 1.0, pars, best?true:false, debug, 0, best?bestFitPars:0);
 
 						for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
-							double tmp, tmpe;
 							myMinuit->GetParameter(i, tmp, tmpe);
 							bestFitPars[i]=tmp;
 						}
@@ -1475,6 +1491,7 @@ int main(int argc, const char*argv[]){
 					cout<<" 	95% CL : "<<endl;
 					cout<<" POI: mu = "<<cms_global->POIs()[0].value<<" + "<<cms_global->POIs()[0].errUp<<" - "<<fabs(cms_global->POIs()[0].errDown)<<endl;
 					if(idMH>0)cout<<" POI: MH = "<<cms_global->POIs()[1].value<<" + "<<cms_global->POIs()[1].errUp<<" - "<<fabs(cms_global->POIs()[1].errDown)<<endl;
+					watch.Print();
 				}
 
 			}
@@ -1623,7 +1640,6 @@ int main(int argc, const char*argv[]){
 						double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, best?true:false, debug, 0, best?bestFitPars:0);
 
 						for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
-							double tmp, tmpe;
 							myMinuit->GetParameter(i, tmp, tmpe);
 							bestFitPars[i]=tmp;
 						}
@@ -1681,7 +1697,6 @@ int main(int argc, const char*argv[]){
 						if(bDumpFitResults)cms->DumpFitResults(pars, sj);
 
 						for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
-							double tmp, tmpe;
 							myMinuit->GetParameter(i, tmp, tmpe);
 							bestFitPars[i]=tmp;
 						}
@@ -1740,7 +1755,6 @@ int main(int argc, const char*argv[]){
 						if(bDumpFitResults)cms->DumpFitResults(pars, sj);
 
 						for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
-							double tmp, tmpe;
 							myMinuit->GetParameter(i, tmp, tmpe);
 							bestFitPars[i]=tmp;
 						}

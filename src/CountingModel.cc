@@ -2902,6 +2902,16 @@ If we need to change it later, it will be easy to do.
 
 	    RooRealVar * tmprrv;
 
+	    for(int ch=0; ch<vv_pdfs.size(); ch++){
+		    int ntot = int(v_pdfs_roodataset_tmp[ch]->numEntries());
+	    }
+	cout<<"HELLOHELL vvv_cachPdfValues2.size="<<vvv_cachPdfValues2.size()<<endl;	
+		for(int ch=0; ch<vvv_cachPdfValues2.size(); ch++){
+			cout<<"HELLOHELL vvv_cachPdfValues2["<<ch<<"].size="<<vvv_cachPdfValues2[ch].size()<<endl;
+			for(int p=0; p<vvv_cachPdfValues2[ch].size(); p++)
+				cout<<"HELLOHELL vvv_cachPdfValues2["<<ch<<"]["<<p<<"].size="<<vvv_cachPdfValues2[ch][p].size()<<endl;
+		}
+
 	    if(vvv_cachPdfValues2.size()==0){
 		    vvv_cachPdfValues2.resize(vv_pdfs.size());
 		    for(int ch=0; ch<vv_pdfs.size(); ch++){
@@ -3119,6 +3129,7 @@ If we need to change it later, it will be easy to do.
 		    }
 		    ret+=retch;
 	    }// loop over channels
+
 	   if(isnan(ret) || isinf(ret)) cout<<" DELETEME **** pdfs ret = "<<ret<<endl;
 	    return ret;
     }
@@ -4030,6 +4041,36 @@ If we need to change it later, it will be easy to do.
 
 		cout<<endl<<endl;
     }
+    void CountingModel::ShowCvCfHiggsScales(double *par){
+	    SetFlatPars(par);
+	    CalcGammaTot();
+	    double cv=1, cf=1;
+	    cv= v_Pars[_Cv_i][0];
+	    cf= v_Pars[_Cf_i][0];
+	    
+	    cout<<endl;
+	    cout<<"{decayHZZ=11, decayHWW=10, decayHTT=2, decayHBB=1, decayHGG=8, decayHZG=9, decayHCC=5, decayHTopTop=6, decayHGluGlu=7, decayHSS=4, decayHMM=3};"<<endl; 
+	    cout<<"{productionGGH=1, productionVH=2, productionQQH=3, productionTTH=4};"<<endl;
+	
+	    cout<<" CV= "<<cv<<"    CF="<<cf<<endl; 
+	    cout<<" GammaTot = "<<_GammaTot<<endl;
+	    for(int dm=1; dm<15; dm++){
+		    for(int pm=1; pm<5; pm++){
+			    double scale = -9e10;
+			    if(dm==decayHWW or dm==decayHZZ){
+				    if(pm==productionGGH or pm==productionTTH) scale=(cv*cv/_GammaTot*cf*cf);
+				    else scale=(cv*cv/_GammaTot*cv*cv);
+			    }else if(dm==decayHTT or dm==decayHBB){
+				    if(pm==productionGGH or pm==productionTTH) scale=(cf*cf/_GammaTot*cf*cf);
+				    else scale=(cv*cv/_GammaTot*cf*cf);
+			    }else if(dm==decayHGG){
+				    if(pm==productionGGH or pm==productionTTH) scale=(_CvCf_gg*_CvCf_gg/_GammaTot*cf*cf);
+				    else scale=(_CvCf_gg*_CvCf_gg/_GammaTot*cv*cv);
+			    }
+			    if(scale>-8e10)cout<<" DEBUG CVCF dm="<<dm<<" pm="<<pm<<" scale="<<scale<<endl;
+		    }
+	    }
+    }
     double CountingModel::ScaleCvCfHiggs(int countingOrParametric, int dm, int pm, int c, int s, double bs, const double *par){
 	    int id;
 	    double cv=1, cf=1;
@@ -4302,6 +4343,7 @@ If we need to change it later, it will be easy to do.
 			    break;
 	    }
 	    if(pm==productionGGH) scale*=v_Pars[_Cglgl_i][0];
+	    else if (pm==productionTTH) {}
 	    else scale*=v_Pars[_Cvv_i][0];
 
 	    scale/=_GammaTot;
