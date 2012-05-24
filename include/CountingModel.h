@@ -375,6 +375,8 @@ namespace lands{
 		TString GetErrEstAlgo(){return _ErrEstAlgo;};
 		void SetErrEstAlgo(TString s){_ErrEstAlgo=s;};
 		void ShowCvCfHiggsScales(double *par);
+		void Set_printPdfEvlCycle(double d){_printPdfEvlCycle=d;};
+		void PrintParametricChannelDataEntries();
 		private:
 			VDChannel v_data; // could be pseudo-data for bands
 			VDChannel v_data_real; // real data, not changed during entire run 
@@ -562,6 +564,7 @@ namespace lands{
 			int _Cvv_i, _Cbb_i, _Ctt_i, _Cgg_i, _Cglgl_i, _Ctptp_i, _Czgzg_i, _Cff_i;
 
 			TString _ErrEstAlgo;
+			double _printPdfEvlCycle;
 
 	};
 	CountingModel* CombineModels(CountingModel *cms1, CountingModel *cms2);

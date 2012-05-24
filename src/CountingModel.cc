@@ -174,6 +174,7 @@ namespace lands{
 	_MH_i = -1;
 	_pardm = 0;
 	_ErrEstAlgo = "Minos";
+	_printPdfEvlCycle = -1;
     }
     CountingModel::~CountingModel(){
         v_data.clear();
@@ -1084,7 +1085,7 @@ If we need to change it later, it will be easy to do.
 
         double tmp ; 
         //vector<double> vrdm; vrdm.clear();
-	if(_pardm==NULL) _pardm = new double[max_uncorrelation];
+	if(_pardm==NULL) _pardm = new double[max_uncorrelation+1];
 	double *vrdm=_pardm;
 
         v_pdfs_floatParamsVaried.clear();
@@ -2806,6 +2807,12 @@ If we need to change it later, it will be easy to do.
 	    return ret;
     }
 
+	void CountingModel::PrintParametricChannelDataEntries(){
+		for(int ch=0; ch<v_pdfs_roodataset_real.size(); ch++){
+			cout<<v_pdfs_channelname[ch]<<" data numEntries = "<<v_pdfs_roodataset_real[ch]->numEntries()<<endl;;
+			cout<<v_pdfs_channelname[ch]<<" data sumEntries = "<<v_pdfs_roodataset_real[ch]->sumEntries()<<endl;
+		}
+	}
     void CountingModel::AddObservedDataSet(int index_channel, RooAbsData* rds){
 	    //if(v_pdfs_roodataset[index_channel]) delete v_pdfs_roodataset[index_channel];
 	    int ch = index_channel;
@@ -2814,8 +2821,6 @@ If we need to change it later, it will be easy to do.
 	    v_pdfs_roodataset[ch]=rds;
 	    v_pdfs_roodataset_tmp[ch]=rds;
 	    v_pdfs_roodataset_real[ch]=rds;
-	    cout<<v_pdfs_channelname[ch]<<" data numEntries = "<<v_pdfs_roodataset_real[ch]->numEntries()<<endl;;
-	    cout<<v_pdfs_channelname[ch]<<" data sumEntries = "<<v_pdfs_roodataset_real[ch]->sumEntries()<<endl;
 	    delete tmp;
 
 	    if(_debug>=10){
@@ -2905,13 +2910,14 @@ If we need to change it later, it will be easy to do.
 	    for(int ch=0; ch<vv_pdfs.size(); ch++){
 		    int ntot = int(v_pdfs_roodataset_tmp[ch]->numEntries());
 	    }
+/*
 	cout<<"HELLOHELL vvv_cachPdfValues2.size="<<vvv_cachPdfValues2.size()<<endl;	
 		for(int ch=0; ch<vvv_cachPdfValues2.size(); ch++){
 			cout<<"HELLOHELL vvv_cachPdfValues2["<<ch<<"].size="<<vvv_cachPdfValues2[ch].size()<<endl;
 			for(int p=0; p<vvv_cachPdfValues2[ch].size(); p++)
 				cout<<"HELLOHELL vvv_cachPdfValues2["<<ch<<"]["<<p<<"].size="<<vvv_cachPdfValues2[ch][p].size()<<endl;
 		}
-
+*/
 	    if(vvv_cachPdfValues2.size()==0){
 		    vvv_cachPdfValues2.resize(vv_pdfs.size());
 		    for(int ch=0; ch<vv_pdfs.size(); ch++){
@@ -3091,6 +3097,7 @@ If we need to change it later, it will be easy to do.
 								    //  cout<<" i "<<i<<" val="<<tmp3<<"   *********ch"<<ch<<"p"<<p<<"  before val="<<vvvv_pdfs_ChProcSetEvtVals[ch][p][vv_pdfs_curSetIndex[ch][p]][i]<<endl;
 								    if(maxsets_forcaching>0)vvvv_pdfs_ChProcSetEvtVals[ch][p][vv_pdfs_curSetIndex[ch][p]][i] = tmp3; // update the value of the chosen set 
 								    _countPdfEvaluation ++ ;
+								    if(_printPdfEvlCycle > 0 ) { if( long(_countPdfEvaluation)%long(_printPdfEvlCycle) == 0 ) cout<<" This fit has evaluated  "<<_countPdfEvaluation<<" roofit pdf values "<<endl; } 
 								    //   cout<<" i "<<i<<" val="<<tmp3<<"   *********ch"<<ch<<"p"<<p<<"  curSetIndex="<<vv_pdfs_curSetIndex[ch][p]<<"  after val="<<vvvv_pdfs_ChProcSetEvtVals[ch][p][vv_pdfs_curSetIndex[ch][p]][i]<<endl;
 							    }
 							    if(p<nsigproc) firstSigProcPdfVal = tmp3;
@@ -3131,6 +3138,8 @@ If we need to change it later, it will be easy to do.
 	    }// loop over channels
 
 	   if(isnan(ret) || isinf(ret)) cout<<" DELETEME **** pdfs ret = "<<ret<<endl;
+
+
 	    return ret;
     }
 

@@ -1,3 +1,4 @@
+#http://valgrind.org/docs/manual/quick-start.html#quick-start.intro
 LIB  := lands.so
 EXEC :=	test/CLs.exe \
 	test/Bayesian.exe \
@@ -14,6 +15,7 @@ endif
 
 CXX      := g++
 CXXFLAGS := -O2 -g -fPIC -Iinclude $(shell root-config --cflags) ${RF_CFLAGS}
+#CXXFLAGS := -O0 -g -fPIC -Iinclude $(shell root-config --cflags) ${RF_CFLAGS}
 
 LD       := g++
 LDFLAGS  := $(shell root-config --libs --ldflags) -lMathMore -lMinuit -lRooFit -lRooFitCore -lFoam ${RF_LINKERFLAGS}

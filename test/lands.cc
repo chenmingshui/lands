@@ -195,6 +195,7 @@ bool scanCX=false;
 vector<double> vCvv_toEval, vCgg_toEval, vCtt_toEval, vCbb_toEval, vCglgl_toEval;
 
 TString ErrEstAlgo = "Minos";
+double PrintPdfEvlCycle = -1;
 
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
@@ -266,6 +267,7 @@ int main(int argc, const char*argv[]){
 	if(sPhysicsModel=="CvCfHiggs" or sPhysicsModel=="C5Higgs") { cms->GetSMHiggsBuilder()->readSMBr(sSMBrFile);}	
 	cms->SetUseSystematicErrors(systematics);
 
+	cms->Set_printPdfEvlCycle(PrintPdfEvlCycle);
 
 	if(vCouplingsDef.size()>0){
 		cms->CheckCouplingSet();
@@ -297,6 +299,7 @@ int main(int argc, const char*argv[]){
 	//**********************  setValueDirty() takes a lot of timing ************************
 	//RooAbsArg::setDirtyInhibit(0);
 
+	cms->PrintParametricChannelDataEntries();
 
 	TStopwatch watch;  
 	watch.Start();
@@ -506,6 +509,7 @@ int main(int argc, const char*argv[]){
 				if(testStat==1)frequentist.prepareLogNoverB();
 				frequentist.BuildM2lnQ_data();
 				watch.Print();
+				delete cms;
 				return 0;
 			}
 			//frequentist.checkFittedParsInData(true, false, "fittedPars.root");
@@ -561,6 +565,7 @@ int main(int argc, const char*argv[]){
 					FillTree2(fileM2lnQ, cms->GetSignalScaleFactor(), qdata, vsb, vb, s_r, s_sb, s_b, option);
 				}
 				watch.Print();
+				delete cms;
 				return 0;
 			}
 
@@ -587,6 +592,7 @@ int main(int argc, const char*argv[]){
 				vb = frequentist.Get_m2logQ_b();
 				if(bWriteToys){
 					watch.Print();
+					delete cms;
 					return 0;
 				}
 			}
@@ -623,6 +629,7 @@ int main(int argc, const char*argv[]){
 
 				double * clsbands = clsr95.Get_CLsProjected();
 				SaveResults(jobname+"_clsbands", HiggsMass, cls, errs, 0, 0, clsbands[0], clsbands[1], clsbands[2], clsbands[5], clsbands[3], clsbands[4]);
+				delete cms;
 				return 0;
 			}
 
@@ -779,6 +786,7 @@ int main(int argc, const char*argv[]){
 
 			if(singlePoint){ 
 				watch.Print();
+				delete cms;
 				return 1;
 			}
 
@@ -805,6 +813,7 @@ int main(int argc, const char*argv[]){
 				}
 
 				watch.Print();
+				delete cms;
 				return 0;
 			}
 
@@ -856,6 +865,7 @@ int main(int argc, const char*argv[]){
 						cout<<endl;
 					}
 					watch.Print();
+					delete cms;
 					return 0;
 				}
 				lb.CLsLimitBands(1-CL, noutcomes, toysHybrid);
@@ -934,6 +944,7 @@ int main(int argc, const char*argv[]){
 					}
 					if (found == -1) {
 						std::cout << "Points are either all inside or all outside the bound." << std::endl;
+						delete cms;
 						return false;
 					}
 				}
@@ -1016,20 +1027,24 @@ int main(int argc, const char*argv[]){
 			}
 
 			watch.Print();
+			delete cms;
 			return 1;
 		}else if(method=="ProfiledLikelihood" or method=="ProfileLikelihood"){
 			vdata_global=cms->Get_v_data();
 			runProfileLikelihoodApproximation();
 			watch.Print();
+			delete cms;
 			return 0;
 
 		}else if(method=="AsymptoticCLs"){
 			runAsymptoticCLs();
 			watch.Print();
+			delete cms;
 			return 0;
 		}else if(method=="Asymptotic"){
 			runAsymptoticLimits();
 			watch.Print();
+			delete cms;
 			return 0;
 		}else if(method == "ScanningMuFit" or method=="MaxLikelihoodFit"){
 			int idMH=-1;
@@ -1116,6 +1131,8 @@ int main(int argc, const char*argv[]){
 					cout<<" POI Cglgl: "<<glbminCglgl<<" +"<<errhiCglgl<<" -"<<errloCglgl<<endl;
 				}
 				watch.Print();
+				delete pars;
+				delete cms;
 				return 0;
 
 			}
@@ -1425,11 +1442,15 @@ int main(int argc, const char*argv[]){
 				watch2.Stop();
 				cout<<"Scanning total takes: "<<endl;
 				watch2.Print();
+				delete pars;
+				delete cms;
 				return 0;
 			}
 
 
-			if(vCouplingsDef.size()) return 0;
+			if(vCouplingsDef.size()) {delete pars;
+				delete cms;
+				return 0;}
 
 			double y0_3, mu_hat2, mu_hat_up2, mu_hat_low2;
 
@@ -1678,6 +1699,8 @@ int main(int argc, const char*argv[]){
 				watch2.Stop();
 				cout<<"Scanning total takes: "<<endl;
 				watch2.Print();
+				delete pars;
+				delete cms;
 				return 0;
 			}
 			else {
@@ -1738,6 +1761,8 @@ int main(int argc, const char*argv[]){
 					}
 					watch.Stop();
 					watch.Print();
+					delete pars;
+					delete cms;
 					return 0;
 				}
 				if(scanMs){
@@ -1774,6 +1799,8 @@ int main(int argc, const char*argv[]){
 
 					watch.Stop();
 					watch.Print();
+					delete pars;
+					delete cms;
 					return 0;
 				}
 			}
@@ -1999,6 +2026,7 @@ int main(int argc, const char*argv[]){
 #endif
 
 	watch.Print();
+	delete cms;
 	return 1;
 }
 vector<double> GetListToEval(TString parname, vector<TString> tmpv){
@@ -2714,6 +2742,10 @@ void processParameters(int argc, const char* argv[]){
 
 	tmpv=options["--ErrEstAlgo"]; 
 	if(tmpv.size()!=0) { ErrEstAlgo=tmpv[0]; if(ErrEstAlgo!="Minos" and ErrEstAlgo!="Bisect") {cout<<" ErrEstAlgo only supports Minos and Bisect"<<endl; exit(1);}}
+
+
+	tmpv=options["--PrintPdfEvlCycle"];
+	if(tmpv.size()!=0) {PrintPdfEvlCycle=tmpv[0].Atof();}
 
 	printf("\n\n[ Summary of configuration in this job: ]\n");
 	if(sPhysicsModel!="StandardModelHiggs")cout<<" PhysicsModel:  "<<sPhysicsModel<<endl;
@@ -3650,6 +3682,7 @@ void PrintHelpMessage(){
 	printf("--scanCvCf                            to be used with -vCv, -vCf\n");
 	printf("-vCv/-vCf args                        sth like \"1.2 1.3 1.4 [1.5,3.0,x1.05] [3.0,10.0,0.5]\", for scanning CV vs. CF\n");
 	printf("--ErrEstAlgo arg                      Minos, Bisect\n");
+	printf("--PrintPdfEvlCycle arg                for debugging\n");
 
 
 	printf(" \n");

@@ -1872,6 +1872,8 @@ bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripp
 		cout<<endl<<endl<<"end duplicating this card:"<<endl<<endl;
 	}
 
+	if(nprocesses) delete [] nprocesses;
+
 	return true;
 }
 
@@ -2683,6 +2685,10 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 		cout<<endl<<endl<<"end duplicating this card:"<<endl<<endl;
 	}
 
+	if(nprocesses) delete [] nprocesses;
+	if(binnumber) delete [] binnumber;
+	if(subprocess) delete [] subprocess;
+	if(eventrate) delete [] eventrate;
 	return true;
 }
 TString GetWordFromLine(TString line, int index, string delim){
