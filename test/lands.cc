@@ -199,6 +199,8 @@ double PrintPdfEvlCycle = -1;
 
 bool doMemoryCheck = false;
 
+bool DoNotRunGlobalFit = false;
+
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
 
@@ -1065,36 +1067,39 @@ int main(int argc, const char*argv[]){
 			if(bDumpFitResults)cms->DumpFitResults(_inputNuisances, jobname+"_nominalShape");
 
 			double *pars = new double[cms->Get_max_uncorrelation()+1]; // nsys + r
+			for(int i=0; i<=cms->Get_max_uncorrelation(); i++) pars[i]=0;
 			
 			//double bestFitPars[cms->Get_maximumFunctionCallsInAFit()+1];  //  not static ... not allowed 
 			double *bestFitPars= new double[cms->Get_maximumFunctionCallsInAFit()+1];
+			for(int i=0; i<=cms->Get_max_uncorrelation(); i++) bestFitPars[i]=0;
 
-			double tmp=0, tmpr = 0, tmperr=0;
+			double tmp=0, tmpe=0, tmpr = 0, tmperr=0;
 			double ErrorDef = TMath::ChisquareQuantile(0.68 , 1);// (confidenceLevel, ndf)
 			int success[1]={0};
 			_countPdfEvaluation = 0;
 			if(bDumpFitResults){
 				lands::_bDumpFinalFitResults = true;
 			}
-			double y0_2;
-			if(vCouplingsDef.size()==0) y0_2 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //202, 201, 2:  allow mu to be negative
-			else { y0_2 =  MinuitFit(3, tmp, tmperr, 1.0, pars, false, debug, 0, 0); }
+			double y0_2=0;
+			if(DoNotRunGlobalFit==false){
+				if(vCouplingsDef.size()==0) y0_2 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //202, 201, 2:  allow mu to be negative
+				else { y0_2 =  MinuitFit(3, tmp, tmperr, 1.0, pars, false, debug, 0, 0); }
+				if(debug) cout<<" _countPdfEvaluation = "<<_countPdfEvaluation<<endl;
+				cout<<y0_2<<" fitter u="<<pars[0]<<", from minos fit asymmetry 68% CL:  ["<<tmperr<<","<<tmpr<<"]"<<endl; // upperL, lowerL
+				for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
+					myMinuit->GetParameter(i, tmp, tmpe);
+					bestFitPars[i]=tmp;
+				}
+			}
 			//double y0_2 =  MinuitFit(102, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //102, 101, 21:  don't allow mu to be negative
-			if(debug) cout<<" _countPdfEvaluation = "<<_countPdfEvaluation<<endl;
-			cout<<y0_2<<" fitter u="<<pars[0]<<", from minos fit asymmetry 68% CL:  ["<<tmperr<<","<<tmpr<<"]"<<endl; // upperL, lowerL
 			double mu_hat = pars[0];
 			double mu_hat_up = tmpr;
 			double mu_hat_low = tmperr;
 			watch.Print();
 
-			double tmpe;
-			for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
-				myMinuit->GetParameter(i, tmp, tmpe);
-				bestFitPars[i]=tmp;
-			}
 
-			if(cms->GetPhysicsModel()==typeCvCfHiggs) cms->ShowCvCfHiggsScales(bestFitPars);
-			if(cms->GetPhysicsModel()==typeCvCfHiggs and debug) {
+			if(cms->GetPhysicsModel()==typeCvCfHiggs and !DoNotRunGlobalFit) cms->ShowCvCfHiggsScales(bestFitPars);
+			if(cms->GetPhysicsModel()==typeCvCfHiggs and 0) {
 				// check 10000 calls of GammaTot  timing 
 				TStopwatch watch2;
 				watch2.Start();
@@ -1318,7 +1323,7 @@ int main(int argc, const char*argv[]){
 */
 
 }	
-				if(idMH>0){
+				if(idMH>0 && !DoNotRunGlobalFit){
 					vector< vector<double> > v_paramsUnc = cms_global->Get_v_pdfs_floatParamsUnc();
 					double corr_ij = mat(0, idMH)/sqrt(mat(0,0)*mat(idMH,idMH));
 					cout<<corr_ij<<endl;
@@ -1391,7 +1396,7 @@ int main(int argc, const char*argv[]){
 			
 				vector< vector<double> > v_Pars = cms_global->Get_v_Pars();	
 				
-				vrm.push_back(make_pair(pars[_Cv_i]*(v_Pars[_Cv_i][2]-v_Pars[_Cv_i][1])+v_Pars[_Cv_i][1],  pars[_Cf_i]*(v_Pars[_Cf_i][2]-v_Pars[_Cf_i][1])+v_Pars[_Cf_i][1]) );vc.push_back(y0_2-y0_2);
+				if(DoNotRunGlobalFit == false)vrm.push_back(make_pair(pars[_Cv_i]*(v_Pars[_Cv_i][2]-v_Pars[_Cv_i][1])+v_Pars[_Cv_i][1],  pars[_Cf_i]*(v_Pars[_Cf_i][2]-v_Pars[_Cf_i][1])+v_Pars[_Cf_i][1]) );vc.push_back(y0_2-y0_2);
 
 				bool best = false;
 				for(int i=0; i<vCv_toEval.size(); i++){
@@ -1653,7 +1658,7 @@ int main(int argc, const char*argv[]){
 				if(idMH<0) {cout<<" no MH parameter, exit"<<endl;  exit(1);}
 
 				
-				vrm.push_back(make_pair(pars[idMH]*v_paramsUnc[idMH][1]+v_paramsUnc[idMH][3], pars[0]) );vc.push_back(y0_2-y0_2);
+				if(!DoNotRunGlobalFit)vrm.push_back(make_pair(pars[idMH]*v_paramsUnc[idMH][1]+v_paramsUnc[idMH][3], pars[0]) );vc.push_back(y0_2-y0_2);
 
 				bool best = false;
 				for(int i=0; i<vR_toEval.size(); i++){
@@ -2700,13 +2705,15 @@ void processParameters(int argc, const char* argv[]){
 	tmpv = options["-vCv"];
 	if( scanCvCf and tmpv.size()==0) { cout<<"ERROR: args of -vCv empty "<<endl; exit(1); }
 	else{
-		vCv_toEval = GetListToEval("-vCv",tmpv);
+		if(tmpv.size()==1)vCv_toEval = GetListToEval("-vCv",tmpv);
+		else vCv_toEval.push_back(tmpv[1].Atof());
 		sbinningCV = tmpv[0];
 	}
 	tmpv = options["-vCf"];
 	if( scanCvCf and tmpv.size()==0) { cout<<"ERROR: args of -vCf empty "<<endl; exit(1); }
 	else{
-		vCf_toEval = GetListToEval("-vCf",tmpv);
+		if(tmpv.size()==1)vCf_toEval = GetListToEval("-vCf",tmpv);
+		else vCf_toEval.push_back(tmpv[1].Atof());
 		sbinningCF = tmpv[0];
 	}
 
@@ -2752,6 +2759,7 @@ void processParameters(int argc, const char* argv[]){
 	if(tmpv.size()!=0) {PrintPdfEvlCycle=tmpv[0].Atof();}
 
 	if(isWordInMap("--doMemoryCheck", options)) doMemoryCheck=true;
+	if(isWordInMap("--DoNotRunGlobalFit", options)) DoNotRunGlobalFit=true;
 
 	printf("\n\n[ Summary of configuration in this job: ]\n");
 	if(sPhysicsModel!="StandardModelHiggs")cout<<" PhysicsModel:  "<<sPhysicsModel<<endl;
@@ -3686,9 +3694,11 @@ void PrintHelpMessage(){
 	printf("--smbr arg (=FilePath)                for SMHiggsBuilder, path of the file containing SM Br\n");
 	printf("--CV init min max --CF init min max   settings for CvCfHiggs,  i.e. fit range\n");
 	printf("--scanCvCf                            to be used with -vCv, -vCf\n");
-	printf("-vCv/-vCf args                        sth like \"1.2 1.3 1.4 [1.5,3.0,x1.05] [3.0,10.0,0.5]\", for scanning CV vs. CF\n");
+	printf("-vCv/-vCf args                        sth like \"[3.0,10.0,0.5]\", for scanning CV vs. CF, if there are second arg, then just scan that only value\n");
 	printf("--ErrEstAlgo arg                      Minos, Bisect\n");
 	printf("--PrintPdfEvlCycle arg                for debugging\n");
+	printf("--doMemoryCheck  		      only run upto model construction, to terminate the valgrind, more usage in future\n");
+	printf("--DoNotRunGlobalFit                   for scanning POIs space, don't run global fit, and save the fMin instead of delta Q\n");
 
 
 	printf(" \n");
