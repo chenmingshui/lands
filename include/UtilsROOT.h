@@ -20,6 +20,7 @@ inline Double_t Significance(Double_t pvalue){
 	return TMath::Abs(::ROOT::Math::normal_quantile(pvalue,1) ); 
 }
 */
+extern  map<TString, RooWorkspace*> MAP_RWSname_Pointer;
 // FIXME make a few trees which save all important numbers, so we can easily remake plots 
 // and parallel running .....,  combine them at the final step
 void SaveResults(TString sfile, double mH, double limit, double limitErr, double significance, double pvalue, double rm2s, double rm1s, double rmedian, double rmean, double rp1s, double rp2s);
@@ -57,5 +58,10 @@ bool GetPValue(vector<double> vclsb, double qdata, double &ret, double &err, int
 void ReadM2lnQGridFromFile(TString filename, std::map<double, TTree*>&gridCLsb, std::map<double, TTree*>&gridCLb, int _debug=0); 
 vector<double> GetVectorFrom(TTree* tree, TString brName);
 void ReadM2lnQGridFromFile(TString filename, std::map<double, double>&gridQdata, int _debug=0); 
+
+RooWorkspace* GetRWSfromMap(map<TString,RooWorkspace*>m, string filename, string rwsname);
+void AddRWSintoMap(string filename, string rwsname, RooWorkspace* w, map<TString,RooWorkspace*>& m );
+
+
 #endif   /* ----- #ifndef UTILSROOT_INC  ----- */
 

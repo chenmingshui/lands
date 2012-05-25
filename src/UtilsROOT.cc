@@ -9,6 +9,7 @@
 #include "TDirectory.h"
 #include "TKey.h"
 #include "RooAbsData.h"
+map<TString, RooWorkspace*> MAP_RWSname_Pointer;
 void SaveResults(TString sfile, double mH, double limit, double limitErr, double significance, double pvalue, double rm2s, double rm1s, double rmedian, double rmean, double rp1s, double rp2s){
 	TFile fTrees(sfile+".root", "RECREATE");
 	TTree *tree = new TTree("T","T"); 
@@ -2709,8 +2710,12 @@ RooAbsPdf* GetPdf(string c, string p, vector< vector<string> > lines, double mas
 	RooAbsPdf* pdf = 0;
 	for(int i=0; i<lines.size(); i++){
 		if(c==lines[i][2] and p==lines[i][1]){
-			RooWorkspace *w;
+			RooWorkspace *w=0;
+			w = (RooWorkspace*)GetRWSfromMap(MAP_RWSname_Pointer, lines[i][3], GetWordFromLine(lines[i][4],0,":").Data());
+			if(w==0)
 			w = (RooWorkspace*)GetTObject(lines[i][3], GetWordFromLine(lines[i][4], 0, ":").Data());
+			AddRWSintoMap(lines[i][3], GetWordFromLine(lines[i][4],0,":").Data(), w, MAP_RWSname_Pointer);
+			
 			if(w->var("MH") && mass>0) w->var("MH")->setVal(mass);
 			pdf= (RooAbsPdf*)w->pdf(GetWordFromLine(lines[i][4], 1 ,":")); //pdf->SetName(channelnames[c]+pdf->GetName());
 		}
@@ -2725,8 +2730,11 @@ RooAbsArg * GetExtraNorm(string c, string p, vector< vector<string> > lines, dou
 	RooAbsArg * arg = 0;
 	for(int i=0; i<lines.size(); i++){
 		if(c==lines[i][2] and p==lines[i][1]){
-			RooWorkspace *w;
+			RooWorkspace *w=0;
+			w = (RooWorkspace*)GetRWSfromMap(MAP_RWSname_Pointer, lines[i][3], GetWordFromLine(lines[i][4],0,":").Data());
+			if(w==0)
 			w = (RooWorkspace*)GetTObject(lines[i][3], GetWordFromLine(lines[i][4], 0, ":").Data());
+			AddRWSintoMap(lines[i][3], GetWordFromLine(lines[i][4],0,":").Data(), w, MAP_RWSname_Pointer);
 			if(w->var("MH") && mass>0) w->var("MH")->setVal(mass);
 			arg= (RooAbsArg*)w->arg(GetWordFromLine(lines[i][4], 1 ,":")+"_norm"); //arg->SetName(channelnames[c]+arg->GetName());
 		}
@@ -2737,8 +2745,11 @@ RooAbsData* GetRooAbsData(string c, string p, vector< vector<string> > lines, do
 	RooAbsData* pdf = 0;
 	for(int i=0; i<lines.size(); i++){
 		if(c==lines[i][2] and p==lines[i][1]){
-			RooWorkspace *w;
+			RooWorkspace *w=0;
+			w = (RooWorkspace*)GetRWSfromMap(MAP_RWSname_Pointer, lines[i][3], GetWordFromLine(lines[i][4],0,":").Data());
+			if(w==0)
 			w = (RooWorkspace*)GetTObject(lines[i][3], GetWordFromLine(lines[i][4], 0, ":").Data());
+			AddRWSintoMap(lines[i][3], GetWordFromLine(lines[i][4],0,":").Data(), w, MAP_RWSname_Pointer);
 			if(w->var("MH") && mass>0) w->var("MH")->setVal(mass);
 			pdf= (RooAbsData*)w->data(GetWordFromLine(lines[i][4], 1 ,":")); //pdf->SetName(channelnames[c]+pdf->GetName());
 		}
@@ -2913,3 +2924,24 @@ vector<double> GetVectorFrom(TTree* tree, TString brName){
 	}
 	return v;
 }
+
+RooWorkspace* GetRWSfromMap(map<TString,RooWorkspace*>m, string filename, string rwsname){
+	RooWorkspace *w=0;
+	std::map<TString, RooWorkspace*>::iterator p;
+	TString s = "FILENAME_"; s+=filename; s+="_RWSNAME_"; s+=rwsname;
+	//cout<<" To be found = "<<s<<endl;
+	for(p=m.begin(); p!=m.end(); ++p){
+		//cout<<" in "<<p->first<<endl;
+		if(s==p->first) { 
+			//cout<<" Exist RWS in memory, take it"<<endl;
+			return p->second;	
+		}
+	}
+			//cout<<" NOT Exist RWS in memory"<<endl;
+	return w;
+}
+void AddRWSintoMap(string filename, string rwsname, RooWorkspace* w, map<TString,RooWorkspace*>& m ){
+	TString s = "FILENAME_"; s+=filename; s+="_RWSNAME_"; s+=rwsname;
+	m[s]=w;
+}
+
