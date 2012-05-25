@@ -465,7 +465,7 @@ namespace lands{
 		if(model == 101) UseMinos = 1; // PL approximation method using Minos ....  without migrad
 		if(model == 1001) UseMinos = 2; // PL approximation method using Minos ....  with migrad 
 		if(model == 201 || model==202) UseMinos = 2; // PL approximation method using Minos ....  with migrad   allowing negative mu
-		if(model == 3 and cms_global->POIs().size()>1 and cms_global->GetErrEstAlgo()=="Minos") UseMinos=2;
+		if(model == 3 and cms_global->POIs().size()>1 and cms_global->GetErrEstAlgo()=="Minos" and !(cms_global->GetNoErrorEstimation()) ) UseMinos=2;
 
 		double minuitStep = 0.1;
 

@@ -1180,8 +1180,8 @@ int main(int argc, const char*argv[]){
 			{  // check covariance matrix and plot the ellipse if MH variable present in the floating parameter list 
 				int npar = cms_global->Get_max_uncorrelation()+1;
 				TMatrixDSym mat(npar); 
-				myMinuit->mnemat( mat.GetMatrixArray(), npar);
 				if(0) {
+					myMinuit->mnemat( mat.GetMatrixArray(), npar);
 					mat.Print();
 				}
 				if(0){
@@ -1383,6 +1383,7 @@ int main(int argc, const char*argv[]){
 			
 
 			if(scanCvCf && cms_global->GetPhysicsModel()==typeCvCfHiggs){
+				cms_global->SetNoErrorEstimation(1);
 				TStopwatch watch2;
 				watch2.Start();
 				vector< std::pair<double, double> > vrm; vrm.clear(); 
@@ -1649,6 +1650,7 @@ int main(int argc, const char*argv[]){
 				}
 			}
 			if(scanRs and scanMs){
+				cms_global->SetNoErrorEstimation(1);
 				TStopwatch watch2;
 				watch2.Start();
 				vector< std::pair<double, double> > vrm; vrm.clear(); 
