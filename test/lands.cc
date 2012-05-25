@@ -1090,6 +1090,7 @@ int main(int argc, const char*argv[]){
 					myMinuit->GetParameter(i, tmp, tmpe);
 					bestFitPars[i]=tmp;
 				}
+				cout<<" fAmin = "<<myMinuit->fAmin<<endl;
 			}
 			//double y0_2 =  MinuitFit(102, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //102, 101, 21:  don't allow mu to be negative
 			double mu_hat = pars[0];
