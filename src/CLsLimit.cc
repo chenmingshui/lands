@@ -768,9 +768,9 @@ namespace lands{
 			if(debug)cout<<"DELETEME before calc error,  r="<<r<<"+/-"<<er<<endl;
 
 			// Print results
-			Double_t amin,edm,errdef;
-			Int_t nvpar,nparx,icstat;
-			Double_t errUp, errLow, errParab=0, gcor=0; 
+			Double_t amin=0,edm=0,errdef=0;
+			Int_t nvpar=0,nparx=0,icstat=0;
+			Double_t errUp=0, errLow=0, errParab=0, gcor=0; 
 			if(model==101 or model==102 or model == 202 or (model==3 and cms_global->POIs().size()>1)){
 				myMinuit->mnstat(amin,edm,errdef,nvpar,nparx,icstat);
 				myMinuit->mnerrs(0, errUp, errLow, errParab, gcor);

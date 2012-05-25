@@ -77,6 +77,8 @@ TTree * LoadTreeBonly(TString filename, TString & treeName){
 }
 TObject* GetTObject(string filename, string objname){
 
+	cout<<" GetTObject "<<filename.c_str()<<" "<<objname.c_str()<<endl;
+
 	// FIXME need to check if filename is exist, and histoname is exist 
 	if( gSystem->AccessPathName(filename.c_str())) {cout<<filename<<" couldn't be found"<<endl; exit(0);};
 	TFile *f;

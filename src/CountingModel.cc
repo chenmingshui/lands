@@ -284,10 +284,10 @@ namespace lands{
         delete _w;
         delete _w_varied;
 
-        if(_norminalPars) delete _norminalPars;
-        if(_norminalParsSigma) delete _norminalParsSigma;
-        if(_randomizedPars) delete _randomizedPars;
-	if(_pardm) delete _pardm;
+        if(_norminalPars) delete [] _norminalPars;
+        if(_norminalParsSigma) delete [] _norminalParsSigma;
+        if(_randomizedPars) delete [] _randomizedPars;
+	if(_pardm) delete [] _pardm;
     }
     void CountingModel::AddChannel(std::string channel_name, double num_expected_signal, double num_expected_bkg_1, double num_expected_bkg_2, 
             double num_expected_bkg_3, double num_expected_bkg_4, double num_expected_bkg_5, double num_expected_bkg_6 ){

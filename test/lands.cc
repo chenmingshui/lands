@@ -197,6 +197,8 @@ vector<double> vCvv_toEval, vCgg_toEval, vCtt_toEval, vCbb_toEval, vCglgl_toEval
 TString ErrEstAlgo = "Minos";
 double PrintPdfEvlCycle = -1;
 
+bool doMemoryCheck = false;
+
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
 
@@ -351,6 +353,8 @@ int main(int argc, const char*argv[]){
 	cms->Set_minuitPrintLevel(minuitPrintLevel);
 
 	cms->SetErrEstAlgo(ErrEstAlgo);
+
+	if(doMemoryCheck) {delete cms; return 0;}
 
 	if(calcsignificance==0){// calc limits
 		if(method == "Bayesian"){
@@ -2746,6 +2750,8 @@ void processParameters(int argc, const char* argv[]){
 
 	tmpv=options["--PrintPdfEvlCycle"];
 	if(tmpv.size()!=0) {PrintPdfEvlCycle=tmpv[0].Atof();}
+
+	if(isWordInMap("--doMemoryCheck", options)) doMemoryCheck=true;
 
 	printf("\n\n[ Summary of configuration in this job: ]\n");
 	if(sPhysicsModel!="StandardModelHiggs")cout<<" PhysicsModel:  "<<sPhysicsModel<<endl;
