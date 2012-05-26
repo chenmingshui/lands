@@ -1375,7 +1375,11 @@ int main(int argc, const char*argv[]){
 				watch.Print();
 			}
 			
-			SaveResults(jobname+"_maxllfit", HiggsMass, 0, 0, 0, 0, 0, mu_hat_low, 0, mu_hat, mu_hat_up, 0);
+			
+			if(cms->GetPhysicsModel()==typeCvCfHiggs)SaveResults(jobname+"_maxllfit", HiggsMass, 0, 0, 0, 0, 0, mu_hat_low, 0, mu_hat, mu_hat_up, 0);
+			else if(cms->GetPhysicsModel()==typeC5Higgs)SaveResults(jobname+"_maxllfit", HiggsMass, 0, 0, 0, 0, 0, mu_hat_low, 0, mu_hat, mu_hat_up, 0);
+			else SaveResults(jobname+"_maxllfit", HiggsMass, 0, 0, 0, 0, 0, mu_hat_low, 0, mu_hat, mu_hat_up, 0);
+
 			if(bDumpFitResults)cms->DumpFitResults(pars, jobname+"_fittedShape_floatMu");
 			
 			double *pars_maxll = new double[cms->Get_max_uncorrelation()+1]; 

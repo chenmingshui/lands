@@ -13,6 +13,7 @@
 #include "PlotUtilities.h"
 #include "Utilities.h"
 #include "UtilsROOT.h"
+#include <TFile.h>
 using namespace std;
 namespace lands{
 //------------------------------------------------------------------------------
@@ -1026,5 +1027,14 @@ void DrawTH2D::draw(){
 }
 void DrawTH2D::save(){
 	Save(cCanvas,_ssave);
+	string seps = _ssave+".eps";
+	string sgif = _ssave+".gif";
+	string sroot = _ssave+".root";
+	//cCanvas->Print(sroot.c_str());
+	//cCanvas->Print(seps.c_str());
+	cCanvas->Print(sgif.c_str());
+	TFile f(sroot.c_str(),"RECREATE");
+	f.WriteTObject(graph);
+
 }
 };
