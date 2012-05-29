@@ -1035,6 +1035,7 @@ void DrawTH2D::save(){
 	cCanvas->Print(sgif.c_str());
 	TFile f(sroot.c_str(),"RECREATE");
 	f.WriteTObject(graph);
+	f.Close();
 
 }
 };

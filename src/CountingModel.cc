@@ -4157,7 +4157,7 @@ If we need to change it later, it will be easy to do.
 	    TString ts = s;
 	    if(ts.Contains("ggH")) pm = productionGGH; 
 	    if(ts.Contains("VH") or ts.Contains("WH") or ts.Contains("ZH")) pm = productionVH; 
-	    if(ts.Contains("qqH")) pm = productionQQH; 
+	    if(ts.Contains("qqH") or ts.Contains("VBF")) pm = productionQQH; 
 	    if(ts.Contains("ttH")) pm = productionTTH; 
 	    return pm;
     }

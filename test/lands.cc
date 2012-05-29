@@ -358,6 +358,19 @@ int main(int argc, const char*argv[]){
 
 	if(doMemoryCheck) {delete cms; return 0;}
 
+	if(cms->GetPhysicsModel()==typeCvCfHiggs and debug) {
+		for(int i=0; i< cms->Get_vv_productionMode().size(); i++){
+			for(int j=0; j< cms->Get_vv_productionMode()[i].size(); j++){
+				cout<<" channel "<<cms->GetChannelName(i)<<" proc "<<cms->GetProcessNames(i)[j]<<" pm = "<<cms->Get_vv_productionMode()[i][j]<<" dm= "<<cms->Get_v_channelDecayMode()[i]<<endl;
+			}
+		}
+		for(int i=0; i< cms->Get_vv_pdfs_productionMode().size(); i++){
+			for(int j=0; j< cms->Get_vv_pdfs_productionMode()[i].size(); j++){
+				cout<<" channel "<<cms->Get_v_pdfs_channelname()[i]<<" proc "<<cms->Get_vv_pdfs_procname()[i][j]<<" pm = "<<cms->Get_vv_pdfs_productionMode()[i][j]<<" dm= "<<cms->Get_v_pdfs_channelDecayMode()[i]<<endl;
+			}
+		}
+	}
+
 	if(calcsignificance==0){// calc limits
 		if(method == "Bayesian"){
 			runBayesian();
@@ -1081,6 +1094,7 @@ int main(int argc, const char*argv[]){
 				lands::_bDumpFinalFitResults = true;
 			}
 			double y0_2=0;
+			// for CvCf   ==>   y0_2,  CV, CF and their errors 
 			if(DoNotRunGlobalFit==false){
 				if(vCouplingsDef.size()==0) y0_2 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //202, 201, 2:  allow mu to be negative
 				else { y0_2 =  MinuitFit(3, tmp, tmperr, 1.0, pars, false, debug, 0, 0); }
