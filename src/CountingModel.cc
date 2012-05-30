@@ -2019,7 +2019,7 @@ If we need to change it later, it will be easy to do.
 			    std::auto_ptr<TIterator> iter(observable->createIterator());
 			    for(RooRealVar * obs= (RooRealVar*)iter->Next(); obs!=0; obs=(RooRealVar*)iter->Next()){
 				    if(TString(obs->GetName()).BeginsWith("wgttmp_")) continue;
-				    if(obs->getBins()>200) obs->setBins(200);
+				    //if(obs->getBins()>200) obs->setBins(200);
 			    }
 			    observable->Print();
 
@@ -2080,7 +2080,7 @@ If we need to change it later, it will be easy to do.
 			    std::auto_ptr<TIterator> iter(observable->createIterator());
 			    for(RooRealVar * obs= (RooRealVar*)iter->Next(); obs!=0; obs=(RooRealVar*)iter->Next()){
 				    if(TString(obs->GetName()).BeginsWith("wgttmp_")) continue;
-				    if(obs->getBins()>200) obs->setBins(200);
+				    //if(obs->getBins()>200) obs->setBins(200);
 				    cout<<"DELETEME ***** obs "<<obs->GetName()<<" bins = "<<obs->getBins()<<"\n";
 			    }
 			    RooDataHist *rdh_asimovsb = _w->pdf(v_pdfs_sb[i]) -> generateBinned(*observable,ExpectedData());
@@ -2454,7 +2454,7 @@ If we need to change it later, it will be easy to do.
 	    _w_varied->import(*observable, RecycleConflictNodes());
 	    v_pdfs_observables.push_back(observable->GetName());
 
-	    if(_w->var(v_pdfs_observables.back())->getBins()>200){
+	    if(0 and _w->var(v_pdfs_observables.back())->getBins()>200){
 		    _w->var(v_pdfs_observables.back())->setBins(200);
 		    _w_varied->var(v_pdfs_observables.back())->setBins(200);
 		    observable->setBins(200);

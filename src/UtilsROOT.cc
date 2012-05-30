@@ -2277,7 +2277,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 			int ii = 0;
 			for(RooRealVar *obs = (RooRealVar*)iter->Next(); obs!=0; obs=(RooRealVar*)iter->Next()){
 				cout<<" DELETEME *******  obs "<<obs->GetName()<<" bins = "<<obs->getBins()<<endl;
-				if(obs->getBins()>200) obs->setBins(200);
+				//if(obs->getBins()>200) obs->setBins(200);
 				if(ii>0) cuts+=" && ";
 				cuts+=obs->GetName(); cuts+=">="; cuts+=obs->getMin(); cuts+=" && ";
 				cuts+=obs->GetName(); cuts+="<="; cuts+=obs->getMax();

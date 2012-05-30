@@ -170,6 +170,12 @@ double ObservableRangeMin = 0;
 double ObservableRangeMax = 0;
 int ObservableBins = 100;
 
+// for parametric shapes in RooFit
+vector<TString> rebin_observables ;
+vector<int>     rebin_observables_nbins;
+vector<double>  rebin_observables_xmin;
+vector<double>  rebin_observables_xmax;
+
 bool bDumpFitResults = false;
 int maxsets_forcaching = 0;
 int PrintParameterFrom = -1;
@@ -327,6 +333,38 @@ int main(int argc, const char*argv[]){
 	
 	cms_global->Set_maxSetsCaching(maxsets_forcaching);
 	cms_global->Set_PrintParameter(PrintParameterFrom, PrintParameterTo);
+
+	if(rebin_observables.size()>0){
+		for(int i=0; i<rebin_observables.size(); i++){
+			if(cms_global->GetWorkSpace()->var(rebin_observables[i])) {
+				RooRealVar *x = cms_global->GetWorkSpace()->var(rebin_observables[i]);
+				x->setBins(rebin_observables_nbins[i]);
+				x->setMin(rebin_observables_xmin[i]);
+				x->setMax(rebin_observables_xmax[i]);
+
+				x = cms_global->GetWorkSpaceVaried()->var(rebin_observables[i]);
+				x->setBins(rebin_observables_nbins[i]);
+				x->setMin(rebin_observables_xmin[i]);
+				x->setMax(rebin_observables_xmax[i]);
+
+
+				for(int j=0; j<cms->Get_v_pdfs_roodataset_real().size(); j++){
+					RooArgSet * observable = (RooArgSet*)cms->Get_v_pdfs_roodataset_real()[j]->get();
+					std::auto_ptr<TIterator> iter(observable->createIterator());
+					for(RooRealVar * obs= (RooRealVar*)iter->Next(); obs!=0; obs=(RooRealVar*)iter->Next()){
+						if(TString(obs->GetName()) == rebin_observables[i]){
+							obs->setBins(rebin_observables_nbins[i]);
+							obs->setMin(rebin_observables_xmin[i]);
+							obs->setMax(rebin_observables_xmax[i]);
+						}
+					}
+				}
+			}else{
+				cout<< " --RebinObservables has a observable \""<<rebin_observables[i]<<"\" which is not in workspace "<<endl; exit(1); 
+			}
+		}
+	}
+
 
 	structPOI poiMU("signal_strength", 0, 0, 0, 0, 0);
 	structPOI poiM("MH", 0, 0, 0, 0, 0);
@@ -2782,6 +2820,20 @@ void processParameters(int argc, const char* argv[]){
 	if(isWordInMap("--doMemoryCheck", options)) doMemoryCheck=true;
 	if(isWordInMap("--DoNotRunGlobalFit", options)) DoNotRunGlobalFit=true;
 
+	tmpv=options["--RebinObservables"];
+	if(tmpv.size()!=0){
+		if(tmpv.size() % 4 ==0){
+			for(int i=0; i<tmpv.size(); i+=4){
+				rebin_observables.push_back(tmpv[i]);
+				rebin_observables_nbins.push_back(tmpv[i+1].Atoi());
+				rebin_observables_xmin.push_back(tmpv[i+2].Atof());
+				rebin_observables_xmax.push_back(tmpv[i+3].Atof());
+			}
+		}else{
+			cout<<"ERROR.  --RebinObservables should have 4/8/12/... args,  --> obsname nbin xmin xmax "<<endl; exit(1); 
+		}
+	}
+
 	printf("\n\n[ Summary of configuration in this job: ]\n");
 	if(sPhysicsModel!="StandardModelHiggs")cout<<" PhysicsModel:  "<<sPhysicsModel<<endl;
 	cout<<"  Calculating "<<(calcsignificance?"significance":"limit")<<" with "<<method<<" method "<<endl;
@@ -3720,6 +3772,7 @@ void PrintHelpMessage(){
 	printf("--PrintPdfEvlCycle arg                for debugging\n");
 	printf("--doMemoryCheck  		      only run upto model construction, to terminate the valgrind, more usage in future\n");
 	printf("--DoNotRunGlobalFit                   for scanning POIs space, don't run global fit, and save the fMin instead of delta Q\n");
+	printf("--RebinObservables name nbin xmin xmax .........  for rebin observables  \n");
 
 
 	printf(" \n");
