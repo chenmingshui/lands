@@ -3,6 +3,7 @@
 #include <cmath>
 #include <stdio.h>
 #include <vector>
+#include <memory>
 #include <iostream>
 #include <algorithm>
 #include <TSystem.h>
