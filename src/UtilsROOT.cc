@@ -1068,8 +1068,9 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 				for(int t=0; t<n_proc; t++){
 					for(int q=0; q<shape.size(); q++){
 						if(shape[q][INDEXofChannel]!=channelnames[c] || shape[q][INDEXofProcess]!=vv_procnames[c][t]) continue; 
-						hn[t] = ((TH1F*)GetHisto(shape[q][3], shape[q][4]));
-						if(hn[t]==NULL) continue;
+						TH1F *htmp =((TH1F*)GetHisto(shape[q][3], shape[q][4]));
+						if(htmp==NULL) continue;
+						hn[t] = htmp;
 		
 						if(hn[t]->Integral() == 0) { 
 							cout<<"WARNING: channel ["<<channelnames[c]<<"] process ["<<vv_procnames[c][t]
@@ -1108,16 +1109,18 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 									if(shapeuncertainties[i][INDEXofChannel]==channelnames[c] 
 											and shapeuncertainties[i][INDEXofProcess]==vv_procnames[c][t]
 											and shapeuncertainties[i][4]==uncerlines[u][0]){
-										hunc_up[t][u] = (TH1F*)GetHisto(shapeuncertainties[i][3], shapeuncertainties[i][5]);
-										if(hunc_up[t][u]==NULL) continue;
+										TH1F * htmp = (TH1F*)GetHisto(shapeuncertainties[i][3], shapeuncertainties[i][5]);
+										if(htmp==NULL) continue;
+										hunc_up[t][u]  = htmp ;
 										if(hunc_up[t][u]->Integral()== 0 && hnorm[t]->Integral()!=0) { 
 											cout<<" hnorm "<<hnorm[t]->GetName()<<": integral = "<<hnorm[t]->Integral()<<endl;
 											cout<<"ERROR: channel ["<<channelnames[c]<<"] process ["<<vv_procnames[c][t]
 												<<"] is shape, but the up_shift histogram->Integral = 0"<<endl;
 											exit(0);
 										}
-										hunc_dn[t][u] = (TH1F*)GetHisto(shapeuncertainties[i][3], shapeuncertainties[i][6]);
-										if(hunc_dn[t][u]==NULL) continue;
+										htmp = (TH1F*)GetHisto(shapeuncertainties[i][3], shapeuncertainties[i][6]);
+										if(htmp==NULL) continue;
+										hunc_dn[t][u] =  htmp;
 										if(hunc_dn[t][u]->Integral()== 0 && hnorm[t]->Integral()!=0) { 
 											cout<<"ERROR: channel ["<<channelnames[c]<<"] process ["<<vv_procnames[c][t]
 												<<"] is shape, but the down_shift histogram->Integral = 0"<<endl;
@@ -1148,6 +1151,9 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 									cout<<"ERROR channel ["<<channelnames[c]<<"] process ["<<vv_procnames[c][t]<<"] sys ["<<uncerlines[u][0]
 										<<"] is shape uncertainty, we need corresponding histogram "<<endl;
 									exit(0);
+								}
+								if(hunc_up[t][u]==NULL) {
+									cout<<" channel "<<channelnames[c]<< " proc "<<vv_procnames[c][t]<< " unc "<<uncerlines[u][0]<< "  is shape, but corresponding variation histogram is not found " << endl; exit(1);
 								}
 							}
 						}
