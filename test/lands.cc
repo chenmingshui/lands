@@ -163,7 +163,7 @@ bool bMultiSigProcShareSamePDF = false;
 TString scanRAroundBand = "all";
 
 
-bool bConstructAsimovbFromNominal = false;
+bool bConstructAsimovbFromNominal = true; 
 bool bConstructAsimovsbFromFit = false;
 
 bool bRedefineObservableRange = false;
@@ -384,8 +384,8 @@ int main(int argc, const char*argv[]){
 	_startNuisances = cms->Get_norminalPars();
 	_inputNuisances = cms->Get_norminalPars();
 	cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
-	bConstructAsimovbFromNominal = true;
-	if(method == "Asymptotic") bConstructAsimovbFromNominal = false;
+	//bConstructAsimovbFromNominal = true;
+	//if(method == "Asymptotic") bConstructAsimovbFromNominal = false;
 	cms->ConstructAsimovData(0, bConstructAsimovbFromNominal); // b-only asimov 
 	cms->ConstructAsimovData(1, bConstructAsimovsbFromFit, InjectingSignalStrength); // sb asimov
 	if(dataset == "asimov_b")cms->UseAsimovData(0);
@@ -2310,8 +2310,6 @@ void processParameters(int argc, const char* argv[]){
 
 	if(isWordInMap("--bForceSymmetryError", options)) bForceSymmetryError = true;
 	if(isWordInMap("--bMultiSigProcShareSamePDF", options)) bMultiSigProcShareSamePDF = true;
-	if(isWordInMap("--bConstructAsimovbFromNominal", options)) bConstructAsimovbFromNominal = true;
-	if(isWordInMap("--bConstructAsimovsbFromFit", options)) bConstructAsimovsbFromFit = true;
 
 	tmpv= options["-L"];if(tmpv.size()==0)tmpv=options["--LoadLibraries"];
 	librariesToBeLoaded = tmpv;
@@ -2345,6 +2343,11 @@ void processParameters(int argc, const char* argv[]){
 				(method!="ProfiledLikelihood" and method!="Hybrid" and method!="Bayesian" and method!="FeldmanCousins" and method!="ProfileLikelihood" and method!="AsymptoticCLs" and method!="Asymptotic" and method!="ScanningMuFit" and method!="MaxLikelihoodFit")
 		  ){cout<<"ERROR You are trying to use "<<method<<", which is not supported currently to calculate limit "<<endl; exit(0);}
 	}
+
+	if(method=="Asymptotic") {bConstructAsimovbFromNominal = false;}
+	else {bConstructAsimovbFromNominal = true;}
+	if(isWordInMap("--bConstructAsimovbFromNominal", options)) bConstructAsimovbFromNominal = true;
+	if(isWordInMap("--bConstructAsimovsbFromFit", options)) bConstructAsimovsbFromFit = true;
 
 	tmpv = options["-v"]; if(tmpv.size()!=1) tmpv = options["--verbose"]; if(tmpv.size()!=1) tmpv = options["--debug"]; 
 	if( tmpv.size()!=1 ) { debug = 0; }
