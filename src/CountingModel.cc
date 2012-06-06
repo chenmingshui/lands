@@ -2031,8 +2031,14 @@ If we need to change it later, it will be easy to do.
 			    RooArgSet * rastmp = new RooArgSet(*observable, *(_w->var(swgt)));
 			    RooDataSet *rds_asimovb = new RooDataSet(TString("rds_asimovb")+v_pdfs_channelname[i].c_str(), "rds_asimovb", *rastmp, swgt);
 			    if(_debug)cout<<" rdh_asimovb["<<v_pdfs_channelname[i]<<"]->bins = "<<rdh_asimovb->numEntries()<<endl;
-			    for(int j=0; j<rdh_asimovb->numEntries(); j++){
 
+			    bool cutBinsWithSmallWeight = false;
+			    double weightThreshold = 1;
+			    double keepFraction = 0.95;
+			    if(rdh_asimovb->numEntries() >=1000 ) {
+				cutBinsWithSmallWeight = true;
+			    }
+			    for(int j=0; j<rdh_asimovb->numEntries(); j++){
 				    RooArgSet rastmp = *rdh_asimovb->get(j);
 				    double wtmp = rdh_asimovb->weight();
 				    rds_asimovb->add(rastmp, wtmp);
@@ -2081,7 +2087,7 @@ If we need to change it later, it will be easy to do.
 			    for(RooRealVar * obs= (RooRealVar*)iter->Next(); obs!=0; obs=(RooRealVar*)iter->Next()){
 				    if(TString(obs->GetName()).BeginsWith("wgttmp_")) continue;
 				    //if(obs->getBins()>200) obs->setBins(200);
-				    cout<<"DELETEME ***** obs "<<obs->GetName()<<" bins = "<<obs->getBins()<<"\n";
+				    cout<<"DELETEME ***** obs "<<obs->GetName()<<" bins = "<<obs->getBins()<<" ["<<obs->getMin()<<","<<obs->getMax()<<"\n";
 			    }
 			    RooDataHist *rdh_asimovsb = _w->pdf(v_pdfs_sb[i]) -> generateBinned(*observable,ExpectedData());
 			    TString swgt = "wgttmp_"; swgt+=v_pdfs_channelname[i];
