@@ -38,7 +38,7 @@ TH1F* GetHisto(string filename, string histoname){
 	f = (TFile*)gROOT->GetListOfFiles()->FindObject(filename.c_str());
 	if(f==NULL) f=new TFile(filename.c_str());
 	TH1F *h = (TH1F*)f->Get(histoname.c_str());
-	if(!h) {cout<<"hist ["<<histoname<<"] in file ["<<filename<<"] couldn't be found"<<endl; exit(0);};
+	//if(!h) {cout<<"hist ["<<histoname<<"] in file ["<<filename<<"] couldn't be found"<<endl; exit(0);};
 	return h;
 }
 TTree * LoadTreeBonly(TString filename, TString & treeName){
@@ -979,6 +979,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 				if(s!=channelnames[c])continue;
 				if(TString(shape[j][4]).Contains(":")) continue; // parametric channel, will process later
 				TH1F *h = (TH1F*)GetHisto(shape[j][3],shape[j][4]);
+				if(h==NULL) continue;
 				newchannels+=h->GetNbinsX();
 				newchannels-=1;
 				delete h;
@@ -1008,6 +1009,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 						if(TString(shape[p][4]).Contains(":")) continue; // parametric channel, will process later
 						isShapeChannel=true;
 						TH1F* h = (TH1F*)GetHisto(shape[p][3], shape[p][4]);
+						if(h==NULL) continue;
 						for(int r=1; r<=h->GetNbinsX(); r++){
 							n++; s+=h->GetBinContent(r); s+=" ";
 						}
@@ -1056,6 +1058,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 
 				int n_proc = nprocesses[c];
 				TH1F* h = (TH1F*)GetHisto(shape[p][3], shape[p][4]);
+				if(h==NULL) continue;
 				TH1F* hn[n_proc];
 				TH1F *hnorm[n_proc]; // normalized to 1 
 				TH1F *hunc_up[n_proc][nsyssources];
@@ -1066,6 +1069,8 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 					for(int q=0; q<shape.size(); q++){
 						if(shape[q][INDEXofChannel]!=channelnames[c] || shape[q][INDEXofProcess]!=vv_procnames[c][t]) continue; 
 						hn[t] = ((TH1F*)GetHisto(shape[q][3], shape[q][4]));
+						if(hn[t]==NULL) continue;
+		
 						if(hn[t]->Integral() == 0) { 
 							cout<<"WARNING: channel ["<<channelnames[c]<<"] process ["<<vv_procnames[c][t]
 								<<"] is shape, but the norminal histogram->Integral = 0"<<endl;
@@ -1104,6 +1109,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 											and shapeuncertainties[i][INDEXofProcess]==vv_procnames[c][t]
 											and shapeuncertainties[i][4]==uncerlines[u][0]){
 										hunc_up[t][u] = (TH1F*)GetHisto(shapeuncertainties[i][3], shapeuncertainties[i][5]);
+										if(hunc_up[t][u]==NULL) continue;
 										if(hunc_up[t][u]->Integral()== 0 && hnorm[t]->Integral()!=0) { 
 											cout<<" hnorm "<<hnorm[t]->GetName()<<": integral = "<<hnorm[t]->Integral()<<endl;
 											cout<<"ERROR: channel ["<<channelnames[c]<<"] process ["<<vv_procnames[c][t]
@@ -1111,6 +1117,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 											exit(0);
 										}
 										hunc_dn[t][u] = (TH1F*)GetHisto(shapeuncertainties[i][3], shapeuncertainties[i][6]);
+										if(hunc_dn[t][u]==NULL) continue;
 										if(hunc_dn[t][u]->Integral()== 0 && hnorm[t]->Integral()!=0) { 
 											cout<<"ERROR: channel ["<<channelnames[c]<<"] process ["<<vv_procnames[c][t]
 												<<"] is shape, but the down_shift histogram->Integral = 0"<<endl;
