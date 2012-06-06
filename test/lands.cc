@@ -340,13 +340,17 @@ int main(int argc, const char*argv[]){
 			if(cms_global->GetWorkSpace()->var(rebin_observables[i])) {
 				RooRealVar *x = cms_global->GetWorkSpace()->var(rebin_observables[i]);
 				x->setBins(rebin_observables_nbins[i]);
-				x->setMin(rebin_observables_xmin[i]);
-				x->setMax(rebin_observables_xmax[i]);
+				if(rebin_observables_xmin[i]<rebin_observables_xmax[i]){
+					x->setMin(rebin_observables_xmin[i]);
+					x->setMax(rebin_observables_xmax[i]);
+				}
 
 				x = cms_global->GetWorkSpaceVaried()->var(rebin_observables[i]);
 				x->setBins(rebin_observables_nbins[i]);
-				x->setMin(rebin_observables_xmin[i]);
-				x->setMax(rebin_observables_xmax[i]);
+				if(rebin_observables_xmin[i]<rebin_observables_xmax[i]){
+					x->setMin(rebin_observables_xmin[i]);
+					x->setMax(rebin_observables_xmax[i]);
+				}
 
 
 				for(int j=0; j<cms->Get_v_pdfs_roodataset_real().size(); j++){
@@ -355,8 +359,10 @@ int main(int argc, const char*argv[]){
 					for(RooRealVar * obs= (RooRealVar*)iter->Next(); obs!=0; obs=(RooRealVar*)iter->Next()){
 						if(TString(obs->GetName()) == rebin_observables[i]){
 							obs->setBins(rebin_observables_nbins[i]);
-							obs->setMin(rebin_observables_xmin[i]);
-							obs->setMax(rebin_observables_xmax[i]);
+							if(rebin_observables_xmin[i]<rebin_observables_xmax[i]){
+								obs->setMin(rebin_observables_xmin[i]);
+								obs->setMax(rebin_observables_xmax[i]);
+							}
 						}
 					}
 				}

@@ -2032,6 +2032,10 @@ If we need to change it later, it will be easy to do.
 			    RooDataSet *rds_asimovb = new RooDataSet(TString("rds_asimovb")+v_pdfs_channelname[i].c_str(), "rds_asimovb", *rastmp, swgt);
 			    if(_debug)cout<<" rdh_asimovb["<<v_pdfs_channelname[i]<<"]->bins = "<<rdh_asimovb->numEntries()<<endl;
 
+			// Three ways to speed up asimov data set 
+			// 1.  simply rebin the observables  to smaller bins   ... done 
+			// 2.  stay with original binning, but removing bins with negligible weight, keep the core fraction flexible like 0.95 or 0.99 .... can be combined with 1 
+			// 3.  generate 1000 (flexible) events and rescale them to be as expected 
 			    bool cutBinsWithSmallWeight = false;
 			    double weightThreshold = 1;
 			    double keepFraction = 0.95;
@@ -2087,7 +2091,7 @@ If we need to change it later, it will be easy to do.
 			    for(RooRealVar * obs= (RooRealVar*)iter->Next(); obs!=0; obs=(RooRealVar*)iter->Next()){
 				    if(TString(obs->GetName()).BeginsWith("wgttmp_")) continue;
 				    //if(obs->getBins()>200) obs->setBins(200);
-				    cout<<"DELETEME ***** obs "<<obs->GetName()<<" bins = "<<obs->getBins()<<" ["<<obs->getMin()<<","<<obs->getMax()<<"\n";
+				    cout<<"DELETEME ***** obs "<<obs->GetName()<<" bins = "<<obs->getBins()<<" ["<<obs->getMin()<<","<<obs->getMax()<<"]\n";
 			    }
 			    RooDataHist *rdh_asimovsb = _w->pdf(v_pdfs_sb[i]) -> generateBinned(*observable,ExpectedData());
 			    TString swgt = "wgttmp_"; swgt+=v_pdfs_channelname[i];
