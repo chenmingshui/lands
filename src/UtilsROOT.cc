@@ -448,6 +448,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 	vector<TString> shapeinfo; 
 	for(int l=0; l<lines.size(); l++){
 		if(lines[l].BeginsWith("shapes ")){
+			if(GetWordFromLine(lines[l],3)=="FAKE") continue;
 			hasShape = true;
 			shapeinfo.push_back(lines[l]);
 			if(GetWordFromLine(lines[l], 4).Contains(":")) hasParametricShape =true;
@@ -977,8 +978,17 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 			for(int j=0; j<shape.size(); j++){
 				TString s = shape[j][INDEXofChannel];
 				if(s!=channelnames[c])continue;
-				if(TString(shape[j][4]).Contains(":")) continue; // parametric channel, will process later
-				TH1F *h = (TH1F*)GetHisto(shape[j][3],shape[j][4]);
+				if(TString(shape[j][4]).Contains(":")) continue; // parametric channel, will process later ////  vhbb has put histogram into RooDataHist in RooWorkspace, so game changes here 
+// to much work to implement for them, so workaround is to convert RooDataHist into TH1F and put them into same TFiles ...
+				TH1F *h ;
+				/*if(TString(shape[j][4]).Contains(":")) {
+					RooWorkspace * w = (RooWorkspace*) GetTObject(shape[j][3], GetWordFromLine(lines[i][4], 0, ":").Data());
+					RooDataHist * rdh = (RooDataHist*) 
+				} else {
+					h= (TH1F*)GetHisto(shape[j][3],shape[j][4]);
+				}
+				*/
+				h= (TH1F*)GetHisto(shape[j][3],shape[j][4]);
 				if(h==NULL) continue;
 				newchannels+=h->GetNbinsX();
 				newchannels-=1;
