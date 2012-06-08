@@ -2093,6 +2093,10 @@ If we need to change it later, it will be easy to do.
 				    //if(obs->getBins()>200) obs->setBins(200);
 				    cout<<"DELETEME ***** obs "<<obs->GetName()<<" bins = "<<obs->getBins()<<" ["<<obs->getMin()<<","<<obs->getMax()<<"]\n";
 			    }
+			    if(_w->pdf(v_pdfs_sb[i]) ==NULL) {
+				    _w->Print("V");	
+				    cout<<" *****access pdf name "<<v_pdfs_sb[i]<<endl;
+			    }
 			    RooDataHist *rdh_asimovsb = _w->pdf(v_pdfs_sb[i]) -> generateBinned(*observable,ExpectedData());
 			    TString swgt = "wgttmp_"; swgt+=v_pdfs_channelname[i];
 			    RooArgSet * rastmp = new RooArgSet(*observable, *(_w->var(swgt)));
@@ -2440,13 +2444,13 @@ If we need to change it later, it will be easy to do.
 	    vector<string> vproc; vproc.clear();
 	    vector<int> vprodm; vprodm.clear();
 	    for(int i=0; i<sigPdfs.size(); i++) {
-		    vproc.push_back(sigPdfs[i]->GetName());
-		   int pm = ProductionMode(sigPdfs[i]->GetName());
+		    vproc.push_back(vvprocnames[i]);
+		   int pm = ProductionMode(vvprocnames[i]);
 			vprodm.push_back(pm);
 	    }
 	    for(int i=0; i<bkgPdfs.size(); i++) {
-		    vproc.push_back(bkgPdfs[i]->GetName());
-		   int pm = ProductionMode(bkgPdfs[i]->GetName());
+		    vproc.push_back(vvprocnames[i+sigPdfs.size()]);
+		   int pm = ProductionMode(vvprocnames[i+sigPdfs.size()]);
 			vprodm.push_back(pm);
 	    }
 	    vv_pdfs_procname.push_back(vvprocnames);
@@ -2489,6 +2493,9 @@ If we need to change it later, it will be easy to do.
 	    vector<RooRealVar*> vrrvparams; vrrvparams.clear();
 	    vector< vector<RooRealVar*> > vvrrvparams; vvrrvparams.clear();
 	    for(int i=0; i<sigPdfs.size(); i++){
+		    TString oldname = sigPdfs[i]->GetName();
+		    if(_w->pdf(oldname)) 
+			    sigPdfs[i]->SetName(TString(channel_name)+"_"+vproc[i]+"_"+sigPdfs[i]->GetName()); 
 		    vsigbkgs.push_back(sigPdfs[i]->GetName());
 		    vvvuncpar.push_back(vvunc);
 		    vvpdftype.push_back(vpdftype);
@@ -2551,10 +2558,14 @@ If we need to change it later, it will be easy to do.
 			    hs.Write();
 			    f.Close();
 		    }
+		    sigPdfs[i]->SetName(oldname);
 
 	    }
 
 	    for(int i=0; i<bkgPdfs.size(); i++){
+		    TString oldname = bkgPdfs[i]->GetName();
+		    if(_w->pdf(oldname)) 
+			    bkgPdfs[i]->SetName(TString(channel_name)+"_"+vproc[i+sigPdfs.size()]+"_"+bkgPdfs[i]->GetName()); 
 		    vsigbkgs.push_back(bkgPdfs[i]->GetName());
 		    vvvuncpar.push_back(vvunc);
 		    vvpdftype.push_back(vpdftype);
@@ -2606,7 +2617,7 @@ If we need to change it later, it will be easy to do.
 			    hs.Write();
 			    f.Close();
 		    }
-
+		    bkgPdfs[i]->SetName(oldname);
 	    }
 
 	    vv_pdfs.push_back(vsigbkgs);
@@ -2630,6 +2641,8 @@ If we need to change it later, it will be easy to do.
 	    }
 	    s+=")";
 	    _w->factory(s);
+		//cout<<" DELETE88 **** "<<endl;
+		//_w->Print("V");
 	    _w_varied->factory(s);
 	    s = channel_name; s+="_sb";
 	    v_pdfs_sb.push_back(s);	

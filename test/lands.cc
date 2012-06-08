@@ -119,7 +119,7 @@ double HiggsMass = -1;
 
 int nTries = 1;
 
-int maximumFunctionCallsInAFit = 500000;
+int maximumFunctionCallsInAFit = 5000000;
 int minuitSTRATEGY = 0;
 int minuitPrintLevel= -1;
 double minuitTolerance = 0.001;
@@ -367,7 +367,7 @@ int main(int argc, const char*argv[]){
 					}
 				}
 			}else{
-				cout<< " --RebinObservables has a observable \""<<rebin_observables[i]<<"\" which is not in workspace "<<endl; exit(1); 
+				cout<< " WARNING potential error ***** : --RebinObservables has a observable \""<<rebin_observables[i]<<"\" which is not in workspace "<<endl;
 			}
 		}
 	}
@@ -392,8 +392,8 @@ int main(int argc, const char*argv[]){
 	cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
 	//bConstructAsimovbFromNominal = true;
 	//if(method == "Asymptotic") bConstructAsimovbFromNominal = false;
-	cms->ConstructAsimovData(0, bConstructAsimovbFromNominal); // b-only asimov 
-	cms->ConstructAsimovData(1, bConstructAsimovsbFromFit, InjectingSignalStrength); // sb asimov
+	if(dataset=="asimov_b" or method=="Asymptotic" or ExpectationHints=="Asymptotic")cms->ConstructAsimovData(0, bConstructAsimovbFromNominal); // b-only asimov 
+	if(dataset=="asimov_sb")cms->ConstructAsimovData(1, bConstructAsimovsbFromFit, InjectingSignalStrength); // sb asimov
 	if(dataset == "asimov_b")cms->UseAsimovData(0);
 	else if(dataset == "asimov_sb")cms->UseAsimovData(1);
 
@@ -2775,15 +2775,15 @@ void processParameters(int argc, const char* argv[]){
 	if( scanCvCf and tmpv.size()==0) { cout<<"ERROR: args of -vCv empty "<<endl; exit(1); }
 	else{
 		if(tmpv.size()==1)vCv_toEval = GetListToEval("-vCv",tmpv);
-		else vCv_toEval.push_back(tmpv[1].Atof());
-		sbinningCV = tmpv[0];
+		else if(tmpv.size()>1) vCv_toEval.push_back(tmpv[1].Atof());
+		if(tmpv.size() >0)sbinningCV = tmpv[0];
 	}
 	tmpv = options["-vCf"];
 	if( scanCvCf and tmpv.size()==0) { cout<<"ERROR: args of -vCf empty "<<endl; exit(1); }
 	else{
 		if(tmpv.size()==1)vCf_toEval = GetListToEval("-vCf",tmpv);
-		else vCf_toEval.push_back(tmpv[1].Atof());
-		sbinningCF = tmpv[0];
+		else if(tmpv.size()>1) vCf_toEval.push_back(tmpv[1].Atof());
+		if(tmpv.size()>0)sbinningCF = tmpv[0];
 	}
 
 	tmpv= options["--Cvv"];

@@ -2253,7 +2253,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 			for(int i=0; i<sigbkgs.size(); i++){
 				RooAbsPdf * pdf = (RooAbsPdf*)GetPdf(channelnames[c], tmpprocn[i], parametricShapeLines, mass);
 				RooAbsArg * extraNom = (RooAbsArg*)GetExtraNorm(channelnames[c], tmpprocn[i], parametricShapeLines, mass);
-				pdf->SetName(TString(channelnames[c])+"_"+tmpprocn[i]+"_"+pdf->GetName());
+				//pdf->SetName(TString(channelnames[c])+"_"+tmpprocn[i]+"_"+pdf->GetName()); // cause problem when 2l2q ggH and VBF use the same pdf 'signal'
 				//if(extraNom)extraNom->SetName(TString(pdf->GetName())+"_"+"extranorm");
 				//if(extraNom) extraNom->SetName(TString(channelnames[c])+extraNom->GetName());
 				if(i<nsigproc[c]){
@@ -2739,11 +2739,29 @@ RooAbsPdf* GetPdf(string c, string p, vector< vector<string> > lines, double mas
 			w = (RooWorkspace*)GetTObject(lines[i][3], GetWordFromLine(lines[i][4], 0, ":").Data());
 			AddRWSintoMap(lines[i][3], GetWordFromLine(lines[i][4],0,":").Data(), w, MAP_RWSname_Pointer);
 			
+			if(w==NULL) {
+				cout<<" RooWorkspace is not found "<<endl; exit(1);
+			}
 			if(w->var("MH") && mass>0) w->var("MH")->setVal(mass);
 			pdf= (RooAbsPdf*)w->pdf(GetWordFromLine(lines[i][4], 1 ,":")); //pdf->SetName(channelnames[c]+pdf->GetName());
+			if(pdf==NULL) {
+				w->Print();
+				cout<<"pdf name = ["<<GetWordFromLine(lines[i][4], 1 ,":")<<"]"<<endl;
+				cout<<" pdf is not found "<<endl; exit(1);
+			}
 		}
 	}
 	if(pdf==0) {
+		for(int i=0; i<lines.size(); i++){
+			for(int j=0; j<lines[i].size(); j++)cout<<lines[i][j]<<" ";
+			cout<<""<<endl;
+		}
+
+		cout<<" Exist Workspaces : "<<endl;
+		std::map<TString, RooWorkspace*>::iterator p1;
+		for(p1=MAP_RWSname_Pointer.begin(); p1!=MAP_RWSname_Pointer.end(); ++p1){
+			cout<<" in "<<p1->first<<endl;
+		}
 		cout<<"ERROR can't find TObject of process "<<p<<" in channel "<<c<<endl;
 		exit(0);
 	}
