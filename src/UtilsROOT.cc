@@ -1194,7 +1194,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 							if(uncertypes[u]=="param" or uncertypes[u]=="flatParam") continue;
 							if(1){
 								if(debug>=100) cout<<"debug "<<uncertypes[u]<<endl;
-								if(uncertypes[u]=="shape" or uncertypes[u]=="shape2" or uncertypes[u]=="shapeL" or uncertypes[u]=="shapeQ" or uncertypes[u]=="shapeN" or uncertypes[u]=="shapeN2" or uncertypes[u]=="shapeStat"){
+								if(uncertypes[u]=="shape" or uncertypes[u]=="shape2" or uncertypes[u]=="shapeL" or uncertypes[u]=="shapeQ" or uncertypes[u]=="shapeN" or uncertypes[u]=="shapeN2" or uncertypes[u]=="shapeStat" or uncertypes[u]=="shape?"){
 									TString unc = GetUncertainy(c, t, vv_procnames, uncerlines[u]);
 									if(unc.IsFloat() && unc.Atof()>0){ // number should be > 0
 										double down = hunc_dn_norm[t][u]->GetBinContent(r);
@@ -1687,7 +1687,7 @@ bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripp
 		else if(ss[1]=="trG") pdf=typeTruncatedGaussian; // typeTruncatedGaussian
 		else if(ss[1]=="gmA" or ss[1]=="gmN" or ss[1]=="gmM") pdf=typeGamma; // typeControlSampleInferredLogNormal;  gmA was chosen randomly, while in gmN, N stands for yield in control sample;  gmM stands for Multiplicative gamma distribution, it implies using a Gamma distribution not for a yield but for a multiplicative correction
 		else if(ss[1]=="shapeN" or ss[1]=="shapeN2"  or ss[1]=="shapeStat") pdf=typeLogNormal;
-		else if(ss[1]=="shape" or ss[1]=="shape2" or ss[1]=="shapeQ") pdf=typeShapeGaussianQuadraticMorph;
+		else if(ss[1]=="shape" or ss[1]=="shape2" or ss[1]=="shapeQ" or ss[1]=="shape?") pdf=typeShapeGaussianQuadraticMorph;
 		else if(ss[1]=="shapeL" ) pdf=typeShapeGaussianLinearMorph;
 		else {
 			//pdf =  (TString(ss[1])).Atoi();
@@ -1706,7 +1706,9 @@ bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripp
 		}
 
 		bool filledThisSource = false;
+		int pdf_old = pdf;
 		for(int p=0; p<ntotprocesses; p++){
+			pdf=pdf_old;
 			double err, errup, rho;  // to allow asymetric uncertainties
 			double shape[8];
 			if(pdf==typeLogNormal){
@@ -1787,10 +1789,19 @@ bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripp
 						for(int i=0; i<7; i++) shape[i]=TString(params[i]).Atof();
 						shape[7]=1.;
 					}else if(params.size()==2){
+						pdf = typeLogNormal;
 						for(int i=0; i<6; i++) {
 							if(i<4)shape[i]= 0 ;
 							else shape[i]=TString(params[i-4]).Atof();
 						}
+						if((TString(params[0])).Atof()<=0) {//{ cout<<"ERROR:  Kappa can't be <=0 "<<":  "<<asymetricerrors[0]<<endl; exit(0); };
+							err = 1;
+						}else
+							err = 1./TString(params[0]).Atof() -1.;
+						if((TString(params[1])).Atof()<=0) {//{ cout<<"ERROR:  Kappa can't be <=0 "<<":  "<<asymetricerrors[0]<<endl; exit(0); };
+							errup = 1;
+						}else
+							errup = TString(params[1]).Atof() -1.;
 						shape[6]=0;
 						shape[7]=0;
 					}else { cout<<"ERROR: typeShape input format not correct "<<endl; exit(0);}
@@ -1802,6 +1813,9 @@ bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripp
 					shape[5]=shape[4];
 					shape[6]=0;
 					shape[7]=0;
+					pdf = typeLogNormal;
+					err = TString(ss[p+2]).Atof() - 1.;
+					errup = err;
 				}
 				tmps= TString::Format("%7.2f ", shape[0]);
 			}
@@ -2362,7 +2376,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 		else if(ss[1]=="trG") pdf=typeTruncatedGaussian; // typeTruncatedGaussian
 		else if(ss[1]=="gmA" or ss[1]=="gmN" or ss[1]=="gmM") pdf=typeGamma; // typeControlSampleInferredLogNormal;  gmA was chosen randomly, while in gmN, N stands for yield in control sample;  gmM stands for Multiplicative gamma distribution, it implies using a Gamma distribution not for a yield but for a multiplicative correction
 		else if(ss[1]=="shapeN" or ss[1]=="shapeN2" or ss[1]=="shapeStat") pdf=typeLogNormal;
-		else if(ss[1]=="shape" or ss[1]=="shape2" or ss[1]=="shapeQ") pdf=typeShapeGaussianQuadraticMorph;
+		else if(ss[1]=="shape" or ss[1]=="shape2" or ss[1]=="shapeQ" or ss[1]=="shape?") pdf=typeShapeGaussianQuadraticMorph;
 		else if(ss[1]=="shapeL" ) pdf=typeShapeGaussianLinearMorph;
 		else if(ss[1]=="param" ) {
 			pdf=typeBifurcatedGaussian;
@@ -2390,12 +2404,16 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 		else		   tmps+= "         ";
 
 		if(ss[1]=="flat" or ss[1]=="lnN" or ss[1]=="trG" or ss[1]=="gmM" or ss[1]=="shapeN" or ss[1]=="shapeN2" or ss[1]=="shape" or ss[1]=="shape2" or ss[1]=="shapeStat" or ss[1]=="shapeL" 
-				or ss[1]=="shapeQ"){
+				or ss[1]=="shapeQ" or ss[1]=="shape?"){
 			if(ss.size()<ntotprocesses+2) { cout<<"Error... uncertainty "<<ss[0]<<": doesn't have enough collums"<<endl; exit(1) ; }
 		}
 
 		bool filledThisSource = false;
+
+		int pdf_old = pdf;
 		for(int p=0; p<ntotprocesses; p++){
+			pdf=pdf_old;
+
 			double err, errup, rho;  // to allow asymetric uncertainties
 			double shape[8];
 
@@ -2484,10 +2502,20 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 						for(int i=0; i<7; i++) shape[i]=TString(params[i]).Atof();
 						shape[7]=1.;
 					}else if(params.size()==2){
+						pdf = typeLogNormal; // FIXME  if "shape" also affect single cut and count or parametric channel, then tranfer it to LogNormal 
 						for(int i=0; i<6; i++) {
 							if(i<4)shape[i]= 0 ;
 							else shape[i]=TString(params[i-4]).Atof();
 						}
+						if((TString(params[0])).Atof()<=0) {//{ cout<<"ERROR:  Kappa can't be <=0 "<<":  "<<asymetricerrors[0]<<endl; exit(0); };
+							err = 1;
+						}else
+							err = 1./TString(params[0]).Atof() -1.;
+						if((TString(params[1])).Atof()<=0) {//{ cout<<"ERROR:  Kappa can't be <=0 "<<":  "<<asymetricerrors[0]<<endl; exit(0); };
+							errup = 1;
+						}else
+							errup = TString(params[1]).Atof() -1.;
+
 						shape[6]=0;
 						shape[7]=0;
 					}else { cout<<"ERROR: typeShape input format not correct "<<endl; exit(0);}
@@ -2499,6 +2527,9 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 					shape[5]=shape[4];
 					shape[6]=0;
 					shape[7]=0;
+					pdf = typeLogNormal;
+					err = TString(ss[p+2]).Atof()-1;
+					errup = err;
 				}
 				tmps= TString::Format("%7.2f ", shape[0]);
 			}
