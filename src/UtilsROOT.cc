@@ -788,6 +788,10 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 											ss[6] = TString(ss[6]).ReplaceAll("$SYSTEMATIC", ss[4]+"Down");
 											ss[5] = TString(ss[5]).ReplaceAll("$MASS", smass);
 											ss[6] = TString(ss[6]).ReplaceAll("$MASS", smass);
+											ss[5] = TString(ss[5]).ReplaceAll("$CHANNEL", ss[2]);
+											ss[5] = TString(ss[5]).ReplaceAll("$PROCESS", ss[1]);
+											ss[6] = TString(ss[6]).ReplaceAll("$CHANNEL", ss[2]);
+											ss[6] = TString(ss[6]).ReplaceAll("$PROCESS", ss[1]);
 											shapeuncertainties.push_back(ss);
 											ss[5] = n5; ss[6]=n6;
 										}
