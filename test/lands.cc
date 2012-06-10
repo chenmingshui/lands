@@ -2826,6 +2826,8 @@ void processParameters(int argc, const char* argv[]){
 
 	tmpv=options["--PrintPdfEvlCycle"];
 	if(tmpv.size()!=0) {PrintPdfEvlCycle=tmpv[0].Atof();}
+	tmpv=options["--PrintFuncCallCycle"];
+	if(tmpv.size()!=0) {_printFuncCallCycle = tmpv[0].Atof();}
 
 	if(isWordInMap("--doMemoryCheck", options)) doMemoryCheck=true;
 	if(isWordInMap("--DoNotRunGlobalFit", options)) DoNotRunGlobalFit=true;
@@ -3780,6 +3782,7 @@ void PrintHelpMessage(){
 	printf("-vCv/-vCf args                        sth like \"[3.0,10.0,0.5]\", for scanning CV vs. CF, if there are second arg, then just scan that only value\n");
 	printf("--ErrEstAlgo arg                      Minos, Bisect\n");
 	printf("--PrintPdfEvlCycle arg                for debugging\n");
+	printf("--PrintFuncCallCycle arg                for debugging\n");
 	printf("--doMemoryCheck  		      only run upto model construction, to terminate the valgrind, more usage in future\n");
 	printf("--DoNotRunGlobalFit                   for scanning POIs space, don't run global fit, and save the fMin instead of delta Q\n");
 	printf("--RebinObservables name nbin xmin xmax .........  for rebin observables  \n");

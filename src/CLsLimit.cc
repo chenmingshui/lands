@@ -65,7 +65,21 @@ namespace lands{
 	bool _IsToy = false;
 
 	double del_oldn = 0; double del_newn =0 ; //DELETEME
+
+	double _nfunccalls = 0;
+	double _printFuncCallCycle = -1;
+	TStopwatch* _watch=0;
 	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag){
+		if(_printFuncCallCycle>0) {
+			_nfunccalls ++;	
+			if( long(_nfunccalls)%long(_printFuncCallCycle) == 0 ){
+				cout<<" This job has called  "<<_nfunccalls<<" likelihood evaluations "<<endl; 
+				if (_watch==NULL)_watch = new TStopwatch();
+				_watch->Stop();
+				_watch->Print();
+				_watch->Start();
+			}
+		}
 
 		int debug = cms_global->GetDebug();
 		// par[0] for the ratio of cross section, common signal strength ....

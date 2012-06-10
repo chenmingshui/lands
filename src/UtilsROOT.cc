@@ -205,7 +205,7 @@ void FillSigmas(TString sfile, double m2s, double m1s, double mean, double p1s, 
 	f.Close();
 }
 
-bool isWordInMap(TString s, std::map<TString, vector<TString> > tMap){
+bool isWordInMap(TString s, std::map<TString, vector<TString> >tMap){
 	std::map<TString, vector<TString> >::iterator p;
 	bool bFound=false;
 	// Show key
@@ -391,14 +391,14 @@ TString ReadFile(const char*fileName){
 	in_comment=false;
 	return ifileContentStripped;
 }
-int GetTotProc(int c, int p, vector< vector<string> >vv_procnames){
+int GetTotProc(int c, int p, const vector< vector<string> >&vv_procnames){
 	int stop = 0;
 	for(int i=0; i<c; i++){
 		stop += vv_procnames[i].size();
 	}
 	return stop+p;
 }
-double GetRate(string c, vector<string> channelnames, string p, vector< vector<string> >vv_procnames, vector<string>ss1){
+double GetRate(string c, const vector<string>& channelnames, string p, const vector< vector<string> >& vv_procnames, const vector<string>&ss1){
 	int stop = 0;
 	for(int i=0; i<channelnames.size(); i++){
 		for(int j=0; j< vv_procnames[i].size(); j++){
@@ -411,7 +411,7 @@ double GetRate(string c, vector<string> channelnames, string p, vector< vector<s
 	if(s == "-") return -9999;
 	else return s.Atof();
 }
-string GetUncertainy(string c, vector<string> channelnames, string p, vector< vector<string> >vv_procnames, vector<string>ss1){
+string GetUncertainy(string c, const vector<string> & channelnames, string p, const vector< vector<string> >&vv_procnames,const vector<string>&ss1){
 	int stop = 0;
 	for(int i=0; i<channelnames.size(); i++){
 		for(int j=0; j< vv_procnames[i].size(); j++){
@@ -424,7 +424,7 @@ string GetUncertainy(string c, vector<string> channelnames, string p, vector< ve
 	if(ss1[1]=="gmN" or ss1[1]=="gmA") return ss1[stop+3];
 	else return ss1[stop+2];
 }
-string GetUncertainy(int c, int p, vector< vector<string> >vv_procnames, vector<string>ss1){
+string GetUncertainy(int c, int p, const vector< vector<string> >& vv_procnames, const vector<string>& ss1){
 	int stop = 0;
 	for(int i=0; i<c; i++){
 		stop += vv_procnames[i].size();
@@ -852,8 +852,8 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 													newline[5] = TString(newline[5]).ReplaceAll("$PROCESS", vv_procnames[c][p]);
 													newline[6] = TString(newline[6]).ReplaceAll("$CHANNEL", channelnames[c]);
 													newline[6] = TString(newline[6]).ReplaceAll("$PROCESS", vv_procnames[c][p]);
-								newline[5] = TString(newline[5]).ReplaceAll("$MASS", smass);
-								newline[6] = TString(newline[6]).ReplaceAll("$MASS", smass);
+													newline[5] = TString(newline[5]).ReplaceAll("$MASS", smass);
+													newline[6] = TString(newline[6]).ReplaceAll("$MASS", smass);
 													shapeuncertainties.push_back(newline);
 													newline[5] = n5; newline[6]=n6;
 												}
@@ -1070,12 +1070,21 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 			vs_unc.push_back(s);
 		}
 
+		vector< vector<string> > shape_ch, uncer_ch;	
 		int n = 0; // for index of new whole channels
 		for(int c=0; c<nchannel; c++){//old channel number will be replaced 
 			bool isShapeChannel = false;
 			for(int p=0; p<shape.size(); p++){
 				if(shape[p][INDEXofChannel]!=channelnames[c] || shape[p][INDEXofProcess]!="data_obs") continue; // find the signal one
 				if(TString(shape[p][4]).Contains(":")) continue; // parametric channel, will process later
+
+				shape_ch.clear(); uncer_ch.clear();
+				for(int q=0; q<shape.size(); q++){
+					if(shape[q][INDEXofChannel]==channelnames[c]) shape_ch.push_back(shape[q]);
+				}
+				for(int q=0; q<shapeuncertainties.size(); q++){
+					if(shapeuncertainties[q][INDEXofChannel]==channelnames[c]) uncer_ch.push_back(shapeuncertainties[q]);
+				}
 
 				isShapeChannel=true;
 
@@ -1100,9 +1109,9 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 					}
 				}
 				for(int t=0; t<n_proc; t++){
-					for(int q=0; q<shape.size(); q++){
-						if(shape[q][INDEXofChannel]!=channelnames[c] || shape[q][INDEXofProcess]!=vv_procnames[c][t]) continue; 
-						TH1F *htmp =((TH1F*)GetHisto(shape[q][3], shape[q][4]));
+					for(int q=0; q<shape_ch.size(); q++){
+						if(shape_ch[q][INDEXofProcess]!=vv_procnames[c][t]) continue; 
+						TH1F *htmp =((TH1F*)GetHisto(shape_ch[q][3], shape_ch[q][4]));
 						if(htmp==NULL) continue;
 						hn[t] = htmp;
 		
@@ -1144,12 +1153,12 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 							if(unc.IsFloat() && unc.Atof()>0){ // number should be > 0
 								bool filled = false;
 								bool bDEBUGGING = false;
-								for(int i=0; i<shapeuncertainties.size(); i++){ // look for the histograms from the list 
+								for(int i=0; i<uncer_ch.size(); i++){ // look for the histograms from the list 
 									//ch1_ge3t] process [ttH] sys [CMS_res_j
-									if(shapeuncertainties[i][INDEXofChannel]==channelnames[c] 
-											and shapeuncertainties[i][INDEXofProcess]==vv_procnames[c][t]
-											and shapeuncertainties[i][4]==uncerlines[u][0]){
-										TH1F * htmp = (TH1F*)GetHisto(shapeuncertainties[i][3], shapeuncertainties[i][5]);
+									if(
+											uncer_ch[i][INDEXofProcess]==vv_procnames[c][t]
+											and uncer_ch[i][4]==uncerlines[u][0]){
+										TH1F * htmp = (TH1F*)GetHisto(uncer_ch[i][3], uncer_ch[i][5]);
 										if(htmp==NULL) continue;
 										hunc_up[t][u]  = htmp ;
 										if(hunc_up[t][u]->Integral()== 0 && hnorm[t]->Integral()!=0) { 
@@ -1158,7 +1167,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 												<<"] is shape, but the up_shift histogram->Integral = 0"<<endl;
 											exit(0);
 										}
-										htmp = (TH1F*)GetHisto(shapeuncertainties[i][3], shapeuncertainties[i][6]);
+										htmp = (TH1F*)GetHisto(uncer_ch[i][3], uncer_ch[i][6]);
 										if(htmp==NULL) continue;
 										hunc_dn[t][u] =  htmp;
 										if(hunc_dn[t][u]->Integral()== 0 && hnorm[t]->Integral()!=0) { 
@@ -1203,6 +1212,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 					}
 				}
 
+				if(debug) cout<<" processing "<<h->GetName()<<" "<<channelnames[c]<<"  nbin="<<h->GetNbinsX()<<endl;
 
 
 				for(int r=1; r<=h->GetNbinsX(); r++){
@@ -1311,16 +1321,16 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 				}
 				delete h;
 				for(int t=0; t<n_proc; t++) {delete hn[t]; delete hnorm[t]; }
-				for(int t=0; t<n_proc; t++){
-					for(int u=0; u<nsyssources; u++){
-						/*
-						   if(hunc_up[t][u]) delete hunc_up[t][u];
-						   if(hunc_up_norm[t][u]) delete hunc_up_norm[t][u];
-						   if(hunc_dn[t][u]) delete hunc_dn[t][u];
-						   if(hunc_dn_norm[t][u]) delete hunc_dn_norm[t][u];
-						   */
-					}
-				}
+				/*
+				   for(int t=0; t<n_proc; t++){
+				   for(int u=0; u<nsyssources; u++){
+				   if(hunc_up[t][u]) delete hunc_up[t][u];
+				   if(hunc_up_norm[t][u]) delete hunc_up_norm[t][u];
+				   if(hunc_dn[t][u]) delete hunc_dn[t][u];
+				   if(hunc_dn_norm[t][u]) delete hunc_dn_norm[t][u];
+				   }
+				   }
+				 */
 
 			}// shape channels
 			if(debug) cout<<" middle "<<endl;
@@ -2800,7 +2810,7 @@ TString GetWordFromLine(TString line, int index, string delim){
 	TString s = ss[index];
 	return s;
 }
-RooAbsPdf* GetPdf(string c, string p, vector< vector<string> > lines, double mass){
+RooAbsPdf* GetPdf(string c, string p, const vector< vector<string> >& lines, double mass){
 	RooAbsPdf* pdf = 0;
 	for(int i=0; i<lines.size(); i++){
 		if(c==lines[i][2] and p==lines[i][1]){
@@ -2838,7 +2848,7 @@ RooAbsPdf* GetPdf(string c, string p, vector< vector<string> > lines, double mas
 	}
 	return pdf;
 }
-RooAbsArg * GetExtraNorm(string c, string p, vector< vector<string> > lines, double mass){
+RooAbsArg * GetExtraNorm(string c, string p, const vector< vector<string> > & lines, double mass){
 	RooAbsArg * arg = 0;
 	for(int i=0; i<lines.size(); i++){
 		if(c==lines[i][2] and p==lines[i][1]){
@@ -2853,7 +2863,7 @@ RooAbsArg * GetExtraNorm(string c, string p, vector< vector<string> > lines, dou
 	}
 	return arg;
 }
-RooAbsData* GetRooAbsData(string c, string p, vector< vector<string> > lines, double mass){
+RooAbsData* GetRooAbsData(string c, string p, const vector< vector<string> >& lines, double mass){
 	RooAbsData* pdf = 0;
 	for(int i=0; i<lines.size(); i++){
 		if(c==lines[i][2] and p==lines[i][1]){

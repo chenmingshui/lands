@@ -31,7 +31,7 @@ void FillTree(TString sfile, int* array, int nsize=100000);
 void FillTree(TString sfile, double d1, double d2, vector<double> array1,  vector<double> array2, TString d1Name="d1", TString d2Name="d2", TString array1Name="T1", TString array2Name="T2", TString option = "RECREATE");
 void FillTree2(TString sfile, double d1, double d2, vector<double> array1,  vector<double> array2, TString d1Name="d1", TString array1Name="T1", TString array2Name="T2", TString option = "RECREATE");
 
-bool isWordInMap(TString s, std::map<TString, vector<TString> > tMap);
+bool isWordInMap(TString s, std::map<TString, vector<TString> >tMap);
 void StringStrip( std::string & str ) ;
 void StringSplit( std::vector < std::string > & splitValues, 
 		const std::string & str,
@@ -47,9 +47,9 @@ TTree * LoadTreeBonly(TString filename, TString & treeName);
 TH1F* GetHisto(string filename, string histoname);
 TObject* GetTObject(string filename, string objname);
 bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentStripped, vector< vector<string> > parametricShapeLines,  vector< vector<string> > uncerlinesAffectingShapes,  int debug=0);
-RooAbsData* GetRooAbsData(string c, string p, vector< vector<string> > lines, double mass=0);
-RooAbsPdf* GetPdf(string c, string p, vector< vector<string> > lines, double mass=0);
-RooAbsArg* GetExtraNorm(string c, string p, vector< vector<string> > lines, double mass=0);
+RooAbsData* GetRooAbsData(string c, string p, const vector< vector<string> >& lines, double mass=0);
+RooAbsPdf* GetPdf(string c, string p, const vector< vector<string> >& lines, double mass=0);
+RooAbsArg* GetExtraNorm(string c, string p, const vector< vector<string> >& lines, double mass=0);
 
 void ReadLimitVsCLsFromFile(TGraphErrors*tge, TFile*f, int debug=0); 
 bool GetCLs(double qdata, TTree* tsb, TTree*tb,  double &cls, double &err, int debug=0);
