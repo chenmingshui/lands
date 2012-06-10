@@ -1090,6 +1090,15 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 				TH1F *hunc_dn[n_proc][nsyssources];
 				TH1F *hunc_up_norm[n_proc][nsyssources];
 				TH1F *hunc_dn_norm[n_proc][nsyssources];
+				for(int x=0; x<n_proc; x++) { 
+					hn[x]=NULL; hnorm[x]=NULL; 
+					for(int y=0;y<nsyssources;y++){
+						hunc_up[x][y]=NULL;
+						hunc_dn[x][y]=NULL;
+						hunc_up_norm[x][y]=NULL;
+						hunc_dn_norm[x][y]=NULL;
+					}
+				}
 				for(int t=0; t<n_proc; t++){
 					for(int q=0; q<shape.size(); q++){
 						if(shape[q][INDEXofChannel]!=channelnames[c] || shape[q][INDEXofProcess]!=vv_procnames[c][t]) continue; 
@@ -1221,14 +1230,12 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 								if(uncertypes[u]=="shape" or uncertypes[u]=="shape2" or uncertypes[u]=="shapeL" or uncertypes[u]=="shapeQ" or uncertypes[u]=="shapeN" or uncertypes[u]=="shapeN2" or uncertypes[u]=="shapeStat" or (uncertypes[u]=="shape?" and hunc_dn_norm[t][u]!=NULL)){
 									TString unc = GetUncertainy(c, t, vv_procnames, uncerlines[u]);
 									if(unc.IsFloat() && unc.Atof()>0){ // number should be > 0
-										cout<<" DEBUGGGGG 1 "<<uncertypes[u]<<"   "<<endl;
-										cout<<uncerlines[u][0]<<endl;
-										if(hunc_dn_norm[t][u]!=NULL){
+										if(hunc_dn_norm[t][u]==NULL){
+											cout<<" DEBUGGGGG 1 "<<uncertypes[u]<<"   "<<endl;
+											cout<<uncerlines[u][0]<<endl;
 											cout<<" hnorm "<<hnorm[t]->GetName()<<endl;
 											cout<<" "<<channelnames[c]<<" "<<vv_procnames[c][proc]<<endl;
 											cout<<" hunc_dn_norm "<<t<<" "<<u<<" exist "<<endl;
-										}else{
-											continue;
 										}
 										double down = hunc_dn_norm[t][u]->GetBinContent(r);
 										if(debug>10) cout<<"down "<<down<<endl;
