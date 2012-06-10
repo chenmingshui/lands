@@ -768,7 +768,18 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 				if(ss.size()>=5){
 					if(ss[1]=="*" || ss[2]=="*") xx_needtointerpret.push_back(ss);
 					else {
+						string n4 = ss[4];
+						string n5 ; if(ss.size()>5) n5= ss[5];
+						ss[4] = TString(ss[4]).ReplaceAll("$MASS", smass);
+						ss[4] = TString(ss[4]).ReplaceAll("$CHANNEL", ss[2]);
+						ss[4] = TString(ss[4]).ReplaceAll("$PROCESS", ss[1]);
+						if(ss.size()>5){
+						ss[5] = TString(ss[5]).ReplaceAll("$MASS", smass);
+						ss[5] = TString(ss[5]).ReplaceAll("$CHANNEL", ss[2]);
+						ss[5] = TString(ss[5]).ReplaceAll("$PROCESS", ss[1]);
+						}
 						shape.push_back(ss);
+						ss[4] = n4; if(ss.size()>5) ss[5]=n5;
 						if(ss.size()>5){
 							if(ss.size()==6){
 								string ss6=ss[5];
@@ -1111,6 +1122,10 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 						hnorm[t]=(TH1F*)hn[t]->Clone(sname);
 						if(hn[t]->Integral()!=0)hnorm[t]->Scale(1./hn[t]->Integral());
 					}
+					if(hnorm[t]==NULL) {
+						cout<<" channle ["<<channelnames[c]<<"] proc ["<<vv_procnames[c][t]<<"]"<<" histogram is not found "<<endl;
+						exit(1);
+					}
 
 					// for channel c, process t,  looking for uncer which is shaping 
 					for(int u=0; u<nsyssources; u++){
@@ -1119,7 +1134,9 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 							TString unc = GetUncertainy(c, t, vv_procnames, uncerlines[u]);
 							if(unc.IsFloat() && unc.Atof()>0){ // number should be > 0
 								bool filled = false;
+								bool bDEBUGGING = false;
 								for(int i=0; i<shapeuncertainties.size(); i++){ // look for the histograms from the list 
+									//ch1_ge3t] process [ttH] sys [CMS_res_j
 									if(shapeuncertainties[i][INDEXofChannel]==channelnames[c] 
 											and shapeuncertainties[i][INDEXofProcess]==vv_procnames[c][t]
 											and shapeuncertainties[i][4]==uncerlines[u][0]){
@@ -1146,7 +1163,13 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 										sname  = "dn_clone"; sname+=t; sname+=u;
 										hunc_dn_norm[t][u]=(TH1F*)hunc_dn[t][u]->Clone(sname);
 										if(hunc_dn[t][u]->Integral()!=0)hunc_dn_norm[t][u]->Scale(1./hunc_dn[t][u]->Integral());
+										if(hnorm[t]==NULL) {
+											cout<<" channle ["<<channelnames[c]<<"] proc ["<<vv_procnames[c][t]<<"]"<<" histogram is not found "<<endl;
+											
+											exit(1);
+										}
 										if(hnorm[t]->Integral()==0){
+											cout<<" DEBUGGGGGGG 2"<<endl;
 											for(int ii=0; ii<=hunc_up_norm[t][u]->GetNbinsX(); ii++){
 											hunc_dn_norm[t][u]->SetBinContent(ii,0);
 											hunc_up_norm[t][u]->SetBinContent(ii,0);
@@ -1161,13 +1184,10 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 										filled = true;
 									}
 								}	
-								if(!filled) {
+								if(!filled and !type.Contains("?")) {
 									cout<<"ERROR channel ["<<channelnames[c]<<"] process ["<<vv_procnames[c][t]<<"] sys ["<<uncerlines[u][0]
 										<<"] is shape uncertainty, we need corresponding histogram "<<endl;
 									exit(0);
-								}
-								if(hunc_up[t][u]==NULL) {
-									cout<<" channel "<<channelnames[c]<< " proc "<<vv_procnames[c][t]<< " unc "<<uncerlines[u][0]<< "  is shape, but corresponding variation histogram is not found " << endl; exit(1);
 								}
 							}
 						}
@@ -1198,11 +1218,20 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 							if(uncertypes[u]=="param" or uncertypes[u]=="flatParam") continue;
 							if(1){
 								if(debug>=100) cout<<"debug "<<uncertypes[u]<<endl;
-								if(uncertypes[u]=="shape" or uncertypes[u]=="shape2" or uncertypes[u]=="shapeL" or uncertypes[u]=="shapeQ" or uncertypes[u]=="shapeN" or uncertypes[u]=="shapeN2" or uncertypes[u]=="shapeStat" or uncertypes[u]=="shape?"){
+								if(uncertypes[u]=="shape" or uncertypes[u]=="shape2" or uncertypes[u]=="shapeL" or uncertypes[u]=="shapeQ" or uncertypes[u]=="shapeN" or uncertypes[u]=="shapeN2" or uncertypes[u]=="shapeStat" or (uncertypes[u]=="shape?" and hunc_dn_norm[t][u]!=NULL)){
 									TString unc = GetUncertainy(c, t, vv_procnames, uncerlines[u]);
 									if(unc.IsFloat() && unc.Atof()>0){ // number should be > 0
+										cout<<" DEBUGGGGG 1 "<<uncertypes[u]<<"   "<<endl;
+										cout<<uncerlines[u][0]<<endl;
+										if(hunc_dn_norm[t][u]!=NULL){
+											cout<<" hnorm "<<hnorm[t]->GetName()<<endl;
+											cout<<" "<<channelnames[c]<<" "<<vv_procnames[c][proc]<<endl;
+											cout<<" hunc_dn_norm "<<t<<" "<<u<<" exist "<<endl;
+										}else{
+											continue;
+										}
 										double down = hunc_dn_norm[t][u]->GetBinContent(r);
-										if(debug) cout<<"down "<<down<<endl;
+										if(debug>10) cout<<"down "<<down<<endl;
 										double up = hunc_up_norm[t][u]->GetBinContent(r);
 										double norminal = hnorm[t]->GetBinContent(r); 
 										if(down>-9999999 && down<9999999 && up>-9999999 && up<99999999 && norminal>-9999999 && norminal<99999999) {
