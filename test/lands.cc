@@ -193,6 +193,7 @@ bool scanCvCf=false;
 vector<double> vCv_toEval;
 vector<double> vCf_toEval;
 TString sbinningCV, sbinningCF;
+TString sbinningMH, sbinningMU;
 
 double InjectingSignalStrength = 1;
 
@@ -1762,6 +1763,10 @@ int main(int argc, const char*argv[]){
 					}
 				}
 				if(bPlots){
+					DrawTH2D d2h(sbinningMH, sbinningMU, vrm, vc, "#delta(-2lnQ); mass [GeV]; #mu", (jobname+"_scanned_rm_vs_q_TH2").Data(), pt);
+					d2h.draw();
+					d2h.save();
+
 					DrawTGraph2D d2d(vrm, vc, "#delta(2lnQ); mass [GeV]; #mu", (jobname+"_scanned_rm_vs_q").Data(), pt);
 					d2d.draw();
 					d2d.save();
@@ -2654,6 +2659,7 @@ void processParameters(int argc, const char* argv[]){
 	if( tmpv.size()==0 && bOnlyEvalCL_forVR) { cout<<"ERROR: args of -vR empty while bOnlyEvalCL_forVR=true"<<endl; exit(1); }
 	else{
 		vR_toEval = GetListToEval("-vR",tmpv);
+		if(tmpv.size() >0)sbinningMU = tmpv[0];
 		/*
 		   for(int i=0; i<tmpv.size(); i++){
 		   if(tmpv[i].IsFloat()) vR_toEval.push_back(tmpv[i].Atof());
@@ -2688,7 +2694,10 @@ void processParameters(int argc, const char* argv[]){
 	tmpv = options["-vM"];
 	if( scanMs and tmpv.size()==0) { cout<<"ERROR: args of -vM empty "<<endl; exit(1); }
 	else{
-		vM_toEval = GetListToEval("-vM",tmpv);
+		//vM_toEval = GetListToEval("-vM",tmpv);
+		if(tmpv.size()==1)vM_toEval = GetListToEval("-vM",tmpv);
+		else if(tmpv.size()>1) vM_toEval.push_back(tmpv[1].Atof());
+		if(tmpv.size() >0)sbinningMH = tmpv[0];
 	}
 
 
