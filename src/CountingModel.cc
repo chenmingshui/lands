@@ -1063,7 +1063,7 @@ If we need to change it later, it will be easy to do.
 
 
     }
-    VChannelVSample CountingModel::FluctuatedNumbers(double *par, bool scaled, int bUseBestEstimateToCalcQ, bool includeCountingParts){
+    const VChannelVSample& CountingModel::FluctuatedNumbers(double *par, bool scaled, int bUseBestEstimateToCalcQ, bool includeCountingParts){
         RooRealVar *tmprrv;
         // FIXME  need to think about what's vv_pdfs_norm_varied,  where it's changed,  and whether to replace it with vv_pdfs_norm_randomized_scaled .... ? 
         if(_rdm==NULL) {cout<<"Model random gen engine not set yet, exit "<<endl; exit(0);}
@@ -1945,7 +1945,7 @@ If we need to change it later, it will be easy to do.
 	}
 	*/
     };
-    VDChannel CountingModel::Get_AsimovData(int b){ // 0 for background only, 1 for s+b hypothesis
+    const VDChannel& CountingModel::Get_AsimovData(int b){ // 0 for background only, 1 for s+b hypothesis
 	    VDChannel vtmpdata = v_data; // could be pseudo-data for bands
 	    if(b==0){
 		    if(_debug)cout<<"		Get Asimov dataset: background only hypothesis"<<endl;
