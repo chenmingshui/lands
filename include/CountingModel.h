@@ -114,7 +114,7 @@ namespace lands{
 			void Set_vv_fitted_sigbkgs_scaled(const VChannelVSample& vv){vv_fitted_sigbkgs_scaled=vv;}
 			const VChannelVSample& Get_vv_fitted_sigbkgs_scaled(){return vv_fitted_sigbkgs_scaled;}
 			const VDChannel& Get_v_data(){return v_data;}
-			const VDChannel& Get_AsimovData(int b);
+			VDChannel Get_AsimovData(int b);
 			const VDChannel& Get_v_data_real(){return v_data_real;}
 			const VDChannel& Get_v_exp_sigbkgs(int channel){return vv_exp_sigbkgs_scaled[channel];}
 
@@ -123,7 +123,7 @@ namespace lands{
 			void Print(int printLevel=0);
 			bool Check();
 
-			const VChannelVSample& FluctuatedNumbers(double *pars = NULL, bool scaled=true, int bUseBestEstimateToCalcQ=1, bool includeCountingParts=true); 
+			VChannelVSample FluctuatedNumbers(double *pars = NULL, bool scaled=true, int bUseBestEstimateToCalcQ=1, bool includeCountingParts=true); 
 			// 0 use randomized set,  1 use best estimates a priori, 2 use fitted posterior (after looking at data)
 			
 			VIChannel GetToyData_H0(double *pars=NULL);// background only hypothesis
