@@ -1424,6 +1424,9 @@ int main(int argc, const char*argv[]){
 					TObjString tsnumbers5(snumbers5);
 					tsnumbers5.Write("corr");
 					//f.WriteTObject(&tsnumbers5);
+					TString snumbers6  = ""; snumbers6+=y0_2;
+					TObjString tsnumbers6(snumbers6);
+					tsnumbers6.Write("fAmin");
 					f.Close();
 				
 				}
@@ -1438,7 +1441,7 @@ int main(int argc, const char*argv[]){
 			
 			if(cms->GetPhysicsModel()==typeCvCfHiggs)SaveResults(jobname+"_maxllfit", HiggsMass, 0, 0, 0, 0, 0, mu_hat_low, 0, mu_hat, mu_hat_up, 0);
 			else if(cms->GetPhysicsModel()==typeC5Higgs)SaveResults(jobname+"_maxllfit", HiggsMass, 0, 0, 0, 0, 0, mu_hat_low, 0, mu_hat, mu_hat_up, 0);
-			else SaveResults(jobname+"_maxllfit", HiggsMass, 0, 0, 0, 0, 0, mu_hat_low, 0, mu_hat, mu_hat_up, 0);
+			else SaveResults(jobname+"_maxllfit", HiggsMass, y0_2, 0, 0, 0, 0, mu_hat_low, 0, mu_hat, mu_hat_up, 0);
 
 			if(bDumpFitResults)cms->DumpFitResults(pars, jobname+"_fittedShape_floatMu");
 			
@@ -1598,7 +1601,7 @@ int main(int argc, const char*argv[]){
 			bool b_global_fit = true;
 			// FIXME also need to check the 2 sigma fit is fine 
 			// if not, need to run brute-force approach
-			if(success[0]!=0 or tmpr==tmperr){
+			if( (success[0]!=0 or tmpr==tmperr) and !DoNotRunGlobalFit){
 				b_global_fit = false;
 				double tmpr = 0;
 				y0_2 =  MinuitFit(21, tmpr, tmperr, 0, pars, false, debug) ;
@@ -1725,7 +1728,7 @@ int main(int argc, const char*argv[]){
 				if(idMH<0) {cout<<" no MH parameter, exit"<<endl;  exit(1);}
 
 				
-				if(!DoNotRunGlobalFit)vrm.push_back(make_pair(pars[idMH]*v_paramsUnc[idMH][1]+v_paramsUnc[idMH][3], pars[0]) );vc.push_back(y0_2-y0_2);
+				if(!DoNotRunGlobalFit){vrm.push_back(make_pair(pars[idMH]*v_paramsUnc[idMH][1]+v_paramsUnc[idMH][3], pars[0]) );vc.push_back(y0_2-y0_2);}
 
 				bool best = false;
 				for(int i=0; i<vR_toEval.size(); i++){
