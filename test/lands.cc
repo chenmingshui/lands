@@ -1465,7 +1465,7 @@ int main(int argc, const char*argv[]){
 			
 				vector< vector<double> > v_Pars = cms_global->Get_v_Pars();	
 				
-				if(DoNotRunGlobalFit == false)vrm.push_back(make_pair(pars[_Cv_i]*(v_Pars[_Cv_i][2]-v_Pars[_Cv_i][1])+v_Pars[_Cv_i][1],  pars[_Cf_i]*(v_Pars[_Cf_i][2]-v_Pars[_Cf_i][1])+v_Pars[_Cf_i][1]) );vc.push_back(y0_2-y0_2);
+				if(DoNotRunGlobalFit == false) { vrm.push_back(make_pair(pars[_Cv_i]*(v_Pars[_Cv_i][2]-v_Pars[_Cv_i][1])+v_Pars[_Cv_i][1],  pars[_Cf_i]*(v_Pars[_Cf_i][2]-v_Pars[_Cf_i][1])+v_Pars[_Cf_i][1]) );vc.push_back(y0_2-y0_2); }
 
 				bool best = false;
 				for(int i=0; i<vCv_toEval.size(); i++){
