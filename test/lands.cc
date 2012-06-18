@@ -394,7 +394,7 @@ int main(int argc, const char*argv[]){
 	//bConstructAsimovbFromNominal = true;
 	//if(method == "Asymptotic") bConstructAsimovbFromNominal = false;
 	if(dataset=="asimov_b" or method=="Asymptotic" or ExpectationHints=="Asymptotic")cms->ConstructAsimovData(0, bConstructAsimovbFromNominal); // b-only asimov 
-	if(dataset=="asimov_sb")cms->ConstructAsimovData(1, bConstructAsimovsbFromFit, InjectingSignalStrength); // sb asimov
+	if(dataset=="asimov_sb")cms->ConstructAsimovData(1, !bConstructAsimovsbFromFit, InjectingSignalStrength); // sb asimov
 	if(dataset == "asimov_b")cms->UseAsimovData(0);
 	else if(dataset == "asimov_sb")cms->UseAsimovData(1);
 

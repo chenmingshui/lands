@@ -1568,6 +1568,7 @@ If we need to change it later, it will be easy to do.
                     v_pdfs_roodataset_toy[ch]->Print("V");
                     cout<<"toy name = "<<v_pdfs_roodataset_toy[ch]->GetName()<<endl;
                 }
+                    v_pdfs_roodataset_toy[ch]->SetName( TString(v_pdfs_b[ch]+"Data").Data() );
 
                 if(_debug>=1000){
                     TString s = "H0_"; s+= (int)(10000000*_rdm->Rndm()); s+=".root";
@@ -1663,6 +1664,7 @@ If we need to change it later, it will be easy to do.
                 if(TString(v_pdfs_roodataset_toy[ch]->GetName())=="emptyData") {
                     v_pdfs_roodataset_toy[ch]->SetName( TString(v_pdfs_sb[ch]+"Data").Data() );
                 }
+		v_pdfs_roodataset_toy[ch]->SetName( TString(v_pdfs_sb[ch]+"Data").Data() );
 
                 if(_debug>=100)v_pdfs_roodataset_toy[ch]->Print("V");
 
@@ -2075,17 +2077,42 @@ If we need to change it later, it will be easy to do.
 			    }
 		    }
 	    }else if(b==1){
-		    v_data_asimovsb = v_data;
-		    for(unsigned int i=0; i<v_sigproc.size(); i++){
-			    v_data_asimovsb[i]=0;
-			    for(unsigned int b=0; b<vv_exp_sigbkgs.at(i).size(); b++){
-				    v_data_asimovsb[i]+= vv_exp_sigbkgs.at(i).at(b)*(b<v_sigproc[i]?injectMu:1.);
-			    }
-		    }
+			cout<<" nominal " <<nominal <<endl;
+		    if(!nominal) { // from fitted nuisances
+			    double *pars = new double[cms_global->Get_max_uncorrelation()+1];
+			    DoAfit(injectMu, v_data_real, v_pdfs_roodataset_real, pars); 
+			    //_fittedParsInData_bonly = pars;
+			    Set_fittedParsInData_sb(pars);
 
+			    VChannelVSample vv = FluctuatedNumbers(_fittedParsInData_sb, true);
+			    v_data_asimovsb = v_data;
+			    for(unsigned int i=0; i<v_sigproc.size(); i++){
+				    v_data_asimovsb[i]=0;
+				    for(unsigned int b=0; b<vv.at(i).size(); b++){
+					    v_data_asimovsb[i]+= vv.at(i).at(b);
+				    }
+			    }
+
+			    int npars = cms_global->Get_max_uncorrelation();
+			    for(int i=0; i<=npars; i++) 
+				    printf("DELETEME  par %30s      %.6f \n", i>0?v_uncname[i-1].c_str():"signal_strength", _fittedParsInData_sb[i]);
+			    for(unsigned int i=0; i<v_data.size(); i++)
+				    printf("DELETEME:  asimovsb %d - %.5f\n", i, v_data_asimovsb[i]);
+		    }else{
+
+			    v_data_asimovsb = v_data;
+			    for(unsigned int i=0; i<v_sigproc.size(); i++){
+				    v_data_asimovsb[i]=0;
+				    for(unsigned int b=0; b<vv_exp_sigbkgs.at(i).size(); b++){
+					    v_data_asimovsb[i]+= vv_exp_sigbkgs.at(i).at(b)*(b<v_sigproc[i]?injectMu:1.);
+				    }
+			    }
+
+		    }
 		    v_pdfs_roodataset_asimovsb.clear();
 		    for(int i=0; i<v_pdfs_sb.size(); i++){
 			    //RooRealVar * observable = _w->var(v_pdfs_observables[i]);
+
 			    RooArgSet * observable = (RooArgSet*)v_pdfs_roodataset_real[i]->get();
 			    std::auto_ptr<TIterator> iter(observable->createIterator());
 			    for(RooRealVar * obs= (RooRealVar*)iter->Next(); obs!=0; obs=(RooRealVar*)iter->Next()){
@@ -2097,7 +2124,7 @@ If we need to change it later, it will be easy to do.
 				    _w->Print("V");	
 				    cout<<" *****access pdf name "<<v_pdfs_sb[i]<<endl;
 			    }
-			    RooDataHist *rdh_asimovsb = _w->pdf(v_pdfs_sb[i]) -> generateBinned(*observable,ExpectedData());
+			    RooDataHist *rdh_asimovsb = _w_varied->pdf(v_pdfs_sb[i]) -> generateBinned(*observable,ExpectedData());
 			    TString swgt = "wgttmp_"; swgt+=v_pdfs_channelname[i];
 			    RooArgSet * rastmp = new RooArgSet(*observable, *(_w->var(swgt)));
 			    RooDataSet *rds_asimovsb = new RooDataSet(TString("rds_asimovsb")+v_pdfs_channelname[i], "rds_asimovsb", *rastmp, swgt);
@@ -3512,6 +3539,8 @@ If we need to change it later, it will be easy to do.
 
 	    if(_debug)cout<<"FlatParam "<<pname<<": nominal value = "<<norminalValue<<" ["<<rangeMin<<","<<rangeMax<<"]"<<endl;
 
+		_w_varied->var(pname.c_str())->setVal(norminalValue);
+		_w->var(pname.c_str())->setVal(norminalValue);
 	if(v_Pars.size() <= index_correlation){
 		vector<double> v;
 		v_Pars.push_back(v);
@@ -3658,6 +3687,8 @@ If we need to change it later, it will be easy to do.
 	    v_pdfs_floatParamsName.push_back(pname);
 	    v_pdfs_floatParamsIndcorr.push_back(index_correlation);
 	    v_pdfs_floatParamsType.push_back(typeBifurcatedGaussian);
+		_w_varied->var(pname.c_str())->setVal(mean);
+		_w->var(pname.c_str())->setVal(mean);
 	if(v_Pars.size() <= index_correlation){
 		vector<double> v;
 		v_Pars.push_back(v);
