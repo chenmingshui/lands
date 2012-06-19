@@ -512,6 +512,7 @@ namespace lands{
             }
         }	
         if(!tagged) {cout<<"ERROR: in TagUncertaintyFloatInFit, "<<uncname<<" not found, may not added yet "<<endl;
+	    _w->Print("V");
             for(int i=0; i<v_uncname.size(); i++) cout<<v_uncname[i]<<endl;
             exit(1);}
     }
