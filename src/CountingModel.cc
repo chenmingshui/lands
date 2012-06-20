@@ -3611,6 +3611,8 @@ If we need to change it later, it will be easy to do.
 	    v_pdfs_floatParamsType.push_back(typeFlat);
 
 	    if(_debug)cout<<"FlatParam "<<pname<<": nominal value = "<<norminalValue<<" ["<<rangeMin<<","<<rangeMax<<"]"<<endl;
+		_w_varied->var(pname.c_str())->setVal(norminalValue);
+		_w->var(pname.c_str())->setVal(norminalValue);
 	if(v_Pars.size() <= index_correlation){
 		vector<double> v;
 		v_Pars.push_back(v);
