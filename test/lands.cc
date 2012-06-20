@@ -209,6 +209,10 @@ bool doMemoryCheck = false;
 
 bool DoNotRunGlobalFit = false;
 
+int NumDegreeOfFreedom = 1; // for 68% CL extraction in  n dimensions  
+
+bool GenerateToysAtBestFitSB = false;
+
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
 
@@ -271,6 +275,38 @@ int main(int argc, const char*argv[]){
 	for(int i=0; i<vCouplingsDef.size(); i++){
 		cms->AddCouplingParameter(vCouplingsDef[i]);
 	}
+
+/*
+	RooArgSet ras = cms->GetWorkSpaceVaried()->allVars();
+	std::auto_ptr<TIterator> itertmp(ras.createIterator());
+	for(RooRealVar * obs= (RooRealVar*)itertmp->Next(); obs!=0; obs=(RooRealVar*)itertmp->Next()){
+		if(obs->isConstant()) continue;
+		else { 
+			TString sobs = obs->GetName();
+		
+			bool alreayIn = false;
+			for(int i=0; i<cms->Get_v_uncname().size(); i++) {
+				TString sunc = cms->Get_v_uncname()[i];				
+				if(sobs==sunc || sobs==(sunc+"_x") || sobs==(sunc+"_mean"))
+				{ alreayIn=true; break;}
+			}
+			if(!alreayIn){
+				double errlo = obs->getErrorLo();
+				double errhi = obs->getErrorHi();
+				double xmin=0, xmax=0;
+				errlo=fabs(errlo);
+				errhi=fabs(errhi);
+				
+				if( ( obs->getVal() - errlo*7 > obs->getMin()) and errlo>0 ) xmin = obs->getVal()-errlo*7;
+				else xmin = obs->getMin();
+				if( ( obs->getVal() + errhi*7 < obs->getMax()) and errhi>0 ) xmax = obs->getVal()+errhi*7;
+				else xmax = obs->getMax();
+				cms->AddFlatParam(obs->GetName(), obs->getVal(), xmin, xmax);
+				cout<<"Adding flatParam ******** Non-constant variable: "<<obs->GetName()<<" "<<obs->getVal()<<" ["<<obs->getMin()<<","<<obs->getMax()<<"] --> ["<<xmin<<","<<xmax<<"]"<<endl;
+			}
+		}
+	}
+*/
 
 	vector<structPOI> vpoi_cx;
 	if(sPhysicsModel=="ChargedHiggs") cms->SetPhysicsModel(typeChargedHiggs);
@@ -577,6 +613,24 @@ int main(int argc, const char*argv[]){
 				delete cms;
 				return 0;
 			}
+
+			if(GenerateToysAtBestFitSB){
+				//DoAfit(vR_toEval[i], cms->Get_v_data_real(), cms->Get_v_pdfs_roodataset_real(), cms->Get_fittedParsInData_sb());
+				double tmpr = 1, tmperr=1, ErrorDef=0;
+				int success[1]={0};
+				cms->SetNoErrorEstimation(1);
+				double *pars = new double[cms->Get_max_uncorrelation()+1];
+				MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //202, 201, 2:  allow mu to be negative
+				cms->SetSignalScaleFactor(pars[0]);
+				cms->Set_fittedParsInData_sb(pars);
+				cout<<" ***  gonna generateToys with s+b best fit :  mu="<<pars[0]<<endl;
+				//frequentist.BuildM2lnQ_sb(toysHybrid); // read from "-tH"
+				frequentist.BuildM2lnQ_sb(toysHybrid, false, bWriteToys, jobname);
+				watch.Print();
+				delete cms;
+				return 0;
+			}
+
 			//frequentist.checkFittedParsInData(true, false, "fittedPars.root");
 			if(tossToyConvention==1 && !bFixNuisancsAtNominal )frequentist.checkFittedParsInData(bReadPars, bWritePars, fileFittedPars);
 			if(tossToyConvention==1 && bFixNuisancsAtNominal){
@@ -643,7 +697,7 @@ int main(int argc, const char*argv[]){
 				}
 				if(nToysForCLsb<=0) nToysForCLsb=toysHybrid;
 				if(nToysForCLb<=0) nToysForCLb=toysHybrid;
-				frequentist.BuildM2lnQ_sb(nToysForCLsb, false, bWriteToys);
+				frequentist.BuildM2lnQ_sb(nToysForCLsb, false, bWriteToys, jobname);
 				vsb = frequentist.Get_m2logQ_sb();
 
 				if(debug>=1000){
@@ -652,7 +706,7 @@ int main(int argc, const char*argv[]){
 			    for(int ii=0; ii<=npars; ii++) 
 				    printf("DELETEME  par %30s      %.6f \n", ii>0?cms->Get_v_uncname()[ii-1].c_str():"signal_strength", cms->Get_fittedParsInData_b()[ii]);
 				}
-				frequentist.BuildM2lnQ_b(nToysForCLb, false, bWriteToys);
+				frequentist.BuildM2lnQ_b(nToysForCLb, false, bWriteToys, jobname);
 
 				vb = frequentist.Get_m2logQ_b();
 				if(bWriteToys){
@@ -1133,7 +1187,7 @@ int main(int argc, const char*argv[]){
 			for(int i=0; i<=cms->Get_max_uncorrelation(); i++) bestFitPars[i]=0;
 
 			double tmp=0, tmpe=0, tmpr = 0, tmperr=0;
-			double ErrorDef = TMath::ChisquareQuantile(0.68 , 1);// (confidenceLevel, ndf)
+			double ErrorDef = TMath::ChisquareQuantile(0.68 , NumDegreeOfFreedom);// (confidenceLevel, ndf)
 			int success[1]={0};
 			_countPdfEvaluation = 0;
 			if(bDumpFitResults){
@@ -1212,7 +1266,7 @@ int main(int argc, const char*argv[]){
 				TFile f(jobname+"_contourRvsM.root","RECREATE");
 
 				// using mncont to extract points around contour = 1 or 2 sigma   
-				myMinuit->SetErrorDef(TMath::ChisquareQuantile(0.68, 1));
+				myMinuit->SetErrorDef(TMath::ChisquareQuantile(0.68, NumDegreeOfFreedom));
 				TGraph * g1sigma = (TGraph*)myMinuit->Contour(100, 0, idMH);
 				if(g1sigma){
 					g1sigma->SetName("ContourRvsM_1");
@@ -1224,7 +1278,7 @@ int main(int argc, const char*argv[]){
 				} else {cout<<" WARNING: minuit doesn't give 1 sigma contour (return 0 points) "<<endl;}
 					
 
-				myMinuit->SetErrorDef(TMath::ChisquareQuantile(0.95, 1));
+				myMinuit->SetErrorDef(TMath::ChisquareQuantile(0.95, NumDegreeOfFreedom));
 				TGraph * g2sigma = (TGraph*)myMinuit->Contour(100, 0, idMH);
 				if(g2sigma){
 					g2sigma->SetName("ContourRvsM_2");
@@ -1526,14 +1580,14 @@ int main(int argc, const char*argv[]){
 			}
 
 
-			if(vCouplingsDef.size()) {delete pars;
+			if(vCouplingsDef.size() and !scanMs) {delete pars;
 				delete cms;
 				return 0;}
 
 			double y0_3, mu_hat2, mu_hat_up2, mu_hat_low2;
 
 			if(bAlsoExtract2SigmErrorBar){
-				ErrorDef = TMath::ChisquareQuantile(0.95 , 1);// (confidenceLevel, ndf)
+				ErrorDef = TMath::ChisquareQuantile(0.95 , NumDegreeOfFreedom);// (confidenceLevel, ndf)
 				y0_3 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //102, 101, 21:  don't allow mu to be negative
 				//double y0_3 =  MinuitFit(102, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //102, 101, 21:  don't allow mu to be negative
 				cout<<y0_3<<" fitter u="<<pars[0]<<", from minos fit asymmetry 95% CL:  ["<<tmperr<<","<<tmpr<<"]"<<endl; // upperL, lowerL
@@ -1597,7 +1651,7 @@ int main(int argc, const char*argv[]){
 			}
 
 
-			ErrorDef = TMath::ChisquareQuantile(0.68 , 1);// (confidenceLevel, ndf)
+			ErrorDef = TMath::ChisquareQuantile(0.68 , NumDegreeOfFreedom);// (confidenceLevel, ndf)
 			bool b_global_fit = true;
 			// FIXME also need to check the 2 sigma fit is fine 
 			// if not, need to run brute-force approach
@@ -1787,10 +1841,13 @@ int main(int argc, const char*argv[]){
 				return 0;
 			}
 			else {
+				cms_global->SetNoErrorEstimation(1);
 				watch.Start();
 				if(scanRs){
 					vector<double> vr, vc; vr.clear(); vc.clear();
-					vr.push_back(pars[0]);vc.push_back(y0_2-y0_2);
+					if(!DoNotRunGlobalFit){
+						vr.push_back(pars[0]);vc.push_back(y0_2-y0_2);
+					}
 					bool best = false;
 					for(int i=0; i<vR_toEval.size(); i++){
 						double testr = vR_toEval[i];
@@ -1851,12 +1908,16 @@ int main(int argc, const char*argv[]){
 				if(scanMs){
 					bool best = false;
 					vector<double> vr, vc; vr.clear(); vc.clear();
-					vr.push_back(pars[0]);vc.push_back(y0_2-y0_2);
+					if(!DoNotRunGlobalFit){
+						vr.push_back(pars[0]);vc.push_back(y0_2-y0_2);
+					}
 					for(int i=0; i<vM_toEval.size(); i++){
 						double testr = vM_toEval[i];
 						_countPdfEvaluation = 0;
 						cms_global->SetPOItoBeFixed("MH",testr);
-						double y0_1 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, ErrorDef, pars, best?true:false, debug, success, best?bestFitPars:0) ;  //202, 201, 2:  allow mu to be negative
+
+						//double y0_1 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, 1./*common mu*/, pars, best?true:false, debug, success, best?bestFitPars:0) ;  //202, 201, 2:  allow mu to be negative
+						double y0_1 =  MinuitFit(3, tmp, tmperr, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
 						if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
 						vr.push_back(testr);
 						vc.push_back(y0_1-y0_2);
@@ -2843,6 +2904,10 @@ void processParameters(int argc, const char* argv[]){
 
 	if(isWordInMap("--doMemoryCheck", options)) doMemoryCheck=true;
 	if(isWordInMap("--DoNotRunGlobalFit", options)) DoNotRunGlobalFit=true;
+	if(isWordInMap("--GenerateToysAtBestFitSB", options)) GenerateToysAtBestFitSB=true;
+
+	tmpv=options["--ndof"];
+	if(tmpv.size()!=0) {NumDegreeOfFreedom=tmpv[0].Atof();}
 
 	tmpv=options["--RebinObservables"];
 	if(tmpv.size()!=0){
@@ -3798,6 +3863,8 @@ void PrintHelpMessage(){
 	printf("--doMemoryCheck  		      only run upto model construction, to terminate the valgrind, more usage in future\n");
 	printf("--DoNotRunGlobalFit                   for scanning POIs space, don't run global fit, and save the fMin instead of delta Q\n");
 	printf("--RebinObservables name nbin xmin xmax .........  for rebin observables  \n");
+	printf("--ndof arg (=1)                       number of degree of freedom,   for extracting errors in n dimensions \n");
+	printf("--GenerateToysAtBestFitSB 	      for generating toys at the best fit for s+b (floating mu), for signal hypotheses separation\n"); 
 
 
 	printf(" \n");

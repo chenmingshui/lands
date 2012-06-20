@@ -3066,4 +3066,3 @@ void AddRWSintoMap(string filename, string rwsname, RooWorkspace* w, map<TString
 	TString s = "FILENAME_"; s+=filename; s+="_RWSNAME_"; s+=rwsname;
 	m[s]=w;
 }
-

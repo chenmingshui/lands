@@ -161,6 +161,9 @@ double InverseCDF(
 		double pvalue, 
 		double sigmaVariation, 
 		double& inverseWithVariation);
+
+
+int wildcmp(const char *wild, const char *string) ;
 };
 #endif   /* ----- #ifndef UTILITIES_H  ----- */
 

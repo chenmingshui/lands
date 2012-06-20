@@ -3979,24 +3979,29 @@ If we need to change it later, it will be easy to do.
 		    for(int c=0; c<v_channelname.size(); c++){
 			    if(v_channelname[c]==schn.Data() or TString(v_channelname[c]).BeginsWith("TH1F_"+schn+"_")){
 					channelExist = true;
-				    for(int p=0; p<vv_procname[c].size(); p++){
-					    if(vv_procname[c][p]==sprc.Data()){
+				    for(int p=0; p<v_sigproc[c]; p++){
+					    //if(vv_procname[c][p]==sprc.Data()){
+					    if(wildcmp(sprc.Data(), vv_procname[c][p].c_str())){
 						    AddUncertainty(v_channelname[c], p, pMin, pMax, typeFlat, spar.Data());
 						    SetFlatParInitVal(spar.Data(), initVal);
 						    added = true;
+						    if(_debug) cout<<spar<<" coupled to "<<v_channelname[c]<<"/"<<vv_procname[c][p]<<endl;
 					    }
 				    }
 			    }
 		    }
 		    //roofit part
 		    for(int c=0; c<v_pdfs_channelname.size(); c++){
-			    if(v_pdfs_channelname[c]==schn.Data()){ 
+			    //if(v_pdfs_channelname[c]==schn.Data()){ 
+			    if(wildcmp(schn.Data(), v_pdfs_channelname[c].c_str())){ 
 					channelExist = true;
-				    for(int p=0; p<vv_pdfs_procname[c].size(); p++){
-					    if(vv_pdfs_procname[c][p]==sprc.Data()){
+				    for(int p=0; p<v_pdfs_sigproc[c]; p++){
+					    //if(vv_pdfs_procname[c][p]==sprc.Data()){
+					    if(wildcmp(sprc.Data(), vv_pdfs_procname[c][p].c_str())){
 						    AddUncertaintyOnShapeNorm(v_pdfs_channelname[c], p, pMin, pMax, typeFlat, spar.Data());
 						    SetFlatParInitVal(spar.Data(), initVal);
 						    added = true;
+						    if(_debug) cout<<spar<<" coupled to "<<v_pdfs_channelname[c]<<"/"<<vv_pdfs_procname[c][p]<<endl;
 					    }
 				    }
 			    }

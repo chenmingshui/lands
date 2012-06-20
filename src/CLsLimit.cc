@@ -480,6 +480,7 @@ namespace lands{
 		if(model == 1001) UseMinos = 2; // PL approximation method using Minos ....  with migrad 
 		if(model == 201 || model==202) UseMinos = 2; // PL approximation method using Minos ....  with migrad   allowing negative mu
 		if(model == 3 and cms_global->POIs().size()>1 and cms_global->GetErrEstAlgo()=="Minos" and !(cms_global->GetNoErrorEstimation()) ) UseMinos=2;
+		if(cms_global->GetNoErrorEstimation()) UseMinos = 0;
 
 		double minuitStep = 0.1;
 
@@ -2216,7 +2217,7 @@ double CLsLimit::FeldmanCousins(CountingModel *cms,
 	return _r95;
 }
 
-bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys, bool bWriteToys){  // 0 for sbANDb, 1 for bOnly, 2 for sbOnly, 3 for data only 
+bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys, bool bWriteToys, TString jobname){  // 0 for sbANDb, 1 for bOnly, 2 for sbOnly, 3 for data only 
 		_IsToy = true;
 	RooWorkspace * wtmp = new RooWorkspace("w");
 	_inputNuisances = _model->Get_norminalPars();	
@@ -2373,7 +2374,7 @@ bool CLsBase::BuildM2lnQ_b(int nexps, bool reUsePreviousToys, bool bWriteToys){ 
 		_IsToy = false;
 
 	if(bWriteToys){
-		TString stmp = "PseudoData_b_seed"; stmp+=_model->GetRdm()->GetSeed(); stmp+=".root";
+		TString stmp = jobname+"_PseudoData_b_seed"; stmp+=_model->GetRdm()->GetSeed(); stmp+=".root";
 		TFile *f = new TFile(stmp, "RECREATE");
 		//f->WriteTObject(_model->GetWorkSpace());
 		f->WriteTObject(wtmp);
@@ -2530,7 +2531,7 @@ bool CLsBase::BuildM2lnQ_data(){
 	return true;
 }
 
-bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys){  
+bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys, TString jobname){  
 		_IsToy = true;
 
 	_inputNuisances = _model->Get_norminalPars();	
@@ -2681,7 +2682,7 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys){
 
 		_IsToy = false;
 	if(bWriteToys){
-		TString stmp = "PseudoData_sb_seed"; stmp+=_model->GetRdm()->GetSeed(); stmp+=".root";
+		TString stmp = jobname+"_PseudoData_sb_seed"; stmp+=_model->GetRdm()->GetSeed(); stmp+=".root";
 		TFile *f = new TFile(stmp, "RECREATE");
 		f->WriteTObject(_model->GetWorkSpace());
 		f->Close();
@@ -2787,6 +2788,8 @@ double CLsBase::M2lnQ(bool & successful, int checkFailure, int dataOrToy){
 			q=0;
 			if(_debug) cout<<"-2lnQ = "<<q<<endl;
 			if(fittedPars)delete [] fittedPars;
+			if((success2[0]==0 and success[0]==0) && !checkFailure && _debug) cout<<"SUCCESSFUL_TOY : fit converged"<<endl;
+			if((success2[0]==0 and success[0]==0) && checkFailure && _debug) cout<<"SUCCESSFUL_DATA : fit converged"<<endl;
 			return q;
 		} 
 
