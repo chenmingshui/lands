@@ -213,6 +213,8 @@ int NumDegreeOfFreedom = 1; // for 68% CL extraction in  n dimensions
 
 bool GenerateToysAtBestFitSB = false;
 
+bool NoErrorEstimate = false;
+
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
 
@@ -1196,6 +1198,7 @@ int main(int argc, const char*argv[]){
 			double y0_2=0;
 			// for CvCf   ==>   y0_2,  CV, CF and their errors 
 			if(DoNotRunGlobalFit==false){
+				if(NoErrorEstimate) cms->SetNoErrorEstimation(1);
 				if(vCouplingsDef.size()==0) y0_2 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //202, 201, 2:  allow mu to be negative
 				else { y0_2 =  MinuitFit(3, tmp, tmperr, 1.0, pars, false, debug, 0, 0); }
 				if(debug) cout<<" _countPdfEvaluation = "<<_countPdfEvaluation<<endl;
@@ -2905,6 +2908,7 @@ void processParameters(int argc, const char* argv[]){
 	if(isWordInMap("--doMemoryCheck", options)) doMemoryCheck=true;
 	if(isWordInMap("--DoNotRunGlobalFit", options)) DoNotRunGlobalFit=true;
 	if(isWordInMap("--GenerateToysAtBestFitSB", options)) GenerateToysAtBestFitSB=true;
+	if(isWordInMap("--NoErrorEstimate", options)) NoErrorEstimate =true;
 
 	tmpv=options["--ndof"];
 	if(tmpv.size()!=0) {NumDegreeOfFreedom=tmpv[0].Atof();}
@@ -3865,6 +3869,7 @@ void PrintHelpMessage(){
 	printf("--RebinObservables name nbin xmin xmax .........  for rebin observables  \n");
 	printf("--ndof arg (=1)                       number of degree of freedom,   for extracting errors in n dimensions \n");
 	printf("--GenerateToysAtBestFitSB 	      for generating toys at the best fit for s+b (floating mu), for signal hypotheses separation\n"); 
+	printf("--NoErrorEstimate 		      do not call minos to calculate error bar \n");
 
 
 	printf(" \n");
