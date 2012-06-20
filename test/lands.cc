@@ -278,7 +278,7 @@ int main(int argc, const char*argv[]){
 		cms->AddCouplingParameter(vCouplingsDef[i]);
 	}
 
-/*
+
 	RooArgSet ras = cms->GetWorkSpaceVaried()->allVars();
 	std::auto_ptr<TIterator> itertmp(ras.createIterator());
 	for(RooRealVar * obs= (RooRealVar*)itertmp->Next(); obs!=0; obs=(RooRealVar*)itertmp->Next()){
@@ -303,12 +303,13 @@ int main(int argc, const char*argv[]){
 				else xmin = obs->getMin();
 				if( ( obs->getVal() + errhi*7 < obs->getMax()) and errhi>0 ) xmax = obs->getVal()+errhi*7;
 				else xmax = obs->getMax();
-				cms->AddFlatParam(obs->GetName(), obs->getVal(), xmin, xmax);
-				cout<<"Adding flatParam ******** Non-constant variable: "<<obs->GetName()<<" "<<obs->getVal()<<" ["<<obs->getMin()<<","<<obs->getMax()<<"] --> ["<<xmin<<","<<xmax<<"]"<<endl;
+				//cms->AddFlatParam(obs->GetName(), obs->getVal(), xmin, xmax);
+				//cout<<"Adding flatParam ******** Non-constant variable: "<<obs->GetName()<<" "<<obs->getVal()<<" ["<<obs->getMin()<<","<<obs->getMax()<<"] --> ["<<xmin<<","<<xmax<<"]"<<endl;
+				cout<<" ******** Non-constant variable: "<<obs->GetName()<<"  flatParam             "<<obs->getVal()<<" ["<<obs->getMin()<<","<<obs->getMax()<<"] --> ["<<xmin<<","<<xmax<<"]"<<endl;
 			}
 		}
 	}
-*/
+
 
 	vector<structPOI> vpoi_cx;
 	if(sPhysicsModel=="ChargedHiggs") cms->SetPhysicsModel(typeChargedHiggs);
