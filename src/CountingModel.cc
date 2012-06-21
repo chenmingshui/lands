@@ -3518,6 +3518,21 @@ If we need to change it later, it will be easy to do.
 		    cout<<norminalValue<<", ["<<rangeMin<<", "<<rangeMax<<"]"<<endl;
 	    }
 
+	    /*
+	    RooRealVar *obs = rrv;
+	    double errlo = obs->getErrorLo();
+	    double errhi = obs->getErrorHi();
+	    double xmin=0, xmax=0;
+	    errlo=fabs(errlo);
+	    errhi=fabs(errhi);
+
+	    if( ( obs->getVal() - errlo*7 > obs->getMin()) and errlo>0 ) xmin = obs->getVal()-errlo*7;
+	    else xmin = obs->getMin();
+	    if( ( obs->getVal() + errhi*7 < obs->getMax()) and errhi>0 ) xmax = obs->getVal()+errhi*7;
+	    else xmax = obs->getMax();
+	    cout<<"Adding flatParam ******** Non-constant variable: "<<obs->GetName()<<" "<<obs->getVal()<<" ["<<obs->getMin()<<","<<obs->getMax()<<"] --> ["<<xmin<<","<<xmax<<"]"<<endl;
+	    rangeMax = xmax; rangeMin = xmin;
+	    */
 
 	    vector<double> vunc; vunc.clear(); 
 	    vunc.push_back(norminalValue);
@@ -3874,7 +3889,8 @@ If we need to change it later, it will be easy to do.
 
     }
     void CountingModel::DumpFitResults(double *pars, TString ssave){
-	VChannelVSample vv = FluctuatedNumbers(pars);	
+	SetSignalScaleFactor(pars[0], 0);
+	VChannelVSample vv = FluctuatedNumbers(pars,true);	
 	vector< vector<TGraphAsymmErrors*> > vvTGraph; vvTGraph.clear();
 	for(int c=0; c<vv.size(); c++){
 		TString cname = v_channelname[c];

@@ -305,7 +305,7 @@ int main(int argc, const char*argv[]){
 				else xmax = obs->getMax();
 				//cms->AddFlatParam(obs->GetName(), obs->getVal(), xmin, xmax);
 				//cout<<"Adding flatParam ******** Non-constant variable: "<<obs->GetName()<<" "<<obs->getVal()<<" ["<<obs->getMin()<<","<<obs->getMax()<<"] --> ["<<xmin<<","<<xmax<<"]"<<endl;
-				cout<<" ******** Non-constant variable: "<<obs->GetName()<<"  flatParam             "<<obs->getVal()<<" ["<<obs->getMin()<<","<<obs->getMax()<<"] --> ["<<xmin<<","<<xmax<<"]"<<endl;
+				cout<<" *Non-constant variable: "<<obs->GetName()<<"  flatParam             "<<endl;//<<obs->getVal()<<" ["<<obs->getMin()<<","<<obs->getMax()<<"] --> ["<<xmin<<","<<xmax<<"]"<<endl;
 			}
 		}
 	}
