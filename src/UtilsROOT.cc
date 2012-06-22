@@ -1739,7 +1739,9 @@ bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripp
 		else if(ss[1]=="shapeN" or ss[1]=="shapeN2"  or ss[1]=="shapeStat") pdf=typeLogNormal;
 		else if(ss[1]=="shape" or ss[1]=="shape2" or ss[1]=="shapeQ" or ss[1]=="shape?") pdf=typeShapeGaussianQuadraticMorph;
 		else if(ss[1]=="shapeL" ) pdf=typeShapeGaussianLinearMorph;
-		else {
+		else if(ss[1]=="flatParam" or ss[1]=="param"){
+			continue;	
+		}else{
 			//pdf =  (TString(ss[1])).Atoi();
 			cout<<" ERROR: Uncertainty type ["<<ss[1]<<"] is not defined yet "<<endl;
 			exit(1);

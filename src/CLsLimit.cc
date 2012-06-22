@@ -336,6 +336,7 @@ namespace lands{
 				if(isnan(tc)) {cout<<" tc=nan "<<"  bs="<<bs<<" c "<<c<<" s="<<s<<endl; }
 			}
 			if(vdata_global[c]<=0){
+				if(tc<0) {f=10e9;cms_global->FlagAllChannels(); return;} // tc < 0, which means non-physical, return f = 10e9
 				chisq +=( tc - vdata_global[c]);
 				//			chisq +=( tc ); //- vdata_global[c]); // to be identical with ATLAS TDR description, for limit only
 			}else { 

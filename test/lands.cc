@@ -2178,10 +2178,11 @@ int main(int argc, const char*argv[]){
 	return 1;
 }
 vector<double> GetListToEval(TString parname, vector<TString> tmpv){
-	cout<<"tmpv.size="<<tmpv.size()<<endl;
+	// tmpv[0] for binning,  tmpv[1] and so on for actual scan if tmpv.size>1
+	// cout<<"tmpv.size="<<tmpv.size()<<endl;
 	for(int i=0; i<tmpv.size(); i++) cout<<tmpv[i]<<endl;
 	vector<double> vtoEval;vtoEval.clear();
-	for(int i=0; i<tmpv.size(); i++){
+	for(int i= (tmpv.size()>1?1:0); i<tmpv.size(); i++){
 		if(tmpv[i].IsFloat()) vtoEval.push_back(tmpv[i].Atof());
 		else if(tmpv[i].BeginsWith("[") and tmpv[i].EndsWith("]")){
 			tmpv[i].ReplaceAll("[","");tmpv[i].ReplaceAll("]","");	
@@ -2726,45 +2727,17 @@ void processParameters(int argc, const char* argv[]){
 	tmpv = options["-vR"];
 	if( tmpv.size()==0 && bOnlyEvalCL_forVR) { cout<<"ERROR: args of -vR empty while bOnlyEvalCL_forVR=true"<<endl; exit(1); }
 	else{
-		vR_toEval = GetListToEval("-vR",tmpv);
+		if(tmpv.size()>=1)vR_toEval = GetListToEval("-vR",tmpv);
+		//else if(tmpv.size()>1) vM_toEval.push_back(tmpv[1].Atof());
 		if(tmpv.size() >0)sbinningMU = tmpv[0];
-		/*
-		   for(int i=0; i<tmpv.size(); i++){
-		   if(tmpv[i].IsFloat()) vR_toEval.push_back(tmpv[i].Atof());
-		   else if(tmpv[i].BeginsWith("[") and tmpv[i].EndsWith("]")){
-		   tmpv[i].ReplaceAll("[","");tmpv[i].ReplaceAll("]","");	
-		   vector<string> vstr;
-		   StringSplit(vstr, tmpv[i].Data(), ",");
-		   if(vstr.size()==3 and (TString(vstr[2]).IsFloat() or TString(vstr[2]).BeginsWith("x")) ){
-		   double r0 = TString(vstr[0]).Atof(), r1=TString(vstr[1]).Atof();	
-		   if(r0>r1 or r0<0) continue;
-		   if(TString(vstr[2]).BeginsWith("x")) {
-		   if(r0==0) continue;
-		   double step = TString(vstr[2]).ReplaceAll("x", "").Atof();
-		   if(step<=1) continue;
-		   for(double r=r0; r<=r1; r*=step) vR_toEval.push_back(r);
-		   }else{
-		   double step = TString(vstr[2]).Atof();
-		   if(step<=0) continue;
-		   for(double r=r0; r<=r1; r+=step) vR_toEval.push_back(r);
-		   };
-		   }else{
-		   cout<<"ERROR: wrong format of -vR, should be sth like [1.2,2.0,x1.05] or [1.2,2.0,0.05]"<<endl; exit(1);
-		   };
-		   }else {cout<<"ERROR: wrong format of args of -vR:  \""<<tmpv[i]<<"\""<<endl; exit(1);}
-		   }
-		   std::sort(vR_toEval.begin(), vR_toEval.end());
-		   vector<double>::iterator it;
-		   it = std::unique(vR_toEval.begin(), vR_toEval.end());
-		   vR_toEval.resize(it - vR_toEval.begin());
-		 */	}
+	}
 
 	tmpv = options["-vM"];
 	if( scanMs and tmpv.size()==0) { cout<<"ERROR: args of -vM empty "<<endl; exit(1); }
 	else{
 		//vM_toEval = GetListToEval("-vM",tmpv);
-		if(tmpv.size()==1)vM_toEval = GetListToEval("-vM",tmpv);
-		else if(tmpv.size()>1) vM_toEval.push_back(tmpv[1].Atof());
+		if(tmpv.size()>=1)vM_toEval = GetListToEval("-vM",tmpv);
+		//else if(tmpv.size()>1) vM_toEval.push_back(tmpv[1].Atof());
 		if(tmpv.size() >0)sbinningMH = tmpv[0];
 	}
 
