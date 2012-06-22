@@ -3973,6 +3973,8 @@ If we need to change it later, it will be easy to do.
 				    pMax= TString(vstr2[2]).Atof();	
 				    if( initVal<pMin or initVal>pMax or pMax<pMin) 
 				    {cout<<" Coupling input is incorrect: "<<vstr[0]<<"'s setting1 ='"<<s2<<"',   while it should be [initVal,min,max]"<<endl; exit(1);}
+				    structPOI poicoup(spar, initVal, 0, 0, pMin, pMax);
+				    addPOI(poicoup);
 			    }else{ cout<<" Coupling input is incorrect: "<<vstr[0]<<"'s setting2 ='"<<s2<<"',   while it should be [initVal,min,max]"<<endl; exit(1);}
 		    }else{ cout<<" Coupling input is incorrect: "<<vstr[0]<<"'s setting3 ='"<<s2<<"',   while it should be [initVal,min,max]"<<endl; exit(1);}
 	    }else{ cout<<" Coupling input is incorrect: "<<vstr[0]<<"'s setting4 ='"<<s2<<"',   while it should be [initVal,min,max]"<<endl; exit(1);}
@@ -3993,7 +3995,8 @@ If we need to change it later, it will be easy to do.
 		    TString sprc=vstr3i[1]; 
 		    //counting part
 		    for(int c=0; c<v_channelname.size(); c++){
-			    if(v_channelname[c]==schn.Data() or TString(v_channelname[c]).BeginsWith("TH1F_"+schn+"_")){
+			    //if(v_channelname[c]==schn.Data() or TString(v_channelname[c]).BeginsWith("TH1F_"+schn+"_")){
+			    if(wildcmp(schn.Data(), v_channelname[c].c_str())){ 
 					channelExist = true;
 				    for(int p=0; p<v_sigproc[c]; p++){
 					    //if(vv_procname[c][p]==sprc.Data()){
@@ -4534,6 +4537,19 @@ If we need to change it later, it will be easy to do.
 		if(_debug) cout<<" end AddCX"<<endl;
 	    return vpoi;
     }
+
+    void CountingModel::keepOnlyPOI(TString spoi){ 
+	    structPOI poi("",0,0,0,0,0); 	bool found=false;
+	    for(int i=0; i<vPOIs.size(); i++) 
+		    if(vPOIs[i].name==spoi) {poi=vPOIs[i]; found=true;}
+
+	    structPOI poimu("",0,0,0,0,0); 
+	    vPOIs.clear();  
+	    vPOIs.push_back(poimu);
+	    if(found) vPOIs.push_back(poi); 
+	    else { if(spoi!="") {cout<<spoi<<" is not found"<<endl; exit(1);}}
+	    cout<<" The kept POI is "<<poi.name<<endl;
+    } 
 
     };
 

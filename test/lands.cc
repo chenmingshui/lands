@@ -215,6 +215,12 @@ bool GenerateToysAtBestFitSB = false;
 
 bool NoErrorEstimate = false;
 
+//more generic option
+TString mainPOI="";
+bool scanPOI=false;
+vector<double> scanPOIrange;
+TString sbinningPOI;
+
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
 
@@ -1198,6 +1204,10 @@ int main(int argc, const char*argv[]){
 			}
 			double y0_2=0;
 			// for CvCf   ==>   y0_2,  CV, CF and their errors 
+
+			if(mainPOI != "") {
+				cms->keepOnlyPOI(mainPOI);	
+			}
 			if(DoNotRunGlobalFit==false){
 				if(NoErrorEstimate) cms->SetNoErrorEstimation(1);
 				if(vCouplingsDef.size()==0) y0_2 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //202, 201, 2:  allow mu to be negative
@@ -1583,6 +1593,78 @@ int main(int argc, const char*argv[]){
 				return 0;
 			}
 
+			if(scanPOI && mainPOI!=""){
+				cms_global->SetNoErrorEstimation(1);
+				TStopwatch watch2;
+				watch2.Start();
+				vector<double> vc; vc.clear();
+				vector<double> vr; vr.clear();
+				
+				int poi_i = -1;
+				for(int i=0; i<cms_global->Get_v_uncname().size(); i++) {
+					if(mainPOI==(TString)cms_global->Get_v_uncname()[i]) poi_i=i+1;
+				}
+			
+					
+				if(poi_i<0 ) {cout<<" no "<<mainPOI<<" parameter, exit"<<endl;  exit(1);}
+
+			
+				vector< vector<double> > v_Pars = cms_global->Get_v_Pars();	
+				
+				if(DoNotRunGlobalFit == false) { 
+					vr.push_back(pars[poi_i]*(v_Pars[poi_i][2]-v_Pars[poi_i][1])+v_Pars[poi_i][1]);
+					vc.push_back(y0_2-y0_2); 
+				}
+
+				bool best = false;
+				for(int j=0; j<scanPOIrange.size(); j++){
+					if(debug)watch.Start();
+					double testm = scanPOIrange[j];
+					_countPdfEvaluation = 0;
+					cms_global->SetPOItoBeFixed(mainPOI,testm);
+					double y0_1 =  MinuitFit(3, tmp, tmperr, 1.0, pars, best?true:false, debug, 0, best?bestFitPars:0);
+
+					for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
+						myMinuit->GetParameter(i, tmp, tmpe);
+						bestFitPars[i]=tmp;
+					}
+					best = true;
+
+					if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
+					if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
+					vr.push_back(testm);
+					vc.push_back(y0_1-y0_2);
+					if(debug){
+						watch.Stop();
+						watch.Print();
+					}
+				}
+				if(debug){
+					printf("\n results of scanned POI vs. q: \n");
+					for(int i=0; i<vr.size(); i++){
+						printf("  poi=%10.3f],  delta_q=%7.5f\n", vr[i], vc[i]);
+					}
+				}
+				if(bPlots){
+					TString st1 = "-2lnQ;"; st1+=mainPOI; st1+=";q"; 
+					TString st2 = jobname; st2+="_scanned_"; st2+=mainPOI; st2+="_vs_q_TH1";
+					DrawTH1D d1h(sbinningPOI, vr, vc, st1.Data(), st2.Data(), pt);
+					d1h.draw();
+					d1h.save();
+					st2 = jobname; st2+="_scanned_"; st2+=mainPOI; st2+="_vs_q";
+					DrawEvolution2D d2d(vr, vc, st1.Data(), st2.Data(), pt);
+					d2d.draw();
+					d2d.save();
+				}
+
+				watch2.Stop();
+				cout<<"Scanning total takes: "<<endl;
+				watch2.Print();
+				delete pars;
+				delete cms;
+				return 0;
+			}
+
 
 			if(vCouplingsDef.size() and !scanMs) {delete pars;
 				delete cms;
@@ -1940,6 +2022,11 @@ int main(int argc, const char*argv[]){
 						printf("   r=%10.3f  delta_q=%7.5f\n", vr[i], vc[i]);
 					}
 					if(bPlots){
+						TString st1 = "-2lnQ;"; st1+="Higgs boson mass (GeV)"; st1+=";q"; 
+						TString st2 = jobname; st2+="_scanned_m_vs_q_TH1";
+						DrawTH1D d1h(sbinningMH, vr, vc, st1.Data(), st2.Data(), pt);
+						d1h.draw();
+						d1h.save();
 						DrawEvolution2D d2d(vr, vc, "; m ; q", (jobname+"_scanned_m_vs_q").Data(), pt);
 						d2d.draw();
 						d2d.save();
@@ -2873,7 +2960,16 @@ void processParameters(int argc, const char* argv[]){
 	tmpv=options["--ErrEstAlgo"]; 
 	if(tmpv.size()!=0) { ErrEstAlgo=tmpv[0]; if(ErrEstAlgo!="Minos" and ErrEstAlgo!="Bisect") {cout<<" ErrEstAlgo only supports Minos and Bisect"<<endl; exit(1);}}
 
-
+	tmpv=options["--mainPOI"];
+	if(tmpv.size()==1){
+		mainPOI = tmpv[0];	
+	}
+	tmpv=options["--scanPOI"]; // use with --mainPOI 
+	if(tmpv.size()){
+		scanPOI=true;
+		if(tmpv.size()>=1)scanPOIrange = GetListToEval("POI",tmpv);
+		if(tmpv.size() >0)sbinningPOI = tmpv[0];
+	}
 	tmpv=options["--PrintPdfEvlCycle"];
 	if(tmpv.size()!=0) {PrintPdfEvlCycle=tmpv[0].Atof();}
 	tmpv=options["--PrintFuncCallCycle"];
@@ -3831,6 +3927,7 @@ void PrintHelpMessage(){
 	printf("--bRunMinuitContour                   Run MNCONT for two POIs, requiring computing time \n");
 	printf("--POIs args (='NAME InitVal Min Max') Specify other POIs (like MH), which should be in the input workspace\n");
 	printf("--Couplings (='ggH:[0.9,0,5]:*|ggH,hzz4l_4mu|ggH,hzz2l2nu_ee|ggH  parName:[initVal,min,max]:FinalState|ProductionMode')\n");
+	printf("--mainPOI arg                         remove other POIs, let them be nuisances \n");
 	printf("--smbr arg (=FilePath)                for SMHiggsBuilder, path of the file containing SM Br\n");
 	printf("--CV init min max --CF init min max   settings for CvCfHiggs,  i.e. fit range\n");
 	printf("--scanCvCf                            to be used with -vCv, -vCf\n");

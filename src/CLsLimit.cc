@@ -800,10 +800,11 @@ namespace lands{
 
 					Double_t errUp1, errLow1, errParab1=0, gcor1=0; 
 					// POIs can be only signal_strength or  some parameters in Workspace, e.g. MH 
+					// also couplings  not in workspaces
 					for(int p=1; p<cms_global->POIs().size(); p++) { // 0 is always signal strength
 					bool inWorkSpace = false;
 					if(cms_global->GetWorkSpaceVaried()->var(cms_global->POIs()[p].name) != NULL){ inWorkSpace=true;}
-						for(int j=1; j<=npars; j++){
+					for(int j=1; j<=npars; j++){
 							TString sname=v_uncname[j-1]; 
 							if(cms_global->POIs()[p].name ==sname) {
 								double poi, poierr;

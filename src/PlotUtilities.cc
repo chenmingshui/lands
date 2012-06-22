@@ -1038,4 +1038,81 @@ void DrawTH2D::save(){
 	f.Close();
 
 }
+DrawTH1D::DrawTH1D(TString sbinx, vector< double > vx, vector<double> vz, string stitle, string ssave, TPaveText *pt, bool debug){
+	for(int i=0; i<vx.size(); i++) { _vx.push_back(vx[i]); }
+	_vz = vz;
+	_stitle=stitle; _ssave=ssave; _pt=pt; _debug=debug;	
+	_logY=0; cCanvas=0; legend=0; 
+	lineOne=0; graph=0;
+	_sbinx = sbinx; 
+}
+DrawTH1D::~DrawTH1D(){
+	if(legend)delete legend; if(lineOne)delete lineOne; if(graph)delete graph;
+	cCanvas=0; _pt=0;
+}
+void DrawTH1D::draw(){
+	cCanvas= new TCanvas("c","c");	
+	cCanvas->SetLogy(_logY);
+	int nr = _vx.size();
+
+	double xmin=0, xmax=1, nbinx=1;
+	double ymin=0, ymax=1, nbiny=1;
+	if(_sbinx.BeginsWith("[") and _sbinx.EndsWith("]")){
+		_sbinx.ReplaceAll("[","");_sbinx.ReplaceAll("]","");	
+		vector<string> vstr;
+		StringSplit(vstr, _sbinx.Data(), ",");
+		if(vstr.size()==3 and (TString(vstr[2]).IsFloat() or TString(vstr[2]).BeginsWith("x")) ){
+			double r0 = TString(vstr[0]).Atof(), r1=TString(vstr[1]).Atof();	
+			//if(r0>r1 or r0<0) continue;
+			if(TString(vstr[2]).BeginsWith("x")) {
+				cout<<"ERROR: scanning to make TH2, but it's with variable binning setting, skip "<<endl;
+			}else{
+				double step = TString(vstr[2]).Atof();
+				if(step>0) {
+					nbinx = int((r1-r0)/step);
+				}
+				xmin=r0+0.5*step;
+				xmax=r1+0.5*step;
+			};
+		}else{
+			cout<<"ERROR: wrong format of should be sth like [1.2,2.0,0.05]"<<endl;	};
+	}else{
+		cout<<"ERROR: wrong format of should be sth like [1.2,2.0,0.05]"<<endl;	
+	};
+
+	graph = new TH1D("dummy",";;", nbinx, xmin, xmax);
+
+	double *x=new double[nr]; 
+	double *z= new double[nr];
+	for(int i=0; i<nr; i++){
+		graph->SetBinContent(graph->FindBin(_vx[i]), _vz[i]);
+	}
+
+	graph->SetMarkerStyle(21);
+	graph->SetMarkerColor(kBlue);
+	graph->SetLineWidth(2);
+	graph->SetLineColor(kBlue);
+	graph->SetTitle(_stitle.c_str());
+	graph->Draw("l");
+
+	_pt->Draw();
+
+	save();
+
+	delete [] x; 
+	delete [] z;
+}
+void DrawTH1D::save(){
+	Save(cCanvas,_ssave);
+	string seps = _ssave+".eps";
+	string sgif = _ssave+".gif";
+	string sroot = _ssave+".root";
+	//cCanvas->Print(sroot.c_str());
+	//cCanvas->Print(seps.c_str());
+	cCanvas->Print(sgif.c_str());
+	TFile f(sroot.c_str(),"RECREATE");
+	f.WriteTObject(graph);
+	f.Close();
+
+}
 };

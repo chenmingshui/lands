@@ -335,7 +335,7 @@ namespace lands{
 			const vector<structPOI> & POIs(){return vPOIs;};
 			void addPOI(structPOI p) {bool b=false; for(int i=0; i<vPOIs.size(); i++) {if(vPOIs[i].name==p.name) b=true;} if(!b)vPOIs.push_back(p); };
 			void setPOI(int i, double v, double eu, double ed){vPOIs[i].value=v; vPOIs[i].errUp=eu; vPOIs[i].errDown=ed;};
-
+			void keepOnlyPOI(TString spoi);
 			void Set_minuitPrintLevel(int i){minuitPrintLevel = i;};
 			int Get_minuitPrintLevel(){return minuitPrintLevel;};
 
