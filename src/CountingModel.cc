@@ -3989,10 +3989,17 @@ If we need to change it later, it will be easy to do.
 			bool channelExist = false;
 		    TString s3i(vstr3[i].c_str());
 		    vector<string> vstr3i;
-		    StringSplit(vstr3i, s3i.Data(), "|");
+		    if(s3i.Contains("|"))
+			    StringSplit(vstr3i, s3i.Data(), "|");
+		    else if ( s3i.Contains("="))
+			    StringSplit(vstr3i, s3i.Data(), "=");
 		    if(vstr3i.size()!=2) {cout<<"coupling format is incorrect:  "<<s3i<<", should be channelName|processName"<<endl; exit(1);}
 		    TString schn=vstr3i[0]; 
 		    TString sprc=vstr3i[1]; 
+		    schn.ReplaceAll("XXX","*");
+		    sprc.ReplaceAll("XXX","*");
+		    schn.ReplaceAll("YYY","?");
+		    sprc.ReplaceAll("YYY","?");
 		    //counting part
 		    for(int c=0; c<v_channelname.size(); c++){
 			    //if(v_channelname[c]==schn.Data() or TString(v_channelname[c]).BeginsWith("TH1F_"+schn+"_")){
