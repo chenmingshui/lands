@@ -221,6 +221,10 @@ bool scanPOI=false;
 vector<double> scanPOIrange;
 TString sbinningPOI;
 
+bool bFixNuisancesAtBestFit = false; // when doing scanning mass without systematics --> if remove all sys from cards --> bias,  --> so need to fit to data and then fix to that 
+
+int intRemoveBins = 0; // only remove// 0: remove only bins with total bkg<=0,  1: remove bins with total sig<=0,  2: both
+
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
 
@@ -341,7 +345,7 @@ int main(int argc, const char*argv[]){
 	if(debug)cms->Print();
 	cms->SetRdm(rdm);
 	//cms->RemoveChannelsWithExpectedSignal0orBkg0();
-	int nch_removed  = cms->RemoveChannelsWithExpectedSignal0orBkg0(0); // 0: remove only bins with total bkg<=0,  1: remove bins with total sig<=0,  2: both
+	int nch_removed  = cms->RemoveChannelsWithExpectedSignal0orBkg0(intRemoveBins); // 0: remove only bins with total bkg<=0,  1: remove bins with total sig<=0,  2: both
 	// FIXME need add an option for speficying if to remove some channels 
 	if(debug and nch_removed )cms->Print();
 	if(nch_removed)cms->SetUseSystematicErrors(systematics);//need reconfig,  otherwise crash
@@ -1518,6 +1522,7 @@ int main(int argc, const char*argv[]){
 			cms->Set_fittedParsInData_sb(pars_maxll);
 			
 
+			vector< vector<double> > v_Pars = cms_global->Get_v_Pars();	
 			if(scanCvCf && cms_global->GetPhysicsModel()==typeCvCfHiggs){
 				cms_global->SetNoErrorEstimation(1);
 				TStopwatch watch2;
@@ -1531,7 +1536,6 @@ int main(int argc, const char*argv[]){
 				if(_Cv_i<0 or _Cf_i<0) {cout<<" no CV or CF parameter, exit"<<endl;  exit(1);}
 
 			
-				vector< vector<double> > v_Pars = cms_global->Get_v_Pars();	
 				
 				if(DoNotRunGlobalFit == false) { vrm.push_back(make_pair(pars[_Cv_i]*(v_Pars[_Cv_i][2]-v_Pars[_Cv_i][1])+v_Pars[_Cv_i][1],  pars[_Cf_i]*(v_Pars[_Cf_i][2]-v_Pars[_Cf_i][1])+v_Pars[_Cf_i][1]) );vc.push_back(y0_2-y0_2); }
 
@@ -1545,13 +1549,23 @@ int main(int argc, const char*argv[]){
 						_countPdfEvaluation = 0;
 						cms_global->SetPOItoBeFixed("CV",testr);
 						cms_global->SetPOItoBeFixed("CF",testm);
-						double y0_1 =  MinuitFit(3, tmp, tmperr, 1.0, pars, best?true:false, debug, 0, best?bestFitPars:0);
 
-						for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
-							myMinuit->GetParameter(i, tmp, tmpe);
-							bestFitPars[i]=tmp;
+
+						double y0_1 =0; 
+						if(bFixNuisancesAtBestFit){
+							bestFitPars[_Cv_i] =  (testr - v_Pars[_Cv_i][1])/(v_Pars[_Cv_i][2]-v_Pars[_Cv_i][1]);
+							bestFitPars[_Cf_i] =  (testr - v_Pars[_Cf_i][1])/(v_Pars[_Cf_i][2]-v_Pars[_Cf_i][1]);
+							y0_1 =  MinuitFit(10, tmp, tmperr, 1., bestFitPars);
+
+						}else y0_1 =  MinuitFit(3, tmp, tmperr, 1.0, pars, best?true:false, debug, 0, best?bestFitPars:0);
+
+						if(!bFixNuisancesAtBestFit){
+							for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
+								myMinuit->GetParameter(i, tmp, tmpe);
+								bestFitPars[i]=tmp;
+							}
+							best = true;
 						}
-						best = true;
 
 
 						if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
@@ -1622,13 +1636,22 @@ int main(int argc, const char*argv[]){
 					double testm = scanPOIrange[j];
 					_countPdfEvaluation = 0;
 					cms_global->SetPOItoBeFixed(mainPOI,testm);
-					double y0_1 =  MinuitFit(3, tmp, tmperr, 1.0, pars, best?true:false, debug, 0, best?bestFitPars:0);
 
-					for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
-						myMinuit->GetParameter(i, tmp, tmpe);
-						bestFitPars[i]=tmp;
+
+					double y0_1 =0; 
+					if(bFixNuisancesAtBestFit){
+						bestFitPars[poi_i] =  (testm - v_Pars[poi_i][1])/(v_Pars[poi_i][2]-v_Pars[poi_i][1]);
+						y0_1 =  MinuitFit(10, tmp, tmperr, 1., bestFitPars);
+
+					}else y0_1 =  MinuitFit(3, tmp, tmperr, 1.0, pars, best?true:false, debug, 0, best?bestFitPars:0);
+
+					if(!bFixNuisancesAtBestFit){
+						for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
+							myMinuit->GetParameter(i, tmp, tmpe);
+							bestFitPars[i]=tmp;
+						}
+						best = true;
 					}
-					best = true;
 
 					if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
 					if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
@@ -1871,6 +1894,7 @@ int main(int argc, const char*argv[]){
 				if(!DoNotRunGlobalFit){vrm.push_back(make_pair(pars[idMH]*v_paramsUnc[idMH][1]+v_paramsUnc[idMH][3], pars[0]) );vc.push_back(y0_2-y0_2);}
 
 				bool best = false;
+
 				for(int i=0; i<vR_toEval.size(); i++){
 					double testr = vR_toEval[i];
 					for(int j=0; j<vM_toEval.size(); j++){
@@ -1878,13 +1902,22 @@ int main(int argc, const char*argv[]){
 						double testm = vM_toEval[j];
 						_countPdfEvaluation = 0;
 						cms_global->SetPOItoBeFixed("MH",testm);
-						double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, best?true:false, debug, 0, best?bestFitPars:0);
+						double y0_1 = 0;
+						if(bFixNuisancesAtBestFit){
+							bestFitPars[0] =  testr; 
+							bestFitPars[idMH] =  (testr - v_paramsUnc[idMH][3])/v_paramsUnc[idMH][1];
+							y0_1 =  MinuitFit(10, tmp, tmperr, testr, bestFitPars);
 
-						for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
-							myMinuit->GetParameter(i, tmp, tmpe);
-							bestFitPars[i]=tmp;
+						}else 
+							y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, best?true:false, debug, 0, best?bestFitPars:0);
+
+						if(!bFixNuisancesAtBestFit){
+							for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
+								myMinuit->GetParameter(i, tmp, tmpe);
+								bestFitPars[i]=tmp;
+							}
+							best = true;
 						}
-						best = true;
 
 
 						if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
@@ -1938,7 +1971,13 @@ int main(int argc, const char*argv[]){
 					for(int i=0; i<vR_toEval.size(); i++){
 						double testr = vR_toEval[i];
 						_countPdfEvaluation = 0;
-						double y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, best?true:false, debug, 0, best?bestFitPars:0);
+						double y0_1 = 0;
+						if(bFixNuisancesAtBestFit){
+							bestFitPars[0] =  testr; 
+							y0_1 =  MinuitFit(10, tmp, tmperr, testr, bestFitPars);
+
+						}else 
+							y0_1 =  MinuitFit(3, tmp, tmperr, testr, pars, best?true:false, debug, 0, best?bestFitPars:0);
 						if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
 						if(debug)	cout<<y0_1<<" fitter u="<<tmp<<" +/- "<<tmperr<<endl;
 						vr.push_back(testr);
@@ -1946,11 +1985,13 @@ int main(int argc, const char*argv[]){
 						TString sj = jobname; sj+="_fittedShape_mu"; sj+=testr;
 						if(bDumpFitResults)cms->DumpFitResults(pars, sj);
 
-						for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
-							myMinuit->GetParameter(i, tmp, tmpe);
-							bestFitPars[i]=tmp;
+						if(!bFixNuisancesAtBestFit){
+							for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
+								myMinuit->GetParameter(i, tmp, tmpe);
+								bestFitPars[i]=tmp;
+							}
+							best = true;
 						}
-						best = true;
 
 					}
 					if( scanRs >= 2) {
@@ -2003,18 +2044,26 @@ int main(int argc, const char*argv[]){
 						cms_global->SetPOItoBeFixed("MH",testr);
 
 						//double y0_1 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, 1./*common mu*/, pars, best?true:false, debug, success, best?bestFitPars:0) ;  //202, 201, 2:  allow mu to be negative
-						double y0_1 =  MinuitFit(3, tmp, tmperr, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
+						double y0_1 =0; 
+						if(bFixNuisancesAtBestFit){
+							bestFitPars[idMH] =  (testr - v_paramsUnc[idMH][3])/v_paramsUnc[idMH][1];
+							y0_1 =  MinuitFit(10, tmp, tmperr, 1., bestFitPars);
+						
+						}else y0_1 =  MinuitFit(3, tmp, tmperr, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
+						
 						if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
 						vr.push_back(testr);
 						vc.push_back(y0_1-y0_2);
 						TString sj = jobname; sj+="_fittedShape_m"; sj+=testr;
 						if(bDumpFitResults)cms->DumpFitResults(pars, sj);
 
-						for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
-							myMinuit->GetParameter(i, tmp, tmpe);
-							bestFitPars[i]=tmp;
+						if(!bFixNuisancesAtBestFit){
+							for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
+								myMinuit->GetParameter(i, tmp, tmpe);
+								bestFitPars[i]=tmp;
+							}
+							best = true;
 						}
-						best = true;
 
 					}
 					printf("\n results of scanned m vs. q: \n");
@@ -2860,6 +2909,8 @@ void processParameters(int argc, const char* argv[]){
 
 	// for LHC-CLs method
 	if(isWordInMap("--bFixNuisancsAtNominal", options)) bFixNuisancsAtNominal = true;
+	if(isWordInMap("--bFixNuisancesAtBestFit", options)) bFixNuisancesAtBestFit= true;
+	if(isWordInMap("--fastScan", options)) bFixNuisancesAtBestFit= true;
 
 
 	if(isWordInMap("--bDumpFitResults", options)) bDumpFitResults = true; 
@@ -2982,6 +3033,9 @@ void processParameters(int argc, const char* argv[]){
 
 	tmpv=options["--ndof"];
 	if(tmpv.size()!=0) {NumDegreeOfFreedom=tmpv[0].Atof();}
+
+	tmpv=options["--intRemoveBins"];
+	if(tmpv.size()!=0) {intRemoveBins=tmpv[0].Atoi();}
 
 	tmpv=options["--RebinObservables"];
 	if(tmpv.size()!=0){
@@ -3941,6 +3995,8 @@ void PrintHelpMessage(){
 	printf("--ndof arg (=1)                       number of degree of freedom,   for extracting errors in n dimensions \n");
 	printf("--GenerateToysAtBestFitSB 	      for generating toys at the best fit for s+b (floating mu), for signal hypotheses separation\n"); 
 	printf("--NoErrorEstimate 		      do not call minos to calculate error bar \n");
+	printf("--bFixNuisancesAtBestFit or --fastScan     fix nuisances to global best fit value when doing 1D poi scan without systematics (not removed from cards)  \n");
+	printf("--intRemoveBins arg (=0)               0: remove only bins with total bkg<=0,  1: remove bins with total sig<=0,  2: both \n"); 
 
 
 	printf(" \n");
