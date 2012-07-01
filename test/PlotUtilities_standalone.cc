@@ -596,7 +596,7 @@ void DrawCMS(string cms, double x1, double y1, double x2, double y2, double txts
 void Save(TCanvas *cCanvas, string _ssave){
 	string seps = _ssave+".eps";
 	string spdf = _ssave+".pdf";
-	string sgif = _ssave+".gif";
+	string sgif = _ssave+".png";
 	string sroot = _ssave+".root";
 	cCanvas->Print(sroot.c_str());
 	cCanvas->Print(seps.c_str());
@@ -1113,4 +1113,50 @@ void GetMuHat(TTree *tree, vector<double>& inputMH, vector<double>& inputLimits 
 		inputLimits.push_back(limit);
 		inputMH.push_back(mH);
 	}
+}
+void GetMuHat(TTree *tree, vector<double>& inputMH, vector<double>& inputLimits , vector<double> & inputLimitErrsUp, vector<double> & inputLimitErrsDn ){
+	// Declaration of leaf types
+	Double_t        mH;
+	Double_t        limit;
+	Double_t        rm1s;
+	Double_t        rp1s;
+
+	// List of branches
+	TBranch        *b_mH;   //!
+	TBranch        *b_limit;   //!
+	TBranch        *b_rm1s;   //!
+	TBranch        *b_rp1s;   //!
+
+	TTree *fChain = tree;
+	if(tree->GetBranch("mH")){
+		fChain->SetBranchAddress("mH", &mH, &b_mH);
+		fChain->SetBranchAddress("rmean", &limit, &b_limit);
+		fChain->SetBranchAddress("rm1s", &rm1s, &b_rm1s);
+		fChain->SetBranchAddress("rp1s", &rp1s, &b_rp1s);
+	}
+	if(tree->GetBranch("mh")){
+		fChain->SetBranchAddress("mh", &mH, &b_mH);
+		fChain->SetBranchAddress("limit", &limit, &b_limit);
+	}
+
+
+	Long64_t nentries = tree->GetEntries();
+
+	for (Long64_t jentry=0; jentry<nentries;jentry++) {
+		Long64_t ientry = tree->GetEntry(jentry);
+		if (ientry < 0) break;
+		inputLimits.push_back(limit);
+		inputLimitErrsUp.push_back(rp1s);
+		inputLimitErrsDn.push_back(rm1s);
+		inputMH.push_back(mH);
+	}
+}
+TGraph* GetBeltGraph(const vector<double>& xpoints, const vector<double>& vup, const vector<double> & vdn){
+	int npoints = vup.size();   if (vup.size()!=vdn.size() or xpoints.size() != vup.size()) { cout<<" two different sizes of vectors "<< endl; return NULL; }
+	TGraph *gYellow = new TGraph(2*npoints);
+	for(int n=0; n<npoints; n++){
+		gYellow->SetPoint(n, xpoints[n], vup[n]);
+		gYellow->SetPoint(npoints+n, xpoints[npoints-n-1], vdn[npoints-n-1]);
+	}
+	return gYellow;
 }

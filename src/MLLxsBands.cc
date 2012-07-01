@@ -42,7 +42,7 @@ namespace lands{
 			double ErrorDef = TMath::ChisquareQuantile(0.68 , 1);// (confidenceLevel, ndf)
 			int success[1]={0};
 
-			double y0_2 =  MinuitFit(102, tmpr, tmperr, ErrorDef, pars, false, _debug, success) ;  //202, 201, 2:  allow mu to be negative.   102  constrain to be positive 
+			double y0_2 =  MinuitFit(202, tmpr, tmperr, ErrorDef, pars, false, _debug, success) ;  //202, 201, 2:  allow mu to be negative.   102  constrain to be positive 
 			if(_debug)cout<<"Toy#"<<i<<": L="<<y0_2<<" muhat="<<pars[0]<<", from minos fit asymmetry 68% CL:  ["<<tmperr<<","<<tmpr<<"]"<<endl; // upperL, lowerL
 			double mu_hat = pars[0];
 
