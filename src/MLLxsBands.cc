@@ -10,6 +10,8 @@ namespace lands{
 		//_frequentist=cb;
 		_cms=cms;
 		_debug=0; 
+		_toysAtDifferentSignalStrength = 0;
+		_injectingSignalStrength = 1;
 	}
 	MLLxsBands::~MLLxsBands(){}
 	void MLLxsBands::Bands(int noutcome){
@@ -30,8 +32,9 @@ namespace lands{
 		vector<double> vpcls; vpcls.clear();
 
 		cout<<" MLLxs = "<<_cms->Get_fittedParsInData_sb()[0]<<endl;
-		_cms->SetSignalScaleFactor(_cms->Get_fittedParsInData_sb()[0]);
-
+		if(_toysAtDifferentSignalStrength==2)_cms->SetSignalScaleFactor(_cms->Get_fittedParsInData_sb()[0]); //FIXME  need to be flexible for b-only , s+b only or fitted s
+		if(_toysAtDifferentSignalStrength==1)_cms->SetSignalScaleFactor(_injectingSignalStrength); //FIXME  need to be flexible for b-only , s+b only or fitted s
+		if(_toysAtDifferentSignalStrength==0)_cms->SetSignalScaleFactor(0); //FIXME  need to be flexible for b-only , s+b only or fitted s
 		double *pars = new double[_cms->Get_max_uncorrelation()+1];
 		for(int i=0; i<_noutcomes; i++){
 			vdata_global = (VDChannel)_cms->GetToyData_H1(_cms->Get_fittedParsInData_sb());

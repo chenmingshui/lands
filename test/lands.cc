@@ -196,6 +196,7 @@ TString sbinningCV, sbinningCF;
 TString sbinningMH, sbinningMU;
 
 double InjectingSignalStrength = 1;
+int ToysAtDifferentSignalStrength = 0; // for MLLxsBands toys // b-only,    1 to use injectingSignalStrength,  2 to use best fitted signal strength	
 
 
 vector<TString> CvvSetting, CggSetting, CttSetting, CbbSetting, CglglSetting;
@@ -2091,6 +2092,7 @@ int main(int argc, const char*argv[]){
 			if(doExpectation){
 				MLLxsBands lb(cms);	
 				lb.SetDebug(debug);
+				lb.SetSignalStrength(ToysAtDifferentSignalStrength, InjectingSignalStrength);
 				int noutcomes = toys;
 				lb.Bands(noutcomes);
 				double rmean, rm1s, rm2s, rp1s, rp2s;	
@@ -2580,6 +2582,13 @@ void processParameters(int argc, const char* argv[]){
 		if(dataset!="data_obs" and dataset!="asimov_sb" and dataset!="asimov_b"){cout<<"ERROR: dataset option must be one of data_obs, asimov_sb and asimov_b"<<endl; exit(0);}
 		if(dataset=="asimov_sb" and tmpv.size()==2) InjectingSignalStrength = tmpv[1].Atof();
 	}
+
+	
+	tmpv = options["--InjectMu"]; 
+	if( tmpv.size()!=1 ) { }
+	else InjectingSignalStrength = tmpv[0].Atof();
+
+
 	tmpv = options["--PhysicsModel"];
 	if( tmpv.size()!=1 ) { sPhysicsModel = "StandardModelHiggs"; }
 	else {
@@ -3050,6 +3059,10 @@ void processParameters(int argc, const char* argv[]){
 			cout<<"ERROR.  --RebinObservables should have 4/8/12/... args,  --> obsname nbin xmin xmax "<<endl; exit(1); 
 		}
 	}
+
+	
+	tmpv=options["--ToysAtDifferentSignalStrength"];
+	if(tmpv.size()!=0) {ToysAtDifferentSignalStrength=tmpv[0].Atoi();}
 
 	printf("\n\n[ Summary of configuration in this job: ]\n");
 	if(sPhysicsModel!="StandardModelHiggs")cout<<" PhysicsModel:  "<<sPhysicsModel<<endl;
@@ -3997,6 +4010,8 @@ void PrintHelpMessage(){
 	printf("--NoErrorEstimate 		      do not call minos to calculate error bar \n");
 	printf("--bFixNuisancesAtBestFit or --fastScan     fix nuisances to global best fit value when doing 1D poi scan without systematics (not removed from cards)  \n");
 	printf("--intRemoveBins arg (=0)               0: remove only bins with total bkg<=0,  1: remove bins with total sig<=0,  2: both \n"); 
+	printf("--InjectMu arg(=1)                    for InjectingSignalStrength, for MLLxsBands toys,  and asimov_sb,  it will overwrite the one associated with asimov_sb \n"); 
+	printf("--ToysAtDifferentSignalStrength arg(=0)  for MLLxsBands toys,  0 for b-only toys, 1 for toys at InjectMu, and 2 for the best fitted mu\n");
 
 
 	printf(" \n");

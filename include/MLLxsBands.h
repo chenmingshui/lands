@@ -14,6 +14,10 @@ namespace lands{
 			void SetModel(CountingModel* cms){_cms=cms;}
 
 			const vector<double>& GetDifferentialMLLxs(){return _vrcls;}
+			void SetSignalStrength(int toysAtDifferentSignalStrength, double injectingSignalStrength){
+				_toysAtDifferentSignalStrength = toysAtDifferentSignalStrength; 
+				_injectingSignalStrength = injectingSignalStrength;	
+			}
 		private:
 			void Bands();
 			int _noutcomes;
@@ -22,7 +26,8 @@ namespace lands{
 			//CLsBase *_frequentist;
 			CountingModel *_cms;
 			double _rcls[6];
-			
+			double _injectingSignalStrength ; 
+			int _toysAtDifferentSignalStrength ; // b-only,    1 to use injectingSignalStrength,  2 to use best fitted signal strength	
 	};
 }
 #endif   /* ----- #ifndef MLLXSBANDS_H  ----- */
