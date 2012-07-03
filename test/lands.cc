@@ -457,12 +457,12 @@ int main(int argc, const char*argv[]){
 	if(cms->GetPhysicsModel()==typeCvCfHiggs and debug) {
 		for(int i=0; i< cms->Get_vv_productionMode().size(); i++){
 			for(int j=0; j< cms->Get_vv_productionMode()[i].size(); j++){
-				cout<<" channel "<<cms->GetChannelName(i)<<" proc "<<cms->GetProcessNames(i)[j]<<" pm = "<<cms->Get_vv_productionMode()[i][j]<<" dm= "<<cms->Get_v_channelDecayMode()[i]<<endl;
+				cout<<" channel "<<cms->GetChannelName(i)<<" proc "<<cms->GetProcessNames(i)[j]<<" pm = "<<cms->Get_vv_productionMode()[i][j]<<" dm= "<<cms->Get_vv_channelDecayMode()[i][j]<<endl;
 			}
 		}
 		for(int i=0; i< cms->Get_vv_pdfs_productionMode().size(); i++){
 			for(int j=0; j< cms->Get_vv_pdfs_productionMode()[i].size(); j++){
-				cout<<" channel "<<cms->Get_v_pdfs_channelname()[i]<<" proc "<<cms->Get_vv_pdfs_procname()[i][j]<<" pm = "<<cms->Get_vv_pdfs_productionMode()[i][j]<<" dm= "<<cms->Get_v_pdfs_channelDecayMode()[i]<<endl;
+				cout<<" channel "<<cms->Get_v_pdfs_channelname()[i]<<" proc "<<cms->Get_vv_pdfs_procname()[i][j]<<" pm = "<<cms->Get_vv_pdfs_productionMode()[i][j]<<" dm= "<<cms->Get_vv_pdfs_channelDecayMode()[i][j]<<endl;
 			}
 		}
 	}

@@ -345,11 +345,12 @@ namespace lands{
 			void AddCouplingParameter(TString s);
 			void CheckCouplingSet();
 
-		const	vector<int> & Get_v_channelDecayMode(){return v_channelDecayMode;};
-		const	vector<int> & Get_v_pdfs_channelDecayMode(){return v_pdfs_channelDecayMode;};
+		const	vector< vector<int> > & Get_vv_channelDecayMode(){return vv_channelDecayMode;};
+		const	vector< vector<int> > & Get_vv_pdfs_channelDecayMode(){return vv_pdfs_channelDecayMode;};
 		const	vector< vector<int> > & Get_vv_productionMode(){return vv_productionMode;};
 		const	vector< vector<int> > & Get_vv_pdfs_productionMode(){return vv_pdfs_productionMode;};
 		int DecayMode(const std::string & s);
+		int DecayModeFromProcessName(const std::string & s);
 		int ProductionMode(const std::string & s);
 		void Set_Cv_i(int i){_Cv_i=i;};
 		void Set_Cf_i(int i){_Cf_i=i;};
@@ -545,8 +546,8 @@ namespace lands{
 			bool noErrorEstimation; // running minos, but without error estimation
 
 
-			vector<int> v_channelDecayMode;
-			vector<int> v_pdfs_channelDecayMode;
+			vector< vector<int> > vv_channelDecayMode;
+			vector< vector<int> > vv_pdfs_channelDecayMode;
 			vector< vector<int> >vv_productionMode;
 			vector< vector<int> >vv_pdfs_productionMode;
 

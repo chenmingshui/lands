@@ -322,10 +322,10 @@ namespace lands{
 					}
 
 					if(cms_global->GetPhysicsModel() == typeCvCfHiggs) {
-						bs = cms_global->ScaleCvCfHiggs(1, cms_global->Get_v_channelDecayMode()[c], cms_global->Get_vv_productionMode()[c][s], c, s, bs, par);
+						bs = cms_global->ScaleCvCfHiggs(1, cms_global->Get_vv_channelDecayMode()[c][s], cms_global->Get_vv_productionMode()[c][s], c, s, bs, par);
 					}
 					if(cms_global->GetPhysicsModel() == typeC5Higgs) {
-						bs = cms_global->ScaleCXHiggs(1, cms_global->Get_v_channelDecayMode()[c], cms_global->Get_vv_productionMode()[c][s], c, s, bs, par);
+						bs = cms_global->ScaleCXHiggs(1, cms_global->Get_vv_channelDecayMode()[c][s], cms_global->Get_vv_productionMode()[c][s], c, s, bs, par);
 					}
 					vv_cachCountingParts[c][s]=bs;
 				}else {

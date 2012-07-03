@@ -121,8 +121,8 @@ namespace lands{
         v_pdfs_floatParamsType.clear();
         v_pdfs_floatParamsUnc.clear();
 
-        v_channelDecayMode.clear();
-	v_pdfs_channelDecayMode.clear();
+        vv_channelDecayMode.clear();
+	vv_pdfs_channelDecayMode.clear();
 	vv_productionMode.clear();
 	vv_pdfs_productionMode.clear();
 
@@ -252,8 +252,8 @@ namespace lands{
         v_pdfs_floatParamsType.clear();
         v_pdfs_floatParamsUnc.clear();
 
-        v_channelDecayMode.clear();
-	v_pdfs_channelDecayMode.clear();
+        vv_channelDecayMode.clear();
+	vv_pdfs_channelDecayMode.clear();
 	vv_productionMode.clear();
 	vv_pdfs_productionMode.clear();
         /*
@@ -323,7 +323,6 @@ namespace lands{
             v_channelname.push_back(channel_name);
         }
         else v_channelname.push_back(channel_name);
-	v_channelDecayMode.push_back(dm);
 
 
         double tmp_totbkg = 0;
@@ -393,14 +392,18 @@ namespace lands{
         v_sigproc.push_back(1);
         vector<string> vproc; vproc.clear();
 	vector<int> vprodm; vprodm.clear();
+	vector<int> vdm; vdm.clear();
         for(int i=0; i<7; i++) {
             char tmp[256];
             sprintf(tmp, "%d", i);
             vproc.push_back(tmp);
 	    vprodm.push_back(0);	
+	    if(i==0) vdm.push_back(dm);
+	    else vdm.push_back(0);
         }
         vv_procname.push_back(vproc);
 	vv_productionMode.push_back(vprodm);
+	vv_channelDecayMode.push_back(vdm);
     }
     void CountingModel::AddChannel(double num_expected_signal, double num_expected_bkg_1, double num_expected_bkg_2, 
             double num_expected_bkg_3, double num_expected_bkg_4, double num_expected_bkg_5, double num_expected_bkg_6 ){
@@ -444,7 +447,6 @@ namespace lands{
 
         }
         else v_channelname.push_back(channel_name);
-	v_channelDecayMode.push_back(dm);
 
         double tmp_totbkg = 0;
 
@@ -482,20 +484,24 @@ namespace lands{
         if(_debug>=100)cout<<"channel "<<channel_name<<": tot.size="<<signal_processes+bkg_processes<<" bkg.size="<<bkg_processes<<endl;
         vector<string> vproc; vproc.clear();
         vector<int> vprodm; vprodm.clear();
+	vector<int> vdm; vdm.clear();
         for(int i=0; i<num_expected_signals.size(); i++) {
             char tmp[256];
             sprintf(tmp, "%d", int(i-num_expected_signals.size()+1));
             vproc.push_back(tmp);
 	    vprodm.push_back(0);
+	    vdm.push_back(dm);
         }
         for(int i=0; i<num_expected_bkgs.size(); i++) {
             char tmp[256];
             sprintf(tmp, "%d", i+1);
             vproc.push_back(tmp);
 	    vprodm.push_back(0);
+	    vdm.push_back(0);
         }
         vv_procname.push_back(vproc);
 	vv_productionMode.push_back(vprodm);
+	vv_channelDecayMode.push_back(vdm);
     }
     void CountingModel::AddChannel(string channel_name, double num_expected_signal, vector<double> num_expected_bkgs){
         vector<double> num_expected_signals; num_expected_signals.clear();
@@ -732,7 +738,9 @@ namespace lands{
         vv_procname.at(index_channel)=vproc;
 	for(int i=0; i<vproc.size(); i++){
 		int pm = ProductionMode(vproc[i]);
+		int dm = DecayModeFromProcessName(vproc[i]);
 		vv_productionMode.at(index_channel).at(i)=pm;
+		if(dm>0) vv_channelDecayMode.at(index_channel).at(i)=dm;
 	}
     }
     void CountingModel::SetProcessNames(string c, vector<string> vproc){
@@ -1365,10 +1373,10 @@ If we need to change it later, it will be easy to do.
                     }
 			
 		    if(_PhysicsModel == typeCvCfHiggs) {
-			    vv[ch][isam]= ScaleCvCfHiggs(1, v_channelDecayMode[ch], vv_productionMode[ch][isam], ch, isam, vv[ch][isam], vrdm);
+			    vv[ch][isam]= ScaleCvCfHiggs(1, vv_channelDecayMode[ch][isam], vv_productionMode[ch][isam], ch, isam, vv[ch][isam], vrdm);
 		    }
 		    else if(_PhysicsModel == typeC5Higgs) {
-			    vv[ch][isam]= ScaleCXHiggs(1, v_channelDecayMode[ch], vv_productionMode[ch][isam], ch, isam, vv[ch][isam], vrdm);
+			    vv[ch][isam]= ScaleCXHiggs(1, vv_channelDecayMode[ch][isam], vv_productionMode[ch][isam], ch, isam, vv[ch][isam], vrdm);
 		    }
 
 			
@@ -1431,10 +1439,10 @@ If we need to change it later, it will be easy to do.
                         }
                     }
 		    if(_PhysicsModel == typeCvCfHiggs) {
-			    vv_pdfs_norm_varied[ch][isam]= ScaleCvCfHiggs(2,v_pdfs_channelDecayMode[ch], vv_pdfs_productionMode[ch][isam], ch, isam, vv_pdfs_norm_scaled[ch][isam], vrdm);
+			    vv_pdfs_norm_varied[ch][isam]= ScaleCvCfHiggs(2,vv_pdfs_channelDecayMode[ch][isam], vv_pdfs_productionMode[ch][isam], ch, isam, vv_pdfs_norm_scaled[ch][isam], vrdm);
 		    }
 		    else if(_PhysicsModel == typeC5Higgs) {
-			    vv_pdfs_norm_varied[ch][isam]= ScaleCXHiggs(2,v_pdfs_channelDecayMode[ch], vv_pdfs_productionMode[ch][isam], ch, isam, vv_pdfs_norm_scaled[ch][isam], vrdm);
+			    vv_pdfs_norm_varied[ch][isam]= ScaleCXHiggs(2,vv_pdfs_channelDecayMode[ch][isam], vv_pdfs_productionMode[ch][isam], ch, isam, vv_pdfs_norm_scaled[ch][isam], vrdm);
 		    }
                     if(_debug>=100) cout<<" **norm varied after all unc = "<<vv_pdfs_norm_varied[ch][isam]<<endl;
                     tmprrv = _w_varied->var(vv_pdfs_normNAME[ch][isam]);
@@ -2176,7 +2184,7 @@ If we need to change it later, it will be easy to do.
 	    for(int ch=0; ch<cms1->NumOfChannels(); ch++){
 		    //cms.AddChannel(cms1->GetExpectedNumber(ch,0),cms1->GetExpectedNumber(ch,1), cms1->GetExpectedNumber(ch,2), cms1->GetExpectedNumber(ch,3),
 		    //		cms1->GetExpectedNumber(ch,4), cms1->GetExpectedNumber(ch, 5), cms1->GetExpectedNumber(ch, 6));	
-		    cms->AddChannel(cms1->GetChannelName(ch), cms1->Get_v_exp_sigbkgs(ch), cms1->GetNSigprocInChannel(ch), cms1->Get_v_channelDecayMode()[ch]);
+		    cms->AddChannel(cms1->GetChannelName(ch), cms1->Get_v_exp_sigbkgs(ch), cms1->GetNSigprocInChannel(ch), cms1->Get_vv_channelDecayMode()[ch][0]);
 		    for(int isamp=0; isamp<tmp_vvv_pdftype.at(ch).size(); isamp++){
 			    for(int iunc=0; iunc<tmp_vvv_pdftype.at(ch).at(isamp).size(); iunc++){
 				    if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeLogNormal || tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeTruncatedGaussian){
@@ -2222,7 +2230,7 @@ If we need to change it later, it will be easy to do.
 	    for(int ch=0; ch<cms2->NumOfChannels(); ch++){
 		    int newch = cms->NumOfChannels(); // like ++
 		    if(cms2->GetDebug()) cout<<"Adding ch = "<<newch<<"th channel from "<<cms2->GetModelName()<<endl;
-		    cms->AddChannel(cms2->GetChannelName(ch), cms2->Get_v_exp_sigbkgs(ch), cms2->GetNSigprocInChannel(ch), cms2->Get_v_channelDecayMode()[ch]);
+		    cms->AddChannel(cms2->GetChannelName(ch), cms2->Get_v_exp_sigbkgs(ch), cms2->GetNSigprocInChannel(ch), cms2->Get_vv_channelDecayMode()[ch][0]);
 		    if(cms2->GetDebug()) cout<<"now has total "<<cms->NumOfChannels()<<endl;
 		    for(int isamp=0; isamp<tmp_vvv_pdftype.at(ch).size(); isamp++){
 			    for(int iunc=0; iunc<tmp_vvv_pdftype.at(ch).at(isamp).size(); iunc++){
@@ -2304,7 +2312,7 @@ If we need to change it later, it will be easy to do.
 					    }
 				    }
 				    RooRealVar*x=w->var(vobs[ch]);
-				    cms->AddChannel(vchnames[ch], vvprocnames[ch], x, vs, vsnorm,vsExtraNorm, vb, vbnorm, vbExtraNorm, ms[m]->Get_v_pdfs_channelDecayMode()[ch]);
+				    cms->AddChannel(vchnames[ch], vvprocnames[ch], x, vs, vsnorm,vsExtraNorm, vb, vbnorm, vbExtraNorm, ms[m]->Get_vv_pdfs_channelDecayMode()[ch][0]);
 				    if(cms2->GetDebug()) cout<<"  AddChannel "<<endl;
 				    cms->AddObservedDataSet(vchnames[ch], vrds[ch]);
 				    if(cms2->GetDebug()) cout<<"  AddObservedDataSet"<<endl;
@@ -2417,7 +2425,7 @@ If we need to change it later, it will be easy to do.
 			    v_data_real.erase( v_data_real.begin()+position );
 			    v_sigproc.erase( v_sigproc.begin()+position );
 			    v_channelname.erase(v_channelname.begin()+position);
-			    v_channelDecayMode.erase(v_channelDecayMode.begin()+position);
+			    vv_channelDecayMode.erase(vv_channelDecayMode.begin()+position);
 			    vv_exp_sigbkgs_scaled.erase( vv_exp_sigbkgs_scaled.begin()+position );
 			    vvvv_uncpar.erase( vvvv_uncpar.begin()+position );
 			    vvv_pdftype.erase( vvv_pdftype.begin()+position );
@@ -2465,24 +2473,29 @@ If we need to change it later, it will be easy to do.
 
 	    }
 	    else v_pdfs_channelname.push_back(channel_name);
-	    v_pdfs_channelDecayMode.push_back(dm);
 
 
 	    if(_debug)cout<<" adding channel "<<channel_name<<": "<<sigPdfs.size()<<" signal processes and "<<bkgPdfs.size()<<" bkg processes"<<endl;
 	    vector<string> vproc; vproc.clear();
 	    vector<int> vprodm; vprodm.clear();
+	    vector<int> vdm; vdm.clear();
 	    for(int i=0; i<sigPdfs.size(); i++) {
 		    vproc.push_back(vvprocnames[i]);
 		   int pm = ProductionMode(vvprocnames[i]);
 			vprodm.push_back(pm);
+		int dm2 = DecayModeFromProcessName(vvprocnames[i]);
+		if(dm2>0) vdm.push_back(dm2);
+		else vdm.push_back(dm);
 	    }
 	    for(int i=0; i<bkgPdfs.size(); i++) {
 		    vproc.push_back(vvprocnames[i+sigPdfs.size()]);
 		   int pm = ProductionMode(vvprocnames[i+sigPdfs.size()]);
 			vprodm.push_back(pm);
+		vdm.push_back(0);
 	    }
 	    vv_pdfs_procname.push_back(vvprocnames);
 		vv_pdfs_productionMode.push_back(vprodm);
+	    vv_pdfs_channelDecayMode.push_back(vdm);
 
 	    double tmp_totbkg = 0;
 
@@ -4163,8 +4176,8 @@ If we need to change it later, it will be easy to do.
 				    if(pm==productionGGH or pm==productionTTH) scale=(cf*cf/_GammaTot*cf*cf);
 				    else scale=(cv*cv/_GammaTot*cf*cf);
 			    }else if(dm==decayHGG){
-				    if(pm==productionGGH or pm==productionTTH) scale=(_CvCf_gg*_CvCf_gg/_GammaTot*cf*cf);
-				    else scale=(_CvCf_gg*_CvCf_gg/_GammaTot*cv*cv);
+				    if(pm==productionGGH or pm==productionTTH) scale=(_CvCf_gg/_GammaTot*cf*cf);
+				    else scale=(_CvCf_gg/_GammaTot*cv*cv);
 			    }
 			    if(scale>-8e10)cout<<" DEBUG CVCF dm="<<dm<<" pm="<<pm<<" scale="<<scale<<endl;
 		    }
@@ -4213,13 +4226,13 @@ If we need to change it later, it will be easy to do.
 		    if(pm==productionGGH or pm==productionTTH) scale=(cf*cf/_GammaTot*cf*cf);
 		    else scale=(cv*cv/_GammaTot*cf*cf);
 	    }else if(dm==decayHGG){
-		    if(pm==productionGGH or pm==productionTTH) scale=(_CvCf_gg*_CvCf_gg/_GammaTot*cf*cf);
-		    else scale=(_CvCf_gg*_CvCf_gg/_GammaTot*cv*cv);
+		    if(pm==productionGGH or pm==productionTTH) scale=(_CvCf_gg/_GammaTot*cf*cf);
+		    else scale=(_CvCf_gg/_GammaTot*cv*cv);
 	    }
 
 	    if(_debug>=100)cout<<" DEBUG CVCF dm="<<dm<<" pm="<<pm<<" scale="<<scale<<endl;
 	    if(scale<-8e10) { 
-			cout<<" ERROR: there is a ch/proc "<<c<<"/"<<s<<"  is not coupling to Cv or Cf"<<endl;
+			cout<<" ERROR: there is a "<<v_channelname[c]<<"/"<<vv_procname[c][s]<<" - "<<c<<"/"<<s<<"  is not coupling to Cv or Cf"<<endl;
 		cout<<"pm="<<pm<<" dm="<<dm<<endl;
 		 exit(1); }
 
@@ -4230,17 +4243,22 @@ If we need to change it later, it will be easy to do.
 	    _modelName = s;
     }
     int CountingModel::DecayMode(const std::string & s){
+	// need strict naming conversion 
 	    int dm =0 ;
 	    TString ts = s;
-	    if(ts.Contains("ZZ") or ts.Contains("zz")) dm = decayHZZ;
-	    if(ts.Contains("WW") or ts.Contains("ww")) dm = decayHWW;
-	    if(ts.Contains("vh3l")) dm = decayHWW;
-	    if(ts.Contains("TT") or ts.Contains("tt")) dm = decayHTT;
-	    if(ts.Contains("BB") or ts.Contains("bb")) dm = decayHBB;
-	    if(ts.Contains("GG") or ts.Contains("gg")) dm = decayHGG;
+	    ts.ReplaceAll("TH1F_","");
+	    if(ts.BeginsWith("HZZ") or ts.BeginsWith("hzz")) dm = decayHZZ;
+	    if(ts.BeginsWith("HWW") or ts.BeginsWith("hww")) dm = decayHWW;
+	    if(ts.BeginsWith("vh3l")) dm = decayHWW;
+	    if(ts.BeginsWith("HTT") or ts.BeginsWith("htt")) dm = decayHTT;
+	    if(ts.BeginsWith("HBB") or ts.BeginsWith("hbb")) dm = decayHBB;
+	    if(ts.BeginsWith("HGG") or ts.BeginsWith("hgg")) dm = decayHGG;
 	    return dm;
+	// FIXME  need to read the process name, there are something like  VH_htt and VH_hww, which in a channel,  multimple decay modes are possible and mixed 
+	// FIXME  need to change  vv_channelDecayMode --> vvv_channelDecayMode    
     }
     int CountingModel::ProductionMode(const std::string & s){
+	// need strict naming conversion 
 	    int pm=0 ;
 	    TString ts = s;
 	    if(ts.Contains("ggH")) pm = productionGGH; 
@@ -4248,6 +4266,14 @@ If we need to change it later, it will be easy to do.
 	    if(ts.Contains("qqH") or ts.Contains("VBF")) pm = productionQQH; 
 	    if(ts.Contains("ttH")) pm = productionTTH; 
 	    return pm;
+    }
+    int CountingModel::DecayModeFromProcessName(const std::string & s){
+	// need strict naming conversion 
+	    int dm=0 ;
+	    TString ts = s;
+	    if(ts.Contains("hww")) dm = decayHWW; 
+	    if(ts.Contains("htt")) dm = decayHTT; 
+	    return dm;
     }
 
     void CountingModel::SetFlatPars(double *pars){
@@ -4266,7 +4292,7 @@ If we need to change it later, it will be easy to do.
     double CountingModel::CalcGammaTot(){
 
 	    //	g_Tot = g_V + g_F + g_GG + g_ZG   (g_F includes H->2 fermions and H->gluongluon )
-	    //   but since SM BR g_GG and g_ZG are at the level of sub-percent contribution , so we ignor them as well as because the complexity of computing them 
+	    //   but since SM BR g_GG and g_ZG are at the level of sub-percent contribution , so we ignore them as well as because the complexity of computing them 
 	    //  also  H->mumu and H->strangestrange are discarded in the sum as the contribution is at the level of 1E-4  
 	    //  so g_Tot = g_V + g_F
 
@@ -4293,20 +4319,36 @@ If we need to change it later, it will be easy to do.
 			    exit(1);
 		    }
 
-		    //imported from  combine
+		    // took from Andre David , implemented in combine    June 30th
 		    //## Coefficient for couplings to photons
 		    //#      arXiv 1202.3144v2, below eq. 2.6:  2/9*cF - 1.04*cV, and then normalize to SM 
 		    //#      FIXME: this should be replaced with the proper MH dependency
 		    //#self.modelBuilder.factory_("expr::CvCf_cgamma(\"-0.271*@0+1.27*@1\",CF,CV)")
-		    //#
-		    //# Taylor series around MH=125 to (MH-125)^2 in Horner polynomial form
-		    _CvCf_gg = v_Pars[_Cv_i][0]*(1.2259236555204187 + (0.00216740776385032 - 0.000013693587140986294*m)*m) +
-			    v_Pars[_Cf_i][0]*(-0.22592365552041888 + (-0.002167407763850317 + 0.000013693587140986278*m)*m);
+		    //#########################################################################
+		    //## Coefficient for coupling to di-photons
+		    //#      Based on Eq 1--4 of Nuclear Physics B 453 (1995)17-82
+		    //#      ignoring b quark contributions
+		    //# Taylor series around MH=125 including terms up to O(MH-125)^2 in Horner polynomial form
+		    //CF = self.modelBuilder.out.function('CF')
+		    //CF.setVal(1.0)
+		    //self.modelBuilder.factory_('expr::CvCf_cgammaSq("\
+		    //@0*@0*(1.524292518396496 + (0.005166702799572456 - 0.00003355715038472727*@2)*@2) + \
+		    //@1*(@1*(0.07244520735564258 + (0.0008318872718720393 - 6.16997610275555e-6*@2)*@2) + \
+		    //@0*(-0.5967377257521194 + (-0.005998590071444782 + 0.00003972712648748393*@2)*@2))\
+		    //",CV,CF,MH)')
+
+		    double cv =  v_Pars[_Cv_i][0]; 
+		    double cf =  v_Pars[_Cf_i][0]; 
+		    // CvCf_cgammaSq
+		    _CvCf_gg = 
+			    cv*cv*(1.524292518396496 + (0.005166702799572456 - 0.00003355715038472727*m)*m) + 
+			    cf*(cf*(0.07244520735564258 + (0.0008318872718720393 - 6.16997610275555e-6*m)*m) +
+					    cv*(-0.5967377257521194 + (-0.005998590071444782 + 0.00003972712648748393*m)*m));
 
 		    //_CvCf_zg = ..... FIXME
 
 		    //cout<<"DEBUG CVCF 4"<<endl;
-		    double gammaV = _smhb->br(decayHWW, m) + _smhb->br(decayHZZ,m);
+		    double gammaV = _smhb->br(decayHWW, m) + _smhb->br(decayHZZ,m) + _smhb->br(decayHZG,m);
 		    //cout<<"DEBUG CVCF 5 gammaV = "<<gammaV<<endl;
 		    double gammaF = _smhb->br(decayHBB, m) + _smhb->br(decayHCC,m)
 			    +_smhb->br(decayHGluGlu,m)+_smhb->br(decayHTT,m)
@@ -4314,7 +4356,7 @@ If we need to change it later, it will be easy to do.
 
 		    //cout<<"DEBUG CVCF 6 gammaF = "<<gammaF<<endl;
 		    if(_Cv_i <0 or _Cf_i<0) {cout<<"ERROR _Cv_i or _Cf_i not set "<<endl; exit(1);} 
-		    _GammaTot = v_Pars[_Cv_i][0]*v_Pars[_Cv_i][0]*gammaV +  v_Pars[_Cf_i][0]*v_Pars[_Cf_i][0]*gammaF + _CvCf_gg*_smhb->br(decayHGG, m); 
+		    _GammaTot = cv*cv*gammaV +  cf*cf*gammaF + _CvCf_gg*_smhb->br(decayHGG, m); 
 		    //cout<<"DEBUG CVCF 7: _GammaTot="<<_GammaTot<< endl;
 		    return _GammaTot;
 
@@ -4370,7 +4412,7 @@ If we need to change it later, it will be easy to do.
 			    SetFlatParInitVal("CF", pcf.value);
 
 			    if(_debug) {
-				    cout<<" CHECKING  c="<<c<<" p="<<p<<": "<<v_channelname[c]<<"/"<<vv_procname[c][p]<<" --> "<< "dm="<<v_channelDecayMode[c]<<endl;
+				    cout<<" CHECKING  c="<<c<<" p="<<p<<": "<<v_channelname[c]<<"/"<<vv_procname[c][p]<<" --> "<< "dm="<<vv_channelDecayMode[c][p]<<endl;
 			    }
 		    }
 	    }
@@ -4382,7 +4424,7 @@ If we need to change it later, it will be easy to do.
 			    AddUncertaintyOnShapeNorm(v_pdfs_channelname[c], p, pcf.minV, pcf.maxV, typeFlat, "CF");
 			    SetFlatParInitVal("CF", pcf.value);
 			    if(_debug) {
-				    cout<<" CHECKING  c="<<c<<" p="<<p<<": "<<v_pdfs_channelname[c]<<"/"<<vv_pdfs_procname[c][p]<<" --> "<< "dm="<<v_pdfs_channelDecayMode[c]<<endl;
+				    cout<<" CHECKING  c="<<c<<" p="<<p<<": "<<v_pdfs_channelname[c]<<"/"<<vv_pdfs_procname[c][p]<<" --> "<< "dm="<<vv_pdfs_channelDecayMode[c][p]<<endl;
 			    }
 		    }
 	    }
@@ -4514,7 +4556,7 @@ If we need to change it later, it will be easy to do.
 			    SetFlatParInitVal("Cglgl", pcgl.value);
 
 			    if(_debug) {
-				    cout<<" CHECKING  c="<<c<<" p="<<p<<": "<<v_channelname[c]<<"/"<<vv_procname[c][p]<<" --> "<< "dm="<<v_channelDecayMode[c]<<endl;
+				    cout<<" CHECKING  c="<<c<<" p="<<p<<": "<<v_channelname[c]<<"/"<<vv_procname[c][p]<<" --> "<< "dm="<<vv_channelDecayMode[c][p]<<endl;
 			    }
 		    }
 	    }
@@ -4532,7 +4574,7 @@ If we need to change it later, it will be easy to do.
 			    AddUncertaintyOnShapeNorm(v_pdfs_channelname[c], p, pcgl.minV, pcgl.maxV, typeFlat, "Cglgl");
 			    SetFlatParInitVal("Cglgl", pcgl.value);
 			    if(_debug) {
-				    cout<<" CHECKING  c="<<c<<" p="<<p<<": "<<v_pdfs_channelname[c]<<"/"<<vv_pdfs_procname[c][p]<<" --> "<< "dm="<<v_channelDecayMode[c]<<endl;
+				    cout<<" CHECKING  c="<<c<<" p="<<p<<": "<<v_pdfs_channelname[c]<<"/"<<vv_pdfs_procname[c][p]<<" --> "<< "dm="<<vv_pdfs_channelDecayMode[c][p]<<endl;
 			    }
 		    }
 	    }
