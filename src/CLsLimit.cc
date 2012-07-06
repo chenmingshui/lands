@@ -68,6 +68,7 @@ namespace lands{
 
 	double _nfunccalls = 0;
 	double _printFuncCallCycle = -1;
+	double _ErrorDef = -999.;
 	TStopwatch* _watch=0;
 	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag){
 		if(_printFuncCallCycle>0) {
@@ -696,6 +697,7 @@ namespace lands{
 
 			arglist[0] = 1;
 			if(model==101 || model==102 || model==202 || model==1001)arglist[0] = mu; // ErrorDef for Minos,  just temporaliry using mu ...
+			if(_ErrorDef>0) arglist[0] = _ErrorDef; // global variable ...  change before each fit
 			myMinuit->mnexcm("SET ERR", arglist ,1,ierflg);
 			// Now ready for minimization step
 			arglist[0] = cms_global->Get_maximumFunctionCallsInAFit(); // to be good at minization, need set this number to be 5000 (from experience of hgg+hww+hzz combination)

@@ -38,6 +38,7 @@ namespace lands{
 	extern bool _IsToy;
 	extern double _nfunccalls; // for checking 
 	extern double _printFuncCallCycle;
+	extern double _ErrorDef;
 	extern TStopwatch* _watch;
 	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag); 
 	double MinuitFit(int model, double &r, double &er, double mu=0, double *pars=0, bool hasBestFitted = false, int debug=0, int *success=0, double *bestFitPars=0);

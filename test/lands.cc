@@ -1202,6 +1202,7 @@ int main(int argc, const char*argv[]){
 
 			double tmp=0, tmpe=0, tmpr = 0, tmperr=0;
 			double ErrorDef = TMath::ChisquareQuantile(0.68 , NumDegreeOfFreedom);// (confidenceLevel, ndf)
+			_ErrorDef = ErrorDef;
 			int success[1]={0};
 			_countPdfEvaluation = 0;
 			if(bDumpFitResults){
@@ -1698,6 +1699,7 @@ int main(int argc, const char*argv[]){
 
 			if(bAlsoExtract2SigmErrorBar){
 				ErrorDef = TMath::ChisquareQuantile(0.95 , NumDegreeOfFreedom);// (confidenceLevel, ndf)
+				_ErrorDef = ErrorDef;
 				y0_3 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //102, 101, 21:  don't allow mu to be negative
 				//double y0_3 =  MinuitFit(102, tmpr, tmperr, ErrorDef, pars, false, debug, success) ;  //102, 101, 21:  don't allow mu to be negative
 				cout<<y0_3<<" fitter u="<<pars[0]<<", from minos fit asymmetry 95% CL:  ["<<tmperr<<","<<tmpr<<"]"<<endl; // upperL, lowerL
@@ -1762,6 +1764,7 @@ int main(int argc, const char*argv[]){
 
 
 			ErrorDef = TMath::ChisquareQuantile(0.68 , NumDegreeOfFreedom);// (confidenceLevel, ndf)
+			_ErrorDef = ErrorDef;
 			bool b_global_fit = true;
 			// FIXME also need to check the 2 sigma fit is fine 
 			// if not, need to run brute-force approach

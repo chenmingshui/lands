@@ -4247,12 +4247,12 @@ If we need to change it later, it will be easy to do.
 	    int dm =0 ;
 	    TString ts = s;
 	    ts.ReplaceAll("TH1F_","");
-	    if(ts.BeginsWith("HZZ") or ts.BeginsWith("hzz")) dm = decayHZZ;
-	    if(ts.BeginsWith("HWW") or ts.BeginsWith("hww")) dm = decayHWW;
-	    if(ts.BeginsWith("vh3l")) dm = decayHWW;
-	    if(ts.BeginsWith("HTT") or ts.BeginsWith("htt")) dm = decayHTT;
-	    if(ts.BeginsWith("HBB") or ts.BeginsWith("hbb")) dm = decayHBB;
-	    if(ts.BeginsWith("HGG") or ts.BeginsWith("hgg")) dm = decayHGG;
+	    if(ts.Contains("HZZ") or ts.Contains("hzz")) dm = decayHZZ;
+	    if(ts.Contains("HWW") or ts.Contains("hww")) dm = decayHWW;
+	    if(ts.Contains("vh3l")) dm = decayHWW;
+	    if(ts.Contains("HTT") or ts.Contains("htt")) dm = decayHTT;
+	    if(ts.Contains("HBB") or ts.Contains("hbb")) dm = decayHBB;
+	    if(ts.Contains("HGG") or ts.Contains("hgg")) dm = decayHGG;
 	    return dm;
 	// FIXME  need to read the process name, there are something like  VH_htt and VH_hww, which in a channel,  multimple decay modes are possible and mixed 
 	// FIXME  need to change  vv_channelDecayMode --> vvv_channelDecayMode    
@@ -4273,6 +4273,9 @@ If we need to change it later, it will be easy to do.
 	    TString ts = s;
 	    if(ts.Contains("hww")) dm = decayHWW; 
 	    if(ts.Contains("htt")) dm = decayHTT; 
+	    if(ts.Contains("hbb")) dm = decayHBB; 
+	    if(ts.Contains("hgg")) dm = decayHGG; 
+	    if(ts.Contains("hzz")) dm = decayHZZ; 
 	    return dm;
     }
 
