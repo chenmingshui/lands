@@ -1160,3 +1160,56 @@ TGraph* GetBeltGraph(const vector<double>& xpoints, const vector<double>& vup, c
 	}
 	return gYellow;
 }
+TGraph* GetLimitsGraph(TTree *tree){	
+	vector<double> inputMH,  inputLimits,  inputLimitErrs;
+	GetLimits(tree, inputMH, inputLimits, inputLimitErrs);
+	TGraph * g = new TGraph(inputMH.size());
+	for(int n=0; n<inputMH.size(); n++){
+		g->SetPoint(n, inputMH[n], inputLimits[n]);
+	}
+	return g;
+}
+TGraph* GetPValuesGraph(TTree *tree ){
+	vector<double>inputMH, inputLimits,  inputLimitErrs_m2s, inputLimitErrs_m1s, inputLimitErrs_p1s, inputLimitErrs_p2s;
+	GetPValues(tree,inputMH, inputLimits,  inputLimitErrs_m2s, inputLimitErrs_m1s,inputLimitErrs_p1s, inputLimitErrs_p2s );
+	TGraph * g = new TGraph(inputMH.size());
+	for(int n=0; n<inputMH.size(); n++){
+		g->SetPoint(n, inputMH[n], inputLimits[n]);
+	}
+	return g;
+}
+TGraph* GetMuHatGraph(TTree *tree){	
+	vector<double> inputMH,  inputLimits;
+	GetMuHat(tree, inputMH, inputLimits);
+	TGraph * g = new TGraph(inputMH.size());
+	for(int n=0; n<inputMH.size(); n++){
+		g->SetPoint(n, inputMH[n], inputLimits[n]);
+	}
+	return g;
+}
+TGraphAsymmErrors* GetMuHatGraphAsymm(TTree *tree ){
+	vector<double> inputMH, inputLimits,  inputLimitErrsUp,  inputLimitErrsDn ;
+	GetMuHat(tree, inputMH, inputLimits,  inputLimitErrsUp,  inputLimitErrsDn );
+	TGraphAsymmErrors * g= new TGraphAsymmErrors(inputMH.size());
+	for(int n=0; n<inputMH.size(); n++){
+		g->SetPoint(n, inputMH[n], inputLimits[n]);
+		g->SetPointEYhigh(n, inputLimitErrsUp[n]-inputLimits[n]);
+		g->SetPointEYlow(n, inputLimits[n]-inputLimitErrsDn[n]);
+	}
+	return g;
+}
+TObject* GetTObject(string filename, string objname){
+
+	cout<<" GetTObject "<<filename.c_str()<<" "<<objname.c_str()<<endl;
+
+	// FIXME need to check if filename is exist, and histoname is exist 
+	if( gSystem->AccessPathName(filename.c_str())) {cout<<filename<<" couldn't be found"<<endl; exit(0);};
+	TFile *f;
+	f = (TFile*)gROOT->GetListOfFiles()->FindObject(filename.c_str());
+	if(f==NULL) f=new TFile(filename.c_str());
+	TObject *h = (TObject*)f->Get(objname.c_str());
+	if(!h) {cout<<"object ["<<objname<<"] in file ["<<filename<<"] couldn't be found"<<endl; exit(0);};
+	return h;
+}
+
+

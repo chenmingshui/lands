@@ -6,8 +6,13 @@
 #include <TLegend.h>
 #include <TGraph.h>
 #include <TGraphErrors.h>
+#include <TGraphAsymmErrors.h>
 #include <TH1F.h>
 #include <TF1.h>
+#include <TFile.h>
+#include <TSystem.h>
+#include <TObject.h>
+#include <TROOT.h>
 #include <TCanvas.h>
 #include <TArrow.h>
 #include <TTree.h>
@@ -355,4 +360,10 @@ void GetPValues(TTree *tree, vector<double>& inputMH, vector<double>& inputLimit
 void GetLimitBands(TTree *tree, vector<double>& inputMH, vector<double>& inputLimits, vector<double> & inputLimitsM2S, vector<double>& inputLimitsM1S, 
 		vector<double>& inputLimitsMEDIAN, vector<double>& inputLimitsP1S, vector<double>& inputLimitsP2S);	
 TGraph* GetBeltGraph(const vector<double>& xpoints, const vector<double>& vup, const vector<double> & vdn);
+
+TGraph* GetMuHatGraph(TTree *tree );
+TGraphAsymmErrors* GetMuHatGraphAsymm(TTree *tree );
+TGraph* GetLimitsGraph(TTree *tree );
+TGraph* GetPValuesGraph(TTree *tree );
+TObject* GetTObject(string filename, string objname);
 #endif   /* ----- #ifndef PLOTUTILITIES_H  ----- */
