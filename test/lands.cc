@@ -226,6 +226,8 @@ bool bFixNuisancesAtBestFit = false; // when doing scanning mass without systema
 
 int intRemoveBins = 0; // only remove// 0: remove only bins with total bkg<=0,  1: remove bins with total sig<=0,  2: both
 
+bool newExpectedAsymBand = false; // for new expected asymptotic bands, see https://hypernews.cern.ch/HyperNews/CMS/get/higgs-combination/297.html
+
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
 
@@ -3063,6 +3065,7 @@ void processParameters(int argc, const char* argv[]){
 		}
 	}
 
+	if(isWordInMap("--newExpected", options)) newExpectedAsymBand= true;
 	
 	tmpv=options["--ToysAtDifferentSignalStrength"];
 	if(tmpv.size()!=0) {ToysAtDifferentSignalStrength=tmpv[0].Atoi();}
@@ -3450,62 +3453,63 @@ bool runAsymptoticLimits(){
 				vdata_global = cms->Get_AsimovData(0);
 				preHints_median = r95;
 			}
-			/*
-			   if(scanRAroundBand=="all" || scanRAroundBand=="-1"){
-			   N = -1;
-			   ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ; 
-			   ErrorDef *= ErrorDef;	
-			   if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
-			   m1s = runProfileLikelihoodApproximation(ErrorDef);
-			   preHints_m1s=m1s;
-			   }
-			   if(scanRAroundBand=="all" || scanRAroundBand=="1"){
-			   N = 1;
-			   ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ; 
-			   ErrorDef *= ErrorDef;	
-			   if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
-			   p1s = runProfileLikelihoodApproximation(ErrorDef);
-			   preHints_p1s=p1s;
-			   }
-			   if(scanRAroundBand=="all" || scanRAroundBand=="-2"){
-			   N = -2;
-			   ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ; 
-			   ErrorDef *= ErrorDef;	
-			   if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
-			   m2s = runProfileLikelihoodApproximation(ErrorDef);
-			   preHints_m2s=m2s;
-			   }
-			   if(scanRAroundBand=="all" || scanRAroundBand=="1"){
-			   N = 2;
-			   ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ; 
-			   ErrorDef *= ErrorDef;	
-			   if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
-			   p2s = runProfileLikelihoodApproximation(ErrorDef);
-			   preHints_p2s=p2s;
-			   }
-			 */	
+			if(newExpectedAsymBand){
+				if(scanRAroundBand=="all" || scanRAroundBand=="-1"){
+					N = -1;
+					ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ; 
+					ErrorDef *= ErrorDef;	
+					if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
+					m1s = runProfileLikelihoodApproximation(ErrorDef);
+					preHints_m1s=m1s;
+				}
+				if(scanRAroundBand=="all" || scanRAroundBand=="1"){
+					N = 1;
+					ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ; 
+					ErrorDef *= ErrorDef;	
+					if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
+					p1s = runProfileLikelihoodApproximation(ErrorDef);
+					preHints_p1s=p1s;
+				}
+				if(scanRAroundBand=="all" || scanRAroundBand=="-2"){
+					N = -2;
+					ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ; 
+					ErrorDef *= ErrorDef;	
+					if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
+					m2s = runProfileLikelihoodApproximation(ErrorDef);
+					preHints_m2s=m2s;
+				}
+				if(scanRAroundBand=="all" || scanRAroundBand=="1"){
+					N = 2;
+					ErrorDef = TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ; 
+					ErrorDef *= ErrorDef;	
+					if(debug)cout<<" ErrorDef = "<<ErrorDef<<endl;
+					p2s = runProfileLikelihoodApproximation(ErrorDef);
+					preHints_p2s=p2s;
+				}
+			}else{
 
 
-			// http://cms.cern.ch/iCMS/jsp/analysis/admin/analysismanagement.jsp?ancode=HIG-11-011
-			// AN 11-298
-			// equation (38) : mu_median = sigma * normal_quantile(1-0.5*alpha) 
-			double sigma = preHints_median / TMath::NormQuantile(1-0.5*(1-CL));
+				// old Asymptoic ******* 
+				// http://cms.cern.ch/iCMS/jsp/analysis/admin/analysismanagement.jsp?ancode=HIG-11-011
+				// AN 11-298
+				// equation (38) : mu_median = sigma * normal_quantile(1-0.5*alpha) 
+				double sigma = preHints_median / TMath::NormQuantile(1-0.5*(1-CL));
 
-			cout<<" median = "<<r95<<", sigma = "<<sigma<<endl;
+				cout<<" median = "<<r95<<", sigma = "<<sigma<<endl;
 
-			// equation(37)  : mu_N = sigma*(normal_quantile(1 - quantile*alpha, 1.0) + normal_quantile(quantile))
-			// equation(37)  : mu_N = sigma*(normal_quantile(1 - normal_cdf(N)*alpha) + N ) 
-			N = -2;
-			m2s = sigma *  ( TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ) ; 
-			N = -1;
-			m1s = sigma *  ( TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ) ; 
-			N = 1 ;
-			p1s = sigma *  ( TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ) ; 
-			N = 2;
-			p2s = sigma *  ( TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ) ; 
+				// equation(37)  : mu_N = sigma*(normal_quantile(1 - quantile*alpha, 1.0) + normal_quantile(quantile))
+				// equation(37)  : mu_N = sigma*(normal_quantile(1 - normal_cdf(N)*alpha) + N ) 
+				N = -2;
+				m2s = sigma *  ( TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ) ; 
+				N = -1;
+				m1s = sigma *  ( TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ) ; 
+				N = 1 ;
+				p1s = sigma *  ( TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ) ; 
+				N = 2;
+				p2s = sigma *  ( TMath::NormQuantile(1-(1-CL)*ROOT::Math::normal_cdf(N))+N ) ; 
 
-			preHints_p2s = p2s; preHints_p1s=p1s; preHints_m2s=m2s; preHints_m1s=m1s;
-
+				preHints_p2s = p2s; preHints_p1s=p1s; preHints_m2s=m2s; preHints_m1s=m1s;
+			}
 			cout<<"BandsFromAsymptotic R@95%CL (from -2sigma -1sigma  mean  +1sigma  +2sigma,  median) : "<<endl;
 			if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
 			printf("BANDS %10.5f %10.5f %10.5f %10.5f %10.5f %10.5f\n", m2s, m1s, 0.00, p1s, p2s, r95);
@@ -4015,6 +4019,7 @@ void PrintHelpMessage(){
 	printf("--intRemoveBins arg (=0)               0: remove only bins with total bkg<=0,  1: remove bins with total sig<=0,  2: both \n"); 
 	printf("--InjectMu arg(=1)                    for InjectingSignalStrength, for MLLxsBands toys,  and asimov_sb,  it will overwrite the one associated with asimov_sb \n"); 
 	printf("--ToysAtDifferentSignalStrength arg(=0)  for MLLxsBands toys,  0 for b-only toys, 1 for toys at InjectMu, and 2 for the best fitted mu\n");
+	printf("--newExpected 			     new definition of Asymptotic CLs bands \n"); 
 
 
 	printf(" \n");
