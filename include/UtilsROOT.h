@@ -37,16 +37,17 @@ void StringSplit( std::vector < std::string > & splitValues,
 		const std::string & str,
 		const std::string & delim ); 
 TString ReadFile(const char*fileName);
-bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripped, int debug=0);
-bool ConfigureModel(CountingModel *cms, double mass, const char* fileName, int debug=0);
-bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileContentStripped, int debug=0);
+bool ConfigureModel(CountingModel *cms, double mass, const char* fileName, bool bUseHist=false, int debug=0);
+bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileContentStripped, bool bUseHist=false, int debug=0);
 vector<TString> SplitIntoLines(TString ifileContentStripped, bool debug=false);
 TString GetWordFromLine(TString line, int index, string delim = " ");
 
 TTree * LoadTreeBonly(TString filename, TString & treeName);
 TH1F* GetHisto(string filename, string histoname);
 TObject* GetTObject(string filename, string objname);
-bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentStripped, vector< vector<string> > parametricShapeLines,  vector< vector<string> > uncerlinesAffectingShapes,  int debug=0);
+bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentStripped,
+		vector< vector<string> > histShapeLines, vector< vector<string> > histShapeUncLines,
+		vector< vector<string> > parametricShapeLines,  vector< vector<string> > uncerlinesAffectingShapes,  int debug=0);
 RooAbsData* GetRooAbsData(string c, string p, const vector< vector<string> >& lines, double mass=0);
 RooAbsPdf* GetPdf(string c, string p, const vector< vector<string> >& lines, double mass=0);
 RooAbsArg* GetExtraNorm(string c, string p, const vector< vector<string> >& lines, double mass=0);

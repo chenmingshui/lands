@@ -38,6 +38,7 @@ using std::min;
 namespace lands{
 	CountingModel *cms_global = 0;
 	vector<double> vdata_global;
+	vector<TH1D*> vdata_global_th;
 	TMinuit *myMinuit = 0;
 	TF1 * fitToRvsCL_expo = new TF1("fitToRvsCL_expo","[0]*exp([1]*(x-[2]))", 0, 0);
 	double _signalScale=0;
@@ -49,6 +50,8 @@ namespace lands{
 	bool _bPositiveSignalStrength = true;
 	vector< vector< vector<float> > > vvv_cachPdfValues;
 	vector< vector< double > > vv_cachCountingParts;
+	vector<  double  > v_cachHistParts;
+	vector<  float > v_cachPdfValues;
 
 	vector<double> _lastParams;
 	vector<double> _currParams;
@@ -93,7 +96,7 @@ namespace lands{
 		if( (cms_global->Get_max_uncorrelation()>2) && debug){
 			del_oldn = del_newn;
 			del_newn = _inputNuisances[2];
-			if(del_newn != del_oldn) cout<<"DELETEME input nuisance changed !!!! old="<<del_oldn<<", new="<<del_newn<<endl;
+			if(debug>=0 and del_newn != del_oldn) cout<<"DELETEME input nuisance changed !!!! old="<<del_oldn<<", new="<<del_newn<<endl;
 		}
 
 		f = 0; // fabs(cms_global->GetRdm()->Gaus() ) ;
@@ -132,9 +135,16 @@ namespace lands{
 		const VChannelVSampleVUncertainty &vvv_pdftype = (cms_global->Get_vvv_pdftype());
 		const VChannelVSampleVUncertaintyVParameter &vvvv_uncpar = cms_global->Get_vvvv_uncpar();
 
+		const VChannelVSampleVUncertainty &vvv_idcorrl_th = (cms_global->Get_vvv_idcorrl_th());
+		const VChannelVSampleVUncertainty &vvv_pdftype_th = (cms_global->Get_vvv_pdftype_th());
+		const VChannelVSampleVUncertaintyVParameterTH &vvvv_uncpar_th = cms_global->Get_vvvv_uncpar_th();
+
+
+
 		cms_global->SetSignalScaleFactor(par[0]); // scale the norminal set of signal normalizations 
 
 		const VChannelVSample &vv_sigbks = cms_global->Get_vv_exp_sigbkgs(); 
+		const VChannelVSampleTH &vv_sigbks_th = cms_global->Get_vv_exp_sigbkgs_th(); 
 
 		const vector<int> &v_pdftype = cms_global->Get_v_pdftype();
 		//cout<<" DELETEME :  Chisquare,  v_pdftype 1 = "<<v_pdftype[1]<<endl;; 
@@ -145,14 +155,21 @@ namespace lands{
 
 		Double_t chisq = 0;
 		int nchs = cms_global->NumOfChannels();
+		int nhistch = cms_global->NumOfHistChannels();
 
 		if(vdata_global.size() != nchs ) {
 			cout<<"vdata_global not set correctly"<<endl;
 			cout<<"vdata_global.size = "<<vdata_global.size()<<",  model_channels = "<<nchs<<endl;
-			exit(0);
+			exit(1);
 		}
+		if(vdata_global_th.size() != nhistch) {
+			cout<<"vdata_global_th not set correctly"<<endl;
+			cout<<"vdata_global_th.size = "<<vdata_global_th.size()<<",  model_channels = "<<nhistch<<endl;
+			exit(1);
+		}
+
 		Double_t tc =0, ss=0,  bs = 0;
-		int u=0, s=0, c=0;
+		int u=0, s=0, c=0, b=0;
 		double tmp, tmp2,  ran, h, tmprand;
 		int ipar;
 		int nsigproc = 1;	
@@ -168,6 +185,10 @@ namespace lands{
 			//cout<<" DELETEME  vv_sigbkg[ch].size = "<<vv_sigbks[ch].size()<<endl;
 				vv_cachCountingParts[ch].resize(vv_sigbks[ch].size());
 			}
+		}
+
+		if(v_cachHistParts.size()==0){
+			v_cachHistParts.resize(vv_sigbks_th.size());
 		}
 
 		//cout<<"DEBUGING CVCF"<<endl;
@@ -316,7 +337,7 @@ namespace lands{
 									break;
 								default:
 									cout<<"pdf_type = "<<vvv_pdftype[c][s][u]<<" not defined yet"<<endl;
-									exit(0);
+									exit(1);
 							}
 							if(isnan(bs)) {cout<<" bs=nan "<<bs<<" c "<<cms_global->GetChannelName(c).c_str()<<" s="<<cms_global->GetProcessNames(c)[s].c_str()<<" pdftype="<<vvv_pdftype[c][s][u]<<endl; }
 						}
@@ -347,13 +368,142 @@ namespace lands{
 			}
 			//		else chisq += (tc - vdata_global[c]*log(tc));   // to be identical with ATLAS TDR description, for limit only
 		}
+
+		double tc_forAHistChannel=0;
+		for(c=0; c<nhistch; c++){  // loop over histogram channels 
+			if(cms_global->Get_v_statusUpdated_th()[c]){  // check if parameters change w.r.t. to last calculation 
+				tc_forAHistChannel = 0;
+				nsigproc = cms_global->GetNSigprocInChannelTH(c);	
+				for(b=1; b<=vv_sigbks_th[c][0]->GetNbinsX(); b++){  // loop over bins in a histogram channel
+					tc=0; 
+					for(s = 0; s<vvv_pdftype_th[c].size(); s++){   //  loop over all process for a bin 
+						bs = vv_sigbks_th[c][s]->GetBinContent(b);	
+						if(cms_global->IsUsingSystematicsErrors()){ // with systematics on 
+							if(cms_global->GetMoveUpShapeUncertainties()){  // move shape systematics up 
+								const vector<int> &shapeuncs = cms_global->GetListOfShapeUncertaintiesTH(c, s);
+								h=0;
+								added = false;
+								for(int i = 0; i<shapeuncs.size(); i++){
+									indexcorrl = vvv_idcorrl_th[c][s][shapeuncs[i]];
+									pdftype = vvv_pdftype_th[c][s][shapeuncs[i]];
+									ran = par[indexcorrl];
+									//uncpars  = &(vvvv_uncpar[c][s][shapeuncs[i]][0]);
+									switch (pdftype){
+										case typeShapeGaussianLinearMorph:
+											//if(vvvv_uncpar_th[c][s][shapeuncs[i]][7]->GetBinContent(b) == 1.)
+											tmprand = ran; 
+											ran*= vvvv_uncpar_th[c][s][shapeuncs[i]][6]->GetBinContent(1) ;
+											if(!added) {h+=  vvvv_uncpar_th[c][s][shapeuncs[i]][2]->GetBinContent(b); added=true; norminal = h; normalization =  vvvv_uncpar_th[c][s][shapeuncs[i]][3]->GetBinContent(1) ; }
+											h += max(-ran, 0.) * (vvvv_uncpar_th[c][s][shapeuncs[i]][0]->GetBinContent(b)) + max(ran, 0.) * (vvvv_uncpar_th[c][s][shapeuncs[i]][1]->GetBinContent(b)) - fabs(ran)*(vvvv_uncpar_th[c][s][shapeuncs[i]][2]->GetBinContent(b)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm, scale_down_of_gaussian,  siglebin_or_binned
+
+											break;
+										case typeShapeGaussianQuadraticMorph:
+											tmprand = ran; 
+											ran*= vvvv_uncpar_th[c][s][shapeuncs[i]][6]->GetBinContent(1);
+											if(!added) {h+=vvvv_uncpar_th[c][s][shapeuncs[i]][2]->GetBinContent(b); added=true; norminal = h;  normalization = vvvv_uncpar_th[c][s][shapeuncs[i]][3]->GetBinContent(1); }
+											if(fabs(ran)<1.){
+												h += ran * (ran-1)/2. * vvvv_uncpar_th[c][s][shapeuncs[i]][0]->GetBinContent(b) + ran * (ran+1)/2. * vvvv_uncpar_th[c][s][shapeuncs[i]][1]->GetBinContent(b) - ran*ran*vvvv_uncpar_th[c][s][shapeuncs[i]][2]->GetBinContent(b) ; 
+											}else  
+												h += max(-ran, 0.) * vvvv_uncpar_th[c][s][shapeuncs[i]][0]->GetBinContent(b) + max(ran, 0.) * vvvv_uncpar_th[c][s][shapeuncs[i]][1]->GetBinContent(b) - fabs(ran)*vvvv_uncpar_th[c][s][shapeuncs[i]][2]->GetBinContent(b) ; 
+											break;
+										default:
+											break;
+									}
+								}
+
+								if(added){
+									if(h<=0) { h=10e-9;} // cout<<" *h<0* "<<endl; 
+									bs = h*normalization*(s<nsigproc?par[0]:1);
+									if(isnan(bs)) {cout<<" morphing bs=nan "<<bs<<" c "<<c<<" s="<<s<<" h=" << h<<" normalization="<<normalization<<endl; }
+								}
+							}
+							for(u=0; u<vvv_pdftype_th[c][s].size(); u++){
+								ran = par[(vvv_idcorrl_th)[c][s][u]];
+								//uncpars = &(vvvv_uncpar[c][s][u][0]);
+								switch (vvv_pdftype_th[c][s][u]){
+									case typeShapeGaussianLinearMorph:
+										if(!cms_global->GetMoveUpShapeUncertainties()){
+											cout<<"ERROR: histogram channels:  ShpeUncertainties Not Moved Up"<<endl; exit(1);
+										}
+										bs*=pow( (ran>0? vvvv_uncpar_th[c][s][u][5]->GetBinContent(1):vvvv_uncpar_th[c][s][u][4]->GetBinContent(1)) , ran>0?ran*vvvv_uncpar_th[c][s][u][6]->GetBinContent(1): -ran*vvvv_uncpar_th[c][s][u][6]->GetBinContent(1));
+										break;
+									case typeShapeGaussianQuadraticMorph:
+										if(!cms_global->GetMoveUpShapeUncertainties()){
+											cout<<"ERROR: histogram channels:  ShpeUncertainties Not Moved Up"<<endl; exit(1);
+										}
+										bs*=pow( (ran>0? vvvv_uncpar_th[c][s][u][5]->GetBinContent(1):vvvv_uncpar_th[c][s][u][4]->GetBinContent(1)) , ran>0?ran*vvvv_uncpar_th[c][s][u][6]->GetBinContent(1): -ran*vvvv_uncpar_th[c][s][u][6]->GetBinContent(1));
+										if(isnan(bs)) {cout<<" typeShapeGaussianQuadraticMorph bs=nan "<<bs<<" c "<<c<<" s="<<s<<" uncpars4: "<<vvvv_uncpar_th[c][s][u][4]->GetBinContent(1)<<" 5: "<<vvvv_uncpar_th[c][s][u][5]->GetBinContent(1)<<" 6:"<<vvvv_uncpar_th[c][s][u][6]->GetBinContent(1)<<" ran="<<ran<<endl;}
+										break;
+									case typeLogNormal:
+										if(vvvv_uncpar_th[c][s][u][0]->GetNbinsX()==1){
+											bs*=pow( 1+ vvvv_uncpar_th[c][s][u][ran>0?1:0]->GetBinContent(1), ran) ;
+										}else{
+											bs*=pow( 1+ vvvv_uncpar_th[c][s][u][ran>0?1:0]->GetBinContent(b), ran) ;
+										}
+										if(isnan(bs)) {cout<<"Hist typeLogNormal bs=nan "<<bs<<" c "<<c<<" s="<<s<<" ran="<<ran<<endl;}
+										break;
+									case typeTruncatedGaussian:
+										bs*=( 1+ vvvv_uncpar_th[c][s][u][ran>0?1:0]->GetBinContent(1) * ran) ;
+										break;
+									case typeGamma:
+										ipar = vvv_idcorrl_th[c][s][u];
+										tmp2 = vvvv_uncpar_th[c][s][u][0]->GetBinContent(1);
+										if(tmp2>0){
+											tmp = vv_sigbks_th[c][s]->GetBinContent(b);	
+											if(tmp!=0) { bs/=tmp; bs *= (tmp2*ran*(s<nsigproc?par[0]:1)); }
+											else bs = tmp2*ran*(s<nsigproc?par[0]:1);
+										}else{ // if *uncpars, i.e. rho <0, then it's multiplicative gamma
+											bs*=(ran/v_GammaN[ipar]);
+										}
+										break;	
+									case typeFlat:
+										if(cms_global->GetPhysicsModel()==typeCvCfHiggs or cms_global->GetPhysicsModel()==typeC5Higgs) break;
+										bs*=(vvvv_uncpar_th[c][s][u][0]->GetBinContent(1) + (vvvv_uncpar_th[c][s][u][1]->GetBinContent(1) - vvvv_uncpar_th[c][s][u][0]->GetBinContent(1))*ran);
+
+										break;
+									default:
+										cout<<"pdf_type = "<<vvv_pdftype_th[c][s][u]<<" not defined yet"<<endl;
+										exit(1);
+								}
+								if(isnan(bs)) {cout<<" bs=nan "<<bs<<" c "<<cms_global->GetChannelNameTH(c).c_str()<<" s="<<cms_global->GetProcessNamesTH(c)[s].c_str()<<" pdftype="<<vvv_pdftype_th[c][s][u]<<endl; }
+							}
+						}
+
+						if(cms_global->GetPhysicsModel() == typeCvCfHiggs) {
+							bs = cms_global->ScaleCvCfHiggs(3, cms_global->Get_vv_channelDecayModeTH()[c][s], cms_global->Get_vv_productionModeTH()[c][s], c, s, bs, par);
+						}
+						if(cms_global->GetPhysicsModel() == typeC5Higgs) {
+							bs = cms_global->ScaleCXHiggs(3, cms_global->Get_vv_channelDecayModeTH()[c][s], cms_global->Get_vv_productionModeTH()[c][s], c, s, bs, par);
+						}
+
+						tc+=bs;
+						if(isnan(tc)) {cout<<" tc=nan "<<"  bs="<<bs<<" c "<<c<<" s="<<s<<" b="<<b<<endl; }
+					}
+					
+					tmp = vdata_global_th[c]->GetBinContent(b);
+					if(tmp<=0){
+						if(tc<0) {f=10e9;cms_global->FlagAllChannels(); return;} // tc < 0, which means non-physical, return f = 10e9
+						tc_forAHistChannel +=( tc - tmp);
+					}else { 
+						if(tc<=0) {f=10e9;cms_global->FlagAllChannels(); return;} // tc < 0, which means non-physical, return f = 10e9
+						tc_forAHistChannel += (tc-tmp - tmp*log(tc/tmp));
+						if(isnan(tc_forAHistChannel)) {cout<<" tc_forAHistChannel= nan "<<" tc="<<tc<<" data="<<tmp<<" in channel: "<<c<<endl;}
+					}
+				}
+				v_cachHistParts[c] = tc_forAHistChannel;
+			}else {
+				tc_forAHistChannel = v_cachHistParts[c];
+			}
+
+			chisq += tc_forAHistChannel;
+		}
 		if(isnan(chisq) || chisq>=10e9){ 
 			cout<<" DELETEME counting ** ** ** ** chi2="<<chisq<<endl;
 			cms_global->FlagAllChannels();
 			f=10e9; return; 
 		} // checking if it's nan  
 		if(cms_global->hasParametricShape()){
-			chisq+=	cms_global->EvaluateChi2(par, vvv_cachPdfValues);// use default, norminal sigbkgs for evaluation, not randomized one 		
+			chisq+=	cms_global->EvaluateChi2(par, v_cachPdfValues, vvv_cachPdfValues);// use default, norminal sigbkgs for evaluation, not randomized one 		
 		}
 		if(isnan(chisq) || chisq>=10e9){ 
 			cout<<" DELETEME shaping ** ** ** ** chi2="<<chisq<<endl;

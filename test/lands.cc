@@ -226,6 +226,8 @@ bool bFixNuisancesAtBestFit = false; // when doing scanning mass without systema
 
 int intRemoveBins = 0; // only remove// 0: remove only bins with total bkg<=0,  1: remove bins with total sig<=0,  2: both
 
+bool useHist = false;
+
 bool newExpectedAsymBand = false; // for new expected asymptotic bands, see https://hypernews.cern.ch/HyperNews/CMS/get/higgs-combination/297.html
 
 int main(int argc, const char*argv[]){
@@ -260,7 +262,7 @@ int main(int argc, const char*argv[]){
 		tmp[i] -> ForceSymmetryError(bForceSymmetryError);
 		if(bRedefineObservableRange) tmp[i]->SetObservableRange(ObservableBins, ObservableRangeMin, ObservableRangeMax);
 		if(sPhysicsModel=="ChargedHiggs") tmp[i]->SetPhysicsModel(typeChargedHiggs);
-		ConfigureModel(tmp[i], HiggsMass, datacards[i].Data(), debug);
+		ConfigureModel(tmp[i], HiggsMass, datacards[i].Data(), useHist, debug);
 		tmp[i]->SetUseSystematicErrors(true);
 	}
 	if(debug)cout<<"totally "<<datacards.size()<<" data cards processed"<<endl;
@@ -477,6 +479,7 @@ int main(int argc, const char*argv[]){
 				TString tmp_dataset = dataset;
 				dataset= "data_obs";
 				vdata_global=cms_global->Get_v_data();
+				vdata_global_th=cms_global->Get_v_dataTH();
 				cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
 				runAsymptoticLimits();
 				if(scanRAroundBand=="all"){
@@ -610,6 +613,7 @@ int main(int argc, const char*argv[]){
 			frequentist.SetTestStatistics(testStat);
 			cms_global= cms;
 			vdata_global=cms->Get_v_data();
+			vdata_global_th=cms_global->Get_v_dataTH();
 
 			CLsLimit clsr95;
 			clsr95.SetDebug(debug);
@@ -1166,6 +1170,7 @@ int main(int argc, const char*argv[]){
 			return 1;
 		}else if(method=="ProfiledLikelihood" or method=="ProfileLikelihood"){
 			vdata_global=cms->Get_v_data();
+			vdata_global_th=cms_global->Get_v_dataTH();
 			runProfileLikelihoodApproximation();
 			watch.Print();
 			delete cms;
@@ -1189,6 +1194,7 @@ int main(int argc, const char*argv[]){
 
 			cms_global= cms;
 			vdata_global=cms->Get_v_data();
+			vdata_global_th=cms_global->Get_v_dataTH();
 			cms_global->SetDebug(debug);
 			_inputNuisances = cms->Get_norminalPars();
 			_startNuisances = cms->Get_norminalPars();
@@ -2156,6 +2162,7 @@ int main(int argc, const char*argv[]){
 			_startNuisances = cms->Get_norminalPars();
 			cms_global= cms;
 			vdata_global=cms->Get_v_data();
+			vdata_global_th=cms_global->Get_v_dataTH();
 
 			double sig_data;
 			double m2lnQ;
@@ -3069,6 +3076,10 @@ void processParameters(int argc, const char* argv[]){
 	
 	tmpv=options["--ToysAtDifferentSignalStrength"];
 	if(tmpv.size()!=0) {ToysAtDifferentSignalStrength=tmpv[0].Atoi();}
+
+
+	if(isWordInMap("--useHist", options)) useHist = true; 
+
 
 	printf("\n\n[ Summary of configuration in this job: ]\n");
 	if(sPhysicsModel!="StandardModelHiggs")cout<<" PhysicsModel:  "<<sPhysicsModel<<endl;
@@ -4019,6 +4030,7 @@ void PrintHelpMessage(){
 	printf("--intRemoveBins arg (=0)               0: remove only bins with total bkg<=0,  1: remove bins with total sig<=0,  2: both \n"); 
 	printf("--InjectMu arg(=1)                    for InjectingSignalStrength, for MLLxsBands toys,  and asimov_sb,  it will overwrite the one associated with asimov_sb \n"); 
 	printf("--ToysAtDifferentSignalStrength arg(=0)  for MLLxsBands toys,  0 for b-only toys, 1 for toys at InjectMu, and 2 for the best fitted mu\n");
+	printf("--useHist                              With this, take hist as a channel, no expansion, no bin-by-by stat err\n");   
 	printf("--newExpected 			     new definition of Asymptotic CLs bands \n"); 
 
 

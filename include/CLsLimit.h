@@ -17,6 +17,7 @@ namespace lands{
 	extern CountingModel * cms_global;
 	extern TMinuit * myMinuit;
 	extern vector<double>  vdata_global;
+	extern vector<TH1D*>  vdata_global_th;
 	extern TF1* fitToRvsCL_expo;
 	extern double _significances;
 	extern double *_inputNuisances;
@@ -30,7 +31,9 @@ namespace lands{
 	extern vector<double> _lastParams;
 	extern vector<double> _currParams;
 	extern vector< vector< vector<float> > >  vvv_cachPdfValues; // cached pdf values for layers Channel<Process<Event>>>
+	extern vector< float >  v_cachPdfValues; // cached pdf values for layers Channel
 	extern vector< vector< double > >  vv_cachCountingParts; // cached likelihood values for layers Channel<Process>
+	extern vector<  double  >  v_cachHistParts; // cached likelihood values for layers Channel<Process>
 	extern double _countPdfEvaluation;
 	extern bool _bDumpFinalFitResults;
 	extern double _initialRforFit; // for toys   

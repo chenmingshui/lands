@@ -146,6 +146,7 @@ namespace lands{
         _randomizedPars= 0;
 
         vv_pdfs_statusUpdated.clear();
+        v_pdfs_statusUpdated.clear();
         vv_statusUpdated.clear();
         vvp_connectNuisBinProc.clear();
         vvp_pdfs_connectNuisBinProc.clear();
@@ -275,6 +276,7 @@ namespace lands{
         map_param_sources.clear();
 
         vv_pdfs_statusUpdated.clear();
+        v_pdfs_statusUpdated.clear();
         vv_statusUpdated.clear();
         vvp_connectNuisBinProc.clear();
         vvp_pdfs_connectNuisBinProc.clear();
@@ -757,6 +759,7 @@ namespace lands{
 
         vvp_connectNuisBinProc.clear();
         vvp_pdfs_connectNuisBinProc.clear();
+        vvp_th_connectNuisBinProc.clear();
 
         for(int ch=0; ch<vvv_idcorrl.size(); ch++){
             for(int isam=0; isam<vvv_idcorrl.at(ch).size(); isam++){
@@ -767,6 +770,16 @@ namespace lands{
                 }
             }
         }
+	for(int ch=0; ch<vvv_idcorrl_th.size(); ch++){
+		for(int isam=0; isam<vvv_idcorrl_th.at(ch).size(); isam++){
+			for(int iunc=0; iunc<vvv_idcorrl_th.at(ch).at(isam).size(); iunc++){
+				if(_debug>=100)	 cout<< "in binned ConfigUncertaintyPdfs: ch "<<ch<<" isam "<<isam<<" iunc "<<iunc<<endl;
+				int indexcorrl = vvv_idcorrl_th.at(ch).at(isam).at(iunc);
+				if(max_uncorrelation<indexcorrl) max_uncorrelation=indexcorrl;
+			}
+            }
+        }
+
         for(int ch=0; ch<vvv_pdfs_idcorrl.size(); ch++){
             for(int isam=0; isam<vvv_pdfs_idcorrl.at(ch).size(); isam++){
                 for(int iunc=0; iunc<vvv_pdfs_idcorrl.at(ch).at(isam).size(); iunc++){
@@ -784,8 +797,10 @@ namespace lands{
 
         vvp_connectNuisBinProc.clear();
         vvp_pdfs_connectNuisBinProc.clear();
+        vvp_th_connectNuisBinProc.clear();
         vvp_connectNuisBinProc.resize(max_uncorrelation+1);
         vvp_pdfs_connectNuisBinProc.resize(max_uncorrelation+1);// including the signal strength
+        vvp_th_connectNuisBinProc.resize(max_uncorrelation+1);// including the signal strength
 
         for(int i=0; i<=max_uncorrelation; i++){
             v_TruncatedGaussian_maxUnc.push_back(-1);
@@ -858,6 +873,53 @@ If we need to change it later, it will be easy to do.
                                     <<" isam"<<isam<<"("<<vv_procname[ch][isam]<<")"
                                     <<" iunc"<<iunc<<"("<<v_uncname[indexcorrl-1]<<")"<<endl;
                                 cout<<" The conflict unc at above process is for "<<vvv_idcorrl[ch][isam][iunc]
+                                    <<"th source, name "<<v_uncname[vvv_idcorrl[ch][isam][iunc]-1]<<endl;
+                                exit(0);
+                            }
+                        }
+                    }
+                }
+            }
+            for(int ch=0; ch<vvv_idcorrl_th.size(); ch++){
+                for(int isam=0; isam<vvv_idcorrl_th.at(ch).size(); isam++){
+                    if(i==0 && isam< ( _PhysicsModel==typeChargedHiggs?(v_sigproc_th[ch]+2):v_sigproc_th[ch]) )vvp_th_connectNuisBinProc[0].push_back(std::make_pair(ch, isam));
+		    for(int iunc=0; iunc<vvv_idcorrl_th.at(ch).at(isam).size(); iunc++){
+                        if(_debug>=101)	 cout<< "in counting ConfigUncertaintyPdfs: ch "<<ch<<" isam "<<isam<<" iunc "<<iunc<<endl;
+                        int indexcorrl = vvv_idcorrl_th.at(ch).at(isam).at(iunc);
+                        if(indexcorrl==i && v_pdftype.back()<0 ){
+                            v_pdftype.back()=vvv_pdftype_th.at(ch).at(isam).at(iunc);
+                        }
+
+                        if(indexcorrl==i)vvp_th_connectNuisBinProc[indexcorrl].push_back(std::make_pair(ch, isam));
+
+                        if(indexcorrl==i && vvv_pdftype_th.at(ch).at(isam).at(iunc)== typeTruncatedGaussian ){
+                            if(tmpmax< fabs(vvvv_uncpar_th.at(ch).at(isam).at(iunc).at(0)->GetBinContent(1)) ) tmpmax=fabs(vvvv_uncpar_th.at(ch).at(isam).at(iunc).at(0)->GetBinContent(1));	
+                            if(tmpmax< fabs(vvvv_uncpar_th.at(ch).at(isam).at(iunc).at(1)->GetBinContent(1)) ) tmpmax=fabs(vvvv_uncpar_th.at(ch).at(isam).at(iunc).at(1)->GetBinContent(1));	
+                        } 
+                        if(indexcorrl==i && vvv_pdftype_th.at(ch).at(isam).at(iunc)== typeGamma){
+                            if(isam<v_sigproc_th[ch])vvp_th_connectNuisBinProc[0].push_back(std::make_pair(ch,isam));
+                            if(vvvv_uncpar_th.at(ch).at(isam).at(iunc).at(0)->GetBinContent(1)>0 && 
+                                    fabs(vvvv_uncpar_th.at(ch).at(isam).at(iunc).at(0)->GetBinContent(1)*vvvv_uncpar_th.at(ch).at(isam).at(iunc).at(2)->GetBinContent(1) - vv_exp_sigbkgs_th.at(ch).at(isam)->Integral()) / vvvv_uncpar_th.at(ch).at(isam).at(iunc).at(2)->GetBinContent(1)/vvvv_uncpar_th.at(ch).at(isam).at(iunc).at(0)->GetBinContent(1)>0.2
+                              ) {
+                                cout<<"channel "<<ch<<"th, "<<v_channelname_th[ch]<<": process "<<isam<<" using gamma pdf, but rho*B!=b, please check"<<endl; 
+                                cout<< "rho="<<vvvv_uncpar_th[ch][isam][iunc][0]->GetBinContent(1)<<"  B="<<vvvv_uncpar_th[ch][isam][iunc][2]->GetBinContent(1)<<" b="<<vv_exp_sigbkgs_th[ch][isam]->Integral()<<endl;
+                                exit(0);
+                            }	
+                            v_GammaN.back()=vvvv_uncpar_th.at(ch).at(isam).at(iunc).at(2)->GetBinContent(1)+1;	
+                        }
+                        if(indexcorrl==i && v_pdftype.back()>0 ){
+                            if( v_pdftype.back()!=vvv_pdftype_th.at(ch).at(isam).at(iunc)
+                                    && ( vvv_pdftype_th.at(ch).at(isam).at(iunc)!=typeShapeGaussianQuadraticMorph &&
+                                        vvv_pdftype_th.at(ch).at(isam).at(iunc)!=typeShapeGaussianLinearMorph) 
+                                    && v_pdftype.back()!=typeShapeGaussianLinearMorph 
+                                    && v_pdftype.back()!=typeShapeGaussianQuadraticMorph
+                              ){
+                                cout<<" Error:  two uncertainties with 100% correlation must be with same pdftype, exit "<<endl;
+                                cout<<" Independant unc "<<indexcorrl<<"th, name "<<v_uncname[indexcorrl-1];
+                                cout<<" should be "<<v_pdftype.back()<<", but "<<vvv_pdftype_th.at(ch).at(isam).at(iunc)<<" for ch"<<ch<<"("<<v_channelname_th[ch]<<")"
+                                    <<" isam"<<isam<<"("<<vv_procname_th[ch][isam]<<")"
+                                    <<" iunc"<<iunc<<"("<<v_uncname[indexcorrl-1]<<")"<<endl;
+                                cout<<" The conflict unc at above process is for "<<vvv_idcorrl_th[ch][isam][iunc]
                                     <<"th source, name "<<v_uncname[vvv_idcorrl[ch][isam][iunc]-1]<<endl;
                                 exit(0);
                             }
@@ -1042,13 +1104,15 @@ If we need to change it later, it will be easy to do.
             if(_debug)	 cout<<" DELETEME _norminalPars "<<_norminalPars[i]<<endl; 
         }
 
-        for(int i=0; i<vvp_pdfs_connectNuisBinProc.size(); i++){
-            if(_debug>=10)cout<<"parameter "<<(i==0?"r":v_uncname[i-1])<<" affects following ch/p "<<endl;
-            for(int j=0; j<vvp_pdfs_connectNuisBinProc[i].size(); j++)
-                if(_debug)cout<<" channel: "<<v_pdfs_channelname[vvp_pdfs_connectNuisBinProc[i][j].first]<<" process: "<<vv_pdfs[vvp_pdfs_connectNuisBinProc[i][j].first][vvp_pdfs_connectNuisBinProc[i][j].second]<<endl;;
-            for(int j=0; j<vvp_connectNuisBinProc[i].size(); j++)
-                if(_debug>=10)	cout<<" channel: "<<v_channelname[vvp_connectNuisBinProc[i][j].first]<<" process: "<<vv_procname[vvp_connectNuisBinProc[i][j].first][vvp_connectNuisBinProc[i][j].second]<<endl;;
-        }
+	for(int i=0; i<vvp_pdfs_connectNuisBinProc.size(); i++){
+		if(_debug>=10)cout<<"parameter "<<(i==0?"r":v_uncname[i-1])<<" affects following ch/p "<<endl;
+		for(int j=0; j<vvp_pdfs_connectNuisBinProc[i].size(); j++)
+			if(_debug)cout<<" channel: "<<v_pdfs_channelname[vvp_pdfs_connectNuisBinProc[i][j].first]<<" process: "<<vv_pdfs[vvp_pdfs_connectNuisBinProc[i][j].first][vvp_pdfs_connectNuisBinProc[i][j].second]<<endl;;
+		for(int j=0; j<vvp_connectNuisBinProc[i].size(); j++)
+			if(_debug>=10)	cout<<" channel: "<<v_channelname[vvp_connectNuisBinProc[i][j].first]<<" process: "<<vv_procname[vvp_connectNuisBinProc[i][j].first][vvp_connectNuisBinProc[i][j].second]<<endl;;
+		for(int j=0; j<vvp_th_connectNuisBinProc[i].size(); j++)
+			if(_debug>=10)	cout<<" channel: "<<v_channelname_th[vvp_th_connectNuisBinProc[i][j].first]<<" process: "<<vv_procname_th[vvp_th_connectNuisBinProc[i][j].first][vvp_th_connectNuisBinProc[i][j].second]<<endl;;
+	}
 
     }	
     void CountingModel::MakeListOfShapeUncertainties(){
@@ -1070,6 +1134,23 @@ If we need to change it later, it will be easy to do.
             vvv_shapeuncindex.push_back(vvp);
         }
 
+        vvv_shapeuncindex_th.clear();
+        for(int ch=0; ch<vvv_idcorrl_th.size(); ch++){
+            vector< vector<int> > vvp; vvp.clear();
+            for(int isam=0; isam<vvv_idcorrl_th.at(ch).size(); isam++){
+                vector<int> vshape; vshape.clear();
+                for(int iunc=0; iunc<vvv_idcorrl_th.at(ch).at(isam).size(); iunc++){
+                    int indexcorrl = vvv_idcorrl_th.at(ch).at(isam).at(iunc);
+                    //if(v_pdftype[indexcorrl]==typeShapeGaussianQuadraticMorph or v_pdftype[indexcorrl]==typeShapeGaussianLinearMorph){
+                    if(vvv_pdftype_th[ch][isam][iunc]==typeShapeGaussianQuadraticMorph or vvv_pdftype_th[ch][isam][iunc]==typeShapeGaussianLinearMorph){
+                        vshape.push_back(iunc);
+                    }
+                }
+                vvp.push_back(vshape);
+            }
+            vvv_shapeuncindex_th.push_back(vvp);
+        }
+
 
     }
     VChannelVSample CountingModel::FluctuatedNumbers(double *par, bool scaled, int bUseBestEstimateToCalcQ, bool includeCountingParts){
@@ -1089,12 +1170,42 @@ If we need to change it later, it will be easy to do.
                     }
                 }
             }
+
+	    if(v_sigproc_th.size()>0) {
+		    if(bUseBestEstimateToCalcQ==1){
+			    for(int c=0; c<vv_sigbkgs_varied_th.size(); c++){
+				    for(int p=0; p<vv_sigbkgs_varied_th[c].size(); p++) {
+					    for(int b=1; b<=vv_sigbkgs_varied_th[c][p]->GetNbinsX(); b++)
+						    vv_sigbkgs_varied_th[c][p]->SetBinContent(b,scaled?vv_exp_sigbkgs_scaled_th[c][p]->GetBinContent(b):vv_exp_sigbkgs_th[c][p]->GetBinContent(b));
+				    }
+			    }
+		    }
+		    else if(bUseBestEstimateToCalcQ==0) {
+			    for(int c=0; c<vv_sigbkgs_varied_th.size(); c++){
+				    for(int p=0; p<vv_sigbkgs_varied_th[c].size(); p++) {
+					    for(int b=1; b<=vv_sigbkgs_varied_th[c][p]->GetNbinsX(); b++)
+						    vv_sigbkgs_varied_th[c][p]->SetBinContent(b,scaled?vv_randomized_sigbkgs_scaled_th[c][p]->GetBinContent(b):vv_randomized_sigbkgs_th[c][p]->GetBinContent(b));
+				    }
+			    }
+		    }
+		    else  {
+			    for(int c=0; c<vv_sigbkgs_varied_th.size(); c++){
+				    for(int p=0; p<vv_sigbkgs_varied_th[c].size(); p++) {
+					    for(int b=1; b<=vv_sigbkgs_varied_th[c][p]->GetNbinsX(); b++)
+						    vv_sigbkgs_varied_th[c][p]->SetBinContent(b,scaled?vv_fitted_sigbkgs_scaled_th[c][p]->GetBinContent(b):vv_fitted_sigbkgs_th[c][p]->GetBinContent(b));
+				    }
+			    }
+		    }
+	    }
+
             if(bUseBestEstimateToCalcQ==1)return scaled?vv_exp_sigbkgs_scaled:vv_exp_sigbkgs;
             else if(bUseBestEstimateToCalcQ==0) return scaled?vv_randomized_sigbkgs_scaled:vv_randomized_sigbkgs;
             else  return scaled?vv_fitted_sigbkgs_scaled:vv_fitted_sigbkgs; // scaled?fittedNusancesInSB:fittedNusancesInBonly
+
+
         }
 
-        double tmp ; 
+        double tmp,tmp2 ; 
         //vector<double> vrdm; vrdm.clear();
 	if(_pardm==NULL) _pardm = new double[max_uncorrelation+1];
 	double *vrdm=_pardm;
@@ -1195,194 +1306,353 @@ If we need to change it later, it will be easy to do.
         bool added = false;
         double norminal = 0;
         double normalization = 0;
-        if(includeCountingParts){
-            if(bUseBestEstimateToCalcQ==1)vv= scaled?vv_exp_sigbkgs_scaled:vv_exp_sigbkgs;
-            else if(bUseBestEstimateToCalcQ==0)vv= scaled?vv_randomized_sigbkgs_scaled:vv_randomized_sigbkgs;
-            else vv= scaled?vv_fitted_sigbkgs_scaled:vv_fitted_sigbkgs;
-	if(_debug >=1000 ){
-		cout<<" DELETEME 88881 vv_fitted_sigbkgs.size()="<<vv_fitted_sigbkgs.size()<<endl;
-		cout<<" DELETEME 88881 vv.size()="<<vv.size()<<endl;
-        }
-	    for(int ch=0; ch<vvv_idcorrl.size(); ch++){
-                nsigproc = v_sigproc[ch];
-                for(isam=0; isam<vvv_idcorrl[ch].size(); isam++){
-			if(vv[ch][isam]==0) continue;
-                    if(bMoveUpShapeUncertainties){
-                        shapeuncs = vvv_shapeuncindex[ch][isam];
-                        h=0;
-                        added = false;
-                        for(int i = 0; i<shapeuncs.size(); i++){
-                            indexcorrl = vvv_idcorrl[ch][isam][shapeuncs[i]];
-                            pdftype = vvv_pdftype[ch][isam][shapeuncs[i]];
-                            ran = vrdm[indexcorrl];
-                            uncpars  = &(vvvv_uncpar[ch][isam][shapeuncs[i]][0]);
-                            switch (pdftype){
-                                case typeShapeGaussianLinearMorph:
-                                    if(*(uncpars+7) == 1.){
-                                        tmprand = ran; 
-                                        ran*= (*(uncpars+6));
-                                        if(!added) {h+=*(uncpars+2); added=true; norminal = h; normalization = *(uncpars+3); }
-                                        //h += max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm, scale_down_of_gaussian,  siglebin_or_binned
-                                        h += ( ran * (ran>0? *(uncpars+1)-*(uncpars+2): *(uncpars+2)-*uncpars) );
-                                        ran = tmprand;
-                                    }
-
-                                    break;
-                                case typeShapeGaussianQuadraticMorph:
-                                    if(*(uncpars+7) == 1.){
-                                        tmprand = ran; 
-                                        ran*= (*(uncpars+6));
-                                        if(!added) {h+=*(uncpars+2); added=true; norminal = h;  normalization = *(uncpars+3); }
-                                        if(fabs(ran)<1){
-                                            h += ran * (ran-1)/2. * (*uncpars) + ran * (ran+1)/2. * (*(uncpars+1)) - ran*ran*(*(uncpars+2)) ; 
-                                        } else { 
-                                            //h += max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; 
-                                            h += ( ran * (ran>0? *(uncpars+1)-*(uncpars+2): *(uncpars+2)-*uncpars) );
-                                        }
-                                        ran = tmprand;
-                                    }
-                                    break;
-                                default:
-                                    break;
-                            }
-                        }
-
-                        if(added){
-                            if(h<=0) h=10e-9;
-                            /*
-                               if( norminal !=0 && vv[ch][isam]!=0) {
-                               vv[ch][isam]*=h/norminal;	
-                               }else if(vv[ch][isam]==0) vv[ch][isam] = h*normalization;
-                               else { ;}
-                               */
-
-                            if(_debug>=100)	cout<<"c="<<ch<<" s="<<isam<<" normalization = "<<normalization<<" ran="<<ran
-                                <<" h="<<h<<" h*normalization="<<h*normalization
-                                    <<" bs="<<vv[ch][isam]<<" norminal="<<norminal<<" h/norminal="<<h/norminal
-                                    <<" bs*=h/norminal = "<<(vv[ch][isam]*(h/norminal)) <<endl;	
-                            if( norminal !=0) 
-                                vv[ch][isam]*=h/norminal;	
-                            else
-                                vv[ch][isam]=h*normalization;
-                            //here no need to take again the r into account....   if norminal = 0
-                        }
-                    }
-
-                    for(iunc=0; iunc<vvv_idcorrl[ch][isam].size(); iunc++){
-                        //if(_debug) cout<<ch<<" "<<isam<<" "<<iunc<<" "<<endl;
-                        indexcorrl = vvv_idcorrl[ch][isam][iunc];
-                        pdftype = vvv_pdftype[ch][isam][iunc];
-                        ran = vrdm[indexcorrl];
-                        uncpars  = &(vvvv_uncpar[ch][isam][iunc][0]);
-
-                        switch (pdftype){
-                            case typeLogNormal : 
-                                //vv[ch][isam]*=pow( (1+ vvvv_uncpar[ch][isam][iunc][ (ran>0?1:0) ]), ran ); // down/up
-				if(_debug >=1000 ){
-					cout<<"DELETEME ran = "<<ran<<" "<<endl;
-					cout<<"DELETEME uncpars = "<<*uncpars<<" "<<endl;
-					cout<<"DELETEME uncpars+1 = "<<*(uncpars+1)<<" "<<endl;
-					cout<<"DELETEME -- "<<(ran>0? (*(uncpars+1)):(*uncpars))<<endl;
-					cout<<"DELETEME -- "<<pow( (1+ (ran>0? (*(uncpars+1)):(*uncpars)) ) , ran )<<endl;
-					cout<<" ch="<<ch<<" sam="<<isam<<endl; 
-					cout<<"vv[ch][isam]="<<vv[ch][isam]<<endl;
+	int b=0;
+	double bc=0; // bin content
+	if(includeCountingParts){
+		if(v_sigproc_th.size()>0){ // histogram based part
+			if(bUseBestEstimateToCalcQ==1){
+				for(int c=0; c<vv_sigbkgs_varied_th.size(); c++){
+					for(int p=0; p<vv_sigbkgs_varied_th[c].size(); p++) {
+						for(int b=1; b<=vv_sigbkgs_varied_th[c][p]->GetNbinsX(); b++)
+							vv_sigbkgs_varied_th[c][p]->SetBinContent(b,scaled?vv_exp_sigbkgs_scaled_th[c][p]->GetBinContent(b):vv_exp_sigbkgs_th[c][p]->GetBinContent(b));
+					}
 				}
-                                vv[ch][isam]*=pow( (1+ (ran>0? (*(uncpars+1)):(*uncpars)) ) , ran );
-                                break;
+			}
+			else if(bUseBestEstimateToCalcQ==0) {
+				for(int c=0; c<vv_sigbkgs_varied_th.size(); c++){
+					for(int p=0; p<vv_sigbkgs_varied_th[c].size(); p++) {
+						for(int b=1; b<=vv_sigbkgs_varied_th[c][p]->GetNbinsX(); b++)
+							vv_sigbkgs_varied_th[c][p]->SetBinContent(b,scaled?vv_randomized_sigbkgs_scaled_th[c][p]->GetBinContent(b):vv_randomized_sigbkgs_th[c][p]->GetBinContent(b));
+					}
+				}
+			}
+			else  {
+				for(int c=0; c<vv_sigbkgs_varied_th.size(); c++){
+					for(int p=0; p<vv_sigbkgs_varied_th[c].size(); p++) {
+						for(int b=1; b<=vv_sigbkgs_varied_th[c][p]->GetNbinsX(); b++)
+							vv_sigbkgs_varied_th[c][p]->SetBinContent(b,scaled?vv_fitted_sigbkgs_scaled_th[c][p]->GetBinContent(b):vv_fitted_sigbkgs_th[c][p]->GetBinContent(b));
+					}
+				}
+			}
 
-                            case typeTruncatedGaussian :
-                                //vv[ch][isam]*=( 1+vvvv_uncpar[ch][isam][iunc][(ran>0?1:0)] / v_TruncatedGaussian_maxUnc[indexcorrl] * ran );		
-                                vv[ch][isam]*=( 1+vvvv_uncpar[ch][isam][iunc][(ran>0?1:0)] * ran );		
-                                break;
 
-                            case typeGamma :
-                                if(vvvv_uncpar[ch][isam][iunc][0]>0){
-                                    tmp = scaled?vv_exp_sigbkgs_scaled[ch][isam]:vv_exp_sigbkgs[ch][isam];
-                                    if(isam<nsigproc){
-                                        if(tmp!=0) {vv[ch][isam] /=tmp; vv[ch][isam]*=(ran * vvvv_uncpar[ch][isam][iunc][0] * _common_signal_strength );}
-                                        else vv[ch][isam] = ran * vvvv_uncpar[ch][isam][iunc][0] * _common_signal_strength ; // Gamma
-                                    }else{
-                                        if(tmp!=0) {vv[ch][isam] /=tmp; vv[ch][isam]*=(ran * vvvv_uncpar[ch][isam][iunc][0] );}
-                                        else vv[ch][isam] = ran * vvvv_uncpar[ch][isam][iunc][0]; // Gamma
-                                    }
-                                }else{ // if rho<0,   then this is multiplicative gamma function ....
-                                    vv[ch][isam] *= (ran/v_GammaN[indexcorrl]);
-                                }
-                                break;
+			for(int ch=0; ch<vvv_idcorrl_th.size(); ch++){
+				nsigproc = v_sigproc_th[ch];
+				for(b=1; b<=vv_sigbkgs_varied_th[ch][0]->GetNbinsX(); b++){
+					for(isam=0; isam<vvv_idcorrl_th[ch].size(); isam++){
+						bc = vv_sigbkgs_varied_th[ch][isam]->GetBinContent(b);
+						if(bc==0) continue;
+						if(bMoveUpShapeUncertainties){
+							shapeuncs = vvv_shapeuncindex_th[ch][isam];
+							h=0;
+							added = false;
+							for(int i = 0; i<shapeuncs.size(); i++){
+								indexcorrl = vvv_idcorrl_th[ch][isam][shapeuncs[i]];
+								pdftype = vvv_pdftype_th[ch][isam][shapeuncs[i]];
+								ran = vrdm[indexcorrl];
+								//uncpars  = &(vvvv_uncpar[ch][isam][shapeuncs[i]][0]);
+								switch (pdftype){
+									case typeShapeGaussianLinearMorph:
+											tmprand = ran; 
+											ran*= vvvv_uncpar_th[ch][isam][shapeuncs[i]][6]->GetBinContent(1) ;
+											if(!added) {h+=vvvv_uncpar_th[ch][isam][shapeuncs[i]][2]->GetBinContent(b); added=true; norminal = h; normalization = vvvv_uncpar_th[ch][isam][shapeuncs[i]][3]->GetBinContent(1); }
+											//h += max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm, scale_down_of_gaussian,  siglebin_or_binned
+											h += ( ran * (ran>0? vvvv_uncpar_th[ch][isam][shapeuncs[i]][1]->GetBinContent(b)-vvvv_uncpar_th[ch][isam][shapeuncs[i]][2]->GetBinContent(b): vvvv_uncpar_th[ch][isam][shapeuncs[i]][2]->GetBinContent(b)-vvvv_uncpar_th[ch][isam][shapeuncs[i]][0]->GetBinContent(b)) );
+											ran = tmprand;
 
-                            case typeControlSampleInferredLogNormal :
-                                // FIXME
-                                break;
-                            case typeFlat:
-                                //cout<<"Rndm = "<<ran<<endl;
-                                //vv[ch][isam]*=( vvvv_uncpar[ch][isam][iunc][0] + (vvvv_uncpar[ch][isam][iunc][1]-vvvv_uncpar[ch][isam][iunc][0])*ran );
-				if(_PhysicsModel==typeCvCfHiggs or _PhysicsModel==typeC5Higgs) break;
-                                vv[ch][isam]*=v_Pars[indexcorrl][0];
-                                //cout<<"Rndm -> b = "<<vv[ch][isam]<<endl;
-                                // 0: min,  1: max, 2: range
-                                //cout<<"WARNING: typeFlat pdf on normalization not yet implemented, skip it "<<endl;
-                                break;
-                            case typeShapeGaussianLinearMorph:
-                                if(!bMoveUpShapeUncertainties){
-                                    if(*(uncpars+7) == 1.){
-                                        tmprand = ran; 
-                                        ran*= (*(uncpars+6));
-                                        h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm, scale_down_of_gaussian,  siglebin_or_binned
-                                        //if(h<0) h=0;
-                                        if(h<=0) h=10e-9;
-                                        //if(vv_exp_sigbkgs_scaled[ch][isam]!=0 && vv[ch][isam]!=0) 
-                                        if( *(uncpars+2)!=0 && vv[ch][isam]!=0) {
-                                            vv[ch][isam]*=h/(*(uncpars+2));	
-                                        }else if(vv[ch][isam]==0) vv[ch][isam] = (*(uncpars+3))*h;
-                                        else { ;}
-                                        ran = tmprand;
-                                    }
-                                }
-                                if(_debug>=100)cout<< "main =" << *(uncpars+2) << " up="<< *(uncpars+1) << " down="<< *uncpars << " ran="<<ran<< " --> h="<<h<<endl;
-                                //vv[ch][isam]*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran*(*(uncpars+6)) );
-                                vv[ch][isam]*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran>0?ran*(*(uncpars+6)): -ran*(*(uncpars+6)));
-                                if(_debug>=100)cout<<ch<<" "<<isam<<" "<<iunc<<" : "<<vv[ch][isam]<<endl;
+										break;
+									case typeShapeGaussianQuadraticMorph:
+											tmprand = ran; 
+											ran*= vvvv_uncpar_th[ch][isam][shapeuncs[i]][6]->GetBinContent(1);
+											if(!added) {h+=vvvv_uncpar_th[ch][isam][shapeuncs[i]][2]->GetBinContent(b); added=true; norminal = h;  normalization = vvvv_uncpar_th[ch][isam][shapeuncs[i]][3]->GetBinContent(1); }
+											if(fabs(ran)<1){
+												h += ran * (ran-1)/2. * vvvv_uncpar_th[ch][isam][shapeuncs[i]][0]->GetBinContent(b) + ran * (ran+1)/2. * vvvv_uncpar_th[ch][isam][shapeuncs[i]][1]->GetBinContent(b) - ran*ran*vvvv_uncpar_th[ch][isam][shapeuncs[i]][2]->GetBinContent(b) ; 
+											} else { 
+												//h += max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; 
+												h += ( ran * (ran>0? vvvv_uncpar_th[ch][isam][shapeuncs[i]][1]->GetBinContent(b)-vvvv_uncpar_th[ch][isam][shapeuncs[i]][2]->GetBinContent(b): vvvv_uncpar_th[ch][isam][shapeuncs[i]][2]->GetBinContent(b)-vvvv_uncpar_th[ch][isam][shapeuncs[i]][0]->GetBinContent(b)) );
+											}
+											ran = tmprand;
+										break;
+									default:
+										break;
+								}
+							}
 
-                                break;
-                            case typeShapeGaussianQuadraticMorph:
-                                //vv[ch][isam]*=pow( (ran>0? *(uncpars+5):*(uncpars+4) ) , ran*(*(uncpars+6)) );
-                                vv[ch][isam]*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran>0?ran*(*(uncpars+6)): -ran*(*(uncpars+6)));
-                                if(!bMoveUpShapeUncertainties){
-                                    if(*(uncpars+7) == 1.){
-                                        tmprand = ran; 
-                                        ran*= (*(uncpars+6));
-                                        if(fabs(ran)<1)
-                                            h = *(uncpars+2) + ran * (ran-1)/2. * (*uncpars) + ran * (ran+1)/2. * (*(uncpars+1)) - ran*ran*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm, scale_down_of_gaussian, siglebin_or_binned
-                                        else 
-                                            h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm,  scale_down_of_gaussian, siglebin_or_binned
-                                        //if(h<0) h=0;
-                                        if(h<=0) h=10e-9;
-                                        if( *(uncpars+2)!=0 && vv[ch][isam]!=0) {
-                                            vv[ch][isam]*=h/(*(uncpars+2));	
-                                        }else if(vv[ch][isam]==0) vv[ch][isam] = (*(uncpars+3))*h;
-                                        else { ;}
-                                        ran = tmprand;
-                                    }
-                                }
-                                if(_debug>=100)cout<< "main =" << *(uncpars+2) << " up="<< *(uncpars+1) << " down="<< *uncpars << " ran="<<ran<< " --> h="<<h<<endl;
-                                break;
-                            default:
-                                break;
-                        }
+							if(added){
+								if(h<=0) h=10e-9;
+								if( norminal !=0) 
+									bc*=h/norminal;	
+								else
+									bc=h*normalization;
+								
+							}
+						}
 
-                    }
-			
-		    if(_PhysicsModel == typeCvCfHiggs) {
-			    vv[ch][isam]= ScaleCvCfHiggs(1, vv_channelDecayMode[ch][isam], vv_productionMode[ch][isam], ch, isam, vv[ch][isam], vrdm);
-		    }
-		    else if(_PhysicsModel == typeC5Higgs) {
-			    vv[ch][isam]= ScaleCXHiggs(1, vv_channelDecayMode[ch][isam], vv_productionMode[ch][isam], ch, isam, vv[ch][isam], vrdm);
-		    }
+						for(iunc=0; iunc<vvv_idcorrl_th[ch][isam].size(); iunc++){
+							//if(_debug) cout<<ch<<" "<<isam<<" "<<iunc<<" "<<endl;
+							indexcorrl = vvv_idcorrl_th[ch][isam][iunc];
+							pdftype = vvv_pdftype_th[ch][isam][iunc];
+							ran = vrdm[indexcorrl];
+							//uncpars  = &(vvvv_uncpar[ch][isam][iunc][0]);
 
-			
-                }
-            }
-        }
+							switch (pdftype){
+								case typeLogNormal : 
+									if(vvvv_uncpar_th[ch][isam][iunc][0]->GetNbinsX()==1){
+										bc*=pow( 1+ vvvv_uncpar_th[ch][isam][iunc][ran>0?1:0]->GetBinContent(1), ran) ;
+									}else{
+										bc*=pow( 1+ vvvv_uncpar_th[ch][isam][iunc][ran>0?1:0]->GetBinContent(b), ran) ;
+									}
+									break;
+
+								case typeTruncatedGaussian :
+									bc*=(1+ vvvv_uncpar_th[ch][isam][iunc][ran>0?1:0]->GetBinContent(1) * ran) ;
+									break;
+
+								case typeGamma :
+									tmp2 = vvvv_uncpar_th[ch][isam][iunc][0]->GetBinContent(1);
+									if(tmp2>0){
+										tmp = vv_sigbkgs_varied_th[ch][isam]->GetBinContent(b);
+										if(isam<nsigproc){
+											if(tmp!=0) {bc /=tmp; bc*=(ran * vvvv_uncpar_th[ch][isam][iunc][0]->GetBinContent(1) * _common_signal_strength );}
+											else bc = ran * vvvv_uncpar_th[ch][isam][iunc][0]->GetBinContent(1) * _common_signal_strength ; // Gamma
+										}else{
+											if(tmp!=0) {bc /=tmp; bc*=(ran * vvvv_uncpar_th[ch][isam][iunc][0]->GetBinContent(1) );}
+											else bc = ran * vvvv_uncpar_th[ch][isam][iunc][0]->GetBinContent(1); // Gamma
+										}
+									}else{ // if rho<0,   then this is multiplicative gamma function ....
+										bc *= (ran/v_GammaN[indexcorrl]);
+									}
+									break;
+
+								case typeControlSampleInferredLogNormal :
+									// FIXME
+									break;
+								case typeFlat:
+									//vv[ch][isam]*=( vvvv_uncpar[ch][isam][iunc][0] + (vvvv_uncpar[ch][isam][iunc][1]-vvvv_uncpar[ch][isam][iunc][0])*ran );
+									if(_PhysicsModel==typeCvCfHiggs or _PhysicsModel==typeC5Higgs) break;
+									bc*=v_Pars[indexcorrl][0];
+									//cout<<"Rndm -> b = "<<vv[ch][isam]<<endl;
+									// 0: min,  1: max, 2: range
+									break;
+								case typeShapeGaussianLinearMorph:
+									if(!bMoveUpShapeUncertainties){
+										cout<<"ERROR: histogram channels:  ShpeUncertainties Not Moved Up"<<endl; exit(1);
+									}
+									bc*=pow( (ran>0? vvvv_uncpar_th[ch][isam][iunc][5]->GetBinContent(1):vvvv_uncpar_th[ch][isam][iunc][4]->GetBinContent(1)) , ran>0?ran*vvvv_uncpar_th[ch][isam][iunc][6]->GetBinContent(1): -ran*vvvv_uncpar_th[ch][isam][iunc][6]->GetBinContent(1));
+									break;
+								case typeShapeGaussianQuadraticMorph:
+									if(!bMoveUpShapeUncertainties){
+										cout<<"ERROR: histogram channels:  ShpeUncertainties Not Moved Up"<<endl; exit(1);
+									}
+									bc*=pow( (ran>0? vvvv_uncpar_th[ch][isam][iunc][5]->GetBinContent(1):vvvv_uncpar_th[ch][isam][iunc][4]->GetBinContent(1)) , ran>0?ran*vvvv_uncpar_th[ch][isam][iunc][6]->GetBinContent(1): -ran*vvvv_uncpar_th[ch][isam][iunc][6]->GetBinContent(1));
+									break;
+								default:
+									break;
+							}
+
+						}
+
+						if(_PhysicsModel == typeCvCfHiggs) {
+							bc = ScaleCvCfHiggs(3, vv_channelDecayMode_th[ch][isam], vv_productionMode_th[ch][isam], ch, isam, bc, vrdm);
+						}
+						else if(_PhysicsModel == typeC5Higgs) {
+							bc = ScaleCXHiggs(3, vv_channelDecayMode_th[ch][isam], vv_productionMode_th[ch][isam], ch, isam, bc, vrdm);
+						}
+						vv_sigbkgs_varied_th[ch][isam]->SetBinContent(b,bc);
+
+
+					}
+				}
+			}
+		}
+		//  counting parts
+		if(bUseBestEstimateToCalcQ==1)vv= scaled?vv_exp_sigbkgs_scaled:vv_exp_sigbkgs;
+		else if(bUseBestEstimateToCalcQ==0)vv= scaled?vv_randomized_sigbkgs_scaled:vv_randomized_sigbkgs;
+		else vv= scaled?vv_fitted_sigbkgs_scaled:vv_fitted_sigbkgs;
+		if(_debug >=1000 ){
+			cout<<" DELETEME 88881 vv_fitted_sigbkgs.size()="<<vv_fitted_sigbkgs.size()<<endl;
+			cout<<" DELETEME 88881 vv.size()="<<vv.size()<<endl;
+		}
+		for(int ch=0; ch<vvv_idcorrl.size(); ch++){
+			nsigproc = v_sigproc[ch];
+			for(isam=0; isam<vvv_idcorrl[ch].size(); isam++){
+				if(vv[ch][isam]==0) continue;
+				if(bMoveUpShapeUncertainties){
+					shapeuncs = vvv_shapeuncindex[ch][isam];
+					h=0;
+					added = false;
+					for(int i = 0; i<shapeuncs.size(); i++){
+						indexcorrl = vvv_idcorrl[ch][isam][shapeuncs[i]];
+						pdftype = vvv_pdftype[ch][isam][shapeuncs[i]];
+						ran = vrdm[indexcorrl];
+						uncpars  = &(vvvv_uncpar[ch][isam][shapeuncs[i]][0]);
+						switch (pdftype){
+							case typeShapeGaussianLinearMorph:
+								if(*(uncpars+7) == 1.){
+									tmprand = ran; 
+									ran*= (*(uncpars+6));
+									if(!added) {h+=*(uncpars+2); added=true; norminal = h; normalization = *(uncpars+3); }
+									//h += max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm, scale_down_of_gaussian,  siglebin_or_binned
+									h += ( ran * (ran>0? *(uncpars+1)-*(uncpars+2): *(uncpars+2)-*uncpars) );
+									ran = tmprand;
+								}
+
+								break;
+							case typeShapeGaussianQuadraticMorph:
+								if(*(uncpars+7) == 1.){
+									tmprand = ran; 
+									ran*= (*(uncpars+6));
+									if(!added) {h+=*(uncpars+2); added=true; norminal = h;  normalization = *(uncpars+3); }
+									if(fabs(ran)<1){
+										h += ran * (ran-1)/2. * (*uncpars) + ran * (ran+1)/2. * (*(uncpars+1)) - ran*ran*(*(uncpars+2)) ; 
+									} else { 
+										//h += max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; 
+										h += ( ran * (ran>0? *(uncpars+1)-*(uncpars+2): *(uncpars+2)-*uncpars) );
+									}
+									ran = tmprand;
+								}
+								break;
+							default:
+								break;
+						}
+					}
+
+					if(added){
+						if(h<=0) h=10e-9;
+						/*
+						   if( norminal !=0 && vv[ch][isam]!=0) {
+						   vv[ch][isam]*=h/norminal;	
+						   }else if(vv[ch][isam]==0) vv[ch][isam] = h*normalization;
+						   else { ;}
+						 */
+
+						if(_debug>=100)	cout<<"c="<<ch<<" s="<<isam<<" normalization = "<<normalization<<" ran="<<ran
+							<<" h="<<h<<" h*normalization="<<h*normalization
+								<<" bs="<<vv[ch][isam]<<" norminal="<<norminal<<" h/norminal="<<h/norminal
+								<<" bs*=h/norminal = "<<(vv[ch][isam]*(h/norminal)) <<endl;	
+						if( norminal !=0) 
+							vv[ch][isam]*=h/norminal;	
+						else
+							vv[ch][isam]=h*normalization;
+						//here no need to take again the r into account....   if norminal = 0
+					}
+				}
+
+				for(iunc=0; iunc<vvv_idcorrl[ch][isam].size(); iunc++){
+					//if(_debug) cout<<ch<<" "<<isam<<" "<<iunc<<" "<<endl;
+					indexcorrl = vvv_idcorrl[ch][isam][iunc];
+					pdftype = vvv_pdftype[ch][isam][iunc];
+					ran = vrdm[indexcorrl];
+					uncpars  = &(vvvv_uncpar[ch][isam][iunc][0]);
+
+					switch (pdftype){
+						case typeLogNormal : 
+							//vv[ch][isam]*=pow( (1+ vvvv_uncpar[ch][isam][iunc][ (ran>0?1:0) ]), ran ); // down/up
+							if(_debug >=1000 ){
+								cout<<"DELETEME ran = "<<ran<<" "<<endl;
+								cout<<"DELETEME uncpars = "<<*uncpars<<" "<<endl;
+								cout<<"DELETEME uncpars+1 = "<<*(uncpars+1)<<" "<<endl;
+								cout<<"DELETEME -- "<<(ran>0? (*(uncpars+1)):(*uncpars))<<endl;
+								cout<<"DELETEME -- "<<pow( (1+ (ran>0? (*(uncpars+1)):(*uncpars)) ) , ran )<<endl;
+								cout<<" ch="<<ch<<" sam="<<isam<<endl; 
+								cout<<"vv[ch][isam]="<<vv[ch][isam]<<endl;
+							}
+							vv[ch][isam]*=pow( (1+ (ran>0? (*(uncpars+1)):(*uncpars)) ) , ran );
+							break;
+
+						case typeTruncatedGaussian :
+							//vv[ch][isam]*=( 1+vvvv_uncpar[ch][isam][iunc][(ran>0?1:0)] / v_TruncatedGaussian_maxUnc[indexcorrl] * ran );		
+							vv[ch][isam]*=( 1+vvvv_uncpar[ch][isam][iunc][(ran>0?1:0)] * ran );		
+							break;
+
+						case typeGamma :
+							if(vvvv_uncpar[ch][isam][iunc][0]>0){
+								tmp = scaled?vv_exp_sigbkgs_scaled[ch][isam]:vv_exp_sigbkgs[ch][isam];
+								if(isam<nsigproc){
+									if(tmp!=0) {vv[ch][isam] /=tmp; vv[ch][isam]*=(ran * vvvv_uncpar[ch][isam][iunc][0] * _common_signal_strength );}
+									else vv[ch][isam] = ran * vvvv_uncpar[ch][isam][iunc][0] * _common_signal_strength ; // Gamma
+								}else{
+									if(tmp!=0) {vv[ch][isam] /=tmp; vv[ch][isam]*=(ran * vvvv_uncpar[ch][isam][iunc][0] );}
+									else vv[ch][isam] = ran * vvvv_uncpar[ch][isam][iunc][0]; // Gamma
+								}
+							}else{ // if rho<0,   then this is multiplicative gamma function ....
+								vv[ch][isam] *= (ran/v_GammaN[indexcorrl]);
+							}
+							break;
+
+						case typeControlSampleInferredLogNormal :
+							// FIXME
+							break;
+						case typeFlat:
+							//cout<<"Rndm = "<<ran<<endl;
+							//vv[ch][isam]*=( vvvv_uncpar[ch][isam][iunc][0] + (vvvv_uncpar[ch][isam][iunc][1]-vvvv_uncpar[ch][isam][iunc][0])*ran );
+							if(_PhysicsModel==typeCvCfHiggs or _PhysicsModel==typeC5Higgs) break;
+							vv[ch][isam]*=v_Pars[indexcorrl][0];
+							//cout<<"Rndm -> b = "<<vv[ch][isam]<<endl;
+							// 0: min,  1: max, 2: range
+							//cout<<"WARNING: typeFlat pdf on normalization not yet implemented, skip it "<<endl;
+							break;
+						case typeShapeGaussianLinearMorph:
+							if(!bMoveUpShapeUncertainties){
+								if(*(uncpars+7) == 1.){
+									tmprand = ran; 
+									ran*= (*(uncpars+6));
+									h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm, scale_down_of_gaussian,  siglebin_or_binned
+									//if(h<0) h=0;
+									if(h<=0) h=10e-9;
+									//if(vv_exp_sigbkgs_scaled[ch][isam]!=0 && vv[ch][isam]!=0) 
+									if( *(uncpars+2)!=0 && vv[ch][isam]!=0) {
+										vv[ch][isam]*=h/(*(uncpars+2));	
+									}else if(vv[ch][isam]==0) vv[ch][isam] = (*(uncpars+3))*h;
+									else { ;}
+									ran = tmprand;
+								}
+							}
+							if(_debug>=100)cout<< "main =" << *(uncpars+2) << " up="<< *(uncpars+1) << " down="<< *uncpars << " ran="<<ran<< " --> h="<<h<<endl;
+							//vv[ch][isam]*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran*(*(uncpars+6)) );
+							vv[ch][isam]*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran>0?ran*(*(uncpars+6)): -ran*(*(uncpars+6)));
+							if(_debug>=100)cout<<ch<<" "<<isam<<" "<<iunc<<" : "<<vv[ch][isam]<<endl;
+
+							break;
+						case typeShapeGaussianQuadraticMorph:
+							//vv[ch][isam]*=pow( (ran>0? *(uncpars+5):*(uncpars+4) ) , ran*(*(uncpars+6)) );
+							vv[ch][isam]*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran>0?ran*(*(uncpars+6)): -ran*(*(uncpars+6)));
+							if(!bMoveUpShapeUncertainties){
+								if(*(uncpars+7) == 1.){
+									tmprand = ran; 
+									ran*= (*(uncpars+6));
+									if(fabs(ran)<1)
+										h = *(uncpars+2) + ran * (ran-1)/2. * (*uncpars) + ran * (ran+1)/2. * (*(uncpars+1)) - ran*ran*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm, scale_down_of_gaussian, siglebin_or_binned
+									else 
+										h = *(uncpars+2) + max(-ran, 0.) * (*uncpars) + max(ran, 0.) * (*(uncpars+1)) - fabs(ran)*(*(uncpars+2)) ; // uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm,  scale_down_of_gaussian, siglebin_or_binned
+									//if(h<0) h=0;
+									if(h<=0) h=10e-9;
+									if( *(uncpars+2)!=0 && vv[ch][isam]!=0) {
+										vv[ch][isam]*=h/(*(uncpars+2));	
+									}else if(vv[ch][isam]==0) vv[ch][isam] = (*(uncpars+3))*h;
+									else { ;}
+									ran = tmprand;
+								}
+							}
+							if(_debug>=100)cout<< "main =" << *(uncpars+2) << " up="<< *(uncpars+1) << " down="<< *uncpars << " ran="<<ran<< " --> h="<<h<<endl;
+							break;
+						default:
+							break;
+					}
+
+				}
+
+				if(_PhysicsModel == typeCvCfHiggs) {
+					vv[ch][isam]= ScaleCvCfHiggs(1, vv_channelDecayMode[ch][isam], vv_productionMode[ch][isam], ch, isam, vv[ch][isam], vrdm);
+				}
+				else if(_PhysicsModel == typeC5Higgs) {
+					vv[ch][isam]= ScaleCXHiggs(1, vv_channelDecayMode[ch][isam], vv_productionMode[ch][isam], ch, isam, vv[ch][isam], vrdm);
+				}
+
+
+			}
+		}
+	}
 
         if(bHasParametricShape){
             //vv_pdfs_params_varied = bUseBestEstimateToCalcQ?vv_pdfs_params:vv_pdfs_params_randomized;
@@ -1855,106 +2125,147 @@ If we need to change it later, it will be easy to do.
         return true;
     }
     void CountingModel::SetSignalScaleFactor(double r, int bScaleBestEstimate){
-        if(_debug>=10) cout<<"\n  *** SetSignalScaleFactor r= "<<r<<endl;
-        if(!b_AllowNegativeSignalStrength && r<=0 ){
-            cout<<"Error: signal strength r <=0"<<endl;
-            cout<<"If you want to allow signal strength to be non-positive, please \n *** model->SetAllowNegativeSignalStrength(true)"<<endl;
-            return;
-        }
-        _common_signal_strength=r;
+		
 
-        vv_exp_sigbkgs_scaled = vv_exp_sigbkgs;
-
-        if(_PhysicsModel==typeChargedHiggs){
-            // do nothing....   scaling signal will be done in somewhere else
-		for(int ch=0; ch<vv_exp_sigbkgs_scaled.size(); ch++){
-			// HH_ltau
-			//tmp +=  (br*br*vv[i][0]); // HH -> r^2 * HH
-			vv_exp_sigbkgs_scaled[ch][0] = r*r*vv_exp_sigbkgs[ch][0];
-			// WH_ltau
-			//tmp +=  (2*br*(1-br)*vv[ch][1]); //WH -> 2*r*(1-r)*WH
-			vv_exp_sigbkgs_scaled[ch][1] = 2*r*(1-r)*vv_exp_sigbkgs[ch][1];
-			// WW_ltau (tt->ltau, real tau) 
-			//tmp +=  ((1-br)*(1-br)*vv[ch][2]); //WW -> (1-r)*(1-r)*WW
-			vv_exp_sigbkgs_scaled[ch][2] = (1-r)*(1-r)*vv_exp_sigbkgs[ch][2];
-			// WW_ltau (tt~->ll, also part of WW, one lepton fakes as tau) 
-			//tmp +=  ((1-br)*(1-br)*vv[ch][3]); //WW -> (1-r)*(1-r)*WW
-			vv_exp_sigbkgs_scaled[ch][3] = (1-r)*(1-r)*vv_exp_sigbkgs[ch][3];
-		}
-	
-        }else{
-            for(int ch=0; ch<vv_exp_sigbkgs_scaled.size(); ch++){
-                for(int isam=0; isam<v_sigproc[ch]; isam++){
-                    vv_exp_sigbkgs_scaled[ch][isam]*=_common_signal_strength;
-                }
-            }
-        }
-
-        if(bHasParametricShape){
-            RooRealVar*tmprrv;
-            vv_pdfs_norm_scaled = vv_pdfs_norm;
-            for(int ch=0; ch<vv_pdfs_norm_scaled.size(); ch++){
-                for(int isam=0; isam<v_pdfs_sigproc[ch]; isam++){
-                    vv_pdfs_norm_scaled[ch][isam]*=_common_signal_strength;
-
-                    //FIXME HGG not sure what the following does ,  need to check and if nothing, then delete it
-                    double tmp = vv_pdfs_norm_scaled[ch][isam];
-                    if(vv_pdfs_extranormNAME[ch][isam]!="") {
-                        tmp *= ((RooAbsReal*)(_w->arg(vv_pdfs_extranormNAME[ch][isam])))->getVal();
-                    }
-                    tmprrv=_w->var(vv_pdfs_normNAME[ch][isam]);
-                    //tmprrv->setDirtyInhibit(1);
-                    tmprrv->setVal(tmp);
-                    tmprrv=_w_varied->var(vv_pdfs_normNAME[ch][isam]);
-                    //tmprrv->setDirtyInhibit(1);
-                    tmprrv->setVal(tmp);
-                }
-            }
-
-        }
-
-        //if(bHasParametricShape)SetTmpDataForUnbinned(v_pdfs_roodataset);// reset to data , need refit for mu=r  //FIXME  need move to somewhere else needed
-
-        if(_debug>=1000 and bHasParametricShape){
-            TString s = "pdf_r"; s+=r; s+="_"; s+=".root";
-            TFile f(s, "RECREATE") ;
-            for(int ch=0; ch<vv_pdfs.size(); ch++){
-                double xmin = _w->var(v_pdfs_observables[ch])->getMin();
-                double xmax = _w->var(v_pdfs_observables[ch])->getMax();
-                TString chnm = v_pdfs_channelname[ch];	
-                TH1F hs(chnm+"_s","s", 100, xmin, xmax);
-                TH1F hb(chnm+"_b","b", 100,  xmin, xmax);
-		TH1F hsb(chnm+"_sb","sb", 100,  xmin, xmax);
-		RooArgSet vars(*_w->var(v_pdfs_observables[ch]));
-		for(int x = 1; x<=100; x++){
-			_w->var(v_pdfs_observables[ch])->setVal((xmax-xmin)/100.*(x-1)+xmin); 
-			hs.SetBinContent(x, _w->pdf(v_pdfs_s[ch])->getVal(&vars));
-			hb.SetBinContent(x, _w->pdf(v_pdfs_b[ch])->getVal(&vars));
-			hsb.SetBinContent(x, _w->pdf(v_pdfs_sb[ch])->getVal(&vars));
-		}
-
-		hs.Write();
-		hb.Write();
-		hsb.Write();
+	    if(_debug>=10) cout<<"\n  *** SetSignalScaleFactor r= "<<r<<endl;
+	    if(!b_AllowNegativeSignalStrength && r<=0 ){
+		    cout<<"Error: signal strength r <=0"<<endl;
+		    cout<<"If you want to allow signal strength to be non-positive, please \n *** model->SetAllowNegativeSignalStrength(true)"<<endl;
+		    return;
 	    }
-	    f.Close();
-	}
 
-	/*
-	//if allow signal strength to be non-positive, then please make sure sig+bkgs >=0 in each channel 
-	if(b_AllowNegativeSignalStrength){
-	for(int ch=0; ch<vv_exp_sigbkgs_scaled.size(); ch++){
-	double tot = 0;
-	for(int p=0; p<vv_exp_sigbkgs_scaled[ch].size(); p++)	tot+=vv_exp_sigbkgs_scaled[ch][p];
-	if(tot<0) {
-	cout<<"Error: negative tot yield in channel "<<ch+1<<endl;
-	cout<<"Please SetAllowNegativeSignalStrength(false)"<<endl;
-	cout<<"Or we can think about setting a lower bound for the strength.."<<endl;
-	return;
-	}
-	}
-	}
-	*/
+	    if(_common_signal_strength == r) return;
+	    _common_signal_strength=r;
+
+	    //vv_exp_sigbkgs_scaled = vv_exp_sigbkgs;
+
+	    if(_PhysicsModel==typeChargedHiggs){
+		    // do nothing....   scaling signal will be done in somewhere else
+		    for(int ch=0; ch<vv_exp_sigbkgs_scaled.size(); ch++){
+			    // HH_ltau
+			    //tmp +=  (br*br*vv[i][0]); // HH -> r^2 * HH
+			    vv_exp_sigbkgs_scaled[ch][0] = r*r*vv_exp_sigbkgs[ch][0];
+			    // WH_ltau
+			    //tmp +=  (2*br*(1-br)*vv[ch][1]); //WH -> 2*r*(1-r)*WH
+			    vv_exp_sigbkgs_scaled[ch][1] = 2*r*(1-r)*vv_exp_sigbkgs[ch][1];
+			    // WW_ltau (tt->ltau, real tau) 
+			    //tmp +=  ((1-br)*(1-br)*vv[ch][2]); //WW -> (1-r)*(1-r)*WW
+			    vv_exp_sigbkgs_scaled[ch][2] = (1-r)*(1-r)*vv_exp_sigbkgs[ch][2];
+			    // WW_ltau (tt~->ll, also part of WW, one lepton fakes as tau) 
+			    //tmp +=  ((1-br)*(1-br)*vv[ch][3]); //WW -> (1-r)*(1-r)*WW
+			    vv_exp_sigbkgs_scaled[ch][3] = (1-r)*(1-r)*vv_exp_sigbkgs[ch][3];
+		    }
+
+	    }else{
+		    for(int ch=0; ch<vv_exp_sigbkgs_scaled.size(); ch++){
+			    for(int isam=0; isam<v_sigproc[ch]; isam++){
+				    vv_exp_sigbkgs_scaled[ch][isam]= vv_exp_sigbkgs[ch][isam]*_common_signal_strength;
+			    }
+		    }
+	    }
+	    if(vv_exp_sigbkgs_th.size()>0){
+		   // for(int c=0; c<vv_exp_sigbkgs_th.size();c++){
+		   //         for(int p=0; p<vv_exp_sigbkgs_th[c].size(); p++) 
+		   //     	    for(int b=1; b<=vv_exp_sigbkgs_scaled_th[c][p]->GetNbinsX(); b++)
+		   //     		    vv_exp_sigbkgs_scaled_th[c][p]->SetBinContent(b, vv_exp_sigbkgs_th[c][p]->GetBinContent(b));
+		   // }
+
+		    if(_PhysicsModel==typeChargedHiggs){
+			    // do nothing....   scaling signal will be done in somewhere else
+			    for(int ch=0; ch<vv_exp_sigbkgs_scaled_th.size(); ch++){
+				    // HH_ltau
+				    //tmp +=  (br*br*vv[i][0]); // HH -> r^2 * HH
+				    for(int b=1;b<=vv_exp_sigbkgs_scaled_th[ch][0]->GetNbinsX(); b++)
+					    vv_exp_sigbkgs_scaled_th[ch][0]->SetBinContent(b, r*r*vv_exp_sigbkgs_th[ch][0]->GetBinContent(b));
+				    // WH_ltau
+				    //tmp +=  (2*br*(1-br)*vv[ch][1]); //WH -> 2*r*(1-r)*WH
+				    for(int b=1;b<=vv_exp_sigbkgs_scaled_th[ch][1]->GetNbinsX(); b++)
+					    vv_exp_sigbkgs_scaled_th[ch][1]->SetBinContent(b, 2*r*(1-r)*vv_exp_sigbkgs_th[ch][1]->GetBinContent(b));
+				    // WW_ltau (tt->ltau, real tau) 
+				    //tmp +=  ((1-br)*(1-br)*vv[ch][2]); //WW -> (1-r)*(1-r)*WW
+				    for(int b=1;b<=vv_exp_sigbkgs_scaled_th[ch][2]->GetNbinsX(); b++)
+					    vv_exp_sigbkgs_scaled_th[ch][2]->SetBinContent(b,  (1-r)*(1-r)*vv_exp_sigbkgs_th[ch][2]->GetBinContent(b));
+				    // WW_ltau (tt~->ll, also part of WW, one lepton fakes as tau) 
+				    //tmp +=  ((1-br)*(1-br)*vv[ch][3]); //WW -> (1-r)*(1-r)*WW
+				    for(int b=1;b<=vv_exp_sigbkgs_scaled_th[ch][3]->GetNbinsX(); b++)
+					    vv_exp_sigbkgs_scaled_th[ch][3]->SetBinContent(b,  (1-r)*(1-r)*vv_exp_sigbkgs_th[ch][3]->GetBinContent(b));
+			    }
+
+		    }else{
+			    for(int ch=0; ch<vv_exp_sigbkgs_scaled_th.size(); ch++){
+				    for(int isam=0; isam<v_sigproc_th[ch]; isam++){
+					    for(int b=1;b<=vv_exp_sigbkgs_scaled_th[ch][isam]->GetNbinsX(); b++)
+						    vv_exp_sigbkgs_scaled_th[ch][isam]->SetBinContent(b, vv_exp_sigbkgs_th[ch][isam]->GetBinContent(b)*_common_signal_strength);
+				    }
+			    }
+		    }
+	    }
+
+	    if(bHasParametricShape){
+		    RooRealVar*tmprrv;
+		    vv_pdfs_norm_scaled = vv_pdfs_norm;
+		    for(int ch=0; ch<vv_pdfs_norm_scaled.size(); ch++){
+			    for(int isam=0; isam<v_pdfs_sigproc[ch]; isam++){
+				    vv_pdfs_norm_scaled[ch][isam]*=_common_signal_strength;
+
+				    //FIXME HGG not sure what the following does ,  need to check and if nothing, then delete it
+				    double tmp = vv_pdfs_norm_scaled[ch][isam];
+				    if(vv_pdfs_extranormNAME[ch][isam]!="") {
+					    tmp *= ((RooAbsReal*)(_w->arg(vv_pdfs_extranormNAME[ch][isam])))->getVal();
+				    }
+				    tmprrv=_w->var(vv_pdfs_normNAME[ch][isam]);
+				    //tmprrv->setDirtyInhibit(1);
+				    tmprrv->setVal(tmp);
+				    tmprrv=_w_varied->var(vv_pdfs_normNAME[ch][isam]);
+				    //tmprrv->setDirtyInhibit(1);
+				    tmprrv->setVal(tmp);
+			    }
+		    }
+
+	    }
+
+	    //if(bHasParametricShape)SetTmpDataForUnbinned(v_pdfs_roodataset);// reset to data , need refit for mu=r  //FIXME  need move to somewhere else needed
+
+	    if(_debug>=1000 and bHasParametricShape){
+		    TString s = "pdf_r"; s+=r; s+="_"; s+=".root";
+		    TFile f(s, "RECREATE") ;
+		    for(int ch=0; ch<vv_pdfs.size(); ch++){
+			    double xmin = _w->var(v_pdfs_observables[ch])->getMin();
+			    double xmax = _w->var(v_pdfs_observables[ch])->getMax();
+			    TString chnm = v_pdfs_channelname[ch];	
+			    TH1F hs(chnm+"_s","s", 100, xmin, xmax);
+			    TH1F hb(chnm+"_b","b", 100,  xmin, xmax);
+			    TH1F hsb(chnm+"_sb","sb", 100,  xmin, xmax);
+			    RooArgSet vars(*_w->var(v_pdfs_observables[ch]));
+			    for(int x = 1; x<=100; x++){
+				    _w->var(v_pdfs_observables[ch])->setVal((xmax-xmin)/100.*(x-1)+xmin); 
+				    hs.SetBinContent(x, _w->pdf(v_pdfs_s[ch])->getVal(&vars));
+				    hb.SetBinContent(x, _w->pdf(v_pdfs_b[ch])->getVal(&vars));
+				    hsb.SetBinContent(x, _w->pdf(v_pdfs_sb[ch])->getVal(&vars));
+			    }
+
+			    hs.Write();
+			    hb.Write();
+			    hsb.Write();
+		    }
+		    f.Close();
+	    }
+
+	    /*
+	    //if allow signal strength to be non-positive, then please make sure sig+bkgs >=0 in each channel 
+	    if(b_AllowNegativeSignalStrength){
+	    for(int ch=0; ch<vv_exp_sigbkgs_scaled.size(); ch++){
+	    double tot = 0;
+	    for(int p=0; p<vv_exp_sigbkgs_scaled[ch].size(); p++)	tot+=vv_exp_sigbkgs_scaled[ch][p];
+	    if(tot<0) {
+	    cout<<"Error: negative tot yield in channel "<<ch+1<<endl;
+	    cout<<"Please SetAllowNegativeSignalStrength(false)"<<endl;
+	    cout<<"Or we can think about setting a lower bound for the strength.."<<endl;
+	    return;
+	    }
+	    }
+	    }
+	     */
     };
     VDChannel CountingModel::Get_AsimovData(int b){ // 0 for background only, 1 for s+b hypothesis
 	    VDChannel vtmpdata = v_data; // could be pseudo-data for bands
@@ -2966,7 +3277,7 @@ If we need to change it later, it will be easy to do.
 	    }
 	    AddObservedDataSet(ch, rds);
     }
-    double CountingModel::EvaluateChi2(double *par, vector< vector< vector<float> > > & vvv_cachPdfValues2, int bUseBestEstimateToCalcQ){ 
+    double CountingModel::EvaluateChi2(double *par, vector<float>& v_cachPdfValues2, vector< vector< vector<float> > > & vvv_cachPdfValues2, int bUseBestEstimateToCalcQ){ 
 	    double ret=0;
 
 	    FluctuatedNumbers(par, true, bUseBestEstimateToCalcQ, false);
@@ -3054,151 +3365,157 @@ If we need to change it later, it will be easy to do.
 	    for(int ch=0; ch<vv_pdfs.size(); ch++){
 		    btot = 0; stot=0;
 		    tmp=0; retch=0;
-		    ntot = int(v_pdfs_roodataset_tmp[ch]->numEntries());
-		    for(int i=0; i<vv_pdfs_norm_varied[ch].size(); i++){
-			    if(i>=v_pdfs_sigproc[ch]) btot+=vv_pdfs_norm_varied[ch][i]; // FIXME HGG // already multiplied by extra norm in FluctuatedNumbers
-			    else stot+=vv_pdfs_norm_varied[ch][i];
-		    }
-		    sbtot=stot+btot; if(sbtot<=0) {continue;} //cout<<"ERROR: evaluateCh2:  s+b <= 0: "<<sbtot<<endl; exit(1); 
-		    //RooArgSet vars(*(_w_varied->var(v_pdfs_observables[ch])));
-		    RooArgSet vars(*(v_pdfs_roodataset_real[ch])->get());
 
-		    /*
-		       for(int i=0; i<ntot; i++){
-		       _w_varied->var(v_pdfs_observables[ch])->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset_tmp[ch]->get(i)->first()))->getVal());
-		       tmp = 0;  ///////////////
-		       if(stot!=0) tmp += stot*_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars);  //give some warning message when r=0
-		       tmp += btot*_w_varied->pdf(v_pdfs_b[ch])->getVal(&vars);
-		       retch -= (tmp>0?log(tmp):0);
-		       }
-		     */
-
-		    nsigproc = v_pdfs_sigproc[ch];
-		    //TString stemp = "";
-		    //bool bupdated = false;
-		    for(int p=0; p<vv_pdfs[ch].size(); p++) TMP_vvpdfs_chprocINT[ch][p]=-1;
-		    for(int i=0; i<ntot; i++){
-			    //stemp+=" evt "; stemp+=i;
-			    //tmprrv=_w_varied->var(v_pdfs_observables[ch]);
-			    //tmprrv->setDirtyInhibit(1);
-			    //tmprrv->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset_tmp[ch]->get(i)->first()))->getVal());
-
-			    int itmpp=0;
-
-			    std::auto_ptr<TIterator> iter(v_pdfs_roodataset_tmp[ch]->get(i)->createIterator());
-			    for(RooRealVar * obs= (RooRealVar*)iter->Next(); obs!=NULL; obs=(RooRealVar*)iter->Next()){
-
-				    if(TString(obs->GetName()).BeginsWith("wgttmp_")) continue;
-				    _w_varied->var(obs->GetName())->setVal(obs->getVal());
-				    //cout<<" Bin "<<i<<": "<<obs->getVal()<<endl;
+		    if(v_pdfs_statusUpdated[ch]){
+			    ntot = int(v_pdfs_roodataset_tmp[ch]->numEntries());
+			    for(int i=0; i<vv_pdfs_norm_varied[ch].size(); i++){
+				    if(i>=v_pdfs_sigproc[ch]) btot+=vv_pdfs_norm_varied[ch][i]; // FIXME HGG // already multiplied by extra norm in FluctuatedNumbers
+				    else stot+=vv_pdfs_norm_varied[ch][i];
 			    }
+			    sbtot=stot+btot; if(sbtot<=0) {continue;} //cout<<"ERROR: evaluateCh2:  s+b <= 0: "<<sbtot<<endl; exit(1); 
+			    //RooArgSet vars(*(_w_varied->var(v_pdfs_observables[ch])));
+			    RooArgSet vars(*(v_pdfs_roodataset_real[ch])->get());
 
-			    weight = v_pdfs_roodataset_tmp[ch]->weight();
-			    if(_debug>=10 && i==0) cout<<"channel "<<ch<<",  event "<<i<<": weight = "<<weight<<endl;
-			    tmp = 0;  
-			    firstSigProcPdfVal = -1;
-			    for(int p=0; p<vv_pdfs[ch].size();p++){
-				    //stemp+=" proc "; stemp+=p;
-				    if(vv_pdfs_norm_varied[ch][p]!=0){
-					    if(_debug>=100&&i==0){
-						    cout<<"DELETEME 1.1: "<<vv_pdfs_norm_varied[ch][p]<<endl;
-						    cout<<vvv_cachPdfValues2.size()<<endl;
-						    cout<<" ch="<<ch<<" p="<<p<<endl;
-						    cout<<" Updated ? "<<(vv_pdfs_statusUpdated[ch][p])<<endl;
-						    cout<<"v[ch].size="<<vvv_cachPdfValues2[ch].size()<<endl;
-						    cout<<"v[ch][p].size="<<vvv_cachPdfValues2[ch][p].size()<<endl;
-					    }
-					    if(vv_pdfs_statusUpdated[ch][p]){
-						    if( p<nsigproc && firstSigProcPdfVal >= 0 && b_MultiSigProcShareSamePDF){
-							    tmp3 = firstSigProcPdfVal;
-						    }else{
+			    /*
+			       for(int i=0; i<ntot; i++){
+			       _w_varied->var(v_pdfs_observables[ch])->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset_tmp[ch]->get(i)->first()))->getVal());
+			       tmp = 0;  ///////////////
+			       if(stot!=0) tmp += stot*_w_varied->pdf(v_pdfs_s[ch])->getVal(&vars);  //give some warning message when r=0
+			       tmp += btot*_w_varied->pdf(v_pdfs_b[ch])->getVal(&vars);
+			       retch -= (tmp>0?log(tmp):0);
+			       }
+			     */
 
+			    nsigproc = v_pdfs_sigproc[ch];
+			    //TString stemp = "";
+			    //bool bupdated = false;
+			    for(int p=0; p<vv_pdfs[ch].size(); p++) TMP_vvpdfs_chprocINT[ch][p]=-1;
+			    for(int i=0; i<ntot; i++){
+				    //stemp+=" evt "; stemp+=i;
+				    //tmprrv=_w_varied->var(v_pdfs_observables[ch]);
+				    //tmprrv->setDirtyInhibit(1);
+				    //tmprrv->setVal(( dynamic_cast<RooRealVar*>(v_pdfs_roodataset_tmp[ch]->get(i)->first()))->getVal());
 
-							    if(i==0 && maxsets_forcaching>0){
-								    for(int ti=0; ti<maxsets_forcaching; ti++){
-									    for(int tj=0; tj < vvv_pdfs_nuisancesindex[ch][p].size(); tj++){
-										    if((par[vvv_pdfs_nuisancesindex[ch][p][tj]])!=vvvv_pdfs_ChProcSetParVals[ch][p][ti][tj]) break;
-										    if(tj==vvv_pdfs_nuisancesindex[ch][p].size()-1)TMP_vvpdfs_chprocINT[ch][p] = ti ;
-									    }
-								    }	
-							    }
+				    int itmpp=0;
 
-							    if(TMP_vvpdfs_chprocINT[ch][p]>=0){
-								    tmp3 = vvvv_pdfs_ChProcSetEvtVals[ch][p][TMP_vvpdfs_chprocINT[ch][p]][i];
-								    //  float tmp4 =	_w_varied->pdf(vv_pdfs[ch][p].c_str())->getVal(&vars);  //give some warning message when r=0
-								    //  float tmp5 =	_w_varied->pdf(vv_pdfs[ch][p].c_str())->getVal(&vars);  //give some warning message when r=0
-								    if(0){
-									    //	cout<<" tmp3="<<tmp3<<" tmp4="<<tmp4<<" tmp4p="<<tmp5<<endl;
-									    cout<<" tmp3_0="<<vvvv_pdfs_ChProcSetEvtVals[ch][p][TMP_vvpdfs_chprocINT[ch][p]][0]<<endl;	
-									    for(int tii=0; tii<maxsets_forcaching; tii++){
-										    cout<<" tii="<<tii<<" tmp3="<<vvvv_pdfs_ChProcSetEvtVals[ch][p][tii][0]<<"  "<<vvvv_pdfs_ChProcSetEvtVals[ch][p][tii][1]<<endl;
-									    }
+				    std::auto_ptr<TIterator> iter(v_pdfs_roodataset_tmp[ch]->get(i)->createIterator());
+				    for(RooRealVar * obs= (RooRealVar*)iter->Next(); obs!=NULL; obs=(RooRealVar*)iter->Next()){
 
-									    int tmpii = TMP_vvpdfs_chprocINT[ch][p];
-									    for(int ppi=0; ppi<vvvv_pdfs_ChProcSetParVals[ch][p][tmpii].size(); ppi++)cout<<" TTTT "<< vvvv_pdfs_ChProcSetParVals[ch][p][tmpii][ppi]/*<<"  name="<<v_uncname[vvv_pdfs_nuisancesindex[ch][p][ppi]-1]*/<<" index= "<<vvv_pdfs_nuisancesindex[ch][p][ppi]<<endl;
-									    cout<<" PPPPP "<<par[1]<<" name="<<v_uncname[0] <<endl;
-									    cout<<" PPPPP "<<par[2]<<" name="<<v_uncname[1] <<endl;
-									    cout<<" PPPPP "<<par[3]<<" name="<<v_uncname[2] <<endl;
-									    cout<<" PPPPP "<<par[4]<<" name="<<v_uncname[3] <<endl;
+					    if(TString(obs->GetName()).BeginsWith("wgttmp_")) continue;
+					    _w_varied->var(obs->GetName())->setVal(obs->getVal());
+					    //cout<<" Bin "<<i<<": "<<obs->getVal()<<endl;
+				    }
 
-
-
-
-
-									    exit(1); //
-
-								    }
-							    }else{	
-								    if(i==0 && maxsets_forcaching>0){ // move to next set, and if >= maxsets_forcaching, take the mode 
-									    vv_pdfs_curSetIndex[ch][p]+=1; 
-									    //cout<<" curSetIndex = "<<vv_pdfs_curSetIndex[ch][p]<<endl;
-									    if(vv_pdfs_curSetIndex[ch][p]>=maxsets_forcaching) vv_pdfs_curSetIndex[ch][p]-=maxsets_forcaching;
-									    for(int tj=0; tj<vvv_pdfs_nuisancesindex[ch][p].size(); tj++){
-										    vvvv_pdfs_ChProcSetParVals[ch][p][vv_pdfs_curSetIndex[ch][p]][tj]=(par[vvv_pdfs_nuisancesindex[ch][p][tj]]);
-										    //// make it to not work ,   ---> to test timing
-										    //if(tj==vvv_pdfs_nuisancesindex[ch][p].size()-1) vvvv_pdfs_ChProcSetParVals[ch][p][vv_pdfs_curSetIndex[ch][p]][tj]=-9999998.;
-									    }
-								    }
-								    tmp3 =	_w_varied->pdf(vv_pdfs[ch][p].c_str())->getVal(&vars);  //give some warning message when r=0
-								    //  cout<<" i "<<i<<" val="<<tmp3<<"   *********ch"<<ch<<"p"<<p<<"  before val="<<vvvv_pdfs_ChProcSetEvtVals[ch][p][vv_pdfs_curSetIndex[ch][p]][i]<<endl;
-								    if(maxsets_forcaching>0)vvvv_pdfs_ChProcSetEvtVals[ch][p][vv_pdfs_curSetIndex[ch][p]][i] = tmp3; // update the value of the chosen set 
-								    _countPdfEvaluation ++ ;
-								    if(_printPdfEvlCycle > 0 ) { if( long(_countPdfEvaluation)%long(_printPdfEvlCycle) == 0 ) cout<<" This fit has evaluated  "<<_countPdfEvaluation<<" roofit pdf values "<<endl; } 
-								    //   cout<<" i "<<i<<" val="<<tmp3<<"   *********ch"<<ch<<"p"<<p<<"  curSetIndex="<<vv_pdfs_curSetIndex[ch][p]<<"  after val="<<vvvv_pdfs_ChProcSetEvtVals[ch][p][vv_pdfs_curSetIndex[ch][p]][i]<<endl;
-							    }
-							    if(p<nsigproc) firstSigProcPdfVal = tmp3;
+				    weight = v_pdfs_roodataset_tmp[ch]->weight();
+				    if(_debug>=10 && i==0) cout<<"channel "<<ch<<",  event "<<i<<": weight = "<<weight<<endl;
+				    tmp = 0;  
+				    firstSigProcPdfVal = -1;
+				    for(int p=0; p<vv_pdfs[ch].size();p++){
+					    //stemp+=" proc "; stemp+=p;
+					    if(vv_pdfs_norm_varied[ch][p]!=0){
+						    if(_debug>=100&&i==0){
+							    cout<<"DELETEME 1.1: "<<vv_pdfs_norm_varied[ch][p]<<endl;
+							    cout<<vvv_cachPdfValues2.size()<<endl;
+							    cout<<" ch="<<ch<<" p="<<p<<endl;
+							    cout<<" Updated ? "<<(vv_pdfs_statusUpdated[ch][p])<<endl;
+							    cout<<"v[ch].size="<<vvv_cachPdfValues2[ch].size()<<endl;
+							    cout<<"v[ch][p].size="<<vvv_cachPdfValues2[ch][p].size()<<endl;
 						    }
-						    //bupdated = true;
-						    tmp2 = vv_pdfs_norm_varied[ch][p]*tmp3;
-						    vvv_cachPdfValues2[ch][p][i]=tmp3;
-						    if(_debug>=100&&i==0)cout<<" new: "<<tmp3<<endl;
-						    //stemp+=" val "; stemp+=tmp3;
-					    }else {
-						    if(_debug==102)tmp3 =	_w_varied->pdf(vv_pdfs[ch][p].c_str())->getVal(&vars);  //give some warning message when r=0
-						    tmp2=vv_pdfs_norm_varied[ch][p]*vvv_cachPdfValues2[ch][p][i];
+						    if(vv_pdfs_statusUpdated[ch][p]){
+							    if( p<nsigproc && firstSigProcPdfVal >= 0 && b_MultiSigProcShareSamePDF){
+								    tmp3 = firstSigProcPdfVal;
+							    }else{
 
-						    if(_debug==102 && i==0)cout<<" caching comparison: "<<tmp3<<" "<<vvv_cachPdfValues2[ch][p][i]<<endl;
+
+								    if(i==0 && maxsets_forcaching>0){
+									    for(int ti=0; ti<maxsets_forcaching; ti++){
+										    for(int tj=0; tj < vvv_pdfs_nuisancesindex[ch][p].size(); tj++){
+											    if((par[vvv_pdfs_nuisancesindex[ch][p][tj]])!=vvvv_pdfs_ChProcSetParVals[ch][p][ti][tj]) break;
+											    if(tj==vvv_pdfs_nuisancesindex[ch][p].size()-1)TMP_vvpdfs_chprocINT[ch][p] = ti ;
+										    }
+									    }	
+								    }
+
+								    if(TMP_vvpdfs_chprocINT[ch][p]>=0){
+									    tmp3 = vvvv_pdfs_ChProcSetEvtVals[ch][p][TMP_vvpdfs_chprocINT[ch][p]][i];
+									    //  float tmp4 =	_w_varied->pdf(vv_pdfs[ch][p].c_str())->getVal(&vars);  //give some warning message when r=0
+									    //  float tmp5 =	_w_varied->pdf(vv_pdfs[ch][p].c_str())->getVal(&vars);  //give some warning message when r=0
+									    if(0){
+										    //	cout<<" tmp3="<<tmp3<<" tmp4="<<tmp4<<" tmp4p="<<tmp5<<endl;
+										    cout<<" tmp3_0="<<vvvv_pdfs_ChProcSetEvtVals[ch][p][TMP_vvpdfs_chprocINT[ch][p]][0]<<endl;	
+										    for(int tii=0; tii<maxsets_forcaching; tii++){
+											    cout<<" tii="<<tii<<" tmp3="<<vvvv_pdfs_ChProcSetEvtVals[ch][p][tii][0]<<"  "<<vvvv_pdfs_ChProcSetEvtVals[ch][p][tii][1]<<endl;
+										    }
+
+										    int tmpii = TMP_vvpdfs_chprocINT[ch][p];
+										    for(int ppi=0; ppi<vvvv_pdfs_ChProcSetParVals[ch][p][tmpii].size(); ppi++)cout<<" TTTT "<< vvvv_pdfs_ChProcSetParVals[ch][p][tmpii][ppi]/*<<"  name="<<v_uncname[vvv_pdfs_nuisancesindex[ch][p][ppi]-1]*/<<" index= "<<vvv_pdfs_nuisancesindex[ch][p][ppi]<<endl;
+										    cout<<" PPPPP "<<par[1]<<" name="<<v_uncname[0] <<endl;
+										    cout<<" PPPPP "<<par[2]<<" name="<<v_uncname[1] <<endl;
+										    cout<<" PPPPP "<<par[3]<<" name="<<v_uncname[2] <<endl;
+										    cout<<" PPPPP "<<par[4]<<" name="<<v_uncname[3] <<endl;
+
+
+
+
+
+										    exit(1); //
+
+									    }
+								    }else{	
+									    if(i==0 && maxsets_forcaching>0){ // move to next set, and if >= maxsets_forcaching, take the mode 
+										    vv_pdfs_curSetIndex[ch][p]+=1; 
+										    //cout<<" curSetIndex = "<<vv_pdfs_curSetIndex[ch][p]<<endl;
+										    if(vv_pdfs_curSetIndex[ch][p]>=maxsets_forcaching) vv_pdfs_curSetIndex[ch][p]-=maxsets_forcaching;
+										    for(int tj=0; tj<vvv_pdfs_nuisancesindex[ch][p].size(); tj++){
+											    vvvv_pdfs_ChProcSetParVals[ch][p][vv_pdfs_curSetIndex[ch][p]][tj]=(par[vvv_pdfs_nuisancesindex[ch][p][tj]]);
+											    //// make it to not work ,   ---> to test timing
+											    //if(tj==vvv_pdfs_nuisancesindex[ch][p].size()-1) vvvv_pdfs_ChProcSetParVals[ch][p][vv_pdfs_curSetIndex[ch][p]][tj]=-9999998.;
+										    }
+									    }
+									    tmp3 =	_w_varied->pdf(vv_pdfs[ch][p].c_str())->getVal(&vars);  //give some warning message when r=0
+									    //  cout<<" i "<<i<<" val="<<tmp3<<"   *********ch"<<ch<<"p"<<p<<"  before val="<<vvvv_pdfs_ChProcSetEvtVals[ch][p][vv_pdfs_curSetIndex[ch][p]][i]<<endl;
+									    if(maxsets_forcaching>0)vvvv_pdfs_ChProcSetEvtVals[ch][p][vv_pdfs_curSetIndex[ch][p]][i] = tmp3; // update the value of the chosen set 
+									    _countPdfEvaluation ++ ;
+									    if(_printPdfEvlCycle > 0 ) { if( long(_countPdfEvaluation)%long(_printPdfEvlCycle) == 0 ) cout<<" This fit has evaluated  "<<_countPdfEvaluation<<" roofit pdf values "<<endl; } 
+									    //   cout<<" i "<<i<<" val="<<tmp3<<"   *********ch"<<ch<<"p"<<p<<"  curSetIndex="<<vv_pdfs_curSetIndex[ch][p]<<"  after val="<<vvvv_pdfs_ChProcSetEvtVals[ch][p][vv_pdfs_curSetIndex[ch][p]][i]<<endl;
+								    }
+								    if(p<nsigproc) firstSigProcPdfVal = tmp3;
+							    }
+							    //bupdated = true;
+							    tmp2 = vv_pdfs_norm_varied[ch][p]*tmp3;
+							    vvv_cachPdfValues2[ch][p][i]=tmp3;
+							    if(_debug>=100&&i==0)cout<<" new: "<<tmp3<<endl;
+							    //stemp+=" val "; stemp+=tmp3;
+						    }else {
+							    if(_debug==102)tmp3 =	_w_varied->pdf(vv_pdfs[ch][p].c_str())->getVal(&vars);  //give some warning message when r=0
+							    tmp2=vv_pdfs_norm_varied[ch][p]*vvv_cachPdfValues2[ch][p][i];
+
+							    if(_debug==102 && i==0)cout<<" caching comparison: "<<tmp3<<" "<<vvv_cachPdfValues2[ch][p][i]<<endl;
+						    }
+						    tmp +=tmp2;
 					    }
-					    tmp +=tmp2;
-				    }
-				    if(isnan(tmp) || isinf(tmp)) {
-					    cout<<" DELETEME * pdf  "<<tmp<<endl;
-					    FlagAllChannels();
-					    return 10e9;
-				    }
-			    }//loop over process
-			    retch -= (tmp>0?log(tmp):0)*weight;
-		    }//loop over events
-		    //if(bupdated) cout<<stemp<<endl;
+					    if(isnan(tmp) || isinf(tmp)) {
+						    cout<<" DELETEME * pdf  "<<tmp<<endl;
+						    FlagAllChannels();
+						    return 10e9;
+					    }
+				    }//loop over process
+				    retch -= (tmp>0?log(tmp):0)*weight;
+			    }//loop over events
+			    //if(bupdated) cout<<stemp<<endl;
 
-		    retch+=stot;
-		    retch+=btot;
-		    retch-= (v_pdfs_roodataset_tmp[ch]->sumEntries());
-		    if(_debug >= 10) cout<<" DELETEME sumEntries ="<<v_pdfs_roodataset_tmp[ch]->sumEntries()<<endl;;
-		    if(_debug>=10){
-			    cout<<"EvaluateChi2 in channel ["<<v_pdfs_channelname[ch]<<"]: lnQ= "<<retch<<endl;
-			    cout<<"\n model_sb"<<endl;
-			    _w_varied->pdf(v_pdfs_sb[ch])->getParameters(*(_w->var(v_pdfs_observables[ch])))->Print("V");
+			    retch+=stot;
+			    retch+=btot;
+			    retch-= (v_pdfs_roodataset_tmp[ch]->sumEntries());
+			    if(_debug >= 10) cout<<" DELETEME sumEntries ="<<v_pdfs_roodataset_tmp[ch]->sumEntries()<<endl;;
+			    if(_debug>=10){
+				    cout<<"EvaluateChi2 in channel ["<<v_pdfs_channelname[ch]<<"]: lnQ= "<<retch<<endl;
+				    cout<<"\n model_sb"<<endl;
+				    _w_varied->pdf(v_pdfs_sb[ch])->getParameters(*(_w->var(v_pdfs_observables[ch])))->Print("V");
+			    }
+			    v_cachPdfValues2[ch]=retch;
+		    }else{
+			    retch = v_cachPdfValues2[ch];
 		    }
 		    ret+=retch;
 	    }// loop over channels
@@ -3808,6 +4125,14 @@ If we need to change it later, it will be easy to do.
 			    vv_pdfs_statusUpdated[vvp_pdfs_connectNuisBinProc[i][j].first][vvp_pdfs_connectNuisBinProc[i][j].second]=true;
 		    }
 	    }
+	    if(v_pdfs_statusUpdated.size()==0){
+		    v_pdfs_statusUpdated.resize(vv_pdfs.size());
+		    for(int j=0; j<vvp_pdfs_connectNuisBinProc[i].size(); j++){
+			    v_pdfs_statusUpdated[vvp_pdfs_connectNuisBinProc[i][j].first]=true;
+		    }
+
+	    }
+
 	    if(vv_statusUpdated.size()==0){
 		    vv_statusUpdated.resize(vv_exp_sigbkgs.size());
 		    for(int ch=0; ch<vv_exp_sigbkgs.size(); ch++) vv_statusUpdated[ch].resize(vv_exp_sigbkgs[ch].size());
@@ -3815,8 +4140,16 @@ If we need to change it later, it will be easy to do.
 			    vv_statusUpdated[vvp_connectNuisBinProc[i][j].first][vvp_connectNuisBinProc[i][j].second]=true;
 		    }
 	    }
+	    if(v_statusUpdated_th.size()==0){
+		    v_statusUpdated_th.resize(vv_exp_sigbkgs_th.size());
+		    for(int j=0; j<vvp_th_connectNuisBinProc[i].size(); j++){
+			    v_statusUpdated_th[vvp_th_connectNuisBinProc[i][j].first]=true;
+		    }
+	    }
+
 	    for(int j=0; j<vvp_pdfs_connectNuisBinProc[i].size(); j++){
 		    vv_pdfs_statusUpdated[vvp_pdfs_connectNuisBinProc[i][j].first][vvp_pdfs_connectNuisBinProc[i][j].second]=true;
+		    v_pdfs_statusUpdated[vvp_pdfs_connectNuisBinProc[i][j].first]=true;
 	    }
 	    for(int j=0; j<vvp_connectNuisBinProc[i].size(); j++){
 		    if(_debug>100){
@@ -3826,6 +4159,10 @@ If we need to change it later, it will be easy to do.
 		    }
 		    vv_statusUpdated[vvp_connectNuisBinProc[i][j].first][vvp_connectNuisBinProc[i][j].second]=true;
 	    }
+	    for(int j=0; j<vvp_th_connectNuisBinProc[i].size(); j++){
+		    v_statusUpdated_th[vvp_th_connectNuisBinProc[i][j].first]=true;
+	    }
+
 	    if(_debug>=100 )cout<<" DELETEME end FlagChannelsWithParamsUpdated "<<(i>0?v_uncname[i-1]:"r")<<endl;
     }
     void CountingModel::UnFlagAllChannels(bool b){
@@ -3835,10 +4172,18 @@ If we need to change it later, it will be easy to do.
 			    for(int p=0; p<vv_pdfs_statusUpdated[ch].size(); p++)
 				    vv_pdfs_statusUpdated[ch][p]=false;
 		    }
+		    for(int ch=0; ch<v_pdfs_statusUpdated.size(); ch++){
+			    v_pdfs_statusUpdated[ch]=false;
+		    }
+
 		    for(int ch=0; ch<vv_statusUpdated.size(); ch++){
 			    for(int p=0; p<vv_statusUpdated[ch].size(); p++)
 				    vv_statusUpdated[ch][p]=false;
 		    }
+		    for(int ch=0; ch<v_statusUpdated_th.size(); ch++){
+				    v_statusUpdated_th[ch]=false;
+		    }
+
 	    }else{
 		    for(int i=0; i<vvp_connectNuisBinProc.size(); i++){
 			    for(int j=0; j<vvp_pdfs_connectNuisBinProc[i].size(); j++){
@@ -3855,18 +4200,30 @@ If we need to change it later, it will be easy to do.
     }
     void CountingModel::FlagAllChannels(){
 	    if(_debug>=100) cout<<"in FlagAllChannels"<<endl;
-	    vv_pdfs_statusUpdated.resize(vv_pdfs.size());
-	    for(int ch=0; ch<vv_pdfs.size(); ch++) vv_pdfs_statusUpdated[ch].resize(vv_pdfs[ch].size());
+	    if(vv_pdfs_statusUpdated.size()==0){vv_pdfs_statusUpdated.resize(vv_pdfs.size());
+		    for(int ch=0; ch<vv_pdfs.size(); ch++) vv_pdfs_statusUpdated[ch].resize(vv_pdfs[ch].size());
+	    }
+	    if(v_pdfs_statusUpdated.size()==0)v_pdfs_statusUpdated.resize(vv_pdfs.size());
 	    for(int ch=0; ch<vv_pdfs_statusUpdated.size(); ch++){
 		    for(int p=0; p<vv_pdfs_statusUpdated[ch].size(); p++)
 			    vv_pdfs_statusUpdated[ch][p]=true;
 	    }
-	    vv_statusUpdated.resize(vv_exp_sigbkgs.size());
-	    for(int ch=0; ch<vv_exp_sigbkgs.size(); ch++) vv_statusUpdated[ch].resize(vv_exp_sigbkgs[ch].size());
+	    for(int ch=0; ch<v_pdfs_statusUpdated.size(); ch++){
+		    v_pdfs_statusUpdated[ch]=true;
+	    }
+
+	    if(vv_statusUpdated.size()==0){vv_statusUpdated.resize(vv_exp_sigbkgs.size());
+		    for(int ch=0; ch<vv_exp_sigbkgs.size(); ch++) vv_statusUpdated[ch].resize(vv_exp_sigbkgs[ch].size());
+	    }
 	    for(int ch=0; ch<vv_statusUpdated.size(); ch++){
 		    for(int p=0; p<vv_statusUpdated[ch].size(); p++)
 			    vv_statusUpdated[ch][p]=true;
 	    }
+	    if(v_statusUpdated_th.size()==0)v_statusUpdated_th.resize(vv_exp_sigbkgs_th.size());
+	    for(int ch=0; ch<v_statusUpdated_th.size(); ch++){
+		    v_statusUpdated_th[ch]=true;
+	    }
+
     }
     void CountingModel::SetFlatParameterRange(int id, double middle, double errLow, double errUp){
 	    if(id>= v_pdfs_floatParamsUnc.size()) return;
@@ -4200,12 +4557,25 @@ If we need to change it later, it will be easy to do.
 				    }
 			    }
 		    }
-	    }else {  // countingOrParametric == 2   for Parametric part 
+	    }else if(countingOrParametric==2){  // countingOrParametric == 2   for Parametric part 
 	nsig = v_pdfs_sigproc[c];
 		    for(int u=0; u<vvv_pdfs_pdftype[c][s].size(); u++){
 			    if (vvv_pdfs_pdftype[c][s][u]==typeFlat){
 				    id = (vvv_pdfs_idcorrl)[c][s][u];
 				    if(_w_varied->var(v_uncname[id-1].c_str()) != NULL) continue;
+				    if(id==_Cv_i || id==_Cf_i) { 
+					    (id==_Cv_i?cv:cf) = v_Pars[id][0];
+				    }else {
+					    bs*=v_Pars[id][0];
+				    }
+			    }
+		    }
+
+	    }else if(countingOrParametric==3){// Histogram based channels 	
+	nsig = v_sigproc_th[c];
+		    for(int u=0; u<vvv_pdftype_th[c][s].size(); u++){
+			    if (vvv_pdftype_th[c][s][u]==typeFlat){
+				    id = (vvv_idcorrl_th)[c][s][u];
 				    if(id==_Cv_i || id==_Cf_i) { 
 					    (id==_Cv_i?cv:cf) = v_Pars[id][0];
 				    }else {
@@ -4602,6 +4972,337 @@ If we need to change it later, it will be easy to do.
 	    else { if(spoi!="") {cout<<spoi<<" is not found"<<endl; exit(1);}}
 	    cout<<" The kept POI is "<<poi.name<<endl;
     } 
+
+
+    // /**************
+    //
+    //
+    //  upgrade for TH1 based inputs 
+    //
+    // 
+    // /**************
+    //void CountingModel::AddChannel(string channel_name, vector<double> num_expected_signals, vector<double> num_expected_bkgs, int decaymodeFromOriginalCard){
+    void CountingModel::AddChannel(string channel_name, vector<string> vprocname , vector<TH1D*> sigTHs, 
+		    vector<TH1D*> bkgTHs, int decaymodeFromOriginalCard){
+	    int signal_processes = sigTHs.size();
+	    int bkg_processes = bkgTHs.size();
+	    if(signal_processes<=0)  {cout<<"ERROR: you add a channel ["<<channel_name.c_str()<<"] with number of signal_processes <=0 "<<endl; exit(0);}
+	    if(bkg_processes<=0)  {cout<<"ERROR: you add a channel ["<<channel_name.c_str()<<"] with number of bkg_processes <=0 "<<endl; exit(0);}
+	    v_sigproc_th.push_back(signal_processes);
+
+	    int dm;
+	    if(decaymodeFromOriginalCard>0){
+		    dm=decaymodeFromOriginalCard;}else{
+			    dm=DecayMode(channel_name);
+			    if(dm==0) dm=_decayMode;}
+
+	    if(channel_name==""){
+		    char tmp[256];
+		    sprintf(tmp, "channel_%d", int(v_channelname_th.size()));
+		    channel_name==tmp;
+		    v_channelname_th.push_back(channel_name);
+
+	    }
+	    else v_channelname_th.push_back(channel_name);
+
+	    TH1D* tmp_totbkg = 0;
+
+	    vector<TH1D*> vsigbkgs; vsigbkgs.clear();
+	    vector<TH1D*> vsigbkgs2; vsigbkgs2.clear();
+	    vector<TH1D*> vsigbkgs3; vsigbkgs3.clear();
+	    vector< vector< vector<TH1D*> > > vvvuncpar; vvvuncpar.clear();
+	    vector< vector<int> > vvpdftype; vvpdftype.clear();
+	    vector< vector<int> > vvidcorrl; vvidcorrl.clear();
+
+	    vector< vector<TH1D*> > vvunc; vvunc.clear();
+	    vector<int> vpdftype; vpdftype.clear();
+	    vector<int> vidcorrl; vidcorrl.clear();
+
+	    for(int i=0; i<sigTHs.size(); i++){
+		    vsigbkgs.push_back((TH1D*)sigTHs[i]->Clone());
+		    vsigbkgs2.push_back((TH1D*)sigTHs[i]->Clone());
+		    vsigbkgs3.push_back((TH1D*)sigTHs[i]->Clone());
+		    vvvuncpar.push_back(vvunc);
+		    vvpdftype.push_back(vpdftype);
+		    vvidcorrl.push_back(vidcorrl);
+	    }
+
+	    for(int i=0; i<bkgTHs.size(); i++){
+		    vsigbkgs.push_back((TH1D*)bkgTHs[i]->Clone());
+		    vsigbkgs2.push_back((TH1D*)bkgTHs[i]->Clone());
+		    vsigbkgs3.push_back((TH1D*)bkgTHs[i]->Clone());
+		    vvvuncpar.push_back(vvunc);
+		    vvpdftype.push_back(vpdftype);
+		    vvidcorrl.push_back(vidcorrl);
+		    if(i==0){
+			    tmp_totbkg = bkgTHs[0];
+		    }else
+			    tmp_totbkg->Add(bkgTHs[i]);
+	    }
+
+	    vv_exp_sigbkgs_th.push_back(vsigbkgs);
+	    vv_exp_sigbkgs_scaled_th.push_back(vsigbkgs2);
+	    vv_sigbkgs_varied_th.push_back(vsigbkgs3);
+	    v_data_th.push_back((TH1D*)tmp_totbkg->Clone());	
+	    v_data_real_th.push_back((TH1D*)tmp_totbkg->Clone());	
+
+	    for(int i=0; i<vsigbkgs.size();i++){
+		for(int b=1; b<=vsigbkgs[i]->GetNbinsX(); b++ ){
+			if(vsigbkgs[i]->GetBinContent(b)<0) {
+				vsigbkgs[i]->SetBinContent(b, 0);
+				if(_debug) cout<<"WARNING channel "<<channel_name<<" proc "<<vprocname[i]<<" bin "<<b<<":  < 0,  reset to 0 "<<endl;
+			}
+		}
+	    }
+
+	    vvvv_uncpar_th.push_back(vvvuncpar);
+	    vvv_pdftype_th.push_back(vvpdftype);
+	    vvv_idcorrl_th.push_back(vvidcorrl);
+	    if(_debug>=100)cout<<"channel "<<channel_name<<": tot.size="<<signal_processes+bkg_processes<<" bkg.size="<<bkg_processes<<endl;
+	    //vector<string> vproc; vproc.clear();
+	    vector<int> vprodm; vprodm.clear();
+	    vector<int> vdm; vdm.clear();
+	    for(int i=0; i<sigTHs.size(); i++) {
+		    //char tmp[256];
+		    //sprintf(tmp, "%d", int(i-sigTHs.size()+1));
+		    //vproc.push_back(tmp);
+		    vprodm.push_back(0);
+		    vdm.push_back(dm);
+	    }
+	    for(int i=0; i<bkgTHs.size(); i++) {
+		    //char tmp[256];
+		    //sprintf(tmp, "%d", i+1);
+		    //vproc.push_back(tmp);
+		    vprodm.push_back(0);
+		    vdm.push_back(0);
+	    }
+	    vv_procname_th.push_back(vprocname);
+	    vv_productionMode_th.push_back(vprodm);
+	    vv_channelDecayMode_th.push_back(vdm);
+    }
+  
+    // LogNormal and TruncatedGaussian 
+   void CountingModel::AddUncertaintyTH(string c, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, string uncname ){
+	    int index_channel = -1;
+	    for(int i=0; i<v_channelname_th.size(); i++){
+		    if(v_channelname_th[i]==c) index_channel=i;
+	    }
+	    int index_correlation = -1; // numeration starts from 1
+	    for(int i=0; i<v_uncname.size(); i++){
+		    if(v_uncname[i]==uncname){
+			    index_correlation = i+1;	
+			    break;
+		    }
+	    }
+	    if(index_correlation<0)  {
+		    index_correlation = v_uncname.size()+1;
+		    v_uncname.push_back(uncname);
+		    v_uncFloatInFit.push_back(1);
+	    }
+	    // to deal with asymetric uncertainties
+	    if( uncertainty_in_relative_fraction_down < 0 or uncertainty_in_relative_fraction_up < 0 ) {
+		    if(pdf_type==typeTruncatedGaussian) {}; //fine
+		    if( (uncertainty_in_relative_fraction_down <-1 or uncertainty_in_relative_fraction_up <-1) && pdf_type==typeLogNormal) { cout<<"logNormal type uncertainties can't have kappa < 0, exit"<<endl; exit(0);}; //fine
+	    } 
+	    if(pdf_type!=typeLogNormal && pdf_type!= typeTruncatedGaussian && pdf_type!=typeGamma && pdf_type!=typeFlat) {
+		    cout<<"Error: Currently only implemented LogNormal, Gamma and TruncatedGaussian, flat. Your input "<<pdf_type<<" haven't been implemented, exit"<<endl;
+		    exit(0);
+	    }
+	    if(index_correlation <= 0) { 
+		    cout<<"Error: index_correlation < 0 "<<endl;
+		    exit(0);
+	    }
+	    vector<TH1D*> vunc; vunc.clear(); 
+	    if(b_ForceSymmetryError && pdf_type!=typeFlat && pdf_type!=typeGamma) {
+		    if (uncertainty_in_relative_fraction_up > uncertainty_in_relative_fraction_down) uncertainty_in_relative_fraction_down=uncertainty_in_relative_fraction_up;
+		    if(uncertainty_in_relative_fraction_down > uncertainty_in_relative_fraction_up ) uncertainty_in_relative_fraction_up = uncertainty_in_relative_fraction_down;
+	    }
+
+	    for(int i=0; i<vvv_idcorrl_th.at(index_channel).at(index_sample).size(); i++){
+		    if(index_correlation==vvv_idcorrl_th.at(index_channel).at(index_sample).at(i)) { cout<<" Warning adding Coupling  Already In the list "<<endl; return;}
+	    }
+
+	    TH1D* htmp = new TH1D("htmp","htmp", 1, 0, 1);// FIXME  memory leak
+
+	    if(pdf_type==typeFlat){
+		    vunc.clear();
+		    htmp->SetBinContent(1, 0.5);
+		    vunc.push_back((TH1D*)htmp->Clone()); 
+	    }
+	    htmp->SetBinContent(1, uncertainty_in_relative_fraction_down);
+	    vunc.push_back((TH1D*)htmp->Clone());
+	    htmp->SetBinContent(1, uncertainty_in_relative_fraction_up);
+	    vunc.push_back((TH1D*)htmp->Clone());
+	    vvvv_uncpar_th.at(index_channel).at(index_sample).push_back(vunc);
+	    vvv_pdftype_th.at(index_channel).at(index_sample).push_back(pdf_type);
+	    vvv_idcorrl_th.at(index_channel).at(index_sample).push_back(index_correlation);
+	    //ConfigUncertaintyPdfs();
+	    vector<double> vtmp;  
+	    if(pdf_type==typeFlat){
+		    vtmp.push_back(0.5); vtmp.push_back(uncertainty_in_relative_fraction_down); vtmp.push_back(uncertainty_in_relative_fraction_up);
+		    Set_flatPars(std::make_pair(v_uncname[index_correlation-1], vtmp));	
+	    }
+	    if(v_Pars.size() <= index_correlation){
+		    vector<double> v;
+		    v_Pars.push_back(v);
+		    if(index_correlation==1){
+			    v_Pars.push_back(v);
+		    }
+	    }
+	    if(pdf_type==typeFlat)v_Pars[index_correlation]=vtmp; 
+
+
+	    if(pdf_type==typeFlat and _debug) {
+		    cout<< " DELETEME vunc.size="<<vtmp.size()<<endl;
+		    cout<<" index_correlation = "<<index_correlation<<endl;
+		    cout<<" "<<v_Pars[index_correlation].size()<<endl;
+	    }
+	    delete htmp;
+
+    }
+    void CountingModel::AddUncertaintyTH(string c, int index_sample, vector<TH1D*> vunc, int pdf_type, string uncname ){
+
+	    if(_debug){cout<< " pdf_type "<<pdf_type<<endl;
+		    for(int u=0; u<vunc.size(); u++){
+			    cout<<c<<" ********* "<<uncname<<" "<<u<<": "<< vunc[u]->GetBinContent(1)<<endl;
+		    }
+	    }
+
+	    int index_channel = -1;
+	    for(int i=0; i<v_channelname_th.size(); i++){
+		    if(v_channelname_th[i]==c) index_channel=i;
+	    }
+	    int index_correlation = -1; // numeration starts from 1
+	    for(int i=0; i<v_uncname.size(); i++){
+		    if(v_uncname[i]==uncname){
+			    index_correlation = i+1;	
+			    break;
+		    }
+	    }
+	    if(index_correlation<0)  {
+		    index_correlation = v_uncname.size()+1;
+		    v_uncname.push_back(uncname);
+		    v_uncFloatInFit.push_back(1);
+	    }
+	    if(pdf_type!=typeShapeGaussianQuadraticMorph  && pdf_type!=typeShapeGaussianLinearMorph && pdf_type!=typeLogNormal ) {
+		    cout<<"Error: AddUncertainty for typeShapeGaussianLinearMorph and typeShapeGaussianQuadraticMorph,  typeLogNormal only. exit"<<endl;
+		    exit(0);
+	    }
+	    if(index_correlation <= 0) { 
+		    cout<<"Error: index_correlation < 0 "<<endl;
+		    exit(0);
+	    }
+	    vvvv_uncpar_th.at(index_channel).at(index_sample).push_back(vunc);
+	    vvv_pdftype_th.at(index_channel).at(index_sample).push_back(pdf_type);
+	    vvv_idcorrl_th.at(index_channel).at(index_sample).push_back(index_correlation);
+	    //ConfigUncertaintyPdfs();
+	    if(v_Pars.size() <= index_correlation){
+		    vector<double> v;
+		    v_Pars.push_back(v);
+		    if(index_correlation==1){
+			    v_Pars.push_back(v);
+		    }
+	    }
+    }
+
+    // From SideBand
+    // when B is large, it's close to Gaussian. then use Gaussian, don't use Gamma function
+    void CountingModel::AddUncertaintyTH(string c, int index_sample, double rho, double rho_err, double B, int pdf_type, string uncname ){
+	    int index_channel = -1;
+	    for(int i=0; i<v_channelname_th.size(); i++){
+		    if(v_channelname_th[i]==c) index_channel=i;
+	    }
+	    int index_correlation = -1; // numeration starts from 1
+	    for(int i=0; i<v_uncname.size(); i++){
+		    if(v_uncname[i]==uncname){
+			    index_correlation = i+1;	
+			    break;
+		    }
+	    }
+	    if(index_correlation<0)  {
+		    index_correlation = v_uncname.size()+1;
+		    v_uncname.push_back(uncname);
+		    v_uncFloatInFit.push_back(1);
+	    }
+	    if(B<0){
+		    cout<<"Gamma PDF, B can't be less 0"<<endl;
+		    exit(0);
+		    //return;
+	    }
+	    if(index_correlation <= 0) {
+		    cout<<"Error: Adding index_correlation <=0, exit "<<endl;
+		    exit(0);
+	    }
+	    if(pdf_type!=typeControlSampleInferredLogNormal && pdf_type!=typeGamma) {
+		    cout<<"Error: your pdf_type is wrong "<<endl;
+		    exit(0);
+	    }
+	    vector<TH1D*> vunc; vunc.clear();
+	    TH1D* htmp = new TH1D("htmp","htmp", 1, 0, 1);// FIXME  memory leak
+	    htmp->SetBinContent(1,rho);
+	    vunc.push_back((TH1D*)htmp->Clone());  // if rho<0, it means this gamma term is for multiplicative gamma function...
+	    htmp->SetBinContent(1,rho_err);
+	    vunc.push_back((TH1D*)htmp->Clone());  // if rho<0, it means this gamma term is for multiplicative gamma function...
+	    htmp->SetBinContent(1,B);
+	    vunc.push_back((TH1D*)htmp->Clone());  // if rho<0, it means this gamma term is for multiplicative gamma function...
+	    vvvv_uncpar_th.at(index_channel).at(index_sample).push_back(vunc);
+	    vvv_pdftype_th.at(index_channel).at(index_sample).push_back(pdf_type);
+	    vvv_idcorrl_th.at(index_channel).at(index_sample).push_back(index_correlation);
+	    //ConfigUncertaintyPdfs();
+	    if(v_Pars.size() <= index_correlation){
+		    vector<double> v;
+		    v_Pars.push_back(v);
+		    if(index_correlation==1){
+			    v_Pars.push_back(v);
+		    }
+	    }
+	    delete htmp;
+
+    }
+    void CountingModel::AddObservedDataTH(int index_channel, TH1D* th){
+        v_data_th.at(index_channel)=(TH1D*)th->Clone();
+        v_data_real_th.at(index_channel)=(TH1D*)th->Clone();
+    }
+    void CountingModel::AddObservedDataTH(string c, TH1D* th){
+        int index_channel = -1;
+        for(int i=0; i<v_channelname_th.size(); i++){
+            if(v_channelname_th[i]==c) index_channel=i;
+        }
+        v_data_th.at(index_channel)=(TH1D*)th->Clone();
+        v_data_real_th.at(index_channel)=(TH1D*)th->Clone();
+    }
+
+    void CountingModel::SetProcessNamesTH(int index_channel, vector<string> vproc){
+        vv_procname_th.at(index_channel)=vproc;
+	for(int i=0; i<vproc.size(); i++){
+		int pm = ProductionMode(vproc[i]);
+		int dm = DecayModeFromProcessName(vproc[i]);
+		vv_productionMode_th.at(index_channel).at(i)=pm;
+		if(dm>0) vv_channelDecayMode_th.at(index_channel).at(i)=dm;
+	}
+    }
+    void CountingModel::SetProcessNamesTH(string c, vector<string> vproc){
+        int index_channel = -1;
+        for(int i=0; i<v_channelname_th.size(); i++){
+            if(v_channelname_th[i]==c) index_channel=i;
+        }
+	SetProcessNamesTH(index_channel, vproc);
+    }
+
+    TH1D* CountingModel::GetExpectedTH(string c, string p){
+	    int index_channel = -1;
+	    for(int i=0; i<v_channelname_th.size(); i++){
+		    if(v_channelname_th[i]==c) index_channel=i;
+	    }
+	    int index_proc = -1; 
+	    for(int i=0; i<vv_procname_th[index_channel].size(); i++){
+		    if(vv_procname_th[index_channel][i]==p) index_proc=i;
+	    }
+	    if(index_channel<0 || index_proc<0){
+		    cout<<" TH channel "<<c<<" proc "<<p<<" not imported yet, exit"<<endl;  exit(1);
+	    }
+	    return vv_exp_sigbkgs_th[index_channel][index_proc];
+    }
 
     };
 

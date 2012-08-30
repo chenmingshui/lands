@@ -28,6 +28,7 @@
 #include "RooWorkspace.h"
 #include <map>
 #include "TString.h"
+#include "TH1D.h"
 
 using namespace std;
 namespace lands{
@@ -40,6 +41,12 @@ namespace lands{
 	typedef vector< vector< vector< vector<float> > > > VChannelVSampleVsetVval;
 	typedef map< string, vector< vector<double> > > MapStrVV;
 	typedef map< string, vector<double> > MapStrV;
+
+	typedef vector<TH1D*> VChannelTH;
+	typedef vector< vector<TH1D*> > VChannelVSampleTH;
+	typedef vector< vector< vector< vector<TH1D*> > > > VChannelVSampleVUncertaintyVParameterTH;
+	typedef map< string, vector< vector<TH1D*> > > MapStrVVTH;
+	typedef map< string, vector<TH1D*> > MapStrVTH;
 
 	enum enumPdfType {typeLogNormal=1, typeTruncatedGaussian=2, typeGamma=3, typeShapeGaussianLinearMorph=4, typeShapeGaussianQuadraticMorph=5, 
 		typeBifurcatedGaussian=6, typeFlat=7, typeControlSampleInferredLogNormal=11 };
@@ -261,7 +268,7 @@ namespace lands{
 				       	vector<RooAbsPdf*> bkgPdfs, vector<double> bkgNorms, vector<RooAbsArg*> vbExtraNorm, int decaymode=-1);
 			// need to add names of each parameter .... 
 			double EvaluateLnQ(int ch, int dataOrToy); // for Likelihood ratio
-			double EvaluateChi2(double *par, vector< vector< vector<float> > >& vvv_cachPdfValuestmp, int bUseBestEstimateToCalcQ=1);          // for Chi2
+			double EvaluateChi2(double *par, vector<float>& v_cachPdfValuestmp, vector< vector< vector<float> > >& vvv_cachPdfValuestmp, int bUseBestEstimateToCalcQ=1);          // for Chi2
 			double EvaluateGL(int ch, double xr); // for bayesian 
 			double EvaluateGL(vector< vector<double> > vvnorms, vector<double> vparams, double xr, VChannelVSample& vvs, VChannelVSample&vvb); // for bayesian 
 			void AddObservedDataSet(int index_channel, RooAbsData* rds);
@@ -378,6 +385,70 @@ namespace lands{
 		void ShowCvCfHiggsScales(double *par);
 		void Set_printPdfEvlCycle(double d){_printPdfEvlCycle=d;};
 		void PrintParametricChannelDataEntries();
+
+
+
+		//  /**********  upgrade for TH1 based input   **********/
+		public:
+			void AddChannel(string channel_name, vector<string> vprocname , vector<TH1D*> sigTHs, 
+					vector<TH1D*> bkgTHs, int decaymode=-1);
+			// TH  norm unc:  LogNormal and TruncatedGaussian 
+			void AddUncertaintyTH(string chname, int index_sample, double uncertainty_in_relative_fraction_down, double uncertainty_in_relative_fraction_up, int pdf_type, std::string uncname );
+			// TH  norm unc:  From SideBand
+			void AddUncertaintyTH(string chname, int index_sample, double rho, double rho_err, double B, int pdf_type, std::string uncname );
+			// TH  shape parameters
+			void AddUncertaintyTH(string chname, int index_sample, vector<TH1D*> par, int pdf_type, std::string uncname );
+			// set data
+			void AddObservedDataTH(int index_channel, TH1D* th);
+			void AddObservedDataTH(string c, TH1D* th);
+			void SetDataTH(VChannelTH  data, bool bRealData=true){v_data_th=data; if(bRealData)v_data_real_th=data;}
+			void SetProcessNamesTH(int ch, vector<std::string> vproc); //need make check
+			void SetProcessNamesTH(string ch, vector<std::string> vproc); //need make check
+			TH1D* GetExpectedTH(string ch, string proc);
+	
+			
+			const VChannelVSampleVUncertaintyVParameterTH& Get_vvvv_uncpar_th(){return vvvv_uncpar_th;}
+			void Set_vvvv_uncpar_th(const VChannelVSampleVUncertaintyVParameterTH& vvvv){vvvv_uncpar_th=vvvv;}
+			const VChannelVSampleVUncertainty& Get_vvv_pdftype_th(){return vvv_pdftype_th;}
+			const VChannelVSampleVUncertainty& Get_vvv_idcorrl_th(){return vvv_idcorrl_th;}
+
+			const VChannelVSampleTH& Get_vv_exp_sigbkgs_nonscaled_th() {return vv_exp_sigbkgs_th;}
+			const VChannelVSampleTH& Get_vv_exp_sigbkgs_th()           {return vv_exp_sigbkgs_scaled_th;}
+			int NumOfHistChannels(){return vv_exp_sigbkgs_th.size();}
+			int GetNSigprocInChannelTH(int i){return v_sigproc_th.at(i);} //need make check
+			const vector< bool > & Get_v_statusUpdated_th(){return v_statusUpdated_th;};
+			const vector<int>& GetListOfShapeUncertaintiesTH(int c, int p){ return vvv_shapeuncindex_th[c][p]; } // need make check
+
+			const vector<std::string>& GetProcessNamesTH(int ch){return vv_procname_th[ch];}  //need make check
+			std::string GetChannelNameTH(int i){return v_channelname_th.at(i);} //need make check 
+			const	vector< vector<int> > & Get_vv_channelDecayModeTH(){return vv_channelDecayMode_th;};
+			const	vector< vector<int> > & Get_vv_productionModeTH(){return vv_productionMode_th;};
+			const VChannelTH& Get_v_dataTH(){return v_data_th;}
+		private:
+			vector<int> v_sigproc_th;
+			vector<std::string> v_channelname_th; // start from 0 
+			vector< vector<std::string> > vv_procname_th; //name of each process in each channel
+			VChannelTH v_data_th; // could be pseudo-data for bands
+			VChannelTH v_data_real_th; // real data, not changed during entire run 
+			VChannelVSampleTH vv_exp_sigbkgs_th;
+			VChannelVSampleTH vv_exp_sigbkgs_scaled_th;
+			VChannelVSampleTH vv_sigbkgs_varied_th;
+			VChannelTH v_data_asimovb_th; // asimov data b only
+			VChannelTH v_data_asimovsb_th; // asimov data mu*s + b 
+			VChannelVSampleTH vv_randomized_sigbkgs_th;   
+			VChannelVSampleTH vv_randomized_sigbkgs_scaled_th;
+			VChannelVSampleTH vv_fitted_sigbkgs_th;    // fitted in data with mu=0
+			VChannelVSampleTH vv_fitted_sigbkgs_scaled_th;   // fitted in data with mu being tested
+			VChannelVSampleVUncertaintyVParameterTH  vvvv_uncpar_th;
+			VChannelVSampleVUncertainty vvv_pdftype_th;
+			VChannelVSampleVUncertainty vvv_idcorrl_th;
+			vector< vector<int> > vv_channelDecayMode_th;
+			vector< vector<int> > vv_productionMode_th;
+			vector< vector< vector<int> > > vvv_shapeuncindex_th; //channel:process:shapeunc
+			vector< vector<std::pair<int, int> > > vvp_th_connectNuisBinProc;// keep in memory:  a nuisance affects a list of [channel, process]
+			vector< bool > v_statusUpdated_th;  //// monitoring if nuisances belonging to it(each pdf/process) updated 
+
+
 		private:
 			VDChannel v_data; // could be pseudo-data for bands
 			VDChannel v_data_real; // real data, not changed during entire run 
@@ -518,6 +589,7 @@ namespace lands{
 
 
 			vector< vector< bool > > vv_pdfs_statusUpdated;// monitoring if nuisances belonging to it(each pdf/process) updated
+			vector< bool > v_pdfs_statusUpdated;// monitoring if nuisances belonging to it(each pdf/process) updated
 			vector< vector< bool > > vv_statusUpdated;  // 
 			vector< vector<std::pair<int, int> > > vvp_pdfs_connectNuisBinProc;// keep in memory:  a nuisance affects a list of [channel, process]
 			vector< vector<std::pair<int, int> > > vvp_connectNuisBinProc;// keep in memory:  a nuisance affects a list of [channel, process]

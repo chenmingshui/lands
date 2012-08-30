@@ -433,7 +433,7 @@ string GetUncertainy(int c, int p, const vector< vector<string> >& vv_procnames,
 	if(ss1[1]=="gmN" or ss1[1]=="gmA") return ss1[stop+p+3];
 	else return ss1[stop+p+2];
 }
-bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileContentStripped, int debug){
+bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileContentStripped, bool bUseHist, int debug){
 	TString smass;
 	if(fmod(mass,1)==0) smass.Form("%.0f",mass);
 	else smass.Form("%.1f",mass); 
@@ -454,8 +454,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 			if(GetWordFromLine(lines[l], 4).Contains(":")) hasParametricShape =true;
 		}
 	}
-	if(hasShape==false) ConfigureModel(cms, mass, ifileContentStripped, debug);
-	if(hasShape){
+	{
 		// get number of channels
 		int nchannel = -1;
 		for(int l=0; l<lines.size(); l++){
@@ -760,6 +759,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 		vector< vector<string> > shapeuncertainties;
 		vector< vector<string> > xx_needtointerpret;
 		vector< vector<string> > parametricShapeLines; 
+		vector< vector<string> > histShapeLines; 
 		for(int j=0; j<shapeinfo.size(); j++){
 			if(shapeinfo[j].BeginsWith("shapes ")){
 				vector<string>	ss; 
@@ -948,6 +948,7 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 
 		for(int i=0; i<shape.size(); i++){
 			if(TString(shape[i][4]).Contains(":") and TString(shape[i][0]) != "##") parametricShapeLines.push_back(shape[i]);
+			else if(bUseHist && TString(shape[i][0])!="##") histShapeLines.push_back(shape[i]);
 		}
 		for(int i=0; i<shapeuncertainties.size(); i++){// for histogram morphing ....    keyword:  shapeN, shapeL, shape, shapeQ ,  alternative two sets of histogram for the variations w.r.t a particular source of systematics
 //need to implement shape2 and shapeN2  which do interpolation in log scale   instead of  linear scale 
@@ -987,6 +988,9 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 		// normalization of histogram should be equal to expected rate/total observation number
 		// normalize shape uncertainties to 1. ,  and also record normalization of  shift_up, shift_down
 
+		if(bUseHist){
+			shape.clear();
+		}
 
 		int newchannels = nchannel;
 		for(int c = 0; c<channelnames.size(); c++){
@@ -1373,608 +1377,16 @@ bool CheckIfDoingShapeAnalysis(CountingModel* cms, double mass, TString ifileCon
 			cout<<"***********print out of the new huge table****************"<<endl<<endl;
 			cout<<cardExpanded<<endl<<endl<<endl;
 		}
-		//exit(1);
-		if(hasParametricShape) ConfigureShapeModel(cms, mass, cardExpanded, parametricShapeLines, uncerlinesAffectingShapes, debug);
-		else ConfigureModel(cms, mass,  cardExpanded, debug);
+		ConfigureShapeModel(cms, mass, cardExpanded, histShapeLines, shapeuncertainties, parametricShapeLines, uncerlinesAffectingShapes, debug);
 	}// line begin with "shape"
 }
 
-bool ConfigureModel(CountingModel *cms, double mass,  TString ifileContentStripped, int debug){
-      TString smass = ""; if(fmod(mass,1)==0) smass.Form("%.0f",mass);else smass.Form("%.1f",mass); 
-	// channel index starts from 1
-	// systematics source index also starts from 1
-
-	TString duplicatingCard;
-	vector<TString> duplicatingLines;
-
-	//bool debug = true;
-	// Now proceed with the parsing of the stripped file
-
-	vector<TString> lines;
-	lines = SplitIntoLines(ifileContentStripped, debug);
-	//   
-	//  For Andrey's input format 
-
-	// get number of channels
-	int nchannel = -1;
-	for(int l=0; l<lines.size(); l++){
-		if(lines[l].BeginsWith("imax ")){
-			vector<string>	ss; 
-			ss.clear();
-			StringSplit(ss, lines[l].Data(), " ");
-			if(debug)cout<<"NChannel = "<<ss[1]<<endl;
-			TString s = ss[1];
-			if(s.IsDigit()==false) {
-				//cout<<"need a number after imax"<<", currently it's not a number but \'"<<s<<"\'"<<endl;
-				//exit(0);
-				nchannel = -1;
-				cout<<"WARNING: You input of imax (number of channels) is not digit, hence LandS will not check the consistency"<<endl;
-			}else {
-				nchannel = s.Atoi();
-			}
-
-			duplicatingLines.push_back(lines[l]);
-		} 
-	}	
-	if(nchannel==0) {
-		cout<<"number of channels = 0,  please check imax"<<endl;
-		return false;
-	}
-
-	// get observed dataset and cout how many channels in your model
-	//
-	vector<double> observeddata;
-	bool hasFilled = false;
-	for(int l=0; l<lines.size(); l++){
-		if(lines[l].BeginsWith("Observation ") or lines[l].BeginsWith("observation ")){
-			observeddata.clear();
-			if(hasFilled) cout<<"WARNING: You have two lines started with \"observation\", we will use the second line"<<endl;
-			vector<string>	ss; 
-			ss.clear();
-			StringSplit(ss, lines[l].Data(), " ");
-			for(int i=1; i<ss.size(); i++){
-				if(TString(ss[i]).IsFloat()){
-					double ev = (TString(ss[i])).Atof();
-					observeddata.push_back(ev);
-				}
-			}
-			hasFilled =  true;
-			duplicatingLines.push_back(lines[l]);
-		}
-	}
-	if(hasFilled==false) {cout<<"ERROR: need a line starting with \"Observation\" "<<endl; exit(0);}
-	if(nchannel<0) nchannel = observeddata.size(); // if you don't assign a number to imax
-	if(nchannel!= observeddata.size()) {
-		cout<<"imax = "<<nchannel<<endl;
-		cout<<"observeddata.size = "<<observeddata.size()<<endl;
-		cout<<"ERROR: number of channels spcified in \"imax\" line is not consistent with \"observation\" line "<<endl;
-		exit(0);
-	}
-	if(debug){
-		cout<<"observed data: ";
-		for(int i=0; i<nchannel; i++) cout<<observeddata[i]<<" ";
-		cout<<endl;
-	}
-
-	// there must be one line of "process", which contains enumeration of processes in each channel
-	// you might have another line with "process" which contains process names in each channel
-	// since in one of the "process" lines,  for each channel, there must be one and only one process enumerated as "0"
-	// we will count how many "0" in that line to determine how many channels actually go into your model
-	// double check ....
-	//
-	// first check how many lines started with "process"
-	int nlines_with_process = 0;
-	vector< vector<string> > vss_processes; vss_processes.clear();
-	for(int l=0; l<lines.size(); l++){
-		if(lines[l].BeginsWith("process ")){
-			nlines_with_process++;
-			vector<string>	ss; 
-			ss.clear();
-			StringSplit(ss, lines[l].Data(), " ");
-			vss_processes.push_back(ss);
-			duplicatingLines.push_back(lines[l]);
-		}
-	}
-	if(nlines_with_process<1 or nlines_with_process>2 ){ cout<<"ERROR: you have "<<nlines_with_process<<" lines started with \"process\".  must be one or two"<<endl; exit(0); }
-	// read number of channels from process line
-	int tmpn = 0;  int l_proc = 0;
-	vector<int> nsigproc; nsigproc.clear(); // record number of signal processes in each channel  (with process number <= 0)
-	vector<string> processnames; processnames.clear();
-	for(int l=0; l<vss_processes.size(); l++){
-		for(int i=1; i<vss_processes[l].size(); i++){ // vss_processes[0] is "process"
-			if(!TString(vss_processes[l][i]).IsFloat()) break; // you encounter comments or non-numbers, stop processing 
-			if(tmpn==nsigproc.size())nsigproc.push_back(0);
-			if(TString(vss_processes[l][i]).Atoi()<=0) nsigproc[nsigproc.size()-1]++;
-			if(TString(vss_processes[l][i]).Atoi()==0) tmpn++; // as each channel has "0" standing for one of signal processes
-			processnames.push_back(vss_processes[l][i]); // we temporarily assign process name as the "number", if another "process" line found,  we'll make change later
-
-
-			// check that processes number follow   " -2 -1  0  1  2 " ordering 
-			int currproc = TString(vss_processes[l][i]).Atoi();
-			if(currproc<=0){
-				bool procOrderingIsFine = true;
-				if(vss_processes[l].size()<=i+1){procOrderingIsFine = false;} 
-				else {
-					int nextproc = TString(vss_processes[l][i+1]).Atoi();
-					if(nextproc!= currproc+1) procOrderingIsFine = false;
-				}
-				if(procOrderingIsFine == false) {
-					cout<<"ERROR: in \"process\" line, the ordering is wrong,  you have to follow the following ordering in each bin: "<<endl;
-					cout<<"       .... -2 -1 0 1 2 ....."<<endl;
-					exit(0);
-				}
-			}
-		}
-		// debug
-		for(int i=0; i<nsigproc.size(); i++){
-			if(debug)cout<<" n signal process in channel "<<i<<": "<<nsigproc[i]<<endl;
-		}
-
-		if(tmpn>0) {
-			l_proc = l; // record which line of "process" lines is for enumeration
-			break; // already got the wanted line 
-		}
-	}
-	if(nchannel != tmpn ) { cout<<"ERROR: \"observation\" and \"process\" are not consistent"<<endl; exit(0);}
-	// read process names 
-	if(vss_processes.size()==2){
-		for(int i=1; i<vss_processes[1-l_proc].size(); i++){
-			if(i>processnames.size()) break;
-			processnames[i-1] = vss_processes[1-l_proc][i];
-		}
-	}
-
-	// get numbers of processes in each channel
-	int *nprocesses = new int[nchannel];
-	for(int i=0; i<nchannel; i++) nprocesses[i]=0;
-	bool hasLineStartWithBin = false;
-	vector<string> channelnames; channelnames.clear();
-	for(int l=0; l<lines.size(); l++){
-		//if(lines[l].BeginsWith("bin ") && hasLineStartWithBin==true){
-		//	cout<<"WARNING:  there are two lines beginning with \"bin\" in your card. We will take the first one"<<endl;
-		//}
-		if(lines[l].BeginsWith("bin ") && hasLineStartWithBin==false ){
-			vector<string>	ss; 
-			ss.clear();
-			StringSplit(ss, lines[l].Data(), " ");
-			if(ss.size() < 1+2*nchannel) continue; // this "bin" line is too short, will process in below code
-
-			// we now can proceed with names of bins instead of just numbers 1, 2, 3, ... N 
-			int bin = 0;
-			for(int i=1; i<ss.size(); i++){
-				if(ss[i]!=ss[i-1]) { bin++; channelnames.push_back(ss[i]);	}
-				if(bin<(nchannel+1) && bin>=1) nprocesses[bin-1]++;
-			}
-			if(bin != nchannel) {cout<<"ERROR: number of channels got from \"bin\" line is not consistent with \"observation\" line"<<endl; exit(0);};
-
-			hasLineStartWithBin = true;
-			duplicatingLines.push_back(lines[l]);
-		} 
-	}	
-	if(!hasLineStartWithBin) {
-		cout<<"Line beginning with \"bin\" is not found in your card"<<endl;
-		exit(0);
-	}
-	if(debug){
-		for(int i = 0; i<nchannel; i++) cout<<"processes in Channel "<<i<<" = "<<nprocesses[i]<<endl;
-	}
-	for(int i=0; i<nchannel; i++) if(nprocesses[i]==0) {cout<<"ERROR: channel "<<i<<", number of processes = 0"<<endl; exit(0);}
-
-	// if you have "bins" or "binname" line,  then replace channel name  with the ones from this line
-	for(int l=0; l<lines.size(); l++){
-		if(lines[l].BeginsWith("bins ") or lines[l].BeginsWith("binname ") or lines[l].BeginsWith("bin ") ){
-			vector<string>	ss; 
-			ss.clear();
-			StringSplit(ss, lines[l].Data(), " ");
-			if(ss.size() >= 1+nchannel*2) continue;// this "bin" line is too long, processed in above code 
-			for(int i=1; i<ss.size(); i++){
-				if(i>nchannel) break;
-				channelnames[i-1]=ss[i];
-			}
-		}
-	}
-
-	int ntotprocesses = 0;
-	for(int i = 0; i<nchannel; i++) ntotprocesses+=nprocesses[i];
-
-	int *binnumber = new int[ntotprocesses];
-	int *subprocess=new int[ntotprocesses];
-	int index =0 ;
-	for(int c=0; c<nchannel; c++){
-		for(int p=0; p<nprocesses[c]; p++) 
-		{
-			binnumber[index] = (c+1);
-			subprocess[index]=p;
-			index++;
-		}
-	}
-	if(debug){
-		cout<<"bin ";
-		for(int i=0; i<ntotprocesses; i++) cout<<binnumber[i]<<" ";
-		cout<<endl;
-	}
-
-
-	// get expected event rate
-	//
-	double *eventrate =new double[ntotprocesses];
-	for(int i=0; i<ntotprocesses; i++) eventrate[i]=0;
-	hasFilled = false;
-	for(int l=0; l<lines.size(); l++){
-		if(lines[l].BeginsWith("rate ")){
-			TString tmps = TString::Format("%10s ","rate");
-			vector<string>	ss; 
-			ss.clear();
-			StringSplit(ss, lines[l].Data(), " ");
-			if(ss.size()-1<ntotprocesses) {cout<<"number of eventrate < "<<ntotprocesses<<endl; return false;} 
-			for(int i=1; i<(ntotprocesses+1); i++){
-				float ev = (TString(ss[i])).Atof();
-				eventrate[i-1] = ev;
-				tmps+= TString::Format("%7.2f ",ev);
-			}
-			hasFilled =  true;
-			duplicatingLines.push_back(tmps);
-		}
-	}
-	if(hasFilled==false) {cout<<"need a line starting with \"rate\" "<<endl; return false;}
-	if(debug){
-		cout<<"event rate: ";
-		for(int i=0; i<ntotprocesses; i++) cout<<eventrate[i]<<" ";
-		cout<<endl;
-	}
-
-
-	// FIXME we won't need this "kmax" keyword if we don't want to do a sanity check  ....
-	//  get number of independant systematics sources
-	int kmax = -1;
-	//hasFilled = false;
-	for(int l=0; l<lines.size(); l++){
-		if(lines[l].BeginsWith("kmax ")){
-			vector<string>	ss; 
-			ss.clear();
-			StringSplit(ss, lines[l].Data(), " ");
-			if(ss.size()>=2 && TString(ss[1]).IsFloat()){
-				kmax = (TString(ss[1])).Atoi();
-			}else{
-				cout<<"WARNING: You input of kmax (number of systematic lines ) is not digit, hence LandS will not check the consistency"<<endl;
-				kmax = -1;
-			}
-			//hasFilled = true;
-			duplicatingLines.push_back(lines[l]);
-		}
-	}
-	//if (hasFilled == false) cout<<"need \"kmax\" to set number of independant systematic sources "<<endl;
-	if (kmax==0) cout<<"no systematics input, kmax=0"<<endl;
-
-	if(debug) cout<<"number of independant systematics sources = "<<kmax<<endl;
-
-
-	//  Fill the model with the yields
-	index=0;
-	for(int c=0; c<nchannel; c++){
-		vector<double> sigbkgs; sigbkgs.clear();
-		vector<string> tmpprocn; tmpprocn.clear();
-		for(int p=0; p<nprocesses[c]; p++) {
-			sigbkgs.push_back(eventrate[index]);
-			tmpprocn.push_back(processnames[index]);
-			index++;
-		}
-		if(debug) cout<<" nsigproc["<<c<<"] = "<<nsigproc[c]<<endl;
-		cms->AddChannel(channelnames[c], sigbkgs, nsigproc[c]);
-		cms->SetProcessNames(c, tmpprocn);
-		cms->AddObservedData(c, observeddata[c]);
-	}	
-
-	//cms->Print();
-
-	if(debug) cout<<"filled yields"<<endl;
-	// fill the model with systemics
-
-	// sections are separated by "---------"  in the data card
-	// last section are all uncertainties,  it's analyzers' responsibility to make it right  
-	int nsyssources = 0;
-	for(int j=lines.size()-1; j>=0; j--){
-		if(lines[j].BeginsWith("---") )	break;
-		if(lines[j].BeginsWith("rate "))	break;
-		if(lines[j].BeginsWith("bin ") )	break;
-		if(lines[j].BeginsWith("process "))break;
-		if(lines[j].BeginsWith("imax "))break;
-		if(lines[j].BeginsWith("jmax "))break;
-		if(lines[j].BeginsWith("kmax "))break;
-		nsyssources++;
-	}
-	if(kmax>=0 && kmax!=nsyssources) {cout<<"kmax !=  number of independant uncertainties"<<endl; exit(0);}
-
-	for(int s=0; s<nsyssources; s++){
-		TString tmps = TString::Format("%6d ",s+1);
-		vector<string>	ss; 
-
-		int hasUncSourceWithIndex_s = -1;
-		/*
-		   for(int j=0; j<lines.size(); j++){
-		   ss.clear();
-		   StringSplit(ss, lines[j].Data(), " ");
-		   if (TString(ss[0]).Atoi()==(s+1)) {
-		   if(hasUncSourceWithIndex_s >= 0) cout<<"Warning:  There are more than one uncertainty source start with index = "<<s+1<<", will use last one"<<endl; 
-		   hasUncSourceWithIndex_s = j;
-		   }
-		   }
-		   if(hasUncSourceWithIndex_s<0) {
-		   cout<<"Error: no uncertainty start with index = "<<s+1<<endl;
-		   cout<<"   Prob. reasons: check kmax or index of systematics sources"<<endl;
-		   exit(0); 
-		   }
-		   */
-		hasUncSourceWithIndex_s = lines.size() - nsyssources + s;
-		ss.clear();
-		StringSplit(ss, lines[hasUncSourceWithIndex_s].Data(), " ");
-
-		/*
-		   if(TString(ss[0]).IsDigit() == false) {
-		   cout<<"   You are trying to assign the following line which not starting from digits to "<< s+1 <<"th systematics sources"<<endl;
-		   cout<<"\""<<lines[hasUncSourceWithIndex_s]<<"\""<<endl;
-		   cout<<"   Probable reasons: check kmax or index of systematics sources"<<endl;
-		   exit(0);
-		   }
-		   */
-		// FIXME need to check: don't have two lines with same uncertainty name...
-
-		//int indexcorrelation = (TString(ss[0])).Atoi();
-		string indexcorrelation = ss[0];
-		TString sTmp=indexcorrelation;
-		bool bUncIsFloatInFit = true;
-		if(sTmp.Contains("[nofloat]")) bUncIsFloatInFit=false;
-		indexcorrelation = sTmp.ReplaceAll("[nofloat]","").Data();
-
-		//if(indexcorrelation != (nsyssources-s) ) {
-		//	cout<<"Warning: you are reading in "<<nsyssources-s<<"th nuisanse parameter, but this line start with "<<indexcorrelation<<endl;
-		//}
-
-		int pdf = 0; 
-		// see CountingModel.h
-		if(ss[1]=="lnN") pdf=typeLogNormal;   // typeLogNormal
-		else if(ss[1]=="flat") pdf=typeFlat;   // typeFlat
-		else if(ss[1]=="trG") pdf=typeTruncatedGaussian; // typeTruncatedGaussian
-		else if(ss[1]=="gmA" or ss[1]=="gmN" or ss[1]=="gmM") pdf=typeGamma; // typeControlSampleInferredLogNormal;  gmA was chosen randomly, while in gmN, N stands for yield in control sample;  gmM stands for Multiplicative gamma distribution, it implies using a Gamma distribution not for a yield but for a multiplicative correction
-		else if(ss[1]=="shapeN" or ss[1]=="shapeN2"  or ss[1]=="shapeStat") pdf=typeLogNormal;
-		else if(ss[1]=="shape" or ss[1]=="shape2" or ss[1]=="shapeQ" or ss[1]=="shape?") pdf=typeShapeGaussianQuadraticMorph;
-		else if(ss[1]=="shapeL" ) pdf=typeShapeGaussianLinearMorph;
-		else if(ss[1]=="flatParam" or ss[1]=="param"){
-			continue;	
-		}else{
-			//pdf =  (TString(ss[1])).Atoi();
-			cout<<" ERROR: Uncertainty type ["<<ss[1]<<"] is not defined yet "<<endl;
-			exit(1);
-		}
-
-		tmps+= TString::Format("%3s ", ss[1].c_str());
-		if(pdf==typeGamma && ss[1]!="gmM") {
-			tmps+= TString::Format("%8s ", ss[2].c_str());
-			if(ss.size()<ntotprocesses+3) { cout<<"Error... uncertainty "<<ss[0]<<": doesn't have enough collums"<<endl; exit(1) ; }
-		}
-		else{
-     			tmps+= "         ";
-			if(ss.size()<ntotprocesses+2){ cout<<"Error... uncertainty "<<ss[0]<<": doesn't have enough collums"<<endl; exit(1); }
-		}
-
-		bool filledThisSource = false;
-		int pdf_old = pdf;
-		for(int p=0; p<ntotprocesses; p++){
-			pdf=pdf_old;
-			double err, errup, rho;  // to allow asymetric uncertainties
-			double shape[8];
-			if(pdf==typeLogNormal){
-				if(ss[p+2]=="-" || TString(ss[p+2]).Atof()==0) {
-					tmps+= "    -   ";
-					continue;
-				}
-				if(TString(ss[p+2]).Contains("/")){
-					vector<string> asymetricerrors; asymetricerrors.clear();
-					StringSplit(asymetricerrors, ss[p+2], "/");
-					if((TString(asymetricerrors[0])).Atof()<=0) {//{ cout<<"ERROR:  Kappa can't be <=0 "<<":  "<<asymetricerrors[0]<<endl; exit(0); };
-						err = 1;
-					}else
-					err= 1./(TString(asymetricerrors[0])).Atof()-1.0; // downside 
-					if((TString(asymetricerrors[1])).Atof()<=0) {//{ cout<<"ERROR:  Kappa can't be <=0 "<<":  "<<asymetricerrors[0]<<endl; exit(0); };
-						errup = 1;
-					}else
-					errup= (TString(asymetricerrors[1])).Atof()-1.0;  // upside
-				}else {
-					err= (TString(ss[p+2])).Atof()-1.0;
-					errup = err;
-				}
-				tmps+= TString::Format("%7.2f ",err+1.0);
-				if(err <= -1 or errup <=-1) {
-					cout<<"ERROR: Kappa in lognormal  can't be negative, please check your input card at "<<s+1<<"th source, "<<p+2<<"th entry"<<endl;
-					exit(0);
-				}
-				if(err == 0. && errup==0.) continue;
-			}
-			else if(pdf==typeFlat){
-				if(ss[p+2]=="-") {
-					tmps+= "    -   ";
-					continue;
-				}
-				if(TString(ss[p+2]).Contains("/")){
-					vector<string> asymetricerrors; asymetricerrors.clear();
-					StringSplit(asymetricerrors, ss[p+2], "/");
-					if((TString(asymetricerrors[0])).Atof()<0) {
-						err = 1;
-					}else
-						err= (TString(asymetricerrors[0])).Atof(); // downside 
-					if((TString(asymetricerrors[1])).Atof()<0) {
-						errup = 1;
-					}else
-						errup= (TString(asymetricerrors[1])).Atof();  // upside
-				}else {
-					tmps+= TString(ss[p+2]);
-					cout<<"WARNING: flat uncertainty on normalization need to use \"/\" to separate min and max factors.  being skiped"<<endl;
-					continue;
-				}
-				tmps+= TString(ss[p+2]);
-			}
-			else if(pdf==typeTruncatedGaussian){
-				if(ss[p+2]=="-"){
-					tmps+= "    -   ";
-					continue;
-				}
-				if(TString(ss[p+2]).Contains("/")){
-					vector<string> asymetricerrors; asymetricerrors.clear();
-					StringSplit(asymetricerrors, ss[p+2], "/");
-					err= (TString(asymetricerrors[0])).Atof();
-					errup= (TString(asymetricerrors[1])).Atof();
-				}else {
-					err= (TString(ss[p+2])).Atof();
-					errup = err;
-				}
-				tmps+= TString::Format("%7.2f ",err);
-				if(err == 0.) continue;
-			}else if(pdf==typeShapeGaussianQuadraticMorph or pdf==typeShapeGaussianLinearMorph){
-				if(ss[p+2]=="-"){
-					tmps+= "    -   ";
-					continue;
-				}
-				if(TString(ss[p+2]).Contains("/")){
-					vector<string> params; params.clear();
-					StringSplit(params, ss[p+2], "/");
-					if(params.size()==7) {
-						for(int i=0; i<7; i++) shape[i]=TString(params[i]).Atof();
-						shape[7]=1.;
-					}else if(params.size()==2){
-						pdf = typeLogNormal;
-						for(int i=0; i<6; i++) {
-							if(i<4)shape[i]= 0 ;
-							else shape[i]=TString(params[i-4]).Atof();
-						}
-						if((TString(params[0])).Atof()<=0) {//{ cout<<"ERROR:  Kappa can't be <=0 "<<":  "<<asymetricerrors[0]<<endl; exit(0); };
-							err = 1;
-						}else
-							err = 1./TString(params[0]).Atof() -1.;
-						if((TString(params[1])).Atof()<=0) {//{ cout<<"ERROR:  Kappa can't be <=0 "<<":  "<<asymetricerrors[0]<<endl; exit(0); };
-							errup = 1;
-						}else
-							errup = TString(params[1]).Atof() -1.;
-						shape[6]=0;
-						shape[7]=0;
-					}else { cout<<"ERROR: typeShape input format not correct "<<endl; exit(0);}
-				}else{
-					for(int i=0; i<4; i++) {
-						shape[i]= 0 ;
-					}
-					shape[4]=TString(ss[p+2]).Atof();
-					shape[5]=shape[4];
-					shape[6]=0;
-					shape[7]=0;
-					pdf = typeLogNormal;
-					err = TString(ss[p+2]).Atof() - 1.;
-					errup = err;
-				}
-				tmps= TString::Format("%7.2f ", shape[0]);
-			}
-			else if(pdf==typeGamma){
-				if(ss[1]=="gmA" or ss[1]=="gmN"){
-					if(ss[p+3]=="-"){
-						tmps+= "    -   ";
-						continue;
-					}
-					rho= (TString(ss[p+3])).Atof(); // the factor between control region and signal region
-					tmps+= TString::Format("%7.2f ",rho);
-					if(rho < 0) {
-						cout<<"Alpha in gamma can't be negative, please check your input card at "<<s+1<<"th source, "<<p+3<<"th entry"<<endl;
-						exit(0);
-					}
-					if(rho == 0.) continue;
-				}
-				else if(ss[1]=="gmM"){
-					if(ss[p+2]=="-") {
-						tmps+= "    -   ";
-						continue;
-					}
-					err= (TString(ss[p+2])).Atof();
-					tmps+= TString::Format("%7.2f ",err);
-					if(err < 0 || err>1 ) {
-						cout<<"relative error in gamma function can't be negative or > 100%, please check your input card at "<<s+1<<"th source, "<<p+2<<"th entry"<<endl;
-						exit(0);
-					}
-					if(err == 0.) continue;
-				}else{
-					cout<<"Gamma function assumed,  the acronym should be gmA, gmN or gmM,  not "<< ss[1]<<", exit "<<endl;
-					exit(0);
-				}
-			}
-			//cout<<"delete me: c="<<binnumber[p]-1<<" s="<< subprocess[p]<<endl;
-			if(pdf==typeLogNormal||pdf==typeTruncatedGaussian){
-				if(ss[1]=="shapeStat"){
-					TString stmpunc = indexcorrelation; stmpunc+=binnumber[p]; stmpunc+=subprocess[p];
-					cms->AddUncertainty(binnumber[p]-1, subprocess[p], err, errup, pdf, stmpunc.Data() );
-					cms->TagUncertaintyFloatInFit(stmpunc.Data(), bUncIsFloatInFit);
-				}else {
-					cms->AddUncertainty(binnumber[p]-1, subprocess[p], err, errup, pdf, indexcorrelation );
-					cms->TagUncertaintyFloatInFit(indexcorrelation, bUncIsFloatInFit);
-				}
-			}
-			if(pdf==typeGamma){
-				if(ss[1]=="gmA" or ss[1]=="gmN"){
-					double N = (TString(ss[2]).Atof()); // your input should be Most Probable Value,  while mean value is N+1
-					if(N<0)  {
-						cout<<"Yield in control Region in gamma can't be negative, please check your input card at "<<s+1<<"th source, "<<2<<"th entry"<<endl;
-						exit(0);
-					}
-					cms->AddUncertainty(binnumber[p]-1, subprocess[p], rho, 0, N, pdf, indexcorrelation );
-					//FIXME  here need to check:  rho*N == cms->GetExpectedNumber(binnumber[p]-1, subprocess[p]);
-				}
-				else if(ss[1]=="gmM"){
-					double N = 1./err/err-1; // we use convention: mean of events is 1./err/err,  so we do "-1" here, and then add back "1"  in src/CountingModel.cc
-					//double N = (int) (1./err/err);
-					cms->AddUncertainty(binnumber[p]-1, subprocess[p], -1, 0, N, pdf, indexcorrelation ); // use "rho = -1" here to imply that this gamma term is not for control sample inferred uncertainties, but multiplicative gamma function ....
-					//FIXME  here need to check:  all uncertainties with same indexcorrelation are the same,   can't be different currently ... 
-					//  e.g.   check   N == cms->Get_v_Gamma(indexcorrelation); // can't do here before ConfigUncertaintyPdfs()
-					//we might allow them different and do rescaling 
-				}
-			}
-			if(pdf==typeShapeGaussianLinearMorph or pdf==typeShapeGaussianQuadraticMorph){
-				cms->AddUncertainty(binnumber[p]-1, subprocess[p], 8, shape, pdf, indexcorrelation );
-			}
-
-			if(pdf==typeFlat){
-					cms->AddUncertainty(binnumber[p]-1, subprocess[p], err, errup, pdf, indexcorrelation );
-			}
-			// because when err < 0, AddUncertainty do nothing,  but filledThisSource has been changed to be true
-			filledThisSource = true;
-		}
-		if(!filledThisSource) {
-			cout<<"WARNING: The "<< s+1 <<"th source of uncertainties are all 0. "<<endl;
-			//FIXME temporarily solution:  when reading a source with all error = 0,  then assign it to be logNormal, error =0,  in UtilsROOT.cc 
-			// to incorporate the MinuitFit.  This ad-hoc fix will slow down the toy generation because there are lots of non-use random numebrs and operations ...
-			// cms->AddUncertainty(0, 0, 0, 1, indexcorrelation );
-			//cms->AddUncertainty(0, 0, 0, 1, indexcorrelation ); //FIXME  no need now, because we use name of uncertainties, 
-			//exit(0);
-		}else{
-			if(pdf!=typeLogNormal)cms->TagUncertaintyFloatInFit(indexcorrelation, bUncIsFloatInFit);
-		}
-		duplicatingLines.push_back(tmps);
-	}
-
-	if(debug) cout<<"filled systematics"<<endl;
-
-	//cms->Print(100);
-	if(debug) {
-		cout<<"start duplicating this card:"<<endl<<endl;
-		for(int i=0; i<duplicatingLines.size(); i++) cout<<duplicatingLines[i]<<endl;
-		cout<<endl<<endl<<"end duplicating this card:"<<endl<<endl;
-	}
-
-	if(nprocesses) delete [] nprocesses;
-
-	return true;
-}
-
-bool ConfigureModel(CountingModel *cms, double mass, const char* fileName, int debug){
+bool ConfigureModel(CountingModel *cms, double mass, const char* fileName, bool bUseHist, int debug){
       TString smass = ""; if(fmod(mass,1)==0) smass.Form("%.0f",mass);else smass.Form("%.1f",mass); 
 	TString s = ReadFile(fileName);
 	cout<<"data card name = "<<fileName<<endl;
 	cms->SetModelName(fileName);
-	return CheckIfDoingShapeAnalysis(cms, mass,  s, debug);
+	return CheckIfDoingShapeAnalysis(cms, mass,  s, bUseHist, debug);
 }
 
 
@@ -2025,7 +1437,9 @@ vector<TString> SplitIntoLines(TString ifileContentStripped, bool debug){
 
 	return lines;
 }
-bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentStripped, vector< vector<string> > parametricShapeLines, vector< vector<string> > uncerlinesAffectingShapes, int debug){
+bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentStripped, 
+		vector< vector<string> > histShapeLines, vector< vector<string> > histShapeUncLines,
+		vector< vector<string> > parametricShapeLines, vector< vector<string> > uncerlinesAffectingShapes, int debug){
       TString smass = ""; if(fmod(mass,1)==0) smass.Form("%.0f",mass);else smass.Form("%.1f",mass); 
 	// channel index starts from 1
 	// systematics source index also starts from 1
@@ -2035,6 +1449,25 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 		}
 		cout<<endl;
 	}
+	printf("\n *** \n");
+	if(debug)for(int i=0; i<histShapeLines.size(); i++){
+		for(int j=0; j<histShapeLines[i].size(); j++){
+			cout<<histShapeLines[i][j]<<" ";
+		}
+		cout<<endl;
+	}
+	bool bUseHist = false;
+	if(histShapeLines.size()){
+		bUseHist=true;
+		printf("\n *** \n");
+		if(debug)for(int i=0; i<histShapeUncLines.size(); i++){
+			for(int j=0; j<histShapeUncLines[i].size(); j++){
+				cout<<histShapeUncLines[i][j]<<" ";
+			}
+			cout<<endl;
+		}
+	}
+
 
 	TString duplicatingCard;
 	vector<TString> duplicatingLines;
@@ -2284,6 +1717,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 
 	if(debug) cout<<"number of independant systematics sources = "<<kmax<<endl;
 
+	int INDEXofProcess = 1, INDEXofChannel=2;
 
 	//  Fill the model with the yields
 	index=0;
@@ -2298,17 +1732,25 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 		if(debug) cout<<" nsigproc["<<c<<"] = "<<nsigproc[c]<<endl;
 
 		bool isParametricChannel = false;
+		bool isHistChannel = false;
 		for(int i=0; i<parametricShapeLines.size(); i++){
 			if(parametricShapeLines[i][2]==channelnames[c]){
 				isParametricChannel = true;
 			}
 		}
+		for(int i=0; i<histShapeLines.size(); i++){
+			if(histShapeLines[i][2]==channelnames[c]){
+				isHistChannel = true;
+			}
+		}
+		if(isParametricChannel and isHistChannel) {cout<<"ERROR: "<<channelnames[c]<<" is both parametric and histogram channel, exit"<<endl; exit(1);}
+
 		if(debug)cout<<" channel ["<<channelnames[c]<<"] isParametricChannel? "<<isParametricChannel<<endl;
-		if(!isParametricChannel){
+		if(!isParametricChannel and !isHistChannel){
 			cms->AddChannel(channelnames[c], sigbkgs, nsigproc[c]);
 			cms->SetProcessNames(channelnames[c], tmpprocn);
 			cms->AddObservedData(channelnames[c], observeddata[c]);
-		}else{
+		}else if(isParametricChannel){
 			if(TString(channelnames[c].substr(0,1)).IsAlpha()==false) {
 				cout<<endl<<"ERROR: channel name ["<<channelnames[c]<<"] has a problem: "<<endl;
 				cout<<"Parametric shape channel name should begin with alphabetai, exit"<<endl;
@@ -2378,6 +1820,74 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 			RooRealVar* x = dynamic_cast<RooRealVar*> (observables->first());
 			cms->AddChannel(channelnames[c], tmpprocn, x, vspdf, vsnorm, vsExtraNorm, vbpdf, vbnorm, vbExtraNorm);
 			cms->AddObservedDataSet(channelnames[c], reducedData);
+		}else if(isHistChannel){
+			vector< vector<string> > shape_ch; //, uncer_ch;	
+			if(TString(channelnames[c].substr(0,1)).IsAlpha()==false) {
+				cout<<endl<<"ERROR: channel name ["<<channelnames[c]<<"] has a problem: "<<endl;
+				cout<<"Histogram shape channel name should begin with alphabetai, exit"<<endl;
+				exit(1);
+			}
+
+			for(int p=0; p<histShapeLines.size(); p++){
+				if(histShapeLines[p][INDEXofChannel]!=channelnames[c] || histShapeLines[p][INDEXofProcess]!="data_obs") continue; // find the signal one
+				if(TString(histShapeLines[p][4]).Contains(":")) continue; // parametric channel, will process later
+
+				shape_ch.clear();
+				for(int q=0; q<histShapeLines.size(); q++){
+					if(histShapeLines[q][INDEXofChannel]==channelnames[c]) shape_ch.push_back(histShapeLines[q]);
+				}
+				//uncer_ch.clear();
+				//for(int q=0; q<shapeuncertainties.size(); q++){
+				//	if(shapeuncertainties[q][INDEXofChannel]==channelnames[c]) uncer_ch.push_back(shapeuncertainties[q]);
+				//}
+			}
+
+			vector<TH1D*> vspdf, vbpdf; vspdf.clear(); vbpdf.clear();
+			for(int i=0; i<sigbkgs.size(); i++){
+				for(int q=0; q<shape_ch.size(); q++){
+					if(shape_ch[q][INDEXofProcess]!=tmpprocn[i]) continue; 
+					TH1D* pdf = (TH1D*)GetTObject(shape_ch[q][3], shape_ch[q][4]);
+
+					if(i<nsigproc[c]){
+						vspdf.push_back(pdf);
+					}else{
+						vbpdf.push_back(pdf);
+					}
+					if(pdf->Integral() == 0) { 
+						cout<<"WARNING: channel ["<<channelnames[c]<<"] process ["<<tmpprocn[i]
+							<<"] is shape, but the norminal histogram->Integral = 0"<<endl;
+						//exit(0);
+					}
+
+					// check if normalization consistent with the rate declared in the data card
+					double tmp_rate = sigbkgs[i];
+					if(tmp_rate<0) {} //don't check normalization of histogram,  users' responsibility 
+					else{ 
+						if(fabs(tmp_rate-pdf->Integral())/pdf->Integral() > 1){ // if difference > 100%, then put Error and exit
+							cout<<"ERROR: in channel ["<<channelnames[c]<<"] process ["<<tmpprocn[i]<<"], ";
+							cout<<" declared rate in data card = "<< tmp_rate<<", not consistent with the integral of input histogram,";
+							cout<<" which is "<<pdf->Integral()<<endl;
+							cout<<" NOTE: if you don't want to check the consistency, you can put \"-\" in the datacard for the rate. "<<endl;
+							cout<<"       In that case, you have the responsibility to make sure the integral (normalization) of histogram makes sense."<<endl;
+							exit(0);
+						}
+					}
+				}
+
+			}	
+			for(int q=0; q<shape_ch.size(); q++){
+				if(shape_ch[q][INDEXofProcess]!="data_obs") continue; 
+				TH1D* data= (TH1D*)GetTObject(shape_ch[q][3], shape_ch[q][4]);
+				if(observeddata[c]>=0 and data->Integral()!=observeddata[c]) {
+					cout<<"ERROR: "<<channelnames[c]<<" data in cards "<<observeddata[c]<<" != hist integral "<<data->Integral()<<endl;
+					cout<<" you can set data to be negative number in the text card, so that the tool won't check and will take the data hist directly. exit"<<endl;
+					exit(1);
+				}
+				cms->AddChannel(channelnames[c], tmpprocn, vspdf, vbpdf);
+				cms->SetProcessNamesTH(channelnames[c], tmpprocn);
+				cms->AddObservedDataTH(channelnames[c], data);
+				break;
+			}
 		}
 	}	
 
@@ -2420,6 +1930,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 		if(sTmp.Contains("[nofloat]")) bUncIsFloatInFit=false;
 		indexcorrelation = sTmp.ReplaceAll("[nofloat]","").Data();
 
+		bool bHistShapeUnc = false;
 
 		int pdf = 0; 
 		// see CountingModel.h
@@ -2427,9 +1938,9 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 		else if(ss[1]=="flat") pdf=typeFlat; // typeFlat
 		else if(ss[1]=="trG") pdf=typeTruncatedGaussian; // typeTruncatedGaussian
 		else if(ss[1]=="gmA" or ss[1]=="gmN" or ss[1]=="gmM") pdf=typeGamma; // typeControlSampleInferredLogNormal;  gmA was chosen randomly, while in gmN, N stands for yield in control sample;  gmM stands for Multiplicative gamma distribution, it implies using a Gamma distribution not for a yield but for a multiplicative correction
-		else if(ss[1]=="shapeN" or ss[1]=="shapeN2" or ss[1]=="shapeStat") pdf=typeLogNormal;
-		else if(ss[1]=="shape" or ss[1]=="shape2" or ss[1]=="shapeQ" or ss[1]=="shape?") pdf=typeShapeGaussianQuadraticMorph;
-		else if(ss[1]=="shapeL" ) pdf=typeShapeGaussianLinearMorph;
+		else if(ss[1]=="shapeN" or ss[1]=="shapeN2" or ss[1]=="shapeStat") { pdf=typeLogNormal; bHistShapeUnc = (bUseHist?true:false); } 
+		else if(ss[1]=="shape" or ss[1]=="shape2" or ss[1]=="shapeQ" or ss[1]=="shape?") { pdf=typeShapeGaussianQuadraticMorph; bHistShapeUnc=(bUseHist?true:false);}
+		else if(ss[1]=="shapeL" ) { pdf=typeShapeGaussianLinearMorph; bHistShapeUnc= (bUseHist?true:false);}
 		else if(ss[1]=="param" ) {
 			pdf=typeBifurcatedGaussian;
 			vshape_params_unclines.push_back(ss);
@@ -2471,9 +1982,15 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 
 			string channelName = channelnames[binnumber[p]-1];
 			bool isParametricChannel = false;
+			bool isHistChannel = false;
 			for(int i=0; i<parametricShapeLines.size(); i++){
 				if(parametricShapeLines[i][2]==channelName){
 					isParametricChannel = true;
+				}
+			}
+			for(int i=0; i<histShapeLines.size(); i++){
+				if(histShapeLines[i][2]==channelName){
+					isHistChannel = true;
 				}
 			}
 
@@ -2547,12 +2064,13 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 					tmps+= "    -   ";
 					continue;
 				}
-				if(TString(ss[p+2]).Contains("/")){
+				if(TString(ss[p+2]).Contains("/") ){
+					// uncer params:  down, up, norminal, normlization_of_main_histogram,  uncertainty_down_onNorm, uncertainty_up_onNorm, scale_down_of_gaussian,  siglebin_or_binned
 					vector<string> params; params.clear();
 					StringSplit(params, ss[p+2], "/");
 					if(params.size()==7) {
 						for(int i=0; i<7; i++) shape[i]=TString(params[i]).Atof();
-						shape[7]=1.;
+						shape[7]=1.; // binned
 					}else if(params.size()==2){
 						pdf = typeLogNormal; // FIXME  if "shape" also affect single cut and count or parametric channel, then tranfer it to LogNormal 
 						for(int i=0; i<6; i++) {
@@ -2569,7 +2087,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 							errup = TString(params[1]).Atof() -1.;
 
 						shape[6]=0;
-						shape[7]=0;
+						shape[7]=0;// cut_and_count
 					}else { cout<<"ERROR: typeShape input format not correct "<<endl; exit(0);}
 				}else{
 					for(int i=0; i<4; i++) {
@@ -2579,7 +2097,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 					shape[5]=shape[4];
 					shape[6]=0;
 					shape[7]=0;
-					pdf = typeLogNormal;
+					if(isHistChannel and bHistShapeUnc){}else pdf = typeLogNormal;
 					err = TString(ss[p+2]).Atof()-1;
 					errup = err;
 				}
@@ -2620,15 +2138,109 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 			//if(debug)cout<<" To add unc"<<endl;
 
 			//cout<<" DELETEME 1 pdftype: "<<pdf<<endl;
-			if(pdf==typeLogNormal||pdf==typeTruncatedGaussian || (pdf==typeFlat && ss[1]=="flat")){
+			if( pdf==typeLogNormal ||pdf==typeTruncatedGaussian || (pdf==typeFlat && ss[1]=="flat")){
 				if(isParametricChannel)cms->AddUncertaintyOnShapeNorm(channelName, subprocess[p], err, errup, pdf, indexcorrelation );
-				else {
-					if(ss[1]=="shapeStat"){
-						TString stmpunc = indexcorrelation; stmpunc+=channelName; stmpunc+=subprocess[p];
-						cms->AddUncertainty(channelName, subprocess[p], err, errup, pdf, stmpunc.Data() );
-						cms->TagUncertaintyFloatInFit(stmpunc.Data(), bUncIsFloatInFit);
-					}else{	cms->AddUncertainty(channelName, subprocess[p], err, errup, pdf, indexcorrelation );
-						cms->TagUncertaintyFloatInFit(indexcorrelation, bUncIsFloatInFit);
+				else { 
+					if(!isHistChannel){
+						if(ss[1]=="shapeStat"){
+							TString stmpunc = indexcorrelation; stmpunc+=channelName; stmpunc+=subprocess[p];
+							cms->AddUncertainty(channelName, subprocess[p], err, errup, pdf, stmpunc.Data() );
+							cms->TagUncertaintyFloatInFit(stmpunc.Data(), bUncIsFloatInFit);
+						}else{	cms->AddUncertainty(channelName, subprocess[p], err, errup, pdf, indexcorrelation );
+							cms->TagUncertaintyFloatInFit(indexcorrelation, bUncIsFloatInFit);
+						}
+					}else{
+						TString sunc = ss[p+2];
+						if(bHistShapeUnc and sunc.IsFloat() && sunc.Atof()>0){
+							double scaleUnc  = sunc.Atof();
+							bool filled = false;
+							for(int i=0; i<histShapeUncLines.size(); i++){ // look for the histograms from the list 
+								if( histShapeUncLines[i][INDEXofChannel]==channelName and
+										histShapeUncLines[i][INDEXofProcess]==processnames[p]
+										and histShapeUncLines[i][4]==ss[0]){
+									TH1D * hunc_up= (TH1D*)GetTObject(histShapeUncLines[i][3], histShapeUncLines[i][5]);
+									if(hunc_up==NULL) continue;
+
+									TH1D *hn= cms->GetExpectedTH(channelName, processnames[p]);	
+									if(hn==NULL) {
+										cout<<" channle ["<<channelName<<"] proc ["<<processnames[p]<<"]"<<" histogram is not found "<<endl;
+										exit(1);
+									}
+									TString sname  = "del_clone";
+									TH1D* hnorm=(TH1D*)hn->Clone(sname);
+									if(hn->Integral()!=0)hnorm->Scale(1./hn->Integral());
+
+									if(hunc_up->Integral()== 0 && hnorm->Integral()!=0) { 
+										cout<<" hnorm "<<hnorm->GetName()<<": integral = "<<hnorm->Integral()<<endl;
+										cout<<"ERROR: channel ["<<channelName<<"] process ["<<processnames[p]
+											<<"] is shape, but the up_shift histogram->Integral = 0"<<endl;
+										exit(1);
+									}
+									TH1D* hunc_dn= (TH1D*)GetTObject(histShapeUncLines[i][3], histShapeUncLines[i][6]);
+									if(hunc_dn==NULL) continue;
+									if(hunc_dn->Integral()== 0 && hnorm->Integral()!=0) { 
+										cout<<"ERROR: channel ["<<channelName<<"] process ["<<processnames[p]
+											<<"] is shape, but the down_shift histogram->Integral = 0"<<endl;
+										exit(1);
+									}
+									sname  = "up_clone"; //sname+=t; sname+=u;
+									TH1D* hunc_up_norm=(TH1D*)hunc_up->Clone(sname);
+									if(hunc_up->Integral()!=0)hunc_up_norm->Scale(1./hunc_up->Integral());
+									sname  = "dn_clone"; //sname+=t; sname+=u;
+									TH1D* hunc_dn_norm=(TH1D*)hunc_dn->Clone(sname);
+									if(hunc_dn->Integral()!=0)hunc_dn_norm->Scale(1./hunc_dn->Integral());
+
+									if(hnorm->Integral()==0){
+										cout<<" DEBUGGGGGGG 2"<<endl;
+										for(int ii=0; ii<=hunc_up_norm->GetNbinsX(); ii++){
+											hunc_dn_norm->SetBinContent(ii,0);
+											hunc_up_norm->SetBinContent(ii,0);
+										}
+									}
+									if(0&&debug){
+										cout<<"channel ["<<channelName<<"] process ["<<processnames[p]<<": sys."<<ss[0]<<endl;
+										cout<<hnorm->GetName()<<":"<<hnorm->Integral()<<endl;
+										cout<<hunc_dn_norm->GetName()<<":"<<hunc_dn_norm->Integral()<<endl;
+										cout<<hunc_up_norm->GetName()<<":"<<hunc_up_norm->Integral()<<endl;
+									}
+									if(filled) {cout<<" filling twice c:"<<channelName<<" p:"<<processnames[p]<<" sys:"<<ss[0]<<endl; exit(1);}
+									filled = true;
+
+									// shapeN, shapeN2, or shapeStat(?) 
+									for(int b=1;b<=hunc_up_norm->GetNbinsX(); b++){
+										hunc_up_norm->SetBinContent(b, hnorm->GetBinContent(b)==0?1:hunc_up_norm->GetBinContent(b)/hnorm->GetBinContent(b));
+										hunc_dn_norm->SetBinContent(b, hnorm->GetBinContent(b)==0?1:hunc_dn_norm->GetBinContent(b)/hnorm->GetBinContent(b));
+									}
+
+
+									vector<TH1D*> vunc; vunc.clear();
+									vunc.push_back(hunc_dn_norm);
+									vunc.push_back(hunc_up_norm);
+
+									//vunc.push_back(hnorm);
+									//TH1D* htmp = new TH1D("htmp","htmp", 1,0,1);
+									//htmp->SetBinContent(1,hn->Integral());
+									//vunc.push_back((TH1D*)htmp->Clone());
+									//htmp->SetBinContent(1,hunc_dn->Integral()/hn->Integral());
+									//vunc.push_back((TH1D*)htmp->Clone());
+									//htmp->SetBinContent(1,hunc_up->Integral()/hn->Integral());
+									//vunc.push_back((TH1D*)htmp->Clone());
+									//htmp->SetBinContent(1,scaleUnc);
+									//vunc.push_back((TH1D*)htmp->Clone());
+
+									cms->AddUncertaintyTH(channelName, subprocess[p], vunc, pdf, indexcorrelation);
+									cms->TagUncertaintyFloatInFit(indexcorrelation, bUncIsFloatInFit);
+								}
+							}	
+							if(!filled and !TString(ss[1]).Contains("?")) {
+								cout<<"ERROR channel ["<<channelName<<"] process ["<<processnames[p]<<"] sys ["<<ss[0]
+									<<"] is shape uncertainty, we need corresponding histogram "<<endl;
+								exit(1);
+							}
+						}else{
+							cms->AddUncertaintyTH(channelName, subprocess[p], err, errup, pdf, indexcorrelation );
+							cms->TagUncertaintyFloatInFit(indexcorrelation, bUncIsFloatInFit);
+						}
 					}
 				}
 				filledThisSource = true;
@@ -2643,30 +2255,140 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 					}
 					//if(debug)cout<<" ch "<<channelName<<", subp  "<<p<<" "<<" rho="<<rho<<" N="<<N<<" indexcorrelation="<<indexcorrelation<<endl;
 					if(isParametricChannel)cms->AddUncertaintyOnShapeNorm(channelName, subprocess[p], rho, 0, N, pdf, indexcorrelation );
-					else cms->AddUncertainty(channelName, subprocess[p], rho, 0, N, pdf, indexcorrelation );
+					else if(isHistChannel){
+						cms->AddUncertaintyTH(channelName, subprocess[p], rho, 0, N, pdf, indexcorrelation );
+					}else 
+						cms->AddUncertainty(channelName, subprocess[p], rho, 0, N, pdf, indexcorrelation );
 					//FIXME  here need to check:  rho*N == cms->GetExpectedNumber(channelName, subprocess[p]);
 				}
 				else if(ss[1]=="gmM"){
 					double N = 1./err/err-1; // we use convention: mean of events is 1./err/err,  so we do "-1" here, and then add back "1"  in src/CountingModel.cc
 					//double N = (int) (1./err/err);
 					if(isParametricChannel)cms->AddUncertaintyOnShapeNorm(channelName, subprocess[p], -1, 0, N, pdf, indexcorrelation ); // use "rho = -1" here to imply that this gamma term is not for control sample inferred uncertainties, but multiplicative gamma function ....
-					else cms->AddUncertainty(channelName, subprocess[p], -1, 0, N, pdf, indexcorrelation ); // use "rho = -1" here to imply that this gamma term is not for control sample inferred uncertainties, but multiplicative gamma function ....
+					else if(isHistChannel){
+						cms->AddUncertaintyTH(channelName, subprocess[p], -1, 0, N, pdf, indexcorrelation ); 
+					}else cms->AddUncertainty(channelName, subprocess[p], -1, 0, N, pdf, indexcorrelation ); // use "rho = -1" here to imply that this gamma term is not for control sample inferred uncertainties, but multiplicative gamma function ....
 					//FIXME  here need to check:  all uncertainties with same indexcorrelation are the same,   can't be different currently ... 
 					//  e.g.   check   N == cms->Get_v_Gamma(indexcorrelation); // can't do here before ConfigUncertaintyPdfs()
 					//we might allow them different and do rescaling 
 				}
 				//if(debug)cout<<"  added  gamma "<<endl;
-			filledThisSource = true;
+				filledThisSource = true;
 			}
-			if(pdf==typeShapeGaussianLinearMorph or pdf==typeShapeGaussianQuadraticMorph){
-				if(isParametricChannel) { cout<< "WARNING  Morph is not working for parametric shape input ,  will skip  this uncertainty" << endl; continue; };
-				cms->AddUncertainty(channelName, subprocess[p], 8, shape, pdf, indexcorrelation );
-			filledThisSource = true;
+			if(pdf==typeShapeGaussianLinearMorph or pdf==typeShapeGaussianQuadraticMorph ){
+				if(isParametricChannel) { cout<< "WARNING  Morph is not working for parametric shape input ,  will skip  this uncertainty" << endl; continue; }
+				else{
+					if(!bUseHist)cms->AddUncertainty(channelName, subprocess[p], 8, shape, pdf, indexcorrelation );
+					else{
+						TString sunc = ss[p+2];
+						if(bHistShapeUnc and isHistChannel and sunc.IsFloat() && sunc.Atof()>0){
+							double scaleUnc  = sunc.Atof();
+							bool filled = false;
+							for(int i=0; i<histShapeUncLines.size(); i++){ // look for the histograms from the list 
+								if( histShapeUncLines[i][INDEXofChannel]==channelName and
+										histShapeUncLines[i][INDEXofProcess]==processnames[p]
+										and histShapeUncLines[i][4]==ss[0]){
+									TH1D * hunc_up= (TH1D*)GetTObject(histShapeUncLines[i][3], histShapeUncLines[i][5]);
+									if(hunc_up==NULL) continue;
+
+									TH1D *hn= cms->GetExpectedTH(channelName, processnames[p]);	
+									if(hn==NULL) {
+										cout<<" channle ["<<channelName<<"] proc ["<<processnames[p]<<"]"<<" histogram is not found "<<endl;
+										exit(1);
+									}
+									TString sname  = "del_clone";
+									TH1D* hnorm=(TH1D*)hn->Clone(sname);
+									if(hn->Integral()!=0)hnorm->Scale(1./hn->Integral());
+
+									if(hunc_up->Integral()== 0 && hnorm->Integral()!=0) { 
+										cout<<" hnorm "<<hnorm->GetName()<<": integral = "<<hnorm->Integral()<<endl;
+										cout<<"ERROR: channel ["<<channelName<<"] process ["<<processnames[p]
+											<<"] is shape, but the up_shift histogram->Integral = 0"<<endl;
+										exit(1);
+									}
+									TH1D* hunc_dn= (TH1D*)GetTObject(histShapeUncLines[i][3], histShapeUncLines[i][6]);
+									if(hunc_dn==NULL) continue;
+									if(hunc_dn->Integral()== 0 && hnorm->Integral()!=0) { 
+										cout<<"ERROR: channel ["<<channelName<<"] process ["<<processnames[p]
+											<<"] is shape, but the down_shift histogram->Integral = 0"<<endl;
+										exit(1);
+									}
+									sname  = "up_clone"; //sname+=t; sname+=u;
+									TH1D* hunc_up_norm=(TH1D*)hunc_up->Clone(sname);
+									if(hunc_up->Integral()!=0)hunc_up_norm->Scale(1./hunc_up->Integral());
+									sname  = "dn_clone"; //sname+=t; sname+=u;
+									TH1D* hunc_dn_norm=(TH1D*)hunc_dn->Clone(sname);
+									if(hunc_dn->Integral()!=0)hunc_dn_norm->Scale(1./hunc_dn->Integral());
+
+									if(hnorm->Integral()==0){
+										cout<<" DEBUGGGGGGG 2"<<endl;
+										for(int ii=0; ii<=hunc_up_norm->GetNbinsX(); ii++){
+											hunc_dn_norm->SetBinContent(ii,0);
+											hunc_up_norm->SetBinContent(ii,0);
+										}
+									}
+									if(0&&debug){
+										cout<<"channel ["<<channelName<<"] process ["<<processnames[p]<<": sys."<<ss[0]<<endl;
+										cout<<hnorm->GetName()<<":"<<hnorm->Integral()<<endl;
+										cout<<hunc_dn_norm->GetName()<<":"<<hunc_dn_norm->Integral()<<endl;
+										cout<<hunc_up_norm->GetName()<<":"<<hunc_up_norm->Integral()<<endl;
+									}
+									if(filled) {cout<<" filling twice c:"<<channelName<<" p:"<<processnames[p]<<" sys:"<<ss[0]<<endl; exit(1);}
+									filled = true;
+
+									// shapeN, shapeN2, or shapeStat(?) 
+									//for(int b=1;b<=hunc_up_norm->GetNbinsX(); b++){
+									//	hunc_up_norm->SetBinContent(b, hnorm->GetBinContent(b)==0?1:hunc_up_norm->GetBinContent(b)/hnorm->GetBinContent(b));
+									//	hunc_dn_norm->SetBinContent(b, hnorm->GetBinContent(b)==0?1:hunc_dn_norm->GetBinContent(b)/hnorm->GetBinContent(b));
+									//}
+									
+									//vs_unc[u]+=down; vs_unc[u] += "/";
+									//stmp.Form("%g",up);
+									//vs_unc[u]+=stmp; vs_unc[u] += "/";
+									//stmp.Form("%g",norminal);
+									//vs_unc[u]+=stmp; vs_unc[u] += "/";
+									//stmp.Form("%g",norm_norminal);
+									//vs_unc[u]+=stmp; vs_unc[u] += "/";
+									//stmp.Form("%g",norm_down/norm_norminal);
+									//vs_unc[u]+=stmp; vs_unc[u] += "/";
+									//stmp.Form("%g",norm_up/norm_norminal);
+									//vs_unc[u]+=stmp; vs_unc[u] += "/";
+									//vs_unc[u]+=unc; vs_unc[u] += " ";
+									
+									// shape, shapeL, shapeQ
+									vector<TH1D*> vunc; vunc.clear();
+									vunc.push_back(hunc_dn_norm);
+									vunc.push_back(hunc_up_norm);
+									vunc.push_back(hnorm);
+									TH1D* htmp = new TH1D("htmp","htmp", 1,0,1);
+									htmp->SetBinContent(1,hn->Integral());
+									vunc.push_back((TH1D*)htmp->Clone());
+									htmp->SetBinContent(1,hunc_dn->Integral()/hn->Integral());
+									vunc.push_back((TH1D*)htmp->Clone());
+									htmp->SetBinContent(1,hunc_up->Integral()/hn->Integral());
+									vunc.push_back((TH1D*)htmp->Clone());
+									htmp->SetBinContent(1,scaleUnc);
+									vunc.push_back((TH1D*)htmp->Clone());
+									delete htmp;
+
+									cms->AddUncertaintyTH(channelName, subprocess[p], vunc, pdf, indexcorrelation);
+								}
+							}	
+							if(!filled and !TString(ss[1]).Contains("?")) {
+								cout<<"ERROR channel ["<<channelName<<"] process ["<<processnames[p]<<"] sys ["<<ss[0]
+									<<"] is shape uncertainty, we need corresponding histogram "<<endl;
+								exit(1);
+							}
+
+						}
+					}
+				}
+				filledThisSource = true;
 			}
 
 		}
 		if(!filledThisSource) {
-			cout<<"WARNING: The "<< s+1 <<"th source of uncertainties are all 0. "<<endl;
+			if(debug)cout<<"WARNING: The "<< s+1 <<"th source of uncertainties are all 0. "<<endl;
 		}else{
 			if(pdf!=typeLogNormal)cms->TagUncertaintyFloatInFit(indexcorrelation, bUncIsFloatInFit);
 		}
