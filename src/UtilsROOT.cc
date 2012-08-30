@@ -76,6 +76,16 @@ TTree * LoadTreeBonly(TString filename, TString & treeName){
 	return tb;
 
 }
+TObject* GetTObjectA(string filename, string objname){ // return TObject no matter what you find or not 
+	TObject *h;
+	if( gSystem->AccessPathName(filename.c_str())) {cout<<filename<<" couldn't be found"<<endl; return h;};
+	TFile *f;
+	f = (TFile*)gROOT->GetListOfFiles()->FindObject(filename.c_str());
+	if(f==NULL) f=new TFile(filename.c_str());
+	h = (TObject*)f->Get(objname.c_str());
+	//if(!h) {cout<<"object ["<<objname<<"] in file ["<<filename<<"] couldn't be found"<<endl; exit(0);};
+	return h;
+}
 TObject* GetTObject(string filename, string objname){
 
 	cout<<" GetTObject "<<filename.c_str()<<" "<<objname.c_str()<<endl;
@@ -2158,7 +2168,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 								if( histShapeUncLines[i][INDEXofChannel]==channelName and
 										histShapeUncLines[i][INDEXofProcess]==processnames[p]
 										and histShapeUncLines[i][4]==ss[0]){
-									TH1D * hunc_up= (TH1D*)GetTObject(histShapeUncLines[i][3], histShapeUncLines[i][5]);
+									TH1D * hunc_up= (TH1D*)GetTObjectA(histShapeUncLines[i][3], histShapeUncLines[i][5]);
 									if(hunc_up==NULL) continue;
 
 									TH1D *hn= cms->GetExpectedTH(channelName, processnames[p]);	
@@ -2176,7 +2186,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 											<<"] is shape, but the up_shift histogram->Integral = 0"<<endl;
 										exit(1);
 									}
-									TH1D* hunc_dn= (TH1D*)GetTObject(histShapeUncLines[i][3], histShapeUncLines[i][6]);
+									TH1D* hunc_dn= (TH1D*)GetTObjectA(histShapeUncLines[i][3], histShapeUncLines[i][6]);
 									if(hunc_dn==NULL) continue;
 									if(hunc_dn->Integral()== 0 && hnorm->Integral()!=0) { 
 										cout<<"ERROR: channel ["<<channelName<<"] process ["<<processnames[p]
@@ -2288,7 +2298,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 								if( histShapeUncLines[i][INDEXofChannel]==channelName and
 										histShapeUncLines[i][INDEXofProcess]==processnames[p]
 										and histShapeUncLines[i][4]==ss[0]){
-									TH1D * hunc_up= (TH1D*)GetTObject(histShapeUncLines[i][3], histShapeUncLines[i][5]);
+									TH1D * hunc_up= (TH1D*)GetTObjectA(histShapeUncLines[i][3], histShapeUncLines[i][5]);
 									if(hunc_up==NULL) continue;
 
 									TH1D *hn= cms->GetExpectedTH(channelName, processnames[p]);	
@@ -2306,7 +2316,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 											<<"] is shape, but the up_shift histogram->Integral = 0"<<endl;
 										exit(1);
 									}
-									TH1D* hunc_dn= (TH1D*)GetTObject(histShapeUncLines[i][3], histShapeUncLines[i][6]);
+									TH1D* hunc_dn= (TH1D*)GetTObjectA(histShapeUncLines[i][3], histShapeUncLines[i][6]);
 									if(hunc_dn==NULL) continue;
 									if(hunc_dn->Integral()== 0 && hnorm->Integral()!=0) { 
 										cout<<"ERROR: channel ["<<channelName<<"] process ["<<processnames[p]
