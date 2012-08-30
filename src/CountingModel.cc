@@ -5046,18 +5046,18 @@ If we need to change it later, it will be easy to do.
 	    vector<int> vidcorrl; vidcorrl.clear();
 
 	    for(int i=0; i<sigTHs.size(); i++){
-		    vsigbkgs.push_back((TH1D*)sigTHs[i]->Clone());
-		    vsigbkgs2.push_back((TH1D*)sigTHs[i]->Clone());
-		    vsigbkgs3.push_back((TH1D*)sigTHs[i]->Clone());
+		    vsigbkgs.push_back((TH1D*)sigTHs[i]->Clone(sigTHs[i]->GetName()+TString(i)+"_0"));
+		    vsigbkgs2.push_back((TH1D*)sigTHs[i]->Clone(sigTHs[i]->GetName()+TString(i)+"_2"));
+		    vsigbkgs3.push_back((TH1D*)sigTHs[i]->Clone(sigTHs[i]->GetName()+TString(i)+"_3"));
 		    vvvuncpar.push_back(vvunc);
 		    vvpdftype.push_back(vpdftype);
 		    vvidcorrl.push_back(vidcorrl);
 	    }
 
 	    for(int i=0; i<bkgTHs.size(); i++){
-		    vsigbkgs.push_back((TH1D*)bkgTHs[i]->Clone());
-		    vsigbkgs2.push_back((TH1D*)bkgTHs[i]->Clone());
-		    vsigbkgs3.push_back((TH1D*)bkgTHs[i]->Clone());
+		    vsigbkgs.push_back((TH1D*)bkgTHs[i]->Clone(bkgTHs[i]->GetName()+TString(i)+"_0"));
+		    vsigbkgs2.push_back((TH1D*)bkgTHs[i]->Clone(bkgTHs[i]->GetName()+TString(i)+"_2"));
+		    vsigbkgs3.push_back((TH1D*)bkgTHs[i]->Clone(bkgTHs[i]->GetName()+TString(i)+"_3"));
 		    vvvuncpar.push_back(vvunc);
 		    vvpdftype.push_back(vpdftype);
 		    vvidcorrl.push_back(vidcorrl);
@@ -5070,8 +5070,8 @@ If we need to change it later, it will be easy to do.
 	    vv_exp_sigbkgs_th.push_back(vsigbkgs);
 	    vv_exp_sigbkgs_scaled_th.push_back(vsigbkgs2);
 	    vv_sigbkgs_varied_th.push_back(vsigbkgs3);
-	    v_data_th.push_back((TH1D*)tmp_totbkg->Clone());	
-	    v_data_real_th.push_back((TH1D*)tmp_totbkg->Clone());	
+	    v_data_th.push_back((TH1D*)tmp_totbkg->Clone("data_"+TString(channel_name)+"_0"));	
+	    v_data_real_th.push_back((TH1D*)tmp_totbkg->Clone("data_"+TString(channel_name)+"_1"));	
 
 	    for(int i=0; i<vsigbkgs.size();i++){
 		for(int b=1; b<=vsigbkgs[i]->GetNbinsX(); b++ ){
@@ -5149,17 +5149,17 @@ If we need to change it later, it will be easy to do.
 		    if(index_correlation==vvv_idcorrl_th.at(index_channel).at(index_sample).at(i)) { cout<<" Warning adding Coupling  Already In the list "<<endl; return;}
 	    }
 
-	    TH1D* htmp = new TH1D("htmp","htmp", 1, 0, 1);// FIXME  memory leak
+	    TH1D* htmp = new TH1D(TString(c)+TString(index_sample)+TString(uncname)+"htmp","htmp", 1, 0, 1);// FIXME  memory leak
 
 	    if(pdf_type==typeFlat){
 		    vunc.clear();
 		    htmp->SetBinContent(1, 0.5);
-		    vunc.push_back((TH1D*)htmp->Clone()); 
+		    vunc.push_back((TH1D*)htmp->Clone(TString(c)+TString(index_sample)+TString(uncname))); 
 	    }
 	    htmp->SetBinContent(1, uncertainty_in_relative_fraction_down);
-	    vunc.push_back((TH1D*)htmp->Clone());
+	    vunc.push_back((TH1D*)htmp->Clone(TString(c)+TString(index_sample)+TString(uncname)+"_d"));
 	    htmp->SetBinContent(1, uncertainty_in_relative_fraction_up);
-	    vunc.push_back((TH1D*)htmp->Clone());
+	    vunc.push_back((TH1D*)htmp->Clone(TString(c)+TString(index_sample)+TString(uncname)+"_u"));
 	    vvvv_uncpar_th.at(index_channel).at(index_sample).push_back(vunc);
 	    vvv_pdftype_th.at(index_channel).at(index_sample).push_back(pdf_type);
 	    vvv_idcorrl_th.at(index_channel).at(index_sample).push_back(index_correlation);
@@ -5265,13 +5265,13 @@ If we need to change it later, it will be easy to do.
 		    exit(0);
 	    }
 	    vector<TH1D*> vunc; vunc.clear();
-	    TH1D* htmp = new TH1D("htmp","htmp", 1, 0, 1);// FIXME  memory leak
+	    TH1D* htmp = new TH1D(TString(c)+TString(index_sample)+TString(uncname)+"htmp","htmp", 1, 0, 1);// FIXME  memory leak
 	    htmp->SetBinContent(1,rho);
-	    vunc.push_back((TH1D*)htmp->Clone());  // if rho<0, it means this gamma term is for multiplicative gamma function...
+	    vunc.push_back((TH1D*)htmp->Clone(TString(c)+TString(index_sample)+TString(uncname)+"_rho"));  // if rho<0, it means this gamma term is for multiplicative gamma function...
 	    htmp->SetBinContent(1,rho_err);
-	    vunc.push_back((TH1D*)htmp->Clone());  // if rho<0, it means this gamma term is for multiplicative gamma function...
+	    vunc.push_back((TH1D*)htmp->Clone(TString(c)+TString(index_sample)+TString(uncname)+"_rhoerr"));  // if rho<0, it means this gamma term is for multiplicative gamma function...
 	    htmp->SetBinContent(1,B);
-	    vunc.push_back((TH1D*)htmp->Clone());  // if rho<0, it means this gamma term is for multiplicative gamma function...
+	    vunc.push_back((TH1D*)htmp->Clone(TString(c)+TString(index_sample)+TString(uncname)+"_B"));  // if rho<0, it means this gamma term is for multiplicative gamma function...
 	    vvvv_uncpar_th.at(index_channel).at(index_sample).push_back(vunc);
 	    vvv_pdftype_th.at(index_channel).at(index_sample).push_back(pdf_type);
 	    vvv_idcorrl_th.at(index_channel).at(index_sample).push_back(index_correlation);
@@ -5287,16 +5287,16 @@ If we need to change it later, it will be easy to do.
 
     }
     void CountingModel::AddObservedDataTH(int index_channel, TH1D* th){
-        v_data_th.at(index_channel)=(TH1D*)th->Clone();
-        v_data_real_th.at(index_channel)=(TH1D*)th->Clone();
+        v_data_th.at(index_channel)=(TH1D*)th->Clone(TString(th->GetName())+"_c1");
+        v_data_real_th.at(index_channel)=(TH1D*)th->Clone(TString(th->GetName())+"_c2");
     }
     void CountingModel::AddObservedDataTH(string c, TH1D* th){
         int index_channel = -1;
         for(int i=0; i<v_channelname_th.size(); i++){
             if(v_channelname_th[i]==c) index_channel=i;
         }
-        v_data_th.at(index_channel)=(TH1D*)th->Clone();
-        v_data_real_th.at(index_channel)=(TH1D*)th->Clone();
+        v_data_th.at(index_channel)=(TH1D*)th->Clone(TString(th->GetName())+"_c1");
+        v_data_real_th.at(index_channel)=(TH1D*)th->Clone(TString(th->GetName())+"_c1");
     }
 
     void CountingModel::SetProcessNamesTH(int index_channel, vector<string> vproc){

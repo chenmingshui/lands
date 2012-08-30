@@ -2176,7 +2176,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 										cout<<" channle ["<<channelName<<"] proc ["<<processnames[p]<<"]"<<" histogram is not found "<<endl;
 										exit(1);
 									}
-									TString sname  = "del_clone";
+									TString sname  = "del_clone"; sname+=i;
 									TH1D* hnorm=(TH1D*)hn->Clone(sname);
 									if(hn->Integral()!=0)hnorm->Scale(1./hn->Integral());
 
@@ -2193,10 +2193,10 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 											<<"] is shape, but the down_shift histogram->Integral = 0"<<endl;
 										exit(1);
 									}
-									sname  = "up_clone"; //sname+=t; sname+=u;
+									sname  = "hup_clone"; sname+=i; sname+=p;
 									TH1D* hunc_up_norm=(TH1D*)hunc_up->Clone(sname);
 									if(hunc_up->Integral()!=0)hunc_up_norm->Scale(1./hunc_up->Integral());
-									sname  = "dn_clone"; //sname+=t; sname+=u;
+									sname  = "hdn_clone"; sname+=i; sname+=p;
 									TH1D* hunc_dn_norm=(TH1D*)hunc_dn->Clone(sname);
 									if(hunc_dn->Integral()!=0)hunc_dn_norm->Scale(1./hunc_dn->Integral());
 
@@ -2306,7 +2306,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 										cout<<" channle ["<<channelName<<"] proc ["<<processnames[p]<<"]"<<" histogram is not found "<<endl;
 										exit(1);
 									}
-									TString sname  = "del_clone";
+									TString sname  = "ddel_clone"; sname+=i;
 									TH1D* hnorm=(TH1D*)hn->Clone(sname);
 									if(hn->Integral()!=0)hnorm->Scale(1./hn->Integral());
 
@@ -2323,10 +2323,10 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 											<<"] is shape, but the down_shift histogram->Integral = 0"<<endl;
 										exit(1);
 									}
-									sname  = "up_clone"; //sname+=t; sname+=u;
+									sname  = "hhup_clone"; sname+=i; sname+=p;
 									TH1D* hunc_up_norm=(TH1D*)hunc_up->Clone(sname);
 									if(hunc_up->Integral()!=0)hunc_up_norm->Scale(1./hunc_up->Integral());
-									sname  = "dn_clone"; //sname+=t; sname+=u;
+									sname  = "hhdn_clone"; sname+=i; sname+=p;
 									TH1D* hunc_dn_norm=(TH1D*)hunc_dn->Clone(sname);
 									if(hunc_dn->Integral()!=0)hunc_dn_norm->Scale(1./hunc_dn->Integral());
 
@@ -2370,14 +2370,19 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 									vunc.push_back(hunc_dn_norm);
 									vunc.push_back(hunc_up_norm);
 									vunc.push_back(hnorm);
-									TH1D* htmp = new TH1D("htmp","htmp", 1,0,1);
+									TString stmp = channelName; stmp+="_"; stmp+=p;stmp+=s; stmp+=i;
+									TH1D* htmp = new TH1D(stmp,"htmp", 1,0,1);
 									htmp->SetBinContent(1,hn->Integral());
-									vunc.push_back((TH1D*)htmp->Clone());
+									stmp = "htmp"; stmp+=p; stmp+=s; stmp+=i; stmp+="_0";
+									vunc.push_back((TH1D*)htmp->Clone(stmp));
 									htmp->SetBinContent(1,hunc_dn->Integral()/hn->Integral());
+									stmp = "htmp"; stmp+=p; stmp+=s; stmp+=i; stmp+="_1";
 									vunc.push_back((TH1D*)htmp->Clone());
 									htmp->SetBinContent(1,hunc_up->Integral()/hn->Integral());
+									stmp = "htmp"; stmp+=p; stmp+=s; stmp+=i; stmp+="_2";
 									vunc.push_back((TH1D*)htmp->Clone());
 									htmp->SetBinContent(1,scaleUnc);
+									stmp = "htmp"; stmp+=p; stmp+=s; stmp+=i; stmp+="_3";
 									vunc.push_back((TH1D*)htmp->Clone());
 									delete htmp;
 
