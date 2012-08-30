@@ -45,6 +45,7 @@ TString GetWordFromLine(TString line, int index, string delim = " ");
 TTree * LoadTreeBonly(TString filename, TString & treeName);
 TH1F* GetHisto(string filename, string histoname);
 TObject* GetTObject(string filename, string objname);
+TObject* GetTObjectA(string filename, string objname);
 bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentStripped,
 		vector< vector<string> > histShapeLines, vector< vector<string> > histShapeUncLines,
 		vector< vector<string> > parametricShapeLines,  vector< vector<string> > uncerlinesAffectingShapes,  int debug=0);
