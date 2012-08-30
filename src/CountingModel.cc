@@ -150,6 +150,7 @@ namespace lands{
         vv_statusUpdated.clear();
         vvp_connectNuisBinProc.clear();
         vvp_pdfs_connectNuisBinProc.clear();
+        vvp_pdfsNorm_connectNuisBinProc.clear();
 
 	_bFixingPOIs = false;
 	vsPOIsToBeFixed.clear();
@@ -278,8 +279,9 @@ namespace lands{
         vv_pdfs_statusUpdated.clear();
         v_pdfs_statusUpdated.clear();
         vv_statusUpdated.clear();
-        vvp_connectNuisBinProc.clear();
         vvp_pdfs_connectNuisBinProc.clear();
+        vvp_pdfsNorm_connectNuisBinProc.clear();
+        vvp_connectNuisBinProc.clear();
 
 	v_Pars.clear();
 	v_flatparId.clear();
@@ -759,6 +761,7 @@ namespace lands{
 
         vvp_connectNuisBinProc.clear();
         vvp_pdfs_connectNuisBinProc.clear();
+        vvp_pdfsNorm_connectNuisBinProc.clear();
         vvp_th_connectNuisBinProc.clear();
 
         for(int ch=0; ch<vvv_idcorrl.size(); ch++){
@@ -797,9 +800,11 @@ namespace lands{
 
         vvp_connectNuisBinProc.clear();
         vvp_pdfs_connectNuisBinProc.clear();
+        vvp_pdfsNorm_connectNuisBinProc.clear();
         vvp_th_connectNuisBinProc.clear();
         vvp_connectNuisBinProc.resize(max_uncorrelation+1);
         vvp_pdfs_connectNuisBinProc.resize(max_uncorrelation+1);// including the signal strength
+        vvp_pdfsNorm_connectNuisBinProc.resize(max_uncorrelation+1);// including the signal strength
         vvp_th_connectNuisBinProc.resize(max_uncorrelation+1);// including the signal strength
 
         for(int i=0; i<=max_uncorrelation; i++){
@@ -930,6 +935,7 @@ If we need to change it later, it will be easy to do.
             for(int ch=0; ch<vvv_pdfs_idcorrl.size(); ch++){
                 if(_debug>=100)cout<<ch<<endl;
                 for(int isam=0; isam<vvv_pdfs_idcorrl.at(ch).size(); isam++){
+                    if(i==0 && isam< v_pdfs_sigproc[ch]) vvp_pdfsNorm_connectNuisBinProc[0].push_back(std::make_pair(ch, isam));
                     if(_debug>=100)cout<<isam<<endl;
                     for(int iunc=0; iunc<vvv_pdfs_idcorrl.at(ch).at(isam).size(); iunc++){
                         if(_debug>=100)cout<<iunc<<endl;
@@ -939,11 +945,13 @@ If we need to change it later, it will be easy to do.
                         if(indexcorrl==i && v_pdftype.back()<0 ){
                             v_pdftype.back()=vvv_pdfs_pdftype.at(ch).at(isam).at(iunc);
                         }
+                        if(indexcorrl==i)vvp_pdfsNorm_connectNuisBinProc[indexcorrl].push_back(std::make_pair(ch, isam));
                         if(indexcorrl==i && vvv_pdfs_pdftype.at(ch).at(isam).at(iunc)== typeTruncatedGaussian ){
                             if(tmpmax< fabs(vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(0)) ) tmpmax=fabs(vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(0));	
                             if(tmpmax< fabs(vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(1)) ) tmpmax=fabs(vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(1));	
                         } 
                         if(indexcorrl==i && vvv_pdfs_pdftype.at(ch).at(isam).at(iunc)== typeGamma){
+                            if(isam<v_pdfs_sigproc[ch])vvp_pdfsNorm_connectNuisBinProc[0].push_back(std::make_pair(ch,isam));
                             if(vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(0)>0 && 
                                     fabs(vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(0)*vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(2) - vv_pdfs_norm_varied.at(ch).at(isam)) / vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(2)/vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(0)>0.2
                               ) {
@@ -3277,7 +3285,7 @@ If we need to change it later, it will be easy to do.
 	    }
 	    AddObservedDataSet(ch, rds);
     }
-    double CountingModel::EvaluateChi2(double *par, vector<float>& v_cachPdfValues2, vector< vector< vector<float> > > & vvv_cachPdfValues2, int bUseBestEstimateToCalcQ){ 
+    double CountingModel::EvaluateChi2(double *par, vector<double>& v_cachPdfValues2, vector< vector< vector<double> > > & vvv_cachPdfValues2, int bUseBestEstimateToCalcQ){ 
 	    double ret=0;
 
 	    FluctuatedNumbers(par, true, bUseBestEstimateToCalcQ, false);
@@ -3305,6 +3313,10 @@ If we need to change it later, it will be easy to do.
 			    }
 		    }
 	    }
+
+            if(v_cachPdfValues2.size()==0){
+                    v_cachPdfValues2.resize(vv_pdfs.size());
+            }
 
 	    //int maxsets_forcaching = 20;
 	    if(vvvv_pdfs_ChProcSetEvtVals.size()==0){
@@ -3487,10 +3499,11 @@ If we need to change it later, it will be easy to do.
 							    if(_debug>=100&&i==0)cout<<" new: "<<tmp3<<endl;
 							    //stemp+=" val "; stemp+=tmp3;
 						    }else {
-							    if(_debug==102)tmp3 =	_w_varied->pdf(vv_pdfs[ch][p].c_str())->getVal(&vars);  //give some warning message when r=0
+							    if(_debug==-102)tmp3 =	_w_varied->pdf(vv_pdfs[ch][p].c_str())->getVal(&vars);  //give some warning message when r=0
 							    tmp2=vv_pdfs_norm_varied[ch][p]*vvv_cachPdfValues2[ch][p][i];
 
-							    if(_debug==102 && i==0)cout<<" caching comparison: "<<tmp3<<" "<<vvv_cachPdfValues2[ch][p][i]<<endl;
+							    //if(_debug==102 && i==0)cout<<" caching comparison: "<<tmp3<<" "<<vvv_cachPdfValues2[ch][p][i]<<endl;
+							    if(_debug==-102 &&  tmp3!=vvv_cachPdfValues2[ch][p][i])cout<<" caching comparison: "<<tmp3<<" "<<vvv_cachPdfValues2[ch][p][i]<<endl;
 						    }
 						    tmp +=tmp2;
 					    }
@@ -3514,6 +3527,12 @@ If we need to change it later, it will be easy to do.
 				    _w_varied->pdf(v_pdfs_sb[ch])->getParameters(*(_w->var(v_pdfs_observables[ch])))->Print("V");
 			    }
 			    v_cachPdfValues2[ch]=retch;
+			    //if(v_pdfs_statusUpdated[ch])v_cachPdfValues2[ch]=retch;
+			    //else { 
+			//	    if( fabs((v_cachPdfValues2[ch]-retch)/retch) > 0.0000001)cout<<" cach= "<<v_cachPdfValues2[ch]<<" and new calc="<<retch<<endl;
+			//	    retch = v_cachPdfValues2[ch];
+			//	}
+			
 		    }else{
 			    retch = v_cachPdfValues2[ch];
 		    }
@@ -4130,6 +4149,10 @@ If we need to change it later, it will be easy to do.
 		    for(int j=0; j<vvp_pdfs_connectNuisBinProc[i].size(); j++){
 			    v_pdfs_statusUpdated[vvp_pdfs_connectNuisBinProc[i][j].first]=true;
 		    }
+		    for(int j=0; j<vvp_pdfsNorm_connectNuisBinProc[i].size(); j++){
+			    v_pdfs_statusUpdated[vvp_pdfsNorm_connectNuisBinProc[i][j].first]=true;
+		    }
+
 
 	    }
 
@@ -4151,6 +4174,10 @@ If we need to change it later, it will be easy to do.
 		    vv_pdfs_statusUpdated[vvp_pdfs_connectNuisBinProc[i][j].first][vvp_pdfs_connectNuisBinProc[i][j].second]=true;
 		    v_pdfs_statusUpdated[vvp_pdfs_connectNuisBinProc[i][j].first]=true;
 	    }
+	    for(int j=0; j<vvp_pdfsNorm_connectNuisBinProc[i].size(); j++){
+		    v_pdfs_statusUpdated[vvp_pdfsNorm_connectNuisBinProc[i][j].first]=true;
+	    }
+
 	    for(int j=0; j<vvp_connectNuisBinProc[i].size(); j++){
 		    if(_debug>100){
 			    cout<<"DELETEME "<<i << " "<<j<<endl;

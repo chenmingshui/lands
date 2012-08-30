@@ -48,10 +48,10 @@ namespace lands{
 	double * _minNuisances = 0; 
 	double * _maxNuisances = 0; 
 	bool _bPositiveSignalStrength = true;
-	vector< vector< vector<float> > > vvv_cachPdfValues;
+	vector< vector< vector<double> > > vvv_cachPdfValues;
 	vector< vector< double > > vv_cachCountingParts;
 	vector<  double  > v_cachHistParts;
-	vector<  float > v_cachPdfValues;
+	vector<  double > v_cachPdfValues;
 
 	vector<double> _lastParams;
 	vector<double> _currParams;
