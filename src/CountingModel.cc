@@ -933,9 +933,10 @@ If we need to change it later, it will be easy to do.
                 }
             }
             for(int ch=0; ch<vvv_pdfs_idcorrl.size(); ch++){
+		    if(i==0 ) vvp_pdfsNorm_connectNuisBinProc[0].push_back(std::make_pair(ch, 0));
                 if(_debug>=100)cout<<ch<<endl;
+		bool added = false;
                 for(int isam=0; isam<vvv_pdfs_idcorrl.at(ch).size(); isam++){
-                    if(i==0 && isam< v_pdfs_sigproc[ch]) vvp_pdfsNorm_connectNuisBinProc[0].push_back(std::make_pair(ch, isam));
                     if(_debug>=100)cout<<isam<<endl;
                     for(int iunc=0; iunc<vvv_pdfs_idcorrl.at(ch).at(isam).size(); iunc++){
                         if(_debug>=100)cout<<iunc<<endl;
@@ -945,13 +946,12 @@ If we need to change it later, it will be easy to do.
                         if(indexcorrl==i && v_pdftype.back()<0 ){
                             v_pdftype.back()=vvv_pdfs_pdftype.at(ch).at(isam).at(iunc);
                         }
-                        if(indexcorrl==i)vvp_pdfsNorm_connectNuisBinProc[indexcorrl].push_back(std::make_pair(ch, isam));
+                        if(indexcorrl==i && !added){ vvp_pdfsNorm_connectNuisBinProc[indexcorrl].push_back(std::make_pair(ch, isam)); added=true;}
                         if(indexcorrl==i && vvv_pdfs_pdftype.at(ch).at(isam).at(iunc)== typeTruncatedGaussian ){
                             if(tmpmax< fabs(vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(0)) ) tmpmax=fabs(vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(0));	
                             if(tmpmax< fabs(vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(1)) ) tmpmax=fabs(vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(1));	
                         } 
                         if(indexcorrl==i && vvv_pdfs_pdftype.at(ch).at(isam).at(iunc)== typeGamma){
-                            if(isam<v_pdfs_sigproc[ch])vvp_pdfsNorm_connectNuisBinProc[0].push_back(std::make_pair(ch,isam));
                             if(vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(0)>0 && 
                                     fabs(vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(0)*vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(2) - vv_pdfs_norm_varied.at(ch).at(isam)) / vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(2)/vvv_pdfs_normvariation.at(ch).at(isam).at(iunc).at(0)>0.2
                               ) {
