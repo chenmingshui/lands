@@ -30,7 +30,7 @@ namespace lands{
 	extern bool _bPositiveSignalStrength;
 	extern vector<double> _lastParams;
 	extern vector<double> _currParams;
-	extern vector< vector< vector<double> > >  vvv_cachPdfValues; // cached pdf values for layers Channel<Process<Event>>>
+	extern vector< vector< vector<float> > >  vvv_cachPdfValues; // cached pdf values for layers Channel<Process<Event>>>
 	extern vector< double >  v_cachPdfValues; // cached pdf values for layers Channel
 	extern vector< vector< double > >  vv_cachCountingParts; // cached likelihood values for layers Channel<Process>
 	extern vector<  double  >  v_cachHistParts; // cached likelihood values for layers Channel<Process>

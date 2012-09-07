@@ -1019,32 +1019,49 @@ If we need to change it later, it will be easy to do.
 		vvv_pdfs_nuisancesindex.push_back(vv);
 	}
 	for(int i=0; i<v_pdfs_floatParamsName.size(); i++){
-            //v_pdftype[v_pdfs_floatParamsIndcorr[i]] = typeBifurcatedGaussian;
-            v_pdftype[v_pdfs_floatParamsIndcorr[i]] = v_pdfs_floatParamsType[i];
-            // identify here which pdfs are affected by this parameter
-            // and update the vvp_pdfs_connectNuisBinProc
-	
-	int nuiInd = -1;
-        for(int j=0; j<v_uncname.size(); j++){
-		if(v_uncname[j]==v_pdfs_floatParamsName[i]) nuiInd=j+1;
-	}
-	if(nuiInd<0){ cout<<" "<<v_pdfs_floatParamsName[i]<<" doesn't appear in uncname list" <<endl; exit(1); }
-            //cout<<" DELETEME floatparam "<<v_pdfs_floatParamsName[i]<<endl;
-            for(int ch = 0; ch<vv_pdfs.size(); ch++ ){
-                for(int p=0; p<vv_pdfs[ch].size(); p++){
-                    std::auto_ptr<TIterator> iter(vvr[ch][p]->createIterator());
-                    //		cout<<" pdf: "<<vv_pdfs[ch][p]<<endl;
-                    for (RooAbsArg *par = (RooAbsArg *) iter->Next(); par != 0; par = (RooAbsArg *) iter->Next()) {
-                        //			cout<<" DELETEME par "<<par->GetName()<<endl;
-                        if(par->GetName()==v_pdfs_floatParamsName[i]) {
-				vvp_pdfs_connectNuisBinProc[v_pdfs_floatParamsIndcorr[i]].push_back(make_pair(ch,p));
-				vvv_pdfs_nuisancesindex[ch][p].push_back(nuiInd);
-				continue;
+		//v_pdftype[v_pdfs_floatParamsIndcorr[i]] = typeBifurcatedGaussian;
+		v_pdftype[v_pdfs_floatParamsIndcorr[i]] = v_pdfs_floatParamsType[i];
+		// identify here which pdfs are affected by this parameter
+		// and update the vvp_pdfs_connectNuisBinProc
+
+		int nuiInd = -1;
+		for(int j=0; j<v_uncname.size(); j++){
+			if(v_uncname[j]==v_pdfs_floatParamsName[i]) nuiInd=j+1;
+		}
+		if(nuiInd<0){ cout<<" "<<v_pdfs_floatParamsName[i]<<" doesn't appear in uncname list" <<endl; exit(1); }
+		//cout<<" DELETEME floatparam "<<v_pdfs_floatParamsName[i]<<endl;
+
+		// check whether the flat param is the normalization param 
+		bool bNom  = false;
+		for(int c=0; c<vv_pdfs_extranormNAME.size(); c++){
+			for(int p=0; p<vv_pdfs_extranormNAME[c].size(); p++){
+				if(TString(vv_pdfs_extranormNAME[c][p])==TString(v_pdfs_floatParamsName[i])) {
+					bNom=true;
+					if(_debug) cout<<" vv_pdfs_extranormNAME["<<c<<"]"<<"["<<p<<"] "<<vv_pdfs_extranormNAME[c][p]<<" norm para"<<endl;
+					vvp_pdfsNorm_connectNuisBinProc[v_pdfs_floatParamsIndcorr[i]].push_back(make_pair(c,p));
+				}
 			}
-                    }
-                }
-            }
-        }
+		}
+		for(int ch = 0; ch<vv_pdfs.size(); ch++ ){
+			for(int p=0; p<vv_pdfs[ch].size(); p++){
+				std::auto_ptr<TIterator> iter(vvr[ch][p]->createIterator());
+				//		cout<<" pdf: "<<vv_pdfs[ch][p]<<endl;
+				for (RooAbsArg *par = (RooAbsArg *) iter->Next(); par != 0; par = (RooAbsArg *) iter->Next()) {
+					//			cout<<" DELETEME par "<<par->GetName()<<endl;
+					if(par->GetName()==v_pdfs_floatParamsName[i]) {
+						if(bNom){
+							if(_debug) cout<<"ENTERING vv_pdfs_extranormNAME["<<ch<<"]"<<"["<<p<<"] "<<vv_pdfs_extranormNAME[ch][p]<<" norm para: "<<v_pdfs_floatParamsName[i]<<endl;
+							vvp_pdfsNorm_connectNuisBinProc[v_pdfs_floatParamsIndcorr[i]].push_back(make_pair(ch,p));
+						}else{	
+							vvp_pdfs_connectNuisBinProc[v_pdfs_floatParamsIndcorr[i]].push_back(make_pair(ch,p));
+							vvv_pdfs_nuisancesindex[ch][p].push_back(nuiInd);
+						}
+						continue;
+					}
+				}
+			}
+		}
+	}
         for(int i=0; i<v_uncname.size(); i++){
             if(v_pdftype[i+1]==-1) v_pdftype[i+1]=typeLogNormal; // some uncertainty source not affect normalization but shape 
             // put here, just because need it for dummy purpose, --> generate unit gaussian random number 
@@ -3285,7 +3302,7 @@ If we need to change it later, it will be easy to do.
 	    }
 	    AddObservedDataSet(ch, rds);
     }
-    double CountingModel::EvaluateChi2(double *par, vector<double>& v_cachPdfValues2, vector< vector< vector<double> > > & vvv_cachPdfValues2, int bUseBestEstimateToCalcQ){ 
+    double CountingModel::EvaluateChi2(double *par, vector<double>& v_cachPdfValues2, vector< vector< vector<float> > > & vvv_cachPdfValues2, int bUseBestEstimateToCalcQ){ 
 	    double ret=0;
 
 	    FluctuatedNumbers(par, true, bUseBestEstimateToCalcQ, false);
@@ -3369,7 +3386,8 @@ If we need to change it later, it will be easy to do.
 		    }
 	    }
 	    double btot = 0, stot=0, sbtot=0;
-	    double tmp=0, tmp2=0, tmp3=0, retch=0;
+	    double tmp=0, tmp2=0, retch=0;
+	    float tmp3=0;
 	    int ntot;
 	    double weight=1;
 	    int nsigproc = 1;
@@ -3527,12 +3545,13 @@ If we need to change it later, it will be easy to do.
 				    _w_varied->pdf(v_pdfs_sb[ch])->getParameters(*(_w->var(v_pdfs_observables[ch])))->Print("V");
 			    }
 			    v_cachPdfValues2[ch]=retch;
-			    //if(v_pdfs_statusUpdated[ch])v_cachPdfValues2[ch]=retch;
-			    //else { 
-			//	    if( fabs((v_cachPdfValues2[ch]-retch)/retch) > 0.0000001)cout<<" cach= "<<v_cachPdfValues2[ch]<<" and new calc="<<retch<<endl;
-			//	    retch = v_cachPdfValues2[ch];
+			//    if(v_pdfs_statusUpdated[ch])v_cachPdfValues2[ch]=retch;
+			//    else { 
+			//	    //if( fabs((v_cachPdfValues2[ch]-retch)/retch) > 0.0000001)cout<<" cach= "<<v_cachPdfValues2[ch]<<" and new calc="<<retch<<endl;
+			//	    if( fabs((v_cachPdfValues2[ch]-retch)/retch) > 0.)cout<<" cach= "<<v_cachPdfValues2[ch]<<" and new calc="<<retch<<endl;
+			//	    //retch = v_cachPdfValues2[ch];
 			//	}
-			
+			//
 		    }else{
 			    retch = v_cachPdfValues2[ch];
 		    }

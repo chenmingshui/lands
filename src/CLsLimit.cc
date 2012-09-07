@@ -48,7 +48,7 @@ namespace lands{
 	double * _minNuisances = 0; 
 	double * _maxNuisances = 0; 
 	bool _bPositiveSignalStrength = true;
-	vector< vector< vector<double> > > vvv_cachPdfValues;
+	vector< vector< vector<float> > > vvv_cachPdfValues;
 	vector< vector< double > > vv_cachCountingParts;
 	vector<  double  > v_cachHistParts;
 	vector<  double > v_cachPdfValues;
@@ -991,6 +991,7 @@ namespace lands{
 			double l = myMinuit->fAmin;
 			myMinuit->GetParameter(0, r, er);
 			if(debug)cout<<"DELETEME r="<<r<<"+/-"<<er<<" fMin="<<l<<endl;
+			if(debug)printf("DELETEME r=%.6f+/-%.6f fMin=%.6f\n", r,er,l);
 			if(errUp==0 and errLow==0) {
 				errUp = er;
 				errLow = -er;
