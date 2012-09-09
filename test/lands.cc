@@ -1779,7 +1779,9 @@ int main(int argc, const char*argv[]){
 			if( (success[0]!=0 or tmpr==tmperr) and !DoNotRunGlobalFit){
 				b_global_fit = false;
 				double tmpr = 0;
+				_initialRforFit = 0;
 				y0_2 =  MinuitFit(21, tmpr, tmperr, 0, pars, false, debug) ;
+				_initialRforFit = 1;
 				if(debug)	cout<<y0_2<<" fitter u="<<tmpr<<" +/- "<<tmperr<<endl;
 				mu_hat = pars[0];
 			}
@@ -2192,7 +2194,9 @@ int main(int argc, const char*argv[]){
 			   }
 			   if(ntmp>0)cout<<" after "<<ntmp+1<<" tries: fit "<<(success[0]?"fails":"successful")<<endl;
 			   */
+			_initialRforFit = 0;
 			if(success[0])x2 =  MinuitFit(21, tmp, tmperr, 0, fittedPars, false, debug, success); // mu>0
+			_initialRforFit = 1;
 			cout<<"fitted r = "<<tmp<<endl;
 			double mu_hat = tmp;
 

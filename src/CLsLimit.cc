@@ -93,7 +93,7 @@ namespace lands{
 		}
 
 		// DELETEME
-		if( (cms_global->Get_max_uncorrelation()>2) && debug){
+		if( (cms_global->Get_max_uncorrelation()>2) && debug>0){
 			del_oldn = del_newn;
 			del_newn = _inputNuisances[2];
 			if(debug>=0 and del_newn != del_oldn) cout<<"DELETEME input nuisance changed !!!! old="<<del_oldn<<", new="<<del_newn<<endl;
@@ -671,7 +671,7 @@ namespace lands{
 			}
 
 			arglist[0] = cms_global->Get_minuitSTRATEGY(); // set to be 0 (was default 1), reduce lots of function calls, ---> speed up by a factor of 6 
-			if(debug)cout<<" SET STRATEGY "<<arglist[0]<<endl;
+			if(debug>0)cout<<" SET STRATEGY "<<arglist[0]<<endl;
 			myMinuit->mnexcm("SET STRATEGY", arglist ,1,ierflg);
 			//myMinuit -> mnexcm("SET NOG", arglist, 1, ierflg); // no gradiants required of FCN
 
@@ -690,7 +690,7 @@ namespace lands{
 
 			double nuisancesFitRange  =  cms_global->Get_nuisancesRange(); // default is 5 sigma variation allowed
 
-			if(debug) cout<<" nuisancesFitRange = "<<nuisancesFitRange<<" sigma "<<endl;
+			if(debug>0) cout<<" nuisancesFitRange = "<<nuisancesFitRange<<" sigma "<<endl;
 			for(int i=1; i<=npars; i++){
 				if(debug>=10) cout<<" in par "<<i<<endl;
 				TString sname=v_uncname[i-1]; 
@@ -851,16 +851,16 @@ namespace lands{
 			myMinuit->mnexcm("SET ERR", arglist ,1,ierflg);
 			// Now ready for minimization step
 			arglist[0] = cms_global->Get_maximumFunctionCallsInAFit(); // to be good at minization, need set this number to be 5000 (from experience of hgg+hww+hzz combination)
-			if(debug)cout<<" Maximum Function Calls="<<arglist[0]<<endl;
+			if(debug>0)cout<<" Maximum Function Calls="<<arglist[0]<<endl;
 			arglist[1] = cms_global->Get_minuitTolerance();  // tolerance 
 			//arglist[1] = 0.009991;
 			//if(!UseMinos or UseMinos==2)myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
 			myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);  // always perform migrad 
 			//if(UseMinos==2)myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
-			if(debug || ierflg)cout <<" MIGRAD Number of function calls in Minuit: " << myMinuit->fNfcn << endl;
-			if(debug || ierflg)cout <<" MIGRAD return errflg = "<<ierflg<<endl;
-			if(debug || ierflg)cout <<" MinuitFit("<<model<<")"<<endl;
-			if(debug || ierflg) {
+			if(debug>0 || (ierflg and debug>=0) )cout <<" MIGRAD Number of function calls in Minuit: " << myMinuit->fNfcn << endl;
+			if(debug>0 || (ierflg and debug>=0) )cout <<" MIGRAD return errflg = "<<ierflg<<endl;
+			if(debug>0 || (ierflg and debug>=0) )cout <<" MinuitFit("<<model<<")"<<endl;
+			if(debug>0 || (ierflg and debug>=0) ) {
 				if(model==2 or model==201 )cout<<" starting mu = "<<mu<<endl;
 				if(model==102 or model==202)cout<<" starting mu = "<<r<<endl;
 			}
@@ -885,7 +885,7 @@ namespace lands{
 				//EDM is the most important quantity, and is usually meaningful: it is the estimated distance to minimum in function value (chisquare or likelihood), so it is the expected improvement that can still be made in F. After a good fit, it should be very small, like 10E-5 or smaller. If it is 10E-2 or 10E-3, that is a little suspicious. If it is bigger than one, the fit didn't converge completely. If it is bigger than 100, the fit is completely meaningless.
 				success[0]=ierflg;
 				if(success[0]!=0) {
-					cout<<" ierflg= "<<ierflg<<", Unconverged, EDM = "<<myMinuit->fEDM<<endl;
+					if(debug>=0) cout<<" ierflg= "<<ierflg<<", Unconverged, EDM = "<<myMinuit->fEDM<<endl;
 					if( _IsToy && myMinuit->fEDM < 1.) success[0] = 0; 
 				}
 			}
@@ -916,9 +916,9 @@ namespace lands{
 				   specifies the (approximate) maximum number of function calls per parameter requested,
 				   after which the calculation will be stopped for that parameter.
 				 */
-				if(debug || ierflg )cout << " MINOS Number of function calls in Minuit: " << myMinuit->fNfcn << endl;
-				if(debug || ierflg )cout << " MINOS return errflg = "<<ierflg<<endl;
-				if(ierflg){
+				if(debug>0 || (ierflg and debug>=0)  )cout << " MINOS Number of function calls in Minuit: " << myMinuit->fNfcn << endl;
+				if(debug>0 || (ierflg and debug>=0) )cout << " MINOS return errflg = "<<ierflg<<endl;
+				if(ierflg and debug>=0 ){
 					cout<<"WARNING: Minos fit fails, try other options"<<endl;
 				}
 				if(success){
@@ -933,7 +933,7 @@ namespace lands{
 			}
 
 			myMinuit->GetParameter(0, r, er);
-			if(debug)cout<<"DELETEME before calc error,  r="<<r<<"+/-"<<er<<endl;
+			if(debug>0)cout<<"DELETEME before calc error,  r="<<r<<"+/-"<<er<<endl;
 
 			// Print results
 			Double_t amin=0,edm=0,errdef=0;
@@ -946,7 +946,7 @@ namespace lands{
 					errUp = er;
 					errLow = -er;
 				}
-				if(debug)cout<<"DELETEME mu: errUp="<<errUp<<" errLow="<<errLow<<" errParab="<<errParab<<" gcor="<<gcor<<endl;
+				if(debug>0)cout<<"DELETEME mu: errUp="<<errUp<<" errLow="<<errLow<<" errParab="<<errParab<<" gcor="<<gcor<<endl;
 				if(cms_global->POIs().size()>0){
 					cms_global->setPOI(0, r, errUp, errLow);
 
@@ -979,8 +979,8 @@ namespace lands{
 									}
 								}
 								cms_global->setPOI(p, poi, errUp1, errLow1);
-								if(debug)cout<<"DELETEME "<<sname<<": errUp="<<errUp1<<" errLow="<<errLow1<<" errParab="<<errParab1<<" gcor="<<gcor1<<endl;
-								if(debug)cout<<"DELETEME p=" << p <<" j=" <<j <<endl;
+								if(debug>0)cout<<"DELETEME "<<sname<<": errUp="<<errUp1<<" errLow="<<errLow1<<" errParab="<<errParab1<<" gcor="<<gcor1<<endl;
+								if(debug>0)cout<<"DELETEME p=" << p <<" j=" <<j <<endl;
 							}
 						}
 					}
@@ -990,30 +990,30 @@ namespace lands{
 
 			double l = myMinuit->fAmin;
 			myMinuit->GetParameter(0, r, er);
-			if(debug)cout<<"DELETEME r="<<r<<"+/-"<<er<<" fMin="<<l<<endl;
-			if(debug)printf("DELETEME r=%.6f+/-%.6f fMin=%.6f\n", r,er,l);
+			if(debug>0)cout<<"DELETEME r="<<r<<"+/-"<<er<<" fMin="<<l<<endl;
+			if(debug>0)printf("DELETEME r=%.6f+/-%.6f fMin=%.6f\n", r,er,l);
 			if(errUp==0 and errLow==0) {
 				errUp = er;
 				errLow = -er;
 			}
 
-			if(debug and UseMinos) cout<<" signal_strength :  [ "<<r+errLow<<"  "<<r+errUp<<" ] "<<endl;
+			if(debug>0 and UseMinos) cout<<" signal_strength :  [ "<<r+errLow<<"  "<<r+errUp<<" ] "<<endl;
 			if(model==101 or model==102 or model==202) {
 				er=r;
 				r+=errUp;   // for upper limit
 				er+=errLow; // for lower limit
 			}
 
-			if(debug || pars || ierflg){
+			if(debug>0 || pars || ierflg){
 				MapStrV map_flatPars = cms_global->Get_map_flatPars();
 				_inputNuisancesSigma = cms_global->Get_norminalParsSigma();
 
 				if(fabs(_inputNuisances[0])>10e10) _inputNuisances[0]=0;
-				if(debug || ierflg || _bDumpFinalFitResults )printf("  par                 name         fitted_value                      input_value                start_value        dx/s_in,s_out/s_in      (flatParam +/- error)\n");
+				if(debug>0 || (ierflg and debug>=0) || _bDumpFinalFitResults )printf("  par                 name         fitted_value                      input_value                start_value        dx/s_in,s_out/s_in      (flatParam +/- error)\n");
 				for(int i=0; i<=npars; i++){
 					double tmp, tmpe;
 					myMinuit->GetParameter(i, tmp, tmpe);
-					if(debug || ierflg || _bDumpFinalFitResults ) { 
+					if(debug>0 || (ierflg and debug>=0) || _bDumpFinalFitResults ) { 
 						double *tmppointer = _startNuisances;
 						if(bestFitPars)_startNuisances = bestFitPars;
 						printf("  par %30s      %.6f +/- %.6f      %.6f +/- %.6f    %.6f     %.2f, %.2f", i>0?v_uncname[i-1].c_str():"signal_strength", tmp, tmpe, _inputNuisances[i], _inputNuisancesSigma[i], _startNuisances[i],  _inputNuisancesSigma[i]==0?0:(tmp-_inputNuisances[i])/_inputNuisancesSigma[i], _inputNuisancesSigma[i]==0?0:tmpe/_inputNuisancesSigma[i]);
