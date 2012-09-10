@@ -387,6 +387,7 @@ namespace lands{
 		void PrintParametricChannelDataEntries();
 
 
+		vector<TH1F*> GetToyInTH1(const vector<double>& v, int t);
 
 		//  /**********  upgrade for TH1 based input   **********/
 		public:

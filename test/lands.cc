@@ -224,7 +224,7 @@ TString sbinningPOI;
 
 bool bFixNuisancesAtBestFit = false; // when doing scanning mass without systematics --> if remove all sys from cards --> bias,  --> so need to fit to data and then fix to that 
 
-int intRemoveBins = 0; // only remove// 0: remove only bins with total bkg<=0,  1: remove bins with total sig<=0,  2: both
+int intRemoveBins = -1; // only remove// 0: remove only bins with total bkg<=0,  1: remove bins with total sig<=0,  2: both;   <0 don't remove anything 
 
 bool useHist = false;
 

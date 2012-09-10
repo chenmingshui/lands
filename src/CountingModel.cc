@@ -5349,6 +5349,72 @@ If we need to change it later, it will be easy to do.
 	    }
 	    return vv_exp_sigbkgs_th[index_channel][index_proc];
     }
+    vector<TH1F*> CountingModel::GetToyInTH1(const vector<double>& v, int t){
+	vector<TH1F*> vth; vth.clear();
+	vector< TGraphAsymmErrors* > vTGraph; vTGraph.clear();
+	for(int c=0; c<v.size(); c++){
+		TString cname = v_channelname[c];
+		if(cname.BeginsWith("TH1F_")){
+			vector<string> vs;
+			StringSplit(vs,v_channelname[c], "_");
+			if(vs.size()<5) continue;
+			double bincenter = TString(vs[vs.size()-2]).Atof();
+			double binlow = TString(vs[vs.size()-3]).Atof();
+			double binhigh = TString(vs[vs.size()-1]).Atof() + binlow;
+			cname = "";
+			for(int i=1; i<vs.size()-3; i++){
+				cname += vs[i];
+			}
+			bool newchannel = false;
+			if(c==0){
+				newchannel = true;
+			}else{
+				TString cname1 = v_channelname[c-1];
+				if(cname1.BeginsWith("TH1F_")){
+					vector<string> vs1;
+					StringSplit(vs1,v_channelname[c-1], "_");
+					if(vs1.size()<5) { newchannel = true; continue; }
+					cname1 = "";
+					for(int i=1; i<vs1.size()-3; i++){
+						cname1 += vs1[i];
+					}
+					if(cname != cname1) newchannel = true;
+				}else{ newchannel = true; }
+			}
+			if(newchannel){
+				TGraphAsymmErrors* gr = new TGraphAsymmErrors();
+				gr->Set(0);
+				TString histname = cname; 
+				gr->SetName(histname);
+				vTGraph.push_back(gr);
+			}
+			TGraphAsymmErrors * gr = vTGraph.back();
+			gr->Set(gr->GetN()+1);
+			gr->SetPoint(gr->GetN()-1, bincenter, v[c]);
+			gr->SetPointError(gr->GetN()-1, bincenter-binlow, binhigh-bincenter, 0, 0);
+		}
+		else{
+			TGraphAsymmErrors* gr = new TGraphAsymmErrors();
+			gr->Set(1);
+			TString histname = cname; 
+			gr->SetName(histname);
+			gr->SetPoint(0, 0.5, v[c]);
+			gr->SetPointError(0, 0.5, 0.5, 0, 0);
+			vTGraph.push_back(gr);
+		}
+	}
+
+	for(int c=0; c<vTGraph.size(); c++){
+		int n = vTGraph[c]->GetN();
+		TString stmp = vTGraph[c]->GetName(); stmp+="_"; stmp+=t;
+		TH1F * h = new TH1F(stmp, vTGraph[c]->GetName(), n, vTGraph[c]->GetX()[0] - vTGraph[c]->GetEXlow()[0],  vTGraph[c]->GetX()[n-1] + vTGraph[c]->GetEXhigh()[n-1]);
+		for(int p=0; p<n; p++){
+			h->SetBinContent(p+1, vTGraph[c]->GetY()[p]);
+		}
+		vth.push_back(h);
+	}
+	return vth;
+    }
 
     };
 

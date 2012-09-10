@@ -2692,6 +2692,9 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys, 
 	_inputNuisances = _model->Get_norminalPars();	
 	_startNuisances = _model->Get_norminalPars();	
 
+
+	vector< vector<TH1F*> > vvtoyinTH; vvtoyinTH.clear();
+
 	// effort for adaptive sampling
 	int oldNexps = _nexps;
 	vector<double> tmpQsb;
@@ -2833,6 +2836,12 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys, 
 			cout<<"WARNING: skip a failed toy, regenerating "<<endl;
 		}
 		_initialRforFit = 1.;
+
+
+		if(bWriteToys){
+			vector<TH1F*> vth = _model->GetToyInTH1(vdata_global, i);
+			vvtoyinTH.push_back(vth);
+		}
 	}
 
 		_IsToy = false;
@@ -2840,6 +2849,15 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys, 
 		TString stmp = jobname+"_PseudoData_sb_seed"; stmp+=_model->GetRdm()->GetSeed(); stmp+=".root";
 		TFile *f = new TFile(stmp, "RECREATE");
 		f->WriteTObject(_model->GetWorkSpace());
+
+		for(int t=0; t<vvtoyinTH.size(); t++){
+			for(int c=0; c<vvtoyinTH[t].size(); c++){
+				stmp = vvtoyinTH[t][c]->GetName(); //stmp+="_"; stmp+=t;
+				vvtoyinTH[t][c]->SetName(stmp);
+				f->WriteTObject(vvtoyinTH[t][c]);
+			}
+		}
+
 		f->Close();
 		return true;
 	}
