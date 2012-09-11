@@ -230,6 +230,8 @@ bool useHist = false;
 
 bool newExpectedAsymBand = false; // for new expected asymptotic bands, see https://hypernews.cern.ch/HyperNews/CMS/get/higgs-combination/297.html
 
+TString sToysFromFile = "";
+
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
 
@@ -2107,6 +2109,7 @@ int main(int argc, const char*argv[]){
 				lb.SetDebug(debug);
 				lb.SetSignalStrength(ToysAtDifferentSignalStrength, InjectingSignalStrength);
 				int noutcomes = toys;
+				if(sToysFromFile!="")lb.ToysFromFile(sToysFromFile);
 				lb.Bands(noutcomes);
 				double rmean, rm1s, rm2s, rp1s, rp2s;	
 				rmean=lb.GetMLLxsMean();
@@ -2114,7 +2117,8 @@ int main(int argc, const char*argv[]){
 				difflimits=lb.GetDifferentialMLLxs();
 
 				TString ts=jobname; ts+="_maxlls";
-				FillTree(ts, difflimits);
+				FillTree(ts, lb.Get_mu_unsorted(), "muhat", lb.Get_lh_unsorted(), "likelihood");
+				CopyTrees(jobname+"_maxllfit.root", "T", ts+"_tree.root", "T_data");
 
 				TCanvas *c=new TCanvas("csig","cSig");
 				c->SetLogy(1);
@@ -3084,6 +3088,9 @@ void processParameters(int argc, const char* argv[]){
 
 	if(isWordInMap("--useHist", options)) useHist = true; 
 
+	tmpv = options["--loadToysFromFile"]; 
+	if( tmpv.size()!=1 ) { }
+	else sToysFromFile = tmpv[0];
 
 	printf("\n\n[ Summary of configuration in this job: ]\n");
 	if(sPhysicsModel!="StandardModelHiggs")cout<<" PhysicsModel:  "<<sPhysicsModel<<endl;
@@ -4036,6 +4043,7 @@ void PrintHelpMessage(){
 	printf("--ToysAtDifferentSignalStrength arg(=0)  for MLLxsBands toys,  0 for b-only toys, 1 for toys at InjectMu, and 2 for the best fitted mu\n");
 	printf("--useHist                              With this, take hist as a channel, no expansion, no bin-by-by stat err\n");   
 	printf("--newExpected 			     new definition of Asymptotic CLs bands \n"); 
+	printf("--loadToysFromFile string            use with doExpectation,  reading saved toys from file \n");
 
 
 	printf(" \n");

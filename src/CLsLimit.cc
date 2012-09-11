@@ -2809,7 +2809,8 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys, 
 					_startNuisances = _model->Get_fittedParsInData_sb();
 					_inputNuisances = _model->Get_fittedParsInData_sb();
 				if(!_model->UseBestEstimateToCalcQ()){
-					VChannelVSample vv =  _model->FluctuatedNumbers(0, true, 2); // toss nuisance around fitted b_hat_mu in data 
+					//VChannelVSample vv = 
+					_model->FluctuatedNumbers(0, true, 2); // toss nuisance around fitted b_hat_mu in data 
 					_inputNuisances = _model->Get_randomizedPars();	
 					for(int itmp=0; itmp<_model->Get_v_pdftype().size(); itmp++){
 						if(_model->Get_v_pdftype()[itmp]==typeGamma) _inputNuisances[itmp]+=1;
@@ -2848,6 +2849,8 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys, 
 	if(bWriteToys){
 		TString stmp = jobname+"_PseudoData_sb_seed"; stmp+=_model->GetRdm()->GetSeed(); stmp+=".root";
 		TFile *f = new TFile(stmp, "RECREATE");
+		TString oldwsname = _model->GetWorkSpace()->GetName();
+		_model->GetWorkSpace()->SetName("w");
 		f->WriteTObject(_model->GetWorkSpace());
 
 		for(int t=0; t<vvtoyinTH.size(); t++){
@@ -2859,6 +2862,7 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys, 
 		}
 
 		f->Close();
+		_model->GetWorkSpace()->SetName(oldwsname);
 		return true;
 	}
 	

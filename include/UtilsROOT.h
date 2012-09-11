@@ -26,6 +26,7 @@ extern  map<TString, RooWorkspace*> MAP_RWSname_Pointer;
 void SaveResults(TString sfile, double mH, double limit, double limitErr, double significance, double pvalue, double rm2s, double rm1s, double rmedian, double rmean, double rp1s, double rp2s);
 void FillTree(TString sfile, vector<double> array, TString treeName="");
 void FillTree(TString sfile, vector<int> array);
+void FillTree(TString sfile, vector<double> array1, TString sb1, vector<double> array2, TString sb2);
 void FillTree(TString sfile, double * array, int nsize=100000);
 void FillTree(TString sfile, int* array, int nsize=100000);
 void FillTree(TString sfile, double d1, double d2, vector<double> array1,  vector<double> array2, TString d1Name="d1", TString d2Name="d2", TString array1Name="T1", TString array2Name="T2", TString option = "RECREATE");
@@ -64,6 +65,7 @@ void ReadM2lnQGridFromFile(TString filename, std::map<double, double>&gridQdata,
 RooWorkspace* GetRWSfromMap(map<TString,RooWorkspace*>m, string filename, string rwsname);
 void AddRWSintoMap(string filename, string rwsname, RooWorkspace* w, map<TString,RooWorkspace*>& m );
 
+void CopyTrees(TString infile, TString intree, TString outfile, TString outtree);
 
 #endif   /* ----- #ifndef UTILSROOT_INC  ----- */
 

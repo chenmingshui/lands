@@ -366,4 +366,6 @@ TGraphAsymmErrors* GetMuHatGraphAsymm(TTree *tree );
 TGraph* GetLimitsGraph(TTree *tree );
 TGraph* GetPValuesGraph(TTree *tree );
 TObject* GetTObject(string filename, string objname);
+vector<double> GetVectorFrom(TTree* tree, TString brName);
+
 #endif   /* ----- #ifndef PLOTUTILITIES_H  ----- */

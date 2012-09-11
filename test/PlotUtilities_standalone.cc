@@ -1212,4 +1212,18 @@ TObject* GetTObject(string filename, string objname){
 	return h;
 }
 
+vector<double> GetVectorFrom(TTree* tree, TString brName){
+	vector<double> v;
+	double c;
+	TBranch *br;
+	tree->SetBranchAddress(brName, &c, &br);
+	Long64_t nentries = tree->GetEntries();
+	for(int i=0; i<nentries; i++){
+		tree->GetEntry(i);
+		v.push_back(c);
+	}
+	return v;
+}
+
+
 

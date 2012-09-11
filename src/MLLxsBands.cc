@@ -3,6 +3,8 @@
 #include <iostream>
 #include <cstdio>
 #include "TMath.h"
+#include "TFile.h"
+#include "UtilsROOT.h"
 using std::cout;
 using std::endl;
 namespace lands{
@@ -12,11 +14,20 @@ namespace lands{
 		_debug=0; 
 		_toysAtDifferentSignalStrength = 0;
 		_injectingSignalStrength = 1;
+		_bReadToysFromFile = false;
+		_infile = NULL;
 	}
 	MLLxsBands::~MLLxsBands(){}
 	void MLLxsBands::Bands(int noutcome){
 		_noutcomes=noutcome;
 		Bands();
+	}
+	void MLLxsBands::ToysFromFile(TString s){
+		if(s!=""){
+			_bReadToysFromFile = true;
+			_infile = new TFile(s);
+			if(_infile==NULL) {cout<<"ERROR: Incoming File "<<s<<" is not found or is broken, please check "<<endl; exit(1);}
+		}
 	}
 	void MLLxsBands::Bands(){
 		clock_t start_time=clock(), cur_time=clock(), funcStart_time=clock();
@@ -32,14 +43,61 @@ namespace lands{
 		vector<double> vpcls; vpcls.clear();
 
 		cout<<" MLLxs = "<<_cms->Get_fittedParsInData_sb()[0]<<endl;
-		if(_toysAtDifferentSignalStrength==2)_cms->SetSignalScaleFactor(_cms->Get_fittedParsInData_sb()[0]); //FIXME  need to be flexible for b-only , s+b only or fitted s
-		if(_toysAtDifferentSignalStrength==1)_cms->SetSignalScaleFactor(_injectingSignalStrength); //FIXME  need to be flexible for b-only , s+b only or fitted s
-		if(_toysAtDifferentSignalStrength==0)_cms->SetSignalScaleFactor(0); //FIXME  need to be flexible for b-only , s+b only or fitted s
+
+
+		if(_bReadToysFromFile) {
+			if(_infile==NULL) {cout<<"ERROR: MLLxsBands _infile is not set yet"<<endl; exit(1);} 
+			_noutcomes=0;
+			if(_cms->Get_v_data().size() > 0 ){
+				TString cname = _cms->GetChannelName(0);	
+				if(cname.BeginsWith("TH1F_")){
+					vector<string> vs;
+					StringSplit(vs, cname.Data(), "_");
+					if(vs.size()>=5){
+						cname = "";
+						for(int i=1; i<vs.size()-3; i++){
+							cname += vs[i];
+						}
+					} 
+				}
+				if(_debug>2) cout<<"checking channel name = "<<cname<<endl;
+				for(int t=0; 0>-1; t++){
+					TString sn = cname; sn+="_"; sn+=t;
+					if(((TH1F*)_infile->Get(sn))==NULL)break;
+					_noutcomes++;
+				}
+			}else if(_cms->Get_v_pdfs_roodataset().size()>0){
+				TString cname = _cms->Get_v_pdfs_channelname()[0];
+				RooWorkspace * w = (RooWorkspace*) _infile->Get("w");
+				if(w==NULL) {cout<<"ERROR: toy file "<<_infile->GetName()<<" doesn't have RooWorkspace naming w "<<endl;exit(1);}
+				for(int t=0; t>-1; t++){
+					TString sn = cname; sn+="_sbData_"; sn+=t;
+					TString bn = cname; bn+="_bData_"; bn+=t;
+					if(w->data(sn) == NULL and w->data(bn)==NULL ) break;
+					if(w->data(sn) and w->data(bn)) {cout<<" ERROR  toy file "<<_infile->GetName()<<" has both sb and b-only toys"<<endl; exit(1);}
+					_noutcomes++;
+				}
+			}
+		}else{
+			if(_toysAtDifferentSignalStrength==2)_cms->SetSignalScaleFactor(_cms->Get_fittedParsInData_sb()[0]); //FIXME  need to be flexible for b-only , s+b only or fitted s
+			if(_toysAtDifferentSignalStrength==1)_cms->SetSignalScaleFactor(_injectingSignalStrength); //FIXME  need to be flexible for b-only , s+b only or fitted s
+			if(_toysAtDifferentSignalStrength==0)_cms->SetSignalScaleFactor(0); //FIXME  need to be flexible for b-only , s+b only or fitted s
+		}
+		if(_debug>2) cout<<"_noutcomes = "<<_noutcomes<<endl;
+		if(_noutcomes<=0) {cout<<"ERROR: _noutcomes = "<<_noutcomes<<endl; exit(1);}
+
 		double *pars = new double[_cms->Get_max_uncorrelation()+1];
 		for(int i=0; i<_noutcomes; i++){
-			vdata_global = (VDChannel)_cms->GetToyData_H1(_cms->Get_fittedParsInData_sb());
-			if(_cms->hasParametricShape()){
-				_cms->SetTmpDataForUnbinned(_cms->Get_v_pdfs_roodataset_toy());
+			if(_bReadToysFromFile){
+				vdata_global = (VDChannel) _cms->GetToyDataFromFile(_infile, i);
+				if(_cms->hasParametricShape()){
+					_cms->SetTmpDataForUnbinned(_cms->GetToyUnbinnedDataFromFile(_infile, i));
+				}
+			}else{
+				vdata_global = (VDChannel)_cms->GetToyData_H1(_cms->Get_fittedParsInData_sb());
+				if(_cms->hasParametricShape()){
+					_cms->SetTmpDataForUnbinned(_cms->Get_v_pdfs_roodataset_toy());
+				}
 			}
 			double tmpr=0, tmperr=0; 
 			double ErrorDef = TMath::ChisquareQuantile(0.68 , 1);// (confidenceLevel, ndf)
@@ -48,6 +106,10 @@ namespace lands{
 			double y0_2 =  MinuitFit(202, tmpr, tmperr, ErrorDef, pars, false, _debug, success) ;  //202, 201, 2:  allow mu to be negative.   102  constrain to be positive 
 			if(_debug)cout<<"Toy#"<<i<<": L="<<y0_2<<" muhat="<<pars[0]<<", from minos fit asymmetry 68% CL:  ["<<tmperr<<","<<tmpr<<"]"<<endl; // upperL, lowerL
 			double mu_hat = pars[0];
+
+			vmu_unsorted.push_back(mu_hat);
+			vlh_unsorted.push_back(y0_2);
+
 
 			vrcls.push_back(mu_hat);
 			vpcls.push_back(1./_noutcomes);

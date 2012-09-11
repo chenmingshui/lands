@@ -18,6 +18,9 @@ namespace lands{
 				_toysAtDifferentSignalStrength = toysAtDifferentSignalStrength; 
 				_injectingSignalStrength = injectingSignalStrength;	
 			}
+			void ToysFromFile(TString s);
+			const vector<double>& Get_mu_unsorted(){return vmu_unsorted;};
+			const vector<double>& Get_lh_unsorted(){return vlh_unsorted;};
 		private:
 			void Bands();
 			int _noutcomes;
@@ -28,6 +31,9 @@ namespace lands{
 			double _rcls[6];
 			double _injectingSignalStrength ; 
 			int _toysAtDifferentSignalStrength ; // b-only,    1 to use injectingSignalStrength,  2 to use best fitted signal strength	
+			bool _bReadToysFromFile;
+			TFile *_infile;
+			vector<double> vmu_unsorted, vlh_unsorted;
 	};
 }
 #endif   /* ----- #ifndef MLLXSBANDS_H  ----- */

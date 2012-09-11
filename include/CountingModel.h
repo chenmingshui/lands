@@ -388,6 +388,8 @@ namespace lands{
 
 
 		vector<TH1F*> GetToyInTH1(const vector<double>& v, int t);
+		vector<double> GetToyDataFromFile(TFile *f, int t);
+		vector<RooAbsData*> GetToyUnbinnedDataFromFile(TFile *f, int t);
 
 		//  /**********  upgrade for TH1 based input   **********/
 		public:

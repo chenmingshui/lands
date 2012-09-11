@@ -113,6 +113,23 @@ void FillTree(TString sfile, vector<int> array){
 	//	if(tree) delete tree;
 	//	cout<<"delete me here 6"<<endl;
 }
+void FillTree(TString sfile, vector<double> array1, TString sb1, vector<double> array2, TString sb2){
+	TFile fTrees(sfile+"_tree.root", "RECREATE");
+	Double_t brT1, brT2;
+	TTree *tree = new TTree("T","T"); 
+	tree->Branch(sb1, &brT1, sb1+"/D");
+	tree->Branch(sb2, &brT2, sb2+"/D");
+	for(int i=0; i<array1.size(); i++){
+		brT1= array1.at(i);
+		brT2= array2.at(i);
+		tree->Fill();
+	}
+	fTrees.Write();
+	fTrees.Close();
+	//	if(tree) delete tree;
+	//	cout<<"delete me here 6"<<endl;
+}
+
 void FillTree(TString sfile, double d1, double d2, vector<double> array1,  vector<double> array2, TString d1Name, TString d2Name, TString array1Name, TString array2Name, TString option ){
 	TFile fTrees(sfile, option);
 	Double_t brT;
@@ -2804,4 +2821,11 @@ RooWorkspace* GetRWSfromMap(map<TString,RooWorkspace*>m, string filename, string
 void AddRWSintoMap(string filename, string rwsname, RooWorkspace* w, map<TString,RooWorkspace*>& m ){
 	TString s = "FILENAME_"; s+=filename; s+="_RWSNAME_"; s+=rwsname;
 	m[s]=w;
+}
+void CopyTrees(TString infile, TString intree, TString outfile, TString outtree){
+	TTree * t = (TTree*) GetTObject( infile.Data(),  intree.Data());
+	TFile * f = new TFile(outfile, "UPDATE");
+	t->SetName(outtree);
+	f->WriteTObject(t->CloneTree());
+	f->Close();
 }

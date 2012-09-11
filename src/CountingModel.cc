@@ -5415,6 +5415,54 @@ If we need to change it later, it will be easy to do.
 	}
 	return vth;
     }
+    vector<double> CountingModel::GetToyDataFromFile(TFile *f, int t){
+	    vector<double> v; 
+	    for(int c=0; c<v_data.size(); c++){
+		    TString cname = v_channelname[c];
+		    if(cname.BeginsWith("TH1F_")){
+			    vector<string> vs;
+			    StringSplit(vs,v_channelname[c], "_");
+			    if(vs.size()<5) {
+				    TString sn = cname; sn+="_"; sn+=t;
+				    v.push_back(((TH1F*)f->Get(sn))->GetBinContent(1));
+				    continue;
+			    }
+			    cname = "";
+			    for(int i=1; i<vs.size()-3; i++){
+				    cname += vs[i];
+			    }
+
+			    TString sn=cname; sn += "_"; sn+=t;
+			    TH1F *h = (TH1F*) f->Get(sn);
+			    for(int b=1; b<=h->GetNbinsX(); b++){
+				    v.push_back(h->GetBinContent(b));
+				    c++;
+			    }
+			    c--;
+		    }
+		    else{
+			    TString sn = cname; sn+="_"; sn+=t;
+			    v.push_back(((TH1F*)f->Get(sn))->GetBinContent(1));
+		    }
+	    }
+	    return v;
+
+    }
+    vector<RooAbsData*> CountingModel::GetToyUnbinnedDataFromFile(TFile *f, int t){
+	    vector<RooAbsData*> v; v.clear();
+	    RooWorkspace* w= (RooWorkspace*)f->Get("w");
+	    if(w==NULL) return v;
+	    for(int c=0; c<v_pdfs_channelname.size(); c++){
+		    TString cname = v_pdfs_channelname[c];
+		    TString sn = cname; sn+="_sbData_"; sn+=t;
+		    TString bn = cname; bn+="_bData_"; bn+=t;
+		    if(w->data(sn) == NULL and w->data(bn)==NULL ){cout<<" ERROR  toy file "<<f->GetName()<<" has no toys for "<<sn<<" and "<<bn<<endl; exit(1);}
+		    if(w->data(sn) and w->data(bn)) {cout<<" ERROR  toy file "<<f->GetName()<<" has both sb and b-only toys"<<endl; exit(1);}
+		    if(w->data(sn)) v.push_back((RooAbsData*) w->data(sn));
+		    if(w->data(bn)) v.push_back((RooAbsData*) w->data(bn));
+	    }
+	    return v;
+    }
 
     };
 
