@@ -29,9 +29,9 @@ void hypoSeparation(TString hypo0_name,  TString hypo0_LLH_forToys0, TString hyp
 
 	vector<double> vts0, vts1; // test statistics --> estimator 
 	double dts;
-	for(int i=0; i<vh0t0.size(); i++) vts0.push_back(-2*(vh0t0[i] - vh1t0[i]));
-	for(int i=0; i<vh0t1.size(); i++) vts1.push_back(-2*(vh0t1[i] - vh1t1[i]));
-	dts= -2*(dh0[0] - dh1[0]);
+	for(int i=0; i<vh0t0.size(); i++) vts0.push_back(2*(vh0t0[i] - vh1t0[i]));
+	for(int i=0; i<vh0t1.size(); i++) vts1.push_back(2*(vh0t1[i] - vh1t1[i]));
+	dts= 2*(dh0[0] - dh1[0]);
 
 
 	// plotting   
