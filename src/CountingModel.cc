@@ -5477,7 +5477,9 @@ If we need to change it later, it will be easy to do.
 				if(v_uncname[i]==v_pdfs_floatParamsName[j]) b=true;
 			}
 			if(b) {
-				if(TString(v_uncname[i]).BeginsWith("CMS_hgg") and !(TString(v_uncname[i]).EndsWith("_norm")) )  if(FoundElement(i+1, vv_parCats)==false)vhgg.push_back(i+1);
+				if(TString(v_uncname[i]).BeginsWith("CMS_hgg") and !(TString(v_uncname[i]).EndsWith("_norm")) ){
+					  if(FoundElement(i+1, vv_parCats)==false)vhgg.push_back(i+1);
+				}
 				else v.push_back(i+1);
 			}else{
 				v.push_back(i+1);
@@ -5487,13 +5489,13 @@ If we need to change it later, it will be easy to do.
 		vv_parCats.push_back(v);
 		vv_parCats.push_back(vhgg);
 
-		
+
 		return;
 		/*
-		for(int i=0; i<=v_uncname.size(); i++)
-		{ v.clear(); v.push_back(i); vv_parCats.push_back(v);}
-		return;
-		*/
+		   for(int i=0; i<=v_uncname.size(); i++)
+		   { v.clear(); v.push_back(i); vv_parCats.push_back(v);}
+		   return;
+		 */
 
 		// POI   mu 
 		v.clear(); v.push_back(0); // vv_parCats.push_back(v);   
@@ -5525,7 +5527,7 @@ If we need to change it later, it will be easy to do.
 			for(int p=0; p<v_uncname.size(); p++) {
 				if(pname == TString(v_uncname[p]))  ind = p+1;
 			}	
-		
+
 			bool added = FoundElement(ind, vv_parCats);
 			if(added) continue;
 			if(ind>0) v.push_back(ind);
@@ -5548,11 +5550,11 @@ If we need to change it later, it will be easy to do.
 		//if(v.size()>0)vv_parCats.push_back(v);
 		vector<int> tmpv_hggshape = v;
 
-		
+
 		//vvp_pdfs_connectNuisBinProc.clear();
 		//vvp_pdfsNorm_connectNuisBinProc.clear();
 		//vvp_connectNuisBinProc[0].push_back(std::make_pair(ch, isam));
-		  
+
     }
 
     };
