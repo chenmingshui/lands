@@ -232,6 +232,8 @@ bool newExpectedAsymBand = false; // for new expected asymptotic bands, see http
 
 TString sToysFromFile = "";
 
+TString sMinimizingApproach = "Normal";
+
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
 
@@ -362,6 +364,9 @@ int main(int argc, const char*argv[]){
 
 
 	cms->SetMass(HiggsMass);
+
+	cms->SetMinimzingApproach(sMinimizingApproach);
+
 
 	if(debug) cms->GetWorkSpace()->Print();
 	//**********************  setValueDirty() takes a lot of timing ************************
@@ -3092,6 +3097,10 @@ void processParameters(int argc, const char* argv[]){
 	if( tmpv.size()!=1 ) { }
 	else sToysFromFile = tmpv[0];
 
+	tmpv = options["--MinimizingApproach"]; 
+	if( tmpv.size()!=1 ) { }
+	else sMinimizingApproach = tmpv[0];
+
 	printf("\n\n[ Summary of configuration in this job: ]\n");
 	if(sPhysicsModel!="StandardModelHiggs")cout<<" PhysicsModel:  "<<sPhysicsModel<<endl;
 	cout<<"  Calculating "<<(calcsignificance?"significance":"limit")<<" with "<<method<<" method "<<endl;
@@ -4044,6 +4053,7 @@ void PrintHelpMessage(){
 	printf("--useHist                              With this, take hist as a channel, no expansion, no bin-by-by stat err\n");   
 	printf("--newExpected 			     new definition of Asymptotic CLs bands \n"); 
 	printf("--loadToysFromFile string            use with doExpectation,  reading saved toys from file \n");
+	printf("--MinimizingApproach string            currently supports Normal, Cascade\n");
 
 
 	printf(" \n");

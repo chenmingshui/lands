@@ -3506,6 +3506,7 @@ If we need to change it later, it will be easy to do.
 									    //  cout<<" i "<<i<<" val="<<tmp3<<"   *********ch"<<ch<<"p"<<p<<"  before val="<<vvvv_pdfs_ChProcSetEvtVals[ch][p][vv_pdfs_curSetIndex[ch][p]][i]<<endl;
 									    if(maxsets_forcaching>0)vvvv_pdfs_ChProcSetEvtVals[ch][p][vv_pdfs_curSetIndex[ch][p]][i] = tmp3; // update the value of the chosen set 
 									    _countPdfEvaluation ++ ;
+									 //if(i==0)cout<<" REMOVEME  1 "<<_countPdfEvaluation<<endl;
 									    if(_printPdfEvlCycle > 0 ) { if( long(_countPdfEvaluation)%long(_printPdfEvlCycle) == 0 ) cout<<" This fit has evaluated  "<<_countPdfEvaluation<<" roofit pdf values "<<endl; } 
 									    //   cout<<" i "<<i<<" val="<<tmp3<<"   *********ch"<<ch<<"p"<<p<<"  curSetIndex="<<vv_pdfs_curSetIndex[ch][p]<<"  after val="<<vvvv_pdfs_ChProcSetEvtVals[ch][p][vv_pdfs_curSetIndex[ch][p]][i]<<endl;
 								    }
@@ -4190,6 +4191,7 @@ If we need to change it later, it will be easy to do.
 	    }
 
 	    for(int j=0; j<vvp_pdfs_connectNuisBinProc[i].size(); j++){
+	//		cout<<" REMOVEME vv_pdfs_statusUpdated["<<vvp_pdfs_connectNuisBinProc[i][j].first<<"]["<<vvp_pdfs_connectNuisBinProc[i][j].second<<"] updated"<<endl;
 		    vv_pdfs_statusUpdated[vvp_pdfs_connectNuisBinProc[i][j].first][vvp_pdfs_connectNuisBinProc[i][j].second]=true;
 		    v_pdfs_statusUpdated[vvp_pdfs_connectNuisBinProc[i][j].first]=true;
 	    }
@@ -5462,6 +5464,95 @@ If we need to change it later, it will be easy to do.
 		    if(w->data(bn)) v.push_back((RooAbsData*) w->data(bn));
 	    }
 	    return v;
+    }
+
+    void CountingModel::CategorizeParameters(){
+	
+
+		vv_parCats.clear(); 
+		vector<int> v, vhgg;
+		for(int i=0; i<v_uncname.size(); i++){
+			bool b = false;
+			for(int j=0; j<v_pdfs_floatParamsName.size(); j++){
+				if(v_uncname[i]==v_pdfs_floatParamsName[j]) b=true;
+			}
+			if(b) {
+				if(TString(v_uncname[i]).BeginsWith("CMS_hgg") and !(TString(v_uncname[i]).EndsWith("_norm")) )  if(FoundElement(i+1, vv_parCats)==false)vhgg.push_back(i+1);
+				else v.push_back(i+1);
+			}else{
+				v.push_back(i+1);
+			}
+		}
+		v.push_back(0);
+		vv_parCats.push_back(v);
+		vv_parCats.push_back(vhgg);
+
+		
+		return;
+		/*
+		for(int i=0; i<=v_uncname.size(); i++)
+		{ v.clear(); v.push_back(i); vv_parCats.push_back(v);}
+		return;
+		*/
+
+		// POI   mu 
+		v.clear(); v.push_back(0); // vv_parCats.push_back(v);   
+		// hgg norm pars 
+		//v.clear();
+		for(int i=0; i<v_uncname.size(); i++){
+			bool b = false;
+			for(int j=0; j<v_pdfs_floatParamsName.size(); j++){
+				if(v_uncname[i]==v_pdfs_floatParamsName[j]) b=true;
+			}
+			if(b) {
+				if(TString(v_uncname[i]).BeginsWith("CMS_hgg") and (TString(v_uncname[i]).EndsWith("_norm")) )  if(FoundElement(i+1, vv_parCats)==false)v.push_back(i+1);
+			}
+			else {
+				if(TString(v_uncname[i]).BeginsWith("CMS_hgg") )  if(FoundElement(i+1, vv_parCats)==false)v.push_back(i+1);
+			}
+		}
+		if(v.size()>0)vv_parCats.push_back(v);
+
+
+
+		// for each other POI,  -->  one per cat 
+		// or  put them together in case POIs have strong correlation ,  like in  WW/ZZ  cutodial symmetry studies
+		v.clear(); 
+		for(int i=0; i<vPOIs.size(); i++){
+			TString pname  = vPOIs[i].name;
+			if(pname=="signal_strength") continue;
+			int ind = -1;
+			for(int p=0; p<v_uncname.size(); p++) {
+				if(pname == TString(v_uncname[p]))  ind = p+1;
+			}	
+		
+			bool added = FoundElement(ind, vv_parCats);
+			if(added) continue;
+			if(ind>0) v.push_back(ind);
+			else {cout<<" ERROR: POI "<<pname<<" is not in v_uncname "<<endl; exit(1);} 
+		}
+		//if(v.size()>0)vv_parCats.push_back(v);
+		vector<int> tmpv_pois = v;
+
+		// hgg  shape paras 
+		v.clear(); 
+		for(int i=0; i<v_uncname.size(); i++){
+			bool b = false;
+			for(int j=0; j<v_pdfs_floatParamsName.size(); j++){
+				if(v_uncname[i]==v_pdfs_floatParamsName[j]) b=true;
+			}
+			if(b) {
+				if(TString(v_uncname[i]).BeginsWith("CMS_hgg") and !(TString(v_uncname[i]).EndsWith("_norm")) )  if(FoundElement(i+1, vv_parCats)==false)v.push_back(i+1);
+			}
+		}
+		//if(v.size()>0)vv_parCats.push_back(v);
+		vector<int> tmpv_hggshape = v;
+
+		
+		//vvp_pdfs_connectNuisBinProc.clear();
+		//vvp_pdfsNorm_connectNuisBinProc.clear();
+		//vvp_connectNuisBinProc[0].push_back(std::make_pair(ch, isam));
+		  
     }
 
     };

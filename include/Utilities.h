@@ -164,6 +164,8 @@ double InverseCDF(
 
 
 int wildcmp(const char *wild, const char *string) ;
+bool FoundElement(int ind, const vector< vector<int> > vv); 
+
 };
 #endif   /* ----- #ifndef UTILITIES_H  ----- */
 

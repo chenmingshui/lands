@@ -73,6 +73,9 @@ namespace lands{
 	double _printFuncCallCycle = -1;
 	double _ErrorDef = -999.;
 	TStopwatch* _watch=0;
+
+	vector<int> v_globalFixedPars;
+	
 	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag){
 		if(_printFuncCallCycle>0) {
 			if( long(_nfunccalls)%long(_printFuncCallCycle) == 0 ){
@@ -85,6 +88,8 @@ namespace lands{
 			_nfunccalls ++;	
 		}
 
+		//cout<< " ***** REMOVEME "<<_nfunccalls<<endl;
+		
 		int debug = cms_global->GetDebug();
 		// par[0] for the ratio of cross section, common signal strength ....
 		if(!cms_global)  {
@@ -118,6 +123,7 @@ namespace lands{
 		}else{
 			for(int i=0; i<npar; i++) {
 				if(par[i]!=_lastParams[i]){
+					//cout<<" REMOVEME par "<<i<<" has changed "<<endl;
 				       	cms_global->FlagChannelsWithParamsUpdated(i);
 					_lastParams[i]=par[i];
 				}
@@ -600,6 +606,7 @@ namespace lands{
 
 // Minuit Output Description **  http://wwwasd.web.cern.ch/wwwasd/cgi-bin/listpawfaqs.pl/43
 
+		v_globalFixedPars.clear();
 
 		//cout<<" ********************   MinuitFit **************** "<<endl;
 		TStopwatch* watch;
@@ -622,6 +629,9 @@ namespace lands{
 				vv_cachCountingParts[i].clear();	
 			}
 			vv_cachCountingParts.clear();
+
+			v_cachPdfValues.clear();
+			v_cachHistParts.clear();
 		}
 
 		_signalScale = cms_global->GetSignalScaleFactor();
@@ -734,7 +744,7 @@ namespace lands{
 						cout<<"**********"<<endl;
 						exit(0);
 				}
-				if(v_uncFloatInFit[i-1]==false)myMinuit->FixParameter(i);
+				if(v_uncFloatInFit[i-1]==false){ myMinuit->FixParameter(i);  v_globalFixedPars.push_back(i); }
 			}
 
 			//if(debug>=10) cout<<"DELETEME in MinuitFit    1"<<endl;
@@ -744,10 +754,12 @@ namespace lands{
 			if(model==1){ // S+B, fix r
 				myMinuit->mnparm(0, "ratio", 1, minuitStep, 0, 300, ierflg);
 				myMinuit->FixParameter(0);
+				v_globalFixedPars.push_back(0);
 			}
 			else if(model==0 || model==1001){ // B-only, fix r
 				myMinuit->mnparm(0, "ratio", 0.0, minuitStep, -1, 300, ierflg);
 				myMinuit->FixParameter(0);
+				v_globalFixedPars.push_back(0);
 			}
 			else if(model==2 or model==201 or model == 202){ // S+B,  float r
 
@@ -771,12 +783,13 @@ namespace lands{
 			else if(model==3){ // profile mu
 				myMinuit->mnparm(0, "ratio", mu, minuitStep, -100, 300, ierflg);
 				myMinuit->FixParameter(0);
+				v_globalFixedPars.push_back(0);
 				_bPositiveSignalStrength = false;
 			}
 			else if(model==4){ // only floating mu,  not fit for systematics
 				myMinuit->mnparm(0, "ratio", mu, minuitStep, -100, 300, ierflg);
 				_bPositiveSignalStrength = false;
-				for(int i=1; i<=npars; i++) myMinuit->FixParameter(i);
+				for(int i=1; i<=npars; i++) { myMinuit->FixParameter(i); v_globalFixedPars.push_back(i);}
 			}
 			else if(model==5){ // no profiling at all, i.e. fix all parameters including strength 
 				//	myMinuit->mnparm(0, "ratio", mu, 0.1, -100, 300, ierflg);
@@ -811,6 +824,7 @@ namespace lands{
 					if(vsPOIsToBeFixed[i].first =="signal_strength") {
 						myMinuit->mnparm(0, "ratio", vsPOIsToBeFixed[i].second, 0.1, -100, 9e10, ierflg);
 						myMinuit->FixParameter(0);
+						v_globalFixedPars.push_back(0);
 						continue;
 					}
 					bool inWorkSpace = false;
@@ -834,6 +848,7 @@ namespace lands{
 									break;
 							}
 							myMinuit->FixParameter(j);
+							v_globalFixedPars.push_back(j);
 						}
 					}
 				}
@@ -855,7 +870,32 @@ namespace lands{
 			arglist[1] = cms_global->Get_minuitTolerance();  // tolerance 
 			//arglist[1] = 0.009991;
 			//if(!UseMinos or UseMinos==2)myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
-			myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);  // always perform migrad 
+
+			TString iMiniApproach = cms_global->MinimizingApproach();
+			vector<TString> spargroups;
+			//spargroups.push_back("ratio"); // a must 
+			spargroups.push_back("CMS_hgg_nui*");
+			spargroups.push_back("CMS_hww_MVAME*");
+
+			// categorize  nuisance parameters:  and print into a text file for next use 
+			// *.  mu 
+			// *.  other POIs    mass, couplings 
+			// *.  Hgg, HZZ4L, HZZ2l2q, ... HZg ....   shape parameters separately   :   channel , process 
+			// *.  common shape parameters  :   common in one channel,   common in multiple channels 
+			// *.  all channels normalization parameters separately  
+			// *.  common norm parameters 
+			
+			// for each parameter: 
+			//       check if it is shape parameter
+			//       check how many channels are affected,   how many processes in a channel are affected 
+
+
+			if(iMiniApproach=="Cascade")
+				CascadeMinimizing(myMinuit, "MIGRAD", arglist ,2,ierflg, 1, spargroups);  // always perform migrad 
+			else 	
+				myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);  // always perform migrad 
+
+
 			//if(UseMinos==2)myMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
 			if(debug>0 || (ierflg and debug>=0) )cout <<" MIGRAD Number of function calls in Minuit: " << myMinuit->fNfcn << endl;
 			if(debug>0 || (ierflg and debug>=0) )cout <<" MIGRAD return errflg = "<<ierflg<<endl;
@@ -1059,6 +1099,190 @@ namespace lands{
 		if(cms_global->GetDebug())watch->Print();
 		return 0.0;
 	}	
+
+	void CascadeMinimizing(TMinuit *tm, const char* comand, Double_t* plist, Int_t llist, Int_t& ierflg, int strategy, vector<TString> spargroups){
+	//void CascadeMinimizing(TMinuit *tm, const char* comand, Double_t* plist, Int_t llist, Int_t& ierflg, int strategy, vector< vector<TString> > spargroups){
+		/*
+			*  get the list of global fixed parameters :   done in MinuitFit
+			
+			*  for the rest variables,  minize them in the order of pargroups 
+
+			*  at each step, fix a bunch of parameters and then free them again 
+
+			*  at the end, do a global fit 
+		*/	
+		
+		vector<string> v_uncname = cms_global->Get_v_uncname();
+		int npars = cms_global->Get_max_uncorrelation();
+
+		
+		// convert the pargroups to  vector< vector<int> >   :  wildcard comparison 
+		cms_global->CategorizeParameters();
+		vector< vector<int> > vv_index = cms_global->Get_vv_parCats();
+		vector< vector<double> > vv_best;
+		//vector<int> v; v.push_back(0);
+		//vv_index.push_back(v);
+
+		/*
+		for(int i=0; i<spargroups.size(); i++){
+			v.clear();
+			for(int j=1; j<=npars; j++){
+				TString sname=v_uncname[j-1]; 
+				//if(sname.Contains(spargroups[i]))
+				if(wildcmp(spargroups[i].Data(), sname.Data()))
+					v.push_back(j);	
+			}
+			// FIXME  v.remove_duplicateElements();
+			vv_index.push_back(v);
+
+			if(cms_global->GetDebug()>0)  {
+				cout<<" parameter group ["<<spargroups[i]<<"]: "<<endl;
+				for(int k=0;k<v.size(); k++)
+					cout<<" 	"<<v[k]<<"th  "<<v_uncname[v[k]-1]<<endl;
+			}
+		}*/
+
+		// checking parameters in groups 
+		// print list of parameters ---> for each group : done above
+		// check whether there are overlaps among groups
+		for(int i=1;i<vv_index.size(); i++){
+			for(int j=i+1; j<vv_index.size(); j++){
+				for(int m=0; m<vv_index[i].size(); m++){
+					for(int n=0; n<vv_index[j].size(); n++){
+						if(vv_index[i][m]==vv_index[j][n]) {
+						//	cout<<"WARNING parameter "<<v_uncname[vv_index[i][m]-1]<<" is in both groups "<<spargroups[i-1]<<" and "<<spargroups[j-1]<<endl;	
+						}
+					}
+				}
+			}
+		}
+		// print the rest of parameters which are not in the groups 
+		if(cms_global->GetDebug()>0){
+			for(int p=1; p<=npars; p++){
+				bool found = false;
+				for(int i=0; i<vv_index.size(); i++){
+					if(found) break;
+					for(int j=0; j<vv_index[i].size(); j++) {
+						if(p==vv_index[i][j]) {found = true; break;}
+					}
+				}
+				if(!found) cout<<" parameter "<<v_uncname[p-1]<<" is not in the groups"<<endl;
+				
+			}
+		}
+
+		double tmp, tmpe;
+
+		vector<int> v_minimized; v_minimized.clear();
+		// cascade minimizing 
+		for(int i=0; i<vv_index.size(); i++){
+			tm->mnfree(0); // free all parameters
+			int nfreepars = 0;
+			for(int j=0; j<=npars; j++){
+				bool tobefree = false;
+				for(int k=0; k<vv_index[i].size(); k++){
+					if(j==vv_index[i][k]) tobefree = true;
+				}
+				for(int k=0; k<v_globalFixedPars.size(); k++){
+					if(j==v_globalFixedPars[k]) tobefree=false;
+				}
+				if(!tobefree){
+					tm->FixParameter(j);
+				}else{
+					nfreepars++;
+					v_minimized.push_back(j);
+				}
+			}	
+			if(nfreepars>0){ 
+				cout<<"*******   before minimizing "<<i<<endl; 
+				for(int p=0;p<=npars; p++) {
+					tm->GetParameter(p, tmp, tmpe);
+					printf("* par  %30s 			%.6f\n", (p==0?"mu":v_uncname[p-1].c_str()), tmp);
+				}
+
+				int oldn = _countPdfEvaluation;
+				int oldf = tm->fNfcn;
+				tm->mnexcm(comand, plist, llist, ierflg);
+
+				cout<<"*******   after minimizing "<<i<<endl; 
+				for(int p=0;p<=npars; p++) {
+					tm->GetParameter(p, tmp, tmpe);
+					printf("* par  %30s 			%.6f\n", (p==0?"mu":v_uncname[p-1].c_str()), tmp);
+				}
+				//cout<<"INFO  "<<i<<" "<<(i>0?spargroups[i-1]:"mu")<<" --> func calls:  "<<tm->fNfcn<<endl;
+				cout<<"INFO  "<<i<<" --> func calls:  "<<tm->fNfcn - oldf<<endl;
+				cout<<"   STEP "<<i<<"  _countPdfEvaluation "<<_countPdfEvaluation - oldn<<endl;
+
+			}
+		}
+
+		// minimize  the rest parameters 
+		tm->mnfree(0);	
+
+
+		int nfreepars=0;
+		for(int j=0; j<=npars; j++){
+			bool tobefree = true;
+			for(int k=0; k<v_minimized.size(); k++){
+				if(j==v_minimized[k]) tobefree=false;
+			}
+			for(int k=0; k<v_globalFixedPars.size(); k++){
+				if(j==v_globalFixedPars[k]) tobefree=false;
+			}
+			if(!tobefree){
+				tm->FixParameter(j);
+			}else nfreepars++;
+		}
+		if(nfreepars>0){
+			cout<<"*******   before minimizing rest pars"<<endl; 
+			for(int p=0;p<=npars; p++) {
+				tm->GetParameter(p, tmp, tmpe);
+				printf("* par  %30s 			%.6f\n", (p==0?"mu":v_uncname[p-1].c_str()), tmp);
+			}
+			int oldn = _countPdfEvaluation;
+			int oldf = tm->fNfcn;
+			tm->mnexcm(comand, plist, llist, ierflg);
+
+			cout<<"*******   after minimizing rest pars"<<endl; 
+			for(int p=0;p<=npars; p++) {
+				tm->GetParameter(p, tmp, tmpe);
+				printf("* par  %30s 			%.6f\n", (p==0?"mu":v_uncname[p-1].c_str()), tmp);
+			}
+			cout<<"INFO  minizing rest parameters func calls:  "<<tm->fNfcn - oldf <<endl;
+			cout<<"    STEP  rest _countPdfEvaluation "<<_countPdfEvaluation - oldn<<endl;
+		}
+
+		// global fit for all variable parameters
+		tm->mnfree(0);	
+
+		cout<<"*******   before minimizing all pars"<<endl; 
+		for(int p=0;p<=npars; p++) {
+			tm->GetParameter(p, tmp, tmpe);
+			printf("* par  %30s 			%.6f\n", (p==0?"mu":v_uncname[p-1].c_str()), tmp);
+		}
+		for(int j=0; j<=npars; j++){
+			bool tobefree = true;
+			for(int k=0; k<v_globalFixedPars.size(); k++){
+				if(j==v_globalFixedPars[k]) tobefree=false;
+			}
+			if(!tobefree){
+				tm->FixParameter(j);
+			}
+		}
+		int oldn = _countPdfEvaluation;
+		int oldf = tm->fNfcn;
+		tm->mnexcm(comand, plist, llist, ierflg);
+		cout<<"*******   after minimizing all pars"<<endl; 
+		for(int p=0;p<=npars; p++) {
+			tm->GetParameter(p, tmp, tmpe);
+			printf("* par  %30s 			%.6f\n", (p==0?"mu":v_uncname[p-1].c_str()), tmp);
+		}
+		cout<<"INFO  last step minizing all parameters func calls:  "<<tm->fNfcn - oldf<<endl;
+		cout<<"     STEP  all _countPdfEvaluation "<<_countPdfEvaluation - oldn<<endl;
+
+
+
+	}
 
 	bool DoAfit(double mu, vector<double> vdata, vector<RooAbsData*> vrds, double* pars){
 		if(cms_global->GetDebug())cout<<"* DoAfit: start with mu= "<<mu<<endl;

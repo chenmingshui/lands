@@ -1275,4 +1275,14 @@ int wildcmp(const char *wild, const char *string) {
 	}
 	return !*wild;
 }
+bool FoundElement(int ind, const vector< vector<int> > vv)
+{
+	bool added = false;
+	for(int m=0; m<vv.size(); m++){
+		for(int n=0; n<vv[m].size(); n++) { if(ind==vv[m][n]) return true; }
+	}
+	return added;
+}
+
+
 };

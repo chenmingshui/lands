@@ -391,6 +391,12 @@ namespace lands{
 		vector<double> GetToyDataFromFile(TFile *f, int t);
 		vector<RooAbsData*> GetToyUnbinnedDataFromFile(TFile *f, int t);
 
+
+		void SetMinimzingApproach(TString s){_MinimizingApproach = s;};
+		TString MinimizingApproach(){return _MinimizingApproach;};
+		void CategorizeParameters();
+		const vector< vector<int> > & Get_vv_parCats(){return vv_parCats;};
+
 		//  /**********  upgrade for TH1 based input   **********/
 		public:
 			void AddChannel(string channel_name, vector<string> vprocname , vector<TH1D*> sigTHs, 
@@ -427,6 +433,7 @@ namespace lands{
 			const	vector< vector<int> > & Get_vv_channelDecayModeTH(){return vv_channelDecayMode_th;};
 			const	vector< vector<int> > & Get_vv_productionModeTH(){return vv_productionMode_th;};
 			const VChannelTH& Get_v_dataTH(){return v_data_th;}
+
 		private:
 			vector<int> v_sigproc_th;
 			vector<std::string> v_channelname_th; // start from 0 
@@ -642,6 +649,9 @@ namespace lands{
 
 			TString _ErrEstAlgo;
 			double _printPdfEvlCycle;
+
+			TString _MinimizingApproach;
+			vector< vector<int> > vv_parCats; 
 
 	};
 	CountingModel* CombineModels(CountingModel *cms1, CountingModel *cms2);

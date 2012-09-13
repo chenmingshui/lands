@@ -46,6 +46,8 @@ namespace lands{
 	void Chisquare(Int_t &npar, Double_t *gin, Double_t &f,  Double_t *par, Int_t iflag); 
 	double MinuitFit(int model, double &r, double &er, double mu=0, double *pars=0, bool hasBestFitted = false, int debug=0, int *success=0, double *bestFitPars=0);
 	bool DoAfit(double mu, vector<double> vdata, vector<RooAbsData*> vrds, double* pars);
+	void CascadeMinimizing(TMinuit *tm, const char* comand, Double_t* plist, Int_t llist, Int_t& ierflg, int strategy, vector<TString> pargroups);
+	extern vector< int > v_globalFixedPars; // indexes 
 	class CLsBase
 	{
 		public:
