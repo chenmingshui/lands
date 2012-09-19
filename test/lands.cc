@@ -1234,7 +1234,13 @@ int main(int argc, const char*argv[]){
 					for(int p=0; p<vsParToBeFixedWhenGenToys.size(); p++){
 						int poi_i =-1;
 						for(int i=1; i<=v_uncname.size(); i++) if(v_uncname[i-1]==vsParToBeFixedWhenGenToys[p].Data()) poi_i=i;
-						if( poi_i >=0 )cms->SetParForGenToy(vsParToBeFixedWhenGenToys[p], vdParToBeFixedWhenGenToys[p]); // set to init value from command line
+						if( poi_i >=0 ){
+							if(cms->Get_v_pdftype()[poi_i] == typeFlat){
+								vector< vector<double> > v_Pars = cms->Get_v_Pars(); 
+								double tmp = ( vdParToBeFixedWhenGenToys[p] - v_Pars[poi_i][1] )/ ( v_Pars[poi_i][2] - v_Pars[poi_i][1]);
+								cms->SetParForGenToy(vsParToBeFixedWhenGenToys[p], tmp); // set to init value from command line
+							}else	cms->SetParForGenToy(vsParToBeFixedWhenGenToys[p], vdParToBeFixedWhenGenToys[p]); // set to init value from command line
+						}
 						else {cout<<"ERROR:  fixing a parameter which is not exist in the list : "<<vsParToBeFixedWhenGenToys[p]<<endl; exit(1);}
 					}
 					vdata_global = (VDChannel)cms->GetToyData_H1();//_cms->Get_fittedParsInData_sb());
