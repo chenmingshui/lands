@@ -1282,6 +1282,7 @@ int main(int argc, const char*argv[]){
 				//CopyTrees(jobname+"_maxllfit.root", "T", ts+"_tree.root", "T_data");
 			}
 
+			watch.Print();
 			
 		}else if(method == "ScanningMuFit" or method=="MaxLikelihoodFit"){
 			int idMH=-1;
