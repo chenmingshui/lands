@@ -129,6 +129,25 @@ void FillTree(TString sfile, vector<double> array1, TString sb1, vector<double> 
 	//	if(tree) delete tree;
 	//	cout<<"delete me here 6"<<endl;
 }
+void FillTree(TString sfile, vector< vector<double> > array1, vector<TString> sb1){
+	if(array1.size()<=0) return;
+	TFile fTrees(sfile+"_tree.root", "RECREATE");
+	Double_t * brT1 = new double[array1.size()];
+	TTree *tree = new TTree("T","T"); 
+	for(int i=0; i<array1.size(); i++){
+		tree->Branch(sb1[i], brT1+i, sb1[i]+"/D");
+	}
+	for(int i=0; i<array1[0].size(); i++){
+		for(int j=0; j<array1.size(); j++) 
+			brT1[j] = array1[j].at(i);
+		tree->Fill();
+	}
+	fTrees.Write();
+	fTrees.Close();
+	delete brT1;
+	//	if(tree) delete tree;
+	//	cout<<"delete me here 6"<<endl;
+}
 
 void FillTree(TString sfile, double d1, double d2, vector<double> array1,  vector<double> array2, TString d1Name, TString d2Name, TString array1Name, TString array2Name, TString option ){
 	TFile fTrees(sfile, option);

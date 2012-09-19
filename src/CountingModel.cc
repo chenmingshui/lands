@@ -1311,6 +1311,10 @@ If we need to change it later, it will be easy to do.
                 if(_debug>=100)cout<<" index "<<i<<": "<<par[i]<<endl;
             }
         }		
+
+	for(int i=0; i<v_fixedParForGenToy.size(); i++){
+		vrdm[vind_fixedParForGenToy[i]] = v_fixedParForGenToy[i];
+	}
         //if(_debug) cout<<"done for random gen"<<endl;
 
 	if(v_flatparId.size()>0){	
@@ -5556,6 +5560,10 @@ If we need to change it later, it will be easy to do.
 		//vvp_connectNuisBinProc[0].push_back(std::make_pair(ch, isam));
 
     }
+
+	void CountingModel::SetParForGenToy(TString sp, double val) {
+		for(int i=1; i<=v_uncname.size(); i++) if(v_uncname[i-1]==sp.Data()) {v_fixedParForGenToy.push_back(val); vind_fixedParForGenToy.push_back(i);}
+	}
 
     };
 

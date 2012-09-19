@@ -27,6 +27,7 @@ void SaveResults(TString sfile, double mH, double limit, double limitErr, double
 void FillTree(TString sfile, vector<double> array, TString treeName="");
 void FillTree(TString sfile, vector<int> array);
 void FillTree(TString sfile, vector<double> array1, TString sb1, vector<double> array2, TString sb2);
+void FillTree(TString sfile, vector< vector<double> > array1,vector<TString> sb1);
 void FillTree(TString sfile, double * array, int nsize=100000);
 void FillTree(TString sfile, int* array, int nsize=100000);
 void FillTree(TString sfile, double d1, double d2, vector<double> array1,  vector<double> array2, TString d1Name="d1", TString d2Name="d2", TString array1Name="T1", TString array2Name="T2", TString option = "RECREATE");

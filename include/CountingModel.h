@@ -396,6 +396,8 @@ namespace lands{
 		TString MinimizingApproach(){return _MinimizingApproach;};
 		void CategorizeParameters();
 		const vector< vector<int> > & Get_vv_parCats(){return vv_parCats;};
+		void SetParForGenToy(TString sp, double val);
+		void ClearParForGenToy(){vind_fixedParForGenToy.clear(); v_fixedParForGenToy.clear();};
 
 		//  /**********  upgrade for TH1 based input   **********/
 		public:
@@ -652,6 +654,9 @@ namespace lands{
 
 			TString _MinimizingApproach;
 			vector< vector<int> > vv_parCats; 
+
+			vector<int> vind_fixedParForGenToy; // for multiple POIs,  like MH, when generate toys, want to fix the MH at initial value from command line 
+			vector<double> v_fixedParForGenToy;
 
 	};
 	CountingModel* CombineModels(CountingModel *cms1, CountingModel *cms2);
