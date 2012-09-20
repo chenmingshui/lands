@@ -2917,6 +2917,7 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys, 
 	_startNuisances = _model->Get_norminalPars();	
 
 
+	RooWorkspace * wtmp = new RooWorkspace("w");
 	vector< vector<TH1F*> > vvtoyinTH; vvtoyinTH.clear();
 
 	// effort for adaptive sampling
@@ -3013,7 +3014,8 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys, 
 					if(bWriteToys){
 						for(int ii=0; ii<_model->Get_v_pdfs_roodataset_toy().size(); ii++){
 							TString stmp = _model->Get_v_pdfs_roodataset_toy()[ii]->GetName(); stmp+="_"; stmp+=i;
-							_model->GetWorkSpace()->import(*(_model->Get_v_pdfs_roodataset_toy()[ii]), RooFit::Rename(stmp.Data()));
+							//_model->GetWorkSpace()->import(*(_model->Get_v_pdfs_roodataset_toy()[ii]), RooFit::Rename(stmp.Data()));
+							wtmp->import(*(_model->Get_v_pdfs_roodataset_toy()[ii]), RooFit::Rename(stmp.Data()));
 						}
 					}
 				}
@@ -3026,7 +3028,8 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys, 
 					if(bWriteToys){
 						for(int ii=0; ii<_model->Get_v_pdfs_roodataset_toy().size(); ii++){
 							TString stmp = _model->Get_v_pdfs_roodataset_toy()[ii]->GetName(); stmp+="_"; stmp+=i;
-							_model->GetWorkSpace()->import(*(_model->Get_v_pdfs_roodataset_toy()[ii]), RooFit::Rename(stmp.Data()));
+							//_model->GetWorkSpace()->import(*(_model->Get_v_pdfs_roodataset_toy()[ii]), RooFit::Rename(stmp.Data()));
+							wtmp->import(*(_model->Get_v_pdfs_roodataset_toy()[ii]), RooFit::Rename(stmp.Data()));
 						}
 					}
 				}
@@ -3074,8 +3077,9 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys, 
 		TString stmp = jobname+"_PseudoData_sb_seed"; stmp+=_model->GetRdm()->GetSeed(); stmp+=".root";
 		TFile *f = new TFile(stmp, "RECREATE");
 		TString oldwsname = _model->GetWorkSpace()->GetName();
-		_model->GetWorkSpace()->SetName("w");
-		f->WriteTObject(_model->GetWorkSpace());
+		//_model->GetWorkSpace()->SetName("w");
+		//f->WriteTObject(_model->GetWorkSpace());
+		f->WriteTObject(wtmp);
 
 		for(int t=0; t<vvtoyinTH.size(); t++){
 			for(int c=0; c<vvtoyinTH[t].size(); c++){
@@ -3086,7 +3090,7 @@ bool CLsBase::BuildM2lnQ_sb(int nexps, bool reUsePreviousToys, bool bWriteToys, 
 		}
 
 		f->Close();
-		_model->GetWorkSpace()->SetName(oldwsname);
+		//_model->GetWorkSpace()->SetName(oldwsname);
 		return true;
 	}
 	
