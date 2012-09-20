@@ -5561,9 +5561,44 @@ If we need to change it later, it will be easy to do.
 
     }
 
-	void CountingModel::SetParForGenToy(TString sp, double val) {
-		for(int i=1; i<=v_uncname.size(); i++) if(v_uncname[i-1]==sp.Data()) {v_fixedParForGenToy.push_back(val); vind_fixedParForGenToy.push_back(i);}
-	}
+    void CountingModel::SetParForGenToy(TString sp, double val) {
+	    for(int i=1; i<=v_uncname.size(); i++) if(v_uncname[i-1]==sp.Data()) {v_fixedParForGenToy.push_back(val); vind_fixedParForGenToy.push_back(i);}
+    }
 
+    int CountingModel::NumberOfToysFromFile(TString s){
+	    int ntoys = 0;
+	    TFile *f = new TFile(s);
+	    if(f==NULL) {cout<<"ERROR: Incoming File "<<s<<" is not found or is broken, please check "<<endl; exit(1);}
+	    if(v_data.size() > 0 ){
+		    TString cname = v_channelname[0];	
+		    if(cname.BeginsWith("TH1F_")){
+			    vector<string> vs;
+			    StringSplit(vs, cname.Data(), "_");
+			    if(vs.size()>=5){
+				    cname = "";
+				    for(int i=1; i<vs.size()-3; i++){
+					    cname += vs[i];
+				    }
+			    } 
+		    }
+		    if(_debug>2) cout<<"checking channel name = "<<cname<<endl;
+		    for(int t=0; 0>-1; t++){
+			    TString sn = cname; sn+="_"; sn+=t;
+			    if(((TH1F*)f->Get(sn))==NULL)break;
+			    ntoys++;
+		    }
+	    }else if(v_pdfs_roodataset.size()>0){
+		    TString cname = v_pdfs_channelname[0];
+		    RooWorkspace * w = (RooWorkspace*) f->Get("w");
+		    if(w==NULL) {cout<<"ERROR: toy file "<<f->GetName()<<" doesn't have RooWorkspace naming w "<<endl;exit(1);}
+		    for(int t=0; t>-1; t++){
+			    TString sn = cname; sn+="_sbData_"; sn+=t;
+			    TString bn = cname; bn+="_bData_"; bn+=t;
+			    if(w->data(sn) == NULL and w->data(bn)==NULL ) break;
+			    if(w->data(sn) and w->data(bn)) {cout<<" ERROR  toy file "<<f->GetName()<<" has both sb and b-only toys"<<endl; exit(1);}
+			    ntoys++;
+		    }
+	    }
+    }
     };
 

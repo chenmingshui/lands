@@ -398,6 +398,7 @@ namespace lands{
 		const vector< vector<int> > & Get_vv_parCats(){return vv_parCats;};
 		void SetParForGenToy(TString sp, double val);
 		void ClearParForGenToy(){vind_fixedParForGenToy.clear(); v_fixedParForGenToy.clear();};
+		int NumberOfToysFromFile(TString s);
 
 		//  /**********  upgrade for TH1 based input   **********/
 		public:

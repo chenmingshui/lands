@@ -1230,26 +1230,40 @@ int main(int argc, const char*argv[]){
 				//FIXME SetSignalStrength(ToysAtDifferentSignalStrength, InjectingSignalStrength);
 				vector<double> vmuhat, vmuerrhi, vmuerrlo, vmhhat, vmherrhi, vmherrlo;
 				vector< vector<double> > vvdPseudoPOIs; vvdPseudoPOIs.resize(viPseudoPOIs.size()); 
+				TFile * fin;
+				if(sToysFromFile!=""){
+					toys = cms->NumberOfToysFromFile(sToysFromFile);
+					fin = new TFile(sToysFromFile);
+				}
 				for(int t=0; t<toys; t++)
 				{
-					for(int p=0; p<vsParToBeFixedWhenGenToys.size(); p++){
-						int poi_i =-1;
-						for(int i=1; i<=v_uncname.size(); i++) if(v_uncname[i-1]==vsParToBeFixedWhenGenToys[p].Data()) poi_i=i;
-						if( poi_i >=0 ){
-							if(cms->Get_v_pdftype()[poi_i] == typeFlat){
-								vector< vector<double> > v_Pars = cms->Get_v_Pars(); 
-								double tmp = ( vdParToBeFixedWhenGenToys[p] - v_Pars[poi_i][1] )/ ( v_Pars[poi_i][2] - v_Pars[poi_i][1]);
-								cms->SetParForGenToy(vsParToBeFixedWhenGenToys[p], tmp); // set to init value from command line
-							}else	cms->SetParForGenToy(vsParToBeFixedWhenGenToys[p], vdParToBeFixedWhenGenToys[p]); // set to init value from command line
+					if(debug>=0)cout<<" Toy "<<t<<endl;
+					if(sToysFromFile!=""){
+						vdata_global = (VDChannel)cms->GetToyDataFromFile(fin, t);
+						if(cms->hasParametricShape()){
+							cms->SetTmpDataForUnbinned(cms->GetToyUnbinnedDataFromFile(fin, t));
 						}
-						else {cout<<"ERROR:  fixing a parameter which is not exist in the list : "<<vsParToBeFixedWhenGenToys[p]<<endl; exit(1);}
 					}
-					vdata_global = (VDChannel)cms->GetToyData_H1();//_cms->Get_fittedParsInData_sb());
-					if(cms->hasParametricShape()){
-						cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_toy());
-					}
-					cms->ClearParForGenToy();
+					else{
+						for(int p=0; p<vsParToBeFixedWhenGenToys.size(); p++){
+							int poi_i =-1;
+							for(int i=1; i<=v_uncname.size(); i++) if(v_uncname[i-1]==vsParToBeFixedWhenGenToys[p].Data()) poi_i=i;
+							if( poi_i >=0 ){
+								if(cms->Get_v_pdftype()[poi_i] == typeFlat){
+									vector< vector<double> > v_Pars = cms->Get_v_Pars(); 
+									double tmp = ( vdParToBeFixedWhenGenToys[p] - v_Pars[poi_i][1] )/ ( v_Pars[poi_i][2] - v_Pars[poi_i][1]);
+									cms->SetParForGenToy(vsParToBeFixedWhenGenToys[p], tmp); // set to init value from command line
+								}else	cms->SetParForGenToy(vsParToBeFixedWhenGenToys[p], vdParToBeFixedWhenGenToys[p]); // set to init value from command line
+							}
+							else {cout<<"ERROR:  fixing a parameter which is not exist in the list : "<<vsParToBeFixedWhenGenToys[p]<<endl; exit(1);}
+						}
+						vdata_global = (VDChannel)cms->GetToyData_H1();//_cms->Get_fittedParsInData_sb());
+						if(cms->hasParametricShape()){
+							cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_toy());
+						}
+						cms->ClearParForGenToy();
 
+					}
 					runMaxLikelihoodFit(debug>0?true:false,debug>0?true:false, TString(t));
 					vmuhat.push_back(fitBestMu);
 					vmuerrhi.push_back(fitBestMuErrHi);
@@ -1257,7 +1271,7 @@ int main(int argc, const char*argv[]){
 					vmhhat.push_back(fitBestMH);
 					vmherrhi.push_back(fitBestMHErrHi);
 					vmherrlo.push_back(fitBestMHErrLo);
-					
+
 					for(int p=0; p<viPseudoPOIs.size(); p++){
 						if(cms->Get_v_pdftype()[viPseudoPOIs[p]] == typeFlat){
 							int poi_i= viPseudoPOIs[p];
@@ -2271,11 +2285,25 @@ int main(int argc, const char*argv[]){
 			double pvalue, significance, muhat;
 			runPValue(pvalue, significance, muhat, true);
 			if(doExpectation){
+				TFile *fin;
+				if(sToysFromFile!=""){
+					toys = cms->NumberOfToysFromFile(sToysFromFile);
+					fin = new TFile(sToysFromFile);
+				}
 				for(int t=0; t<toys; t++)
 				{
-					vdata_global = (VDChannel)cms->GetToyData_H1();//_cms->Get_fittedParsInData_sb());
-					if(cms->hasParametricShape()){
-						cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_toy());
+					if(debug>=0)cout<<" Toy "<<t<<endl;
+					if(sToysFromFile!=""){
+						vdata_global = (VDChannel)cms->GetToyDataFromFile(fin, t);
+						if(cms->hasParametricShape()){
+							cms->SetTmpDataForUnbinned(cms->GetToyUnbinnedDataFromFile(fin, t));
+						}
+					}
+					else{
+						vdata_global = (VDChannel)cms->GetToyData_H1();//_cms->Get_fittedParsInData_sb());
+						if(cms->hasParametricShape()){
+							cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_toy());
+						}
 					}
 					runPValue(pvalue, significance, muhat, false);
 					difflimits.push_back(significance);

@@ -48,36 +48,7 @@ namespace lands{
 		if(_bReadToysFromFile) {
 			if(_infile==NULL) {cout<<"ERROR: MLLxsBands _infile is not set yet"<<endl; exit(1);} 
 			_noutcomes=0;
-			if(_cms->Get_v_data().size() > 0 ){
-				TString cname = _cms->GetChannelName(0);	
-				if(cname.BeginsWith("TH1F_")){
-					vector<string> vs;
-					StringSplit(vs, cname.Data(), "_");
-					if(vs.size()>=5){
-						cname = "";
-						for(int i=1; i<vs.size()-3; i++){
-							cname += vs[i];
-						}
-					} 
-				}
-				if(_debug>2) cout<<"checking channel name = "<<cname<<endl;
-				for(int t=0; 0>-1; t++){
-					TString sn = cname; sn+="_"; sn+=t;
-					if(((TH1F*)_infile->Get(sn))==NULL)break;
-					_noutcomes++;
-				}
-			}else if(_cms->Get_v_pdfs_roodataset().size()>0){
-				TString cname = _cms->Get_v_pdfs_channelname()[0];
-				RooWorkspace * w = (RooWorkspace*) _infile->Get("w");
-				if(w==NULL) {cout<<"ERROR: toy file "<<_infile->GetName()<<" doesn't have RooWorkspace naming w "<<endl;exit(1);}
-				for(int t=0; t>-1; t++){
-					TString sn = cname; sn+="_sbData_"; sn+=t;
-					TString bn = cname; bn+="_bData_"; bn+=t;
-					if(w->data(sn) == NULL and w->data(bn)==NULL ) break;
-					if(w->data(sn) and w->data(bn)) {cout<<" ERROR  toy file "<<_infile->GetName()<<" has both sb and b-only toys"<<endl; exit(1);}
-					_noutcomes++;
-				}
-			}
+			_noutcomes = _cms->NumberOfToysFromFile(_infile->GetName());
 		}else{
 			if(_toysAtDifferentSignalStrength==2)_cms->SetSignalScaleFactor(_cms->Get_fittedParsInData_sb()[0]); //FIXME  need to be flexible for b-only , s+b only or fitted s
 			if(_toysAtDifferentSignalStrength==1)_cms->SetSignalScaleFactor(_injectingSignalStrength); //FIXME  need to be flexible for b-only , s+b only or fitted s
