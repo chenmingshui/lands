@@ -14,10 +14,11 @@ namespace lands{
 			void SetModel(CountingModel* cms){_cms=cms;}
 
 			const vector<double>& GetDifferentialSignificances(){return _difrcls;}
+			const vector<double>& GetDifferentialMuhats(){return _difmuhat;}
 		private:
 			void Bands();
 			int _noutcomes;
-			vector<double> _difrcls, _vrcls, _vpcls; 
+			vector<double> _difrcls, _vrcls, _vpcls, _difmuhat; 
 			int _debug;
 			CLsBase *_frequentist;
 			CountingModel *_cms;

@@ -141,6 +141,7 @@ double runProfileLikelihoodApproximation(double neg2_llr=-9999);
 bool runBayesian();
 bool saveExpectation();
 bool runMaxLikelihoodFit(bool printInfo, bool makePlots, TString smakePlots="");
+bool runPValue(double &pvalue, double& significance, double& muhat, bool printInfo=false);
 
 double preHints_obs=0, preHints_m2s=0, preHints_m1s=0, preHints_p1s=0, preHints_p2s=0, preHints_median=0;
 // common results
@@ -2258,79 +2259,30 @@ int main(int argc, const char*argv[]){
 		double tmp, tmperr;
 		double rmean, rm1s, rm2s, rp1s, rp2s;	
 		vector<double> difflimits; 
+		vector<double> muhats; 
 		if(method == "ProfiledLikelihood" or method=="ProfileLikelihood"){
-
-			_inputNuisances = cms->Get_norminalPars();
-			_startNuisances = cms->Get_norminalPars();
 			cms_global= cms;
 			vdata_global=cms->Get_v_data();
 			vdata_global_th=cms_global->Get_v_dataTH();
-
-			double sig_data;
-			double m2lnQ;
-			double x2;
-			/*
-			   x2 =  MinuitFit(2, tmp, tmperr); // allow mu<0
-			   cout<<"fitted r = "<<tmp<<endl;
-			   m2lnQ = MinuitFit(3,tmp, tmp) - x2; // mu=0
-			   double sig_data = sqrt(fabs(m2lnQ));
-			   cout<<"Observed significance using PLR method = "<<sig_data<<endl;
-			   cout<<"Observed p-value = "<<1-TMath::Erf(sig_data)<<endl;
-			   */
-			//x2 =  MinuitFit(21, tmp, tmperr); // mu>0
-			//x2 =  MinuitFit(2, tmp, tmperr); // allow mu<0
-			double * fittedPars = new double[cms->Get_max_uncorrelation()+1];
-			int success[1];success[0]=0;
-			_countPdfEvaluation = 0;
-			x2 = MinuitFit(2, tmp, tmperr, 1, fittedPars, false, debug, success);  // MinuitFit(mode, r, err_r)
-			if(debug) cout<<" _countPdfEvaluation ="<<_countPdfEvaluation<<endl;
-			/*
-			   int ntmp = 0;
-			   while(success[0]!=0 && ntmp < 10){
-			   cms->FluctuatedNumbers(); // toss nuisance around fitted b_hat_0 in data  
-			   _startNuisances = cms->Get_randomizedPars();	
-			   x2 = MinuitFit(2, tmp, tmperr, 0, fittedPars, false, 0, success);  // MinuitFit(mode, r, err_r)
-			   ntmp++;
-			   }
-			   if(ntmp>0)cout<<" after "<<ntmp+1<<" tries: fit "<<(success[0]?"fails":"successful")<<endl;
-			   */
-			_initialRforFit = 0;
-			if(success[0])x2 =  MinuitFit(21, tmp, tmperr, 0, fittedPars, false, debug, success); // mu>0
-			_initialRforFit = 1;
-			cout<<"fitted r = "<<tmp<<endl;
-			double mu_hat = tmp;
-
-			double tmp_muhat, tmp_muhaterr ;
-			myMinuit->GetParameter(0, tmp_muhat, tmp_muhaterr);
-			
-			if(debug)cout<<" mu_hat = "<<mu_hat<<" tmp_muhat="<<tmp_muhat<<" tmp_muhaterr="<<tmp_muhaterr<<endl;
-
-			if(mu_hat<=0) {
-				cout<<" fitted r <=0 at maximum likelihood ratio ,  signicance = 0"<<endl;
-				m2lnQ = 0;
-			}else{
-				_countPdfEvaluation = 0;
-				double * fittedPars2 = new double[cms->Get_max_uncorrelation()+1];
-				m2lnQ = MinuitFit(3,tmp, tmp, 0, fittedPars2, true, debug, success, fittedPars) - x2; // mu=0
-				if(debug)cout<<"   x2 = "<<x2<<",  m2lnQ = "<<m2lnQ<<endl;
-				if(debug) cout<<" _countPdfEvaluation ="<<_countPdfEvaluation<<endl;
-				delete fittedPars2;
+			if(cms->hasParametricShape()){
+				cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
 			}
-			sig_data = sqrt(fabs(m2lnQ));
-			if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
-			cout<<"Observed significance using PLR method = "<<sig_data<<endl;
-			if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
-			double pvalue = ROOT::Math::normal_cdf_c(sig_data);
-			cout<<"Observed p-value = "<<pvalue<<endl;
-			if(sig_data>=4) cout<<"WARNING: please contact mschen@cern.ch for a potential issue on the nuisances' range. Needs change from [-5,5] to larger one"<<endl;
 
-			SaveResults(jobname+"_plrObsPvalue", HiggsMass, 0, 0, sig_data, pvalue, 0, tmp_muhat-tmp_muhaterr, tmp_muhat, mu_hat, tmp_muhat+tmp_muhaterr, 0);
-			if(debug>=10) { // show a plot for   -log(Lambda(mu)) vs. mu ...
-				for(double r=0; r<2; r+=0.1){
-					m2lnQ = MinuitFit(3,tmp, tmp, r) -x2; 
-				}
-			}
+			double pvalue, significance, muhat;
+			runPValue(pvalue, significance, muhat, true);
 			if(doExpectation){
+				for(int t=0; t<toys; t++)
+				{
+					vdata_global = (VDChannel)cms->GetToyData_H1();//_cms->Get_fittedParsInData_sb());
+					if(cms->hasParametricShape()){
+						cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset_toy());
+					}
+					runPValue(pvalue, significance, muhat, false);
+					difflimits.push_back(significance);
+					muhats.push_back(muhat);
+				}
+
+				/*
 				SignificanceBands lb(&frequentist, cms);	
 				lb.SetDebug(debug);
 				int noutcomes = toys;
@@ -2338,6 +2290,8 @@ int main(int argc, const char*argv[]){
 				rmean=lb.GetSignificanceMean();
 				rm1s=lb.GetSignificance(-1);rm2s=lb.GetSignificance(-2);rp1s=lb.GetSignificance(1);rp2s=lb.GetSignificance(2);
 				difflimits=lb.GetDifferentialSignificances();
+				muhats=lb.GetDifferentialMuhats();
+				*/
 			}
 		}else if(method == "Hybrid"){
 			cout<<" calc p-value ... "<<endl;
@@ -2392,7 +2346,7 @@ int main(int argc, const char*argv[]){
 		if(doExpectation){
 
 			TString ts=jobname; ts+="_significances";
-			FillTree(ts, difflimits);
+			FillTree(ts, difflimits, "significance", muhats, "muhat");
 
 			TCanvas *c=new TCanvas("csig","cSig");
 			c->SetLogy(1);
@@ -2571,6 +2525,82 @@ double Err_Bisection(CountingModel*cms, TString spar, double * bestFitPars, doub
 		if(debug)cout<<spar<<" err final = "<<err<<endl;
 		delete pars;
 		return err;
+	}
+}
+
+bool runPValue(double &pvalue, double& significance, double& muhat, bool printInfo){
+	CountingModel*cms= cms_global;
+	_inputNuisances = cms->Get_norminalPars();
+	_startNuisances = cms->Get_norminalPars();
+
+	double tmp, tmperr;
+	double rmean, rm1s, rm2s, rp1s, rp2s;	
+	double sig_data;
+	double m2lnQ;
+	double x2;
+	/*
+	   x2 =  MinuitFit(2, tmp, tmperr); // allow mu<0
+	   cout<<"fitted r = "<<tmp<<endl;
+	   m2lnQ = MinuitFit(3,tmp, tmp) - x2; // mu=0
+	   double sig_data = sqrt(fabs(m2lnQ));
+	   cout<<"Observed significance using PLR method = "<<sig_data<<endl;
+	   cout<<"Observed p-value = "<<1-TMath::Erf(sig_data)<<endl;
+	 */
+	//x2 =  MinuitFit(21, tmp, tmperr); // mu>0
+	//x2 =  MinuitFit(2, tmp, tmperr); // allow mu<0
+	double * fittedPars = new double[cms->Get_max_uncorrelation()+1];
+	int success[1];success[0]=0;
+	_countPdfEvaluation = 0;
+	x2 = MinuitFit(2, tmp, tmperr, 1, fittedPars, false, debug, success);  // MinuitFit(mode, r, err_r)
+	if(debug) cout<<" _countPdfEvaluation ="<<_countPdfEvaluation<<endl;
+	/*
+	   int ntmp = 0;
+	   while(success[0]!=0 && ntmp < 10){
+	   cms->FluctuatedNumbers(); // toss nuisance around fitted b_hat_0 in data  
+	   _startNuisances = cms->Get_randomizedPars();	
+	   x2 = MinuitFit(2, tmp, tmperr, 0, fittedPars, false, 0, success);  // MinuitFit(mode, r, err_r)
+	   ntmp++;
+	   }
+	   if(ntmp>0)cout<<" after "<<ntmp+1<<" tries: fit "<<(success[0]?"fails":"successful")<<endl;
+	 */
+	_initialRforFit = 0;
+	if(success[0])x2 =  MinuitFit(21, tmp, tmperr, 0, fittedPars, false, debug, success); // mu>0
+	_initialRforFit = 1;
+	if(printInfo)cout<<"fitted r = "<<tmp<<endl;
+	double mu_hat = tmp;
+
+	double tmp_muhat, tmp_muhaterr ;
+	myMinuit->GetParameter(0, tmp_muhat, tmp_muhaterr);
+
+	if(debug)cout<<" mu_hat = "<<mu_hat<<" tmp_muhat="<<tmp_muhat<<" tmp_muhaterr="<<tmp_muhaterr<<endl;
+
+	if(mu_hat<=0) {
+		if(printInfo)cout<<" fitted r <=0 at maximum likelihood ratio ,  signicance = 0"<<endl;
+		m2lnQ = 0;
+	}else{
+		_countPdfEvaluation = 0;
+		double * fittedPars2 = new double[cms->Get_max_uncorrelation()+1];
+		m2lnQ = MinuitFit(3,tmp, tmp, 0, fittedPars2, true, debug, success, fittedPars) - x2; // mu=0
+		if(debug)cout<<"   x2 = "<<x2<<",  m2lnQ = "<<m2lnQ<<endl;
+		if(debug) cout<<" _countPdfEvaluation ="<<_countPdfEvaluation<<endl;
+		delete fittedPars2;
+	}
+	sig_data = sqrt(fabs(m2lnQ));
+	pvalue = ROOT::Math::normal_cdf_c(sig_data);
+	significance = sig_data;
+	muhat = mu_hat;
+	if(printInfo){ 
+		if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
+		cout<<"Observed significance using PLR method = "<<sig_data<<endl;
+		if(HiggsMass>0)cout<<"MassPoint "<<HiggsMass<<" , ";
+		cout<<"Observed p-value = "<<pvalue<<endl;
+		if(sig_data>=4 ) cout<<"WARNING: please contact mschen@cern.ch for a potential issue on the nuisances' range. Needs change from [-5,5] to larger one"<<endl;
+		if(printInfo)SaveResults(jobname+"_plrObsPvalue", HiggsMass, 0, 0, sig_data, pvalue, 0, tmp_muhat-tmp_muhaterr, tmp_muhat, mu_hat, tmp_muhat+tmp_muhaterr, 0);
+	}
+	if(debug>=10) { // show a plot for   -log(Lambda(mu)) vs. mu ...
+		for(double r=0; r<2; r+=0.1){
+			m2lnQ = MinuitFit(3,tmp, tmp, r) -x2; 
+		}
 	}
 }
 bool runMaxLikelihoodFit(bool printInfo, bool makePlots, TString smakePlots){

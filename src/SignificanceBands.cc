@@ -124,7 +124,10 @@ namespace lands{
 			//int nentries_for_thisR=(int)(vEntries.at(iEntries_v[n]));
 			if(1) { 
 				//--------------calc r95% with (s,b,n) by throwing pseudo experiments and using the fits to get r95% at CLs=5
-				double m2lnQ = MinuitFit(3,tmp, tmp) - MinuitFit(2, tmp, tmp);
+				double x2 =  MinuitFit(2, tmp, tmp);
+				double tmp_muhat, tmp_muhaterr ;
+				myMinuit->GetParameter(0, tmp_muhat, tmp_muhaterr);
+				double m2lnQ = MinuitFit(3,tmp, tmp) - x2;
 				if(m2lnQ < 0) cout<<"m2lnQ_profiled < 0, ="<<m2lnQ<<endl;
 				r = sqrt(fabs(m2lnQ));
 				vrcls.push_back(r);
@@ -132,6 +135,7 @@ namespace lands{
 				rmeancls+=r*p;
 				for(int ntmp=0; ntmp<nentries_for_thisR; ntmp++){
 					_difrcls.push_back(r);
+					_difmuhat.push_back(tmp_muhat);
 				}
 				if(_debug)cout<<"n="<<n<<" cls_r= "<<r<<" p= "<<p<<" repeated "<<nentries_for_thisR<<endl;
 				if(_debug) { start_time=cur_time; cur_time=clock(); cout << "\t\t\t TIME_in_BAND, doCLs "<< n << " took " <<(cur_time - start_time)/1000000. << " sec\n"; }
