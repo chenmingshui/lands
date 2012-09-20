@@ -5464,9 +5464,10 @@ If we need to change it later, it will be easy to do.
 		    TString bn = cname; bn+="_bData_"; bn+=t;
 		    if(w->data(sn) == NULL and w->data(bn)==NULL ){cout<<" ERROR  toy file "<<f->GetName()<<" has no toys for "<<sn<<" and "<<bn<<endl; exit(1);}
 		    if(w->data(sn) and w->data(bn)) {cout<<" ERROR  toy file "<<f->GetName()<<" has both sb and b-only toys"<<endl; exit(1);}
-		    if(w->data(sn)) v.push_back((RooAbsData*) w->data(sn)->reduce(*(w->pdf(v_pdfs_channelname[c].c_str())->getObservables(v_pdfs_roodataset_real[c]))));
+		    if(w->data(sn)) v.push_back((RooAbsData*) w->data(sn)->reduce(*(v_pdfs_roodataset_real[c]->get())));
 		    //if(w->data(bn)) v.push_back((RooAbsData*) w->data(bn));
-		    if(w->data(bn)) v.push_back((RooAbsData*) w->data(bn)->reduce(*(w->pdf(v_pdfs_channelname[c].c_str())->getObservables(v_pdfs_roodataset_real[c]))));
+		    if(w->data(bn)) v.push_back((RooAbsData*) w->data(bn)->reduce(*(v_pdfs_roodataset_real[c]->get())));
+		    //if(w->data(bn)) v.push_back((RooAbsData*) w->data(bn)->reduce(*(w->pdf(v_pdfs_channelname[c].c_str())->getObservables(v_pdfs_roodataset_real[c]))));
 	    }
 	    return v;
     }
