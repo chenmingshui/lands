@@ -5599,6 +5599,7 @@ If we need to change it later, it will be easy to do.
 			    ntoys++;
 		    }
 	    }
+	    return ntoys;
     }
     };
 
