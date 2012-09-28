@@ -3119,9 +3119,13 @@ If we need to change it later, it will be easy to do.
 
 	    bHasParametricShape = true;
 
+	    int ndim = v_pdfs_roodataset_real.back()->get()->getSize();
+	    if(_debug)cout<<" ******* Channel  "<<channel_name<<" is "<<ndim<<"-dimension statistical analysis!"<<endl;
 	    if(_debug>=10){
 		    TString s = "pdf_"; s+= channel_name; s+=".root";
 		    TFile f(s, "RECREATE") ;
+			
+
 		    double xmin = _w->var(v_pdfs_observables.back())->getMin();
 		    double xmax = _w->var(v_pdfs_observables.back())->getMax();
 		    TH1F hs("s","s", 100, xmin, xmax);
@@ -3134,6 +3138,10 @@ If we need to change it later, it will be easy to do.
 			    hb.SetBinContent(x, _w->pdf(v_pdfs_b.back())->getVal(&vars));
 			    hsb.SetBinContent(x, _w->pdf(v_pdfs_sb.back())->getVal(&vars));
 		    }
+		    hs.Write();
+		    hb.Write();
+		    hsb.Write();
+		    f.Close();
 
 		    cout<<"\n model_s"<<endl;
 		    _w->pdf(v_pdfs_s.back())->getParameters(*(_w->var(v_pdfs_observables.back())))->Print("V");
@@ -3142,9 +3150,21 @@ If we need to change it later, it will be easy to do.
 		    cout<<"\n model_sb"<<endl;
 		    _w->pdf(v_pdfs_sb.back())->getParameters(*(_w->var(v_pdfs_observables.back())))->Print("V");
 
-		    hs.Write();
-		    hb.Write();
-		    hsb.Write();
+	    }
+	    if( _debug <= -100 and _debug>=-103){
+
+		    TString s = "pdf_"; s+= channel_name; s+=".root";
+		    TFile f(s, "RECREATE") ;
+		    TString stmp;
+		    if(_debug==-100) stmp = "CMS_zz4l_mass,CMS_zz4l_massErr";
+		    if(_debug==-101) stmp = "CMS_zz4l_mass,melaLD";
+		    if(_debug==-102) stmp = "CMS_zz4l_mass,CMS_zz4l_massErr,melaLD";
+		    TH1 * hs =(TH1*) (_w->pdf(v_pdfs_s.back())->createHistogram(stmp));
+		    TH1 * hb =(TH1*) (_w->pdf(v_pdfs_b.back())->createHistogram(stmp));
+		    TH1 * hsb =(TH1*) (_w->pdf(v_pdfs_sb.back())->createHistogram(stmp));
+		    hs->Write();
+		    hb->Write();
+		    hsb->Write();
 		    f.Close();
 	    }
 
