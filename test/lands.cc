@@ -254,7 +254,9 @@ int main(int argc, const char*argv[]){
 	if(debug<10)RooMsgService::instance().getStream(1).removeTopic(NumIntegration) ;
 	if(debug<10)RooMsgService::instance().getStream(1).removeTopic(Caching) ;
 	if(debug<2)RooMsgService::instance().setGlobalKillBelow(RooFit::FATAL);
-
+	
+	TString slib = gSystem->GetFromPipe("ls $CMSSW_BASE/lib/*/libHiggsAnalysisCombinedLimit.so");
+	if(!slib.BeginsWith("ls")) gSystem->Load(slib);
 	for(int i=0; i<librariesToBeLoaded.size(); i++){
 		gSystem->Load(librariesToBeLoaded[i]);
 	}
