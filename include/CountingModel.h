@@ -435,8 +435,10 @@ namespace lands{
 			std::string GetChannelNameTH(int i){return v_channelname_th.at(i);} //need make check 
 			const	vector< vector<int> > & Get_vv_channelDecayModeTH(){return vv_channelDecayMode_th;};
 			const	vector< vector<int> > & Get_vv_productionModeTH(){return vv_productionMode_th;};
-			const VChannelTH& Get_v_dataTH(){return v_data_th;}
+			const VChannelTH& Get_v_dataTH(){return v_data_th;};
 
+			bool fastScan(){return fastScan_;};
+			void SetFastScan(bool b) {fastScan_=b;};
 		private:
 			vector<int> v_sigproc_th;
 			vector<std::string> v_channelname_th; // start from 0 
@@ -659,6 +661,7 @@ namespace lands{
 			vector<int> vind_fixedParForGenToy; // for multiple POIs,  like MH, when generate toys, want to fix the MH at initial value from command line 
 			vector<double> v_fixedParForGenToy;
 
+			bool fastScan_;
 	};
 	CountingModel* CombineModels(CountingModel *cms1, CountingModel *cms2);
 }

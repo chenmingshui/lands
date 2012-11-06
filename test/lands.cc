@@ -40,6 +40,7 @@ typedef std::map<TString, vector<TString> > TStrMap;
 typedef std::pair<TString, vector<TString> > TStrPair;
 TStrMap options;
 vector<double> GetListToEval(TString parname, vector<TString> tmpv);
+vector<double> GetListToEvalForNuis(TString& parname, vector<TString> tmpv);
 void processParameters(int argc, const char* argv[]);
 void PrintHelpMessage();
 double Err_Bisection(CountingModel*cms, TString spar, double * bestFitPars, double fmin, double bestfitPOI, int hilo);
@@ -245,6 +246,9 @@ vector<double> vdPseudoPOIs;
 
 vector<TString> vsParToBeFixedWhenGenToys; 
 vector<double>  vdParToBeFixedWhenGenToys; 
+
+TString scanNuisance = "";
+vector<double> vNuis_toEval;
 
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
@@ -1302,6 +1306,7 @@ int main(int argc, const char*argv[]){
 			watch.Print();
 			
 		}else if(method == "ScanningMuFit" or method=="MaxLikelihoodFit"){
+			if(debug) cout<<" YouAreHere MaxLikelihoodFit bFixNuisancesAtBestFit"<<bFixNuisancesAtBestFit<<endl;
 			int idMH=-1;
 			vector<string> v_uncname = cms_global->Get_v_uncname();
 			for(int i=1; i<=v_uncname.size(); i++) if(v_uncname[i-1]=="MH") idMH=i;
@@ -1320,7 +1325,7 @@ int main(int argc, const char*argv[]){
 			for(int i=0; i<=cms->Get_max_uncorrelation(); i++) pars[i]=0;
 			
 			//double bestFitPars[cms->Get_maximumFunctionCallsInAFit()+1];  //  not static ... not allowed 
-			double *bestFitPars= new double[cms->Get_maximumFunctionCallsInAFit()+1];
+			double *bestFitPars= new double[cms->Get_max_uncorrelation()+1];
 			for(int i=0; i<=cms->Get_max_uncorrelation(); i++) bestFitPars[i]=0;
 
 			double tmp=0, tmpe=0, tmpr = 0, tmperr=0;
@@ -1635,6 +1640,7 @@ int main(int argc, const char*argv[]){
 				watch.Print();
 			}
 			
+			if(debug) cout<<" YouAreHere debug 1"<<endl;
 			
 			if(cms->GetPhysicsModel()==typeCvCfHiggs)SaveResults(jobname+"_maxllfit", HiggsMass, 0, 0, 0, 0, 0, mu_hat_low, 0, mu_hat, mu_hat_up, 0);
 			else if(cms->GetPhysicsModel()==typeC5Higgs)SaveResults(jobname+"_maxllfit", HiggsMass, 0, 0, 0, 0, 0, mu_hat_low, 0, mu_hat, mu_hat_up, 0);
@@ -1731,8 +1737,10 @@ int main(int argc, const char*argv[]){
 				delete cms;
 				return 0;
 			}
+			if(debug) cout<<" YouAreHere debug 2  scanPOI="<<scanPOI<<endl;
 
 			if(scanPOI && mainPOI!=""){
+				if(debug) cout<<" YouAreHere scanPOI bFixNuisancesAtBestFit"<<bFixNuisancesAtBestFit<<endl;
 				cms_global->SetNoErrorEstimation(1);
 				TStopwatch watch2;
 				watch2.Start();
@@ -1765,6 +1773,7 @@ int main(int argc, const char*argv[]){
 
 					double y0_1 =0; 
 					if(bFixNuisancesAtBestFit){
+						if(debug) cout<<" MakeSureYouAreHere "<<endl;
 						bestFitPars[poi_i] =  (testm - v_Pars[poi_i][1])/(v_Pars[poi_i][2]-v_Pars[poi_i][1]);
 						y0_1 =  MinuitFit(10, tmp, tmperr, 1., bestFitPars);
 
@@ -1885,13 +1894,14 @@ int main(int argc, const char*argv[]){
 
 			}
 
+			if(debug) cout<<" YouAreHere debug 3"<<endl;
 
 			ErrorDef = TMath::ChisquareQuantile(0.68 , NumDegreeOfFreedom);// (confidenceLevel, ndf)
 			_ErrorDef = ErrorDef;
 			bool b_global_fit = true;
 			// FIXME also need to check the 2 sigma fit is fine 
 			// if not, need to run brute-force approach
-			if( (success[0]!=0 or tmpr==tmperr) and !DoNotRunGlobalFit){
+			if( (success[0]!=0 /*or tmpr==tmperr*/) and !DoNotRunGlobalFit){
 				b_global_fit = false;
 				double tmpr = 0;
 				_initialRforFit = 0;
@@ -1902,6 +1912,7 @@ int main(int argc, const char*argv[]){
 			}
 
 
+			if(debug) cout<<" YouAreHere debug 4"<<endl;
 			if(b_global_fit==false){
 				double x1 =0, x2 =1;
 				double y0 = y0_2;  
@@ -2009,7 +2020,9 @@ int main(int argc, const char*argv[]){
 					f.WriteTObject(ge2);
 				}
 			}
+			if(debug) cout<<" YouAreHere debug 5"<<endl;
 			if(scanRs and scanMs){
+				if(debug) cout<<" YouAreHere debug 6"<<endl;
 				cms_global->SetNoErrorEstimation(1);
 				TStopwatch watch2;
 				watch2.Start();
@@ -2089,9 +2102,11 @@ int main(int argc, const char*argv[]){
 				return 0;
 			}
 			else {
+				if(debug) cout<<" YouAreHere debug 7"<<endl;
 				cms_global->SetNoErrorEstimation(1);
 				watch.Start();
 				if(scanRs){
+					if(debug) cout<<" YouAreHere debug 8"<<endl;
 					vector<double> vr, vc; vr.clear(); vc.clear();
 					if(!DoNotRunGlobalFit){
 						vr.push_back(pars[0]);vc.push_back(y0_2-y0_2);
@@ -2162,31 +2177,36 @@ int main(int argc, const char*argv[]){
 					return 0;
 				}
 				if(scanMs){
+					if(debug) cout<<" MakeSureYouAreHere scanMs"<<endl;
 					bool best = false;
 					vector<double> vr, vc; vr.clear(); vc.clear();
 					if(!DoNotRunGlobalFit){
 						vr.push_back(pars[0]);vc.push_back(y0_2-y0_2);
 					}
-					for(int i=0; i<vM_toEval.size(); i++){
+					if(0)for(int i=0; i<vM_toEval.size(); i++){
 						double testr = vM_toEval[i];
 						_countPdfEvaluation = 0;
 						cms_global->SetPOItoBeFixed("MH",testr);
 
 						//double y0_1 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, 1./*common mu*/, pars, best?true:false, debug, success, best?bestFitPars:0) ;  //202, 201, 2:  allow mu to be negative
-						double y0_1 =0; 
+						double y0_1 =0;
 						if(bFixNuisancesAtBestFit){
-							bestFitPars[idMH] =  (testr - v_paramsUnc[idMH][3])/v_paramsUnc[idMH][1];
-							y0_1 =  MinuitFit(10, tmp, tmperr, 1., bestFitPars);
-						
-						}else y0_1 =  MinuitFit(3, tmp, tmperr, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
-						
+							//bestFitPars[idMH] =  (testr - v_paramsUnc[idMH][3])/v_paramsUnc[idMH][1];
+							//y0_1 =  MinuitFit(10, tmp, tmperr, 1., bestFitPars);
+							best = true;
+							cms->SetFastScan(true);
+							y0_1 =  MinuitFit(3, tmp, tmperr, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
+						}else
+							y0_1 =  MinuitFit(3, tmp, tmperr, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
+
 						if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
 						vr.push_back(testr);
 						vc.push_back(y0_1-y0_2);
 						TString sj = jobname; sj+="_fittedShape_m"; sj+=testr;
 						if(bDumpFitResults)cms->DumpFitResults(pars, sj);
 
-						if(!bFixNuisancesAtBestFit){
+						//if(!bFixNuisancesAtBestFit)
+						{
 							for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
 								myMinuit->GetParameter(i, tmp, tmpe);
 								bestFitPars[i]=tmp;
@@ -2195,6 +2215,76 @@ int main(int argc, const char*argv[]){
 						}
 
 					}
+
+					double *bestFitParsBak= new double[cms->Get_max_uncorrelation()+1];
+					for(int i=0; i<=cms->Get_max_uncorrelation(); i++) bestFitParsBak[i]=bestFitPars[i];
+					for(int i=0; i<100; i++){
+						double testr = 126.3+0.01*i;
+						cout<<" testm = "<<testr<<endl;
+						_countPdfEvaluation = 0;
+						cms_global->SetPOItoBeFixed("MH",testr);
+
+						//double y0_1 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, 1./*common mu*/, pars, best?true:false, debug, success, best?bestFitPars:0) ;  //202, 201, 2:  allow mu to be negative
+						double y0_1 =0; 
+						if(bFixNuisancesAtBestFit){
+							//bestFitPars[idMH] =  (testr - v_paramsUnc[idMH][3])/v_paramsUnc[idMH][1];
+							//y0_1 =  MinuitFit(10, tmp, tmperr, 1., bestFitPars);
+							best = true;
+							cms->SetFastScan(true);
+							y0_1 =  MinuitFit(3, tmp, tmperr, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
+						}else 
+							y0_1 =  MinuitFit(3, tmp, tmperr, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
+						
+						if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
+						vr.push_back(testr);
+						vc.push_back(y0_1-y0_2);
+						TString sj = jobname; sj+="_fittedShape_m"; sj+=testr;
+						if(bDumpFitResults)cms->DumpFitResults(pars, sj);
+
+						//if(!bFixNuisancesAtBestFit)
+						{
+							for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
+								myMinuit->GetParameter(i, tmp, tmpe);
+								bestFitPars[i]=tmp;
+							}
+							best = true;
+						}
+
+					}
+					for(int i=0; i<=cms->Get_max_uncorrelation(); i++) bestFitPars[i]=bestFitParsBak[i];
+                                        for(int i=0; i<100; i++){
+                                                double testr = 126.3-0.01*i;
+                                                _countPdfEvaluation = 0;                                    
+                                                cms_global->SetPOItoBeFixed("MH",testr);
+                                                                                
+                                                //double y0_1 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, 1./*common mu*/, pars, best?true:false, debug, success, best?bestFitPars:0) ;  //202, 201, 2:  allow mu to be negative                                             
+                                                double y0_1 =0;                 
+                                                if(bFixNuisancesAtBestFit){     
+                                                        //bestFitPars[idMH] =  (testr - v_paramsUnc[idMH][3])/v_paramsUnc[idMH][1];
+                                                        //y0_1 =  MinuitFit(10, tmp, tmperr, 1., bestFitPars);
+                                                        best = true;            
+                                                        cms->SetFastScan(true); 
+                                                        y0_1 =  MinuitFit(3, tmp, tmperr, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
+                                                }else                           
+                                                        y0_1 =  MinuitFit(3, tmp, tmperr, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
+                                                                                
+                                                if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
+                                                vr.push_back(testr);            
+                                                vc.push_back(y0_1-y0_2);        
+                                                TString sj = jobname; sj+="_fittedShape_m"; sj+=testr;
+                                                if(bDumpFitResults)cms->DumpFitResults(pars, sj);
+                                                                                
+                                                //if(!bFixNuisancesAtBestFit)   
+                                                {                               
+                                                        for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
+                                                                myMinuit->GetParameter(i, tmp, tmpe);
+                                                                bestFitPars[i]=tmp;
+                                                        }
+                                                        best = true;
+                                                }
+
+                                        }
+
 					printf("\n results of scanned m vs. q: \n");
 					for(int i=0; i<vr.size(); i++){
 						printf("   r=%10.3f  delta_q=%7.5f\n", vr[i], vc[i]);
@@ -2414,6 +2504,12 @@ int main(int argc, const char*argv[]){
 	watch.Print();
 	delete cms;
 	return 1;
+}
+vector<double> GetListToEvalForNuis(TString& parname, vector<TString> tmpv){
+	//for(int i=0; i<tmpv.size(); i++) cout<<tmpv[i]<<endl;
+	parname = tmpv[0]; 
+	tmpv.erase(tmpv.begin());
+	return GetListToEval(parname, tmpv);
 }
 vector<double> GetListToEval(TString parname, vector<TString> tmpv){
 	// tmpv[0] for binning,  tmpv[1] and so on for actual scan if tmpv.size>1
@@ -2644,6 +2740,12 @@ bool runMaxLikelihoodFit(bool printInfo, bool makePlots, TString smakePlots){
 	for(int i=1; i<=v_uncname.size(); i++) if(v_uncname[i-1]=="MH") idMH=i;
 	vector< vector<double> > v_paramsUnc = cms_global->Get_v_pdfs_floatParamsUnc();
 
+	if(scanNuisance!=""){
+		int idNuis=-1;
+		vector<string> v_uncname = cms_global->Get_v_uncname();
+		for(int i=1; i<=v_uncname.size(); i++) if(v_uncname[i-1]==scanNuisance.Data()) idNuis=i;
+		if(idNuis<0) {cout<<"ERROR:  intend to scan "<<scanNuisance<<", but it's not in the list, exit"<<endl; return 1;}
+	}
 	//vdata_global=cms->Get_v_data();
 	//vdata_global_th=cms_global->Get_v_dataTH();
 
@@ -2657,7 +2759,7 @@ bool runMaxLikelihoodFit(bool printInfo, bool makePlots, TString smakePlots){
 	for(int i=0; i<=cms->Get_max_uncorrelation(); i++) pars[i]=0;
 
 	//double bestFitPars[cms->Get_maximumFunctionCallsInAFit()+1];  //  not static ... not allowed 
-	double *bestFitPars= new double[cms->Get_maximumFunctionCallsInAFit()+1];
+	double *bestFitPars= new double[cms->Get_max_uncorrelation()+1];
 	for(int i=0; i<=cms->Get_max_uncorrelation(); i++) bestFitPars[i]=0;
 
 	double tmp=0, tmpe=0, tmpr = 0, tmperr=0;
@@ -2700,6 +2802,65 @@ bool runMaxLikelihoodFit(bool printInfo, bool makePlots, TString smakePlots){
 	double mu_hat_low = tmperr;
 	if(printInfo)watch.Print();
 	
+	if(scanNuisance!=""){
+		int idNuis=-1;
+		vector<string> v_uncname = cms_global->Get_v_uncname();
+		for(int i=1; i<=v_uncname.size(); i++) if(v_uncname[i-1]==scanNuisance.Data()) idNuis=i;
+		if(idNuis<0) return 1;
+	
+		bool best = false;
+		vector<double> vr, vc; vr.clear(); vc.clear();
+		if(!DoNotRunGlobalFit){
+			vr.push_back(pars[idNuis]);vc.push_back(y0_2-y0_2);
+		}
+		for(int i=0; i<vNuis_toEval.size(); i++){
+			double testr = vNuis_toEval[i];
+			_countPdfEvaluation = 0;
+			double y0_1 =0; 
+
+			best=true;
+			bestFitPars[idNuis] =  testr ;
+			y0_1 =  MinuitFit(10, tmp, tmperr, 1., bestFitPars);
+
+			if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
+			vr.push_back(testr);
+			vc.push_back(y0_1-y0_2);
+			TString sj = jobname; sj+="_fittedShape_m"; sj+=testr;
+			if(bDumpFitResults)cms->DumpFitResults(pars, sj);
+
+			if(!bFixNuisancesAtBestFit){
+				for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
+					myMinuit->GetParameter(i, tmp, tmpe);
+					bestFitPars[i]=tmp;
+				}
+				best = true;
+			}
+
+		}
+		if(printInfo){
+			printf("\n results of scanned %s vs. q: \n", scanNuisance.Data());
+			for(int i=0; i<vr.size(); i++){
+				printf("   r=%10.3f  delta_q=%7.5f\n", vr[i], vc[i]);
+			}
+		}
+		if(bPlots and makePlots){
+			TString st1 = "-2lnQ;"; st1+=scanNuisance; st1+=";q"; 
+			TString st2 = jobname; st2+="_scanned_"; st2+=scanNuisance; st2+="_vs_q_TH1"; st2+=smakePlots;
+			//DrawTH1D d1h(sbinningMH, vr, vc, st1.Data(), st2.Data(), pt);
+			//d1h.draw();
+			//d1h.save();
+			DrawEvolution2D d2d(vr, vc, TString("; "+scanNuisance+" ; q").Data(), (jobname+"_scanned_"+scanNuisance+"_vs_q"+smakePlots).Data(), pt);
+			d2d.draw();
+			d2d.save();
+		}
+
+		watch.Stop();
+		if(printInfo)watch.Print();
+		delete pars;
+		return 0;
+	}
+
+
 	// mass error
 	if(idMH>0){
 		if(ErrEstAlgo =="Minos" and printInfo and !NoErrorEstimate){
@@ -4620,6 +4781,7 @@ void processParameters(int argc, const char* argv[])
 	if(isWordInMap("--bFixNuisancsAtNominal", options)) bFixNuisancsAtNominal = true;
 	if(isWordInMap("--bFixNuisancesAtBestFit", options)) bFixNuisancesAtBestFit= true;
 	if(isWordInMap("--fastScan", options)) bFixNuisancesAtBestFit= true;
+	cout<<"MakeSureYouAreHere bFixNuisancesAtBestFit ="<<bFixNuisancesAtBestFit<<endl;
 
 
 	if(isWordInMap("--bDumpFitResults", options)) bDumpFitResults = true; 
@@ -4785,6 +4947,15 @@ void processParameters(int argc, const char* argv[])
 			i++;
 		}
 	}else{ cout<<" --FixParWhenGenToys parName parVal [2,4,6,8.... args]"<<endl;  exit(1);}
+
+	if(isWordInMap("--scanNuisance", options)){
+		tmpv = options["--scanNuisance"];
+		if( tmpv.size()<2) { cout<<"ERROR: args of --scanNuisance should be \" NuisanceName [min,max,step] \" "<<endl; exit(1); }
+		else{
+			vNuis_toEval= GetListToEvalForNuis(scanNuisance, tmpv);
+		}
+	}
+
 
 
 	printf("\n\n[ Summary of configuration in this job: ]\n");
@@ -5026,6 +5197,7 @@ void PrintHelpMessage(){
 	printf("--newExpected 			     new definition of Asymptotic CLs bands \n"); 
 	printf("--loadToysFromFile string            use with doExpectation,  reading saved toys from file \n");
 	printf("--MinimizingApproach string            currently supports Normal, Cascade\n");
+	printf("--scanNuisance nuisName [min,max,step] scanning Nuisance, now only work in MultiDimFit \n");
 
 
 	printf(" \n");

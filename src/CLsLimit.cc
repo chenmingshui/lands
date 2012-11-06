@@ -112,10 +112,10 @@ namespace lands{
 		}
 
 		if(par[0]>9e10) {f=-9e10; return;}
+		npar = cms_global->Get_max_uncorrelation()+1;
 		for(int i=0; i<npar; i++) {if(isnan(par[i]) or isinf(par[i])) {f=9e20; if(cms_global->GetDebug())  cout<<" i="<<i<<", p="<<par[i]<<endl; return;} }
 		
 		bool bAllChannelsAreFlagged = false;
-		npar = cms_global->Get_max_uncorrelation()+1;
 		if(_lastParams.size()==0){
 			for(int i=0;i<npar;i++)	_lastParams.push_back(par[i]);
 			cms_global->FlagAllChannels();
@@ -561,7 +561,7 @@ namespace lands{
 									coef = 1./(sigmaR*sigmaR);
 								}
 							}
-
+							//cout<<"MUST DELETEME "<<cms_global->Get_v_uncname()[u-1]<<": "<<par[u]<<" _inputNuisances "<<_inputNuisances[u]<<" "<<arg*arg*coef<<endl;
 							chisq+= arg*arg*coef;
 							break;
 						}
@@ -747,6 +747,7 @@ namespace lands{
 				if(v_uncFloatInFit[i-1]==false){ myMinuit->FixParameter(i);  v_globalFixedPars.push_back(i); }
 			}
 
+			if(model==3 and cms_global->fastScan())for(int i=0; i<cms_global->Get_max_uncorrelation()-1; i++) myMinuit->FixParameter(i);	
 			//if(debug>=10) cout<<"DELETEME in MinuitFit    1"<<endl;
 
 			// through fixing the ratio to determine whether fit for S+B(r=1) or B-only (r=0)   Q_tevatron

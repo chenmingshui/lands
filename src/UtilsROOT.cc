@@ -1686,6 +1686,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 				if(i>nchannel) break;
 				channelnames[i-1]=ss[i];
 			}
+			duplicatingLines.push_back(lines[l]);
 		}
 	}
 
@@ -1725,7 +1726,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 			for(int i=1; i<(ntotprocesses+1); i++){
 				float ev = (TString(ss[i])).Atof();
 				eventrate[i-1] = ev;
-				tmps+= TString::Format("%7.2f ",ev);
+				tmps+= TString::Format("%.7f ",ev);
 			}
 			hasFilled =  true;
 			duplicatingLines.push_back(tmps);
@@ -2564,7 +2565,11 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 	if(debug) {
 		cout<<"start duplicating this card:"<<endl<<endl;
 		for(int i=0; i<duplicatingLines.size(); i++) cout<<duplicatingLines[i]<<endl;
+		cout<<"bin ";
+		for(int i=0; i<channelnames.size(); i++) cout<<channelnames[i]<<" ";
+		cout<<endl;
 		cout<<endl<<endl<<"end duplicating this card:"<<endl<<endl;
+		
 	}
 
 	if(nprocesses) delete [] nprocesses;
