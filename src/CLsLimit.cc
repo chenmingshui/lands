@@ -585,6 +585,8 @@ namespace lands{
 				if(i<npar) printf( " %7.4f ", par[i]);
 			if(npar>=cms_global->GetPrintParameterFrom()) 
 				printf(" f=%10.4f\n", f);
+
+			if(cms_global->GetWorkSpaceVaried()->var("CMS_zz4l_widthScale")!=NULL) printf("CMS_zz4l_widthScale = %.5f\n",cms_global->GetWorkSpaceVaried()->var("CMS_zz4l_widthScale")->getVal());
 		}
 
 		if(cms_global->GetDebug()>100){

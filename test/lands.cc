@@ -1784,7 +1784,7 @@ int main(int argc, const char*argv[]){
 							myMinuit->GetParameter(i, tmp, tmpe);
 							bestFitPars[i]=tmp;
 						}
-						best = true;
+						//best = true;
 					}
 
 					if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
@@ -2183,7 +2183,7 @@ int main(int argc, const char*argv[]){
 					if(!DoNotRunGlobalFit){
 						vr.push_back(pars[0]);vc.push_back(y0_2-y0_2);
 					}
-					if(0)for(int i=0; i<vM_toEval.size(); i++){
+					if(1)for(int i=0; i<vM_toEval.size(); i++){
 						double testr = vM_toEval[i];
 						_countPdfEvaluation = 0;
 						cms_global->SetPOItoBeFixed("MH",testr);
@@ -2216,74 +2216,76 @@ int main(int argc, const char*argv[]){
 
 					}
 
-					double *bestFitParsBak= new double[cms->Get_max_uncorrelation()+1];
-					for(int i=0; i<=cms->Get_max_uncorrelation(); i++) bestFitParsBak[i]=bestFitPars[i];
-					for(int i=0; i<100; i++){
-						double testr = 126.3+0.01*i;
-						cout<<" testm = "<<testr<<endl;
-						_countPdfEvaluation = 0;
-						cms_global->SetPOItoBeFixed("MH",testr);
+					if(0){
+						double *bestFitParsBak= new double[cms->Get_max_uncorrelation()+1];
+						for(int i=0; i<=cms->Get_max_uncorrelation(); i++) bestFitParsBak[i]=bestFitPars[i];
+						for(int i=0; i<100; i++){
+							double testr = 126.3+0.01*i;
+							cout<<" testm = "<<testr<<endl;
+							_countPdfEvaluation = 0;
+							cms_global->SetPOItoBeFixed("MH",testr);
 
-						//double y0_1 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, 1./*common mu*/, pars, best?true:false, debug, success, best?bestFitPars:0) ;  //202, 201, 2:  allow mu to be negative
-						double y0_1 =0; 
-						if(bFixNuisancesAtBestFit){
-							//bestFitPars[idMH] =  (testr - v_paramsUnc[idMH][3])/v_paramsUnc[idMH][1];
-							//y0_1 =  MinuitFit(10, tmp, tmperr, 1., bestFitPars);
-							best = true;
-							cms->SetFastScan(true);
-							y0_1 =  MinuitFit(3, tmp, tmperr, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
-						}else 
-							y0_1 =  MinuitFit(3, tmp, tmperr, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
-						
-						if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
-						vr.push_back(testr);
-						vc.push_back(y0_1-y0_2);
-						TString sj = jobname; sj+="_fittedShape_m"; sj+=testr;
-						if(bDumpFitResults)cms->DumpFitResults(pars, sj);
+							//double y0_1 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, 1./*common mu*/, pars, best?true:false, debug, success, best?bestFitPars:0) ;  //202, 201, 2:  allow mu to be negative
+							double y0_1 =0; 
+							if(bFixNuisancesAtBestFit){
+								//bestFitPars[idMH] =  (testr - v_paramsUnc[idMH][3])/v_paramsUnc[idMH][1];
+								//y0_1 =  MinuitFit(10, tmp, tmperr, 1., bestFitPars);
+								best = true;
+								cms->SetFastScan(true);
+								y0_1 =  MinuitFit(3, tmp, tmperr, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
+							}else 
+								y0_1 =  MinuitFit(3, tmp, tmperr, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
 
-						//if(!bFixNuisancesAtBestFit)
-						{
-							for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
-								myMinuit->GetParameter(i, tmp, tmpe);
-								bestFitPars[i]=tmp;
+							if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
+							vr.push_back(testr);
+							vc.push_back(y0_1-y0_2);
+							TString sj = jobname; sj+="_fittedShape_m"; sj+=testr;
+							if(bDumpFitResults)cms->DumpFitResults(pars, sj);
+
+							//if(!bFixNuisancesAtBestFit)
+							{
+								for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
+									myMinuit->GetParameter(i, tmp, tmpe);
+									bestFitPars[i]=tmp;
+								}
+								best = true;
 							}
-							best = true;
+
 						}
+						for(int i=0; i<=cms->Get_max_uncorrelation(); i++) bestFitPars[i]=bestFitParsBak[i];
+						for(int i=0; i<100; i++){
+							double testr = 126.3-0.01*i;
+							_countPdfEvaluation = 0;                                    
+							cms_global->SetPOItoBeFixed("MH",testr);
 
+							//double y0_1 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, 1./*common mu*/, pars, best?true:false, debug, success, best?bestFitPars:0) ;  //202, 201, 2:  allow mu to be negative                                             
+							double y0_1 =0;                 
+							if(bFixNuisancesAtBestFit){     
+								//bestFitPars[idMH] =  (testr - v_paramsUnc[idMH][3])/v_paramsUnc[idMH][1];
+								//y0_1 =  MinuitFit(10, tmp, tmperr, 1., bestFitPars);
+								best = true;            
+								cms->SetFastScan(true); 
+								y0_1 =  MinuitFit(3, tmp, tmperr, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
+							}else                           
+								y0_1 =  MinuitFit(3, tmp, tmperr, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
+
+							if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
+							vr.push_back(testr);            
+							vc.push_back(y0_1-y0_2);        
+							TString sj = jobname; sj+="_fittedShape_m"; sj+=testr;
+							if(bDumpFitResults)cms->DumpFitResults(pars, sj);
+
+							//if(!bFixNuisancesAtBestFit)   
+							{                               
+								for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
+									myMinuit->GetParameter(i, tmp, tmpe);
+									bestFitPars[i]=tmp;
+								}
+								best = true;
+							}
+
+						}
 					}
-					for(int i=0; i<=cms->Get_max_uncorrelation(); i++) bestFitPars[i]=bestFitParsBak[i];
-                                        for(int i=0; i<100; i++){
-                                                double testr = 126.3-0.01*i;
-                                                _countPdfEvaluation = 0;                                    
-                                                cms_global->SetPOItoBeFixed("MH",testr);
-                                                                                
-                                                //double y0_1 =  MinuitFit(bConstrainMuPositive?102:202, tmpr, tmperr, 1./*common mu*/, pars, best?true:false, debug, success, best?bestFitPars:0) ;  //202, 201, 2:  allow mu to be negative                                             
-                                                double y0_1 =0;                 
-                                                if(bFixNuisancesAtBestFit){     
-                                                        //bestFitPars[idMH] =  (testr - v_paramsUnc[idMH][3])/v_paramsUnc[idMH][1];
-                                                        //y0_1 =  MinuitFit(10, tmp, tmperr, 1., bestFitPars);
-                                                        best = true;            
-                                                        cms->SetFastScan(true); 
-                                                        y0_1 =  MinuitFit(3, tmp, tmperr, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
-                                                }else                           
-                                                        y0_1 =  MinuitFit(3, tmp, tmperr, 1., pars, best?true:false, debug, 0, best?bestFitPars:0);
-                                                                                
-                                                if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
-                                                vr.push_back(testr);            
-                                                vc.push_back(y0_1-y0_2);        
-                                                TString sj = jobname; sj+="_fittedShape_m"; sj+=testr;
-                                                if(bDumpFitResults)cms->DumpFitResults(pars, sj);
-                                                                                
-                                                //if(!bFixNuisancesAtBestFit)   
-                                                {                               
-                                                        for(int i=0; i<cms->Get_max_uncorrelation()+1; i++){
-                                                                myMinuit->GetParameter(i, tmp, tmpe);
-                                                                bestFitPars[i]=tmp;
-                                                        }
-                                                        best = true;
-                                                }
-
-                                        }
 
 					printf("\n results of scanned m vs. q: \n");
 					for(int i=0; i<vr.size(); i++){
