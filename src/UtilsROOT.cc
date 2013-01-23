@@ -1983,6 +1983,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 		// see CountingModel.h
 		if(ss[1]=="lnN") pdf=typeLogNormal;   // typeLogNormal
 		else if(ss[1]=="flat") pdf=typeFlat; // typeFlat
+		else if(ss[1]=="lnU") { pdf=typeFlat; ss[1]="flat"; } // typeFlat
 		else if(ss[1]=="trG") pdf=typeTruncatedGaussian; // typeTruncatedGaussian
 		else if(ss[1]=="gmA" or ss[1]=="gmN" or ss[1]=="gmM") pdf=typeGamma; // typeControlSampleInferredLogNormal;  gmA was chosen randomly, while in gmN, N stands for yield in control sample;  gmM stands for Multiplicative gamma distribution, it implies using a Gamma distribution not for a yield but for a multiplicative correction
 		else if(ss[1]=="shapeN" or ss[1]=="shapeN2" or ss[1]=="shapeStat") { pdf=typeLogNormal; bHistShapeUnc = (bUseHist?true:false); } 
@@ -2068,6 +2069,7 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 				if(err == 0. && errup==0.) continue;
 			}
 			else if(pdf==typeFlat && ss[1]=="flat"){
+				//flat uncertainty on normalization need to use \"/\" to separate min and max factors.  
 				if(ss[p+2]=="-") {
 					tmps+= "    -   ";
 					continue;
@@ -2084,11 +2086,11 @@ bool ConfigureShapeModel(CountingModel *cms, double mass, TString ifileContentSt
 					}else
 						errup= (TString(asymetricerrors[1])).Atof();  // upside
 				}else {
-					tmps+= TString(ss[p+2]);
-					cout<<"WARNING: flat uncertainty on normalization need to use \"/\" to separate min and max factors.  being skiped"<<endl;
-					continue;
+					errup = (TString(ss[p+2])).Atof();
+					err = 1./errup;
 				}
 				tmps+= TString(ss[p+2]);
+				if(err == 0.) continue;
 			}
 			else if(pdf==typeTruncatedGaussian){
 				if(ss[p+2]=="-"){
