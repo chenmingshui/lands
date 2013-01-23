@@ -2527,7 +2527,8 @@ If we need to change it later, it will be easy to do.
 		    cms->AddChannel(cms1->GetChannelName(ch), cms1->Get_v_exp_sigbkgs(ch), cms1->GetNSigprocInChannel(ch), cms1->Get_vv_channelDecayMode()[ch][0]);
 		    for(int isamp=0; isamp<tmp_vvv_pdftype.at(ch).size(); isamp++){
 			    for(int iunc=0; iunc<tmp_vvv_pdftype.at(ch).at(isamp).size(); iunc++){
-				    if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeLogNormal || tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeTruncatedGaussian){
+				    if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeLogNormal || tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeTruncatedGaussian 
+					|| tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeFlat ){
 					    cms->AddUncertainty(ch, isamp, 
 							    tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(0), 
 							    tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(1), 
@@ -2574,7 +2575,8 @@ If we need to change it later, it will be easy to do.
 		    if(cms2->GetDebug()) cout<<"now has total "<<cms->NumOfChannels()<<endl;
 		    for(int isamp=0; isamp<tmp_vvv_pdftype.at(ch).size(); isamp++){
 			    for(int iunc=0; iunc<tmp_vvv_pdftype.at(ch).at(isamp).size(); iunc++){
-				    if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeLogNormal || tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeTruncatedGaussian){
+				    if(tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeLogNormal || tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeTruncatedGaussian
+					|| tmp_vvv_pdftype.at(ch).at(isamp).at(iunc)==typeFlat ){
 					    cms->AddUncertainty(newch, isamp, 
 							    tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(0), 
 							    tmp_vvvv_uncpar.at(ch).at(isamp).at(iunc).at(1), 
