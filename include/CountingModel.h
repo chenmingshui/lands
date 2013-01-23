@@ -49,7 +49,7 @@ namespace lands{
 	typedef map< string, vector<TH1D*> > MapStrVTH;
 
 	enum enumPdfType {typeLogNormal=1, typeTruncatedGaussian=2, typeGamma=3, typeShapeGaussianLinearMorph=4, typeShapeGaussianQuadraticMorph=5, 
-		typeBifurcatedGaussian=6, typeFlat=7, typeControlSampleInferredLogNormal=11 };
+		typeBifurcatedGaussian=6, typeFlat=7, typeLogUniform=8, typeControlSampleInferredLogNormal=11 };
 	// for uncertainties only affecting Shape, we can choose different morphing algorithm.  in commom, user must provide three templates:  norminal,  shift_1sigma_up, shift_1sigma_down
 	// i.e. 3 parameters for each shape uncertainty in each bin .... ,  the interface alway do normalization (to unity) for all three templates.
 	
