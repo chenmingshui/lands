@@ -113,7 +113,7 @@ namespace lands{
 
 		if(par[0]>9e10) {f=-9e10; return;}
 		npar = cms_global->Get_max_uncorrelation()+1;
-		for(int i=0; i<npar; i++) {if(isnan(par[i]) or isinf(par[i])) {f=9e20; if(cms_global->GetDebug())  cout<<" i="<<i<<", p="<<par[i]<<endl; return;} }
+		for(int i=0; i<npar; i++) {if(std::isnan(par[i]) or std::isinf(par[i])) {f=9e20; if(cms_global->GetDebug())  cout<<" i="<<i<<", p="<<par[i]<<endl; return;} }
 		
 		bool bAllChannelsAreFlagged = false;
 		if(_lastParams.size()==0){
@@ -269,7 +269,7 @@ namespace lands{
 							if(added){
 								if(h<=0) { h=10e-9;} // cout<<" *h<0* "<<endl; 
 								bs = h*normalization*(s<nsigproc?par[0]:1);
-								if(isnan(bs)) {cout<<" morphing bs=nan "<<bs<<" c "<<c<<" s="<<s<<" h=" << h<<" normalization="<<normalization<<endl; }
+								if(std::isnan(bs)) {cout<<" morphing bs=nan "<<bs<<" c "<<c<<" s="<<s<<" h=" << h<<" normalization="<<normalization<<endl; }
 							}
 						}
 						for(u=0; u<vvv_pdftype[c][s].size(); u++){
@@ -313,11 +313,11 @@ namespace lands{
 									//cout<<*(uncpars+5)<<" "<<*(uncpars+4)<<endl;
 									bs*=pow( (ran>0? *(uncpars+5):*(uncpars+4)) , ran>0?ran*(*(uncpars+6)): -ran*(*(uncpars+6)));
 									//bs*=pow( (ran>0? *(uncpars+4):*(uncpars+5)) , ran>0?ran*(*(uncpars+6)): -ran*(*(uncpars+6)));
-									if(isnan(bs)) {cout<<" typeShapeGaussianQuadraticMorph bs=nan "<<bs<<" c "<<c<<" s="<<s<<" uncpars4: "<<uncpars[4]<<" 5: "<<uncpars[5]<<" 6:"<<uncpars[6]<<" ran="<<ran<<endl;}
+									if(std::isnan(bs)) {cout<<" typeShapeGaussianQuadraticMorph bs=nan "<<bs<<" c "<<c<<" s="<<s<<" uncpars4: "<<uncpars[4]<<" 5: "<<uncpars[5]<<" 6:"<<uncpars[6]<<" ran="<<ran<<endl;}
 									break;
 								case typeLogNormal:
 									bs*=(pow( 1+ (*(uncpars+ (ran>0?1:0))), ran) );
-									if(isnan(bs)) {cout<<" typeLogNormal bs=nan "<<bs<<" c "<<c<<" s="<<s<<" uncpars "<<uncpars[0]<<" "<<uncpars[1]<<" ran="<<ran<<endl;}
+									if(std::isnan(bs)) {cout<<" typeLogNormal bs=nan "<<bs<<" c "<<c<<" s="<<s<<" uncpars "<<uncpars[0]<<" "<<uncpars[1]<<" ran="<<ran<<endl;}
 									break;
 								case typeTruncatedGaussian:
 									bs*=(1+ (*(uncpars+ (ran>0?1:0)))*ran);
@@ -345,7 +345,7 @@ namespace lands{
 									cout<<"pdf_type = "<<vvv_pdftype[c][s][u]<<" not defined yet"<<endl;
 									exit(1);
 							}
-							if(isnan(bs)) {cout<<" bs=nan "<<bs<<" c "<<cms_global->GetChannelName(c).c_str()<<" s="<<cms_global->GetProcessNames(c)[s].c_str()<<" pdftype="<<vvv_pdftype[c][s][u]<<endl; }
+							if(std::isnan(bs)) {cout<<" bs=nan "<<bs<<" c "<<cms_global->GetChannelName(c).c_str()<<" s="<<cms_global->GetProcessNames(c)[s].c_str()<<" pdftype="<<vvv_pdftype[c][s][u]<<endl; }
 						}
 					}
 
@@ -361,7 +361,7 @@ namespace lands{
 				}
 
 					tc+=bs;
-				if(isnan(tc)) {cout<<" tc=nan "<<"  bs="<<bs<<" c "<<c<<" s="<<s<<endl; }
+				if(std::isnan(tc)) {cout<<" tc=nan "<<"  bs="<<bs<<" c "<<c<<" s="<<s<<endl; }
 			}
 			if(vdata_global[c]<=0){
 				if(tc<0) {f=10e9;cms_global->FlagAllChannels(); return;} // tc < 0, which means non-physical, return f = 10e9
@@ -370,7 +370,7 @@ namespace lands{
 			}else { 
 				if(tc<=0) {f=10e9;cms_global->FlagAllChannels(); return;} // tc < 0, which means non-physical, return f = 10e9
 				chisq += (tc-vdata_global[c] - vdata_global[c]*log(tc/vdata_global[c]));
-				if(isnan(chisq)) {cout<<" chisq = nan "<<" tc="<<tc<<" data="<<vdata_global[c]<<" in channel: "<<c<<endl;}
+				if(std::isnan(chisq)) {cout<<" chisq = nan "<<" tc="<<tc<<" data="<<vdata_global[c]<<" in channel: "<<c<<endl;}
 			}
 			//		else chisq += (tc - vdata_global[c]*log(tc));   // to be identical with ATLAS TDR description, for limit only
 		}
@@ -420,7 +420,7 @@ namespace lands{
 								if(added){
 									if(h<=0) { h=10e-9;} // cout<<" *h<0* "<<endl; 
 									bs = h*normalization*(s<nsigproc?par[0]:1);
-									if(isnan(bs)) {cout<<" morphing bs=nan "<<bs<<" c "<<c<<" s="<<s<<" h=" << h<<" normalization="<<normalization<<endl; }
+									if(std::isnan(bs)) {cout<<" morphing bs=nan "<<bs<<" c "<<c<<" s="<<s<<" h=" << h<<" normalization="<<normalization<<endl; }
 								}
 							}
 							for(u=0; u<vvv_pdftype_th[c][s].size(); u++){
@@ -438,7 +438,7 @@ namespace lands{
 											cout<<"ERROR: histogram channels:  ShpeUncertainties Not Moved Up"<<endl; exit(1);
 										}
 										bs*=pow( (ran>0? vvvv_uncpar_th[c][s][u][5]->GetBinContent(1):vvvv_uncpar_th[c][s][u][4]->GetBinContent(1)) , ran>0?ran*vvvv_uncpar_th[c][s][u][6]->GetBinContent(1): -ran*vvvv_uncpar_th[c][s][u][6]->GetBinContent(1));
-										if(isnan(bs)) {cout<<" typeShapeGaussianQuadraticMorph bs=nan "<<bs<<" c "<<c<<" s="<<s<<" uncpars4: "<<vvvv_uncpar_th[c][s][u][4]->GetBinContent(1)<<" 5: "<<vvvv_uncpar_th[c][s][u][5]->GetBinContent(1)<<" 6:"<<vvvv_uncpar_th[c][s][u][6]->GetBinContent(1)<<" ran="<<ran<<endl;}
+										if(std::isnan(bs)) {cout<<" typeShapeGaussianQuadraticMorph bs=nan "<<bs<<" c "<<c<<" s="<<s<<" uncpars4: "<<vvvv_uncpar_th[c][s][u][4]->GetBinContent(1)<<" 5: "<<vvvv_uncpar_th[c][s][u][5]->GetBinContent(1)<<" 6:"<<vvvv_uncpar_th[c][s][u][6]->GetBinContent(1)<<" ran="<<ran<<endl;}
 										break;
 									case typeLogNormal:
 										if(vvvv_uncpar_th[c][s][u][0]->GetNbinsX()==1){
@@ -446,7 +446,7 @@ namespace lands{
 										}else{
 											bs*=pow( 1+ vvvv_uncpar_th[c][s][u][ran>0?1:0]->GetBinContent(b), ran) ;
 										}
-										if(isnan(bs)) {cout<<"Hist typeLogNormal bs=nan "<<bs<<" c "<<c<<" s="<<s<<" ran="<<ran<<endl;}
+										if(std::isnan(bs)) {cout<<"Hist typeLogNormal bs=nan "<<bs<<" c "<<c<<" s="<<s<<" ran="<<ran<<endl;}
 										break;
 									case typeTruncatedGaussian:
 										bs*=( 1+ vvvv_uncpar_th[c][s][u][ran>0?1:0]->GetBinContent(1) * ran) ;
@@ -471,7 +471,7 @@ namespace lands{
 										cout<<"pdf_type = "<<vvv_pdftype_th[c][s][u]<<" not defined yet"<<endl;
 										exit(1);
 								}
-								if(isnan(bs)) {cout<<" bs=nan "<<bs<<" c "<<cms_global->GetChannelNameTH(c).c_str()<<" s="<<cms_global->GetProcessNamesTH(c)[s].c_str()<<" pdftype="<<vvv_pdftype_th[c][s][u]<<endl; }
+								if(std::isnan(bs)) {cout<<" bs=nan "<<bs<<" c "<<cms_global->GetChannelNameTH(c).c_str()<<" s="<<cms_global->GetProcessNamesTH(c)[s].c_str()<<" pdftype="<<vvv_pdftype_th[c][s][u]<<endl; }
 							}
 						}
 
@@ -483,7 +483,7 @@ namespace lands{
 						}
 
 						tc+=bs;
-						if(isnan(tc)) {cout<<" tc=nan "<<"  bs="<<bs<<" c "<<c<<" s="<<s<<" b="<<b<<endl; }
+						if(std::isnan(tc)) {cout<<" tc=nan "<<"  bs="<<bs<<" c "<<c<<" s="<<s<<" b="<<b<<endl; }
 					}
 					
 					tmp = vdata_global_th[c]->GetBinContent(b);
@@ -493,7 +493,7 @@ namespace lands{
 					}else { 
 						if(tc<=0) {f=10e9;cms_global->FlagAllChannels(); return;} // tc < 0, which means non-physical, return f = 10e9
 						tc_forAHistChannel += (tc-tmp - tmp*log(tc/tmp));
-						if(isnan(tc_forAHistChannel)) {cout<<" tc_forAHistChannel= nan "<<" tc="<<tc<<" data="<<tmp<<" in channel: "<<c<<endl;}
+						if(std::isnan(tc_forAHistChannel)) {cout<<" tc_forAHistChannel= nan "<<" tc="<<tc<<" data="<<tmp<<" in channel: "<<c<<endl;}
 					}
 				}
 				v_cachHistParts[c] = tc_forAHistChannel;
@@ -503,7 +503,7 @@ namespace lands{
 
 			chisq += tc_forAHistChannel;
 		}
-		if(isnan(chisq) || chisq>=10e9){ 
+		if(std::isnan(chisq) || chisq>=10e9){ 
 			cout<<" DELETEME counting ** ** ** ** chi2="<<chisq<<endl;
 			cms_global->FlagAllChannels();
 			f=10e9; return; 
@@ -511,7 +511,7 @@ namespace lands{
 		if(cms_global->hasParametricShape()){
 			chisq+=	cms_global->EvaluateChi2(par, v_cachPdfValues, vvv_cachPdfValues);// use default, norminal sigbkgs for evaluation, not randomized one 		
 		}
-		if(isnan(chisq) || chisq>=10e9){ 
+		if(std::isnan(chisq) || chisq>=10e9){ 
 			cout<<" DELETEME shaping ** ** ** ** chi2="<<chisq<<endl;
 			cms_global->FlagAllChannels();
 			f=10e9; return; 
@@ -576,7 +576,7 @@ namespace lands{
 		// to be identical with ATLAS TDR description, for limit only
 		f=chisq;
 
-		if(isnan(f)) f=10e9; // checking if it's nan  
+		if(std::isnan(f)) f=10e9; // checking if it's nan  
 
 		if( (cms_global->GetPrintParameterFrom() >= 0) && (cms_global->GetPrintParameterTo() >= cms_global->GetPrintParameterFrom()) ){
 			if(npar>=cms_global->GetPrintParameterFrom()) 
