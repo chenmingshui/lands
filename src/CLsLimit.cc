@@ -294,7 +294,14 @@ namespace lands{
 											if(h<=0) h=10e-9;
 											if( *(uncpars+2)!=0 && bs!=0) {
 												bs*=h/(*(uncpars+2));	
-											}else if(bs==0) bs = (*(uncpars+3))*h*(s<nsigproc?par[0]:1);
+											}else if(bs==0) {
+												if(cms_global->GetPhysicsModel()==typeChargedHiggs){
+													if(s==0)bs = (*(uncpars+3))*h*par[0]*par[0];
+													else if(s==1)bs = (*(uncpars+3))*h*(1-par[0])*2;
+													else if(s==2||s==3)bs = (*(uncpars+3))*h*(1-par[0])*(1-par[0]);
+													else bs = (*(uncpars+3))*h;
+												}else bs = (*(uncpars+3))*h*(s<nsigproc?par[0]:1);
+											}
 											else { ;}
 											ran = tmprand;
 										}
@@ -314,7 +321,14 @@ namespace lands{
 											if(h<=0) h=10e-9;
 											if( *(uncpars+2)!=0 && bs!=0) {
 												bs*=h/(*(uncpars+2));	
-											}else if(bs==0) bs = (*(uncpars+3))*h*(s<nsigproc?par[0]:1);
+											}else if(bs==0) {
+												if(cms_global->GetPhysicsModel()==typeChargedHiggs){
+													if(s==0)bs = (*(uncpars+3))*h*par[0]*par[0];
+													else if(s==1)bs = (*(uncpars+3))*h*(1-par[0])*2;
+													else if(s==2||s==3)bs = (*(uncpars+3))*h*(1-par[0])*(1-par[0]);
+													else bs = (*(uncpars+3))*h;
+												}else bs = (*(uncpars+3))*h*(s<nsigproc?par[0]:1);
+											}
 											else { ;}
 											ran = tmprand;
 										}
@@ -335,8 +349,14 @@ namespace lands{
 									ipar = vvv_idcorrl[c][s][u];
 									if(*uncpars>0){
 										tmp = vv_sigbks[c][s];	
-										if(tmp!=0) { bs/=tmp; bs *= ((*uncpars)*ran*(s<nsigproc?par[0]:1)); }
-										else bs = (*uncpars)*ran*(s<nsigproc?par[0]:1);
+										if(tmp!=0) { bs/=tmp; }
+										if(cms_global->GetPhysicsModel()==typeChargedHiggs){
+											if(s==0)	   bs *= ((*uncpars)*ran*par[0]*par[0]); 
+											else if(s==1)	   bs *= ((*uncpars)*ran*2*(1-par[0])); 
+											else if(s==2||s==3)	   bs *= ((*uncpars)*ran*(1-par[0])*(1-par[0])); 
+											else bs *= ((*uncpars)*ran); 
+										}else bs *= ((*uncpars)*ran*(s<nsigproc?par[0]:1)); 
+										//bs = (*uncpars)*ran*(s<nsigproc?par[0]:1);
 										//cout<<" DELETEME ****  vv_sigbks[c][s]= "<<vv_sigbks[c][s]<<" ran="<<ran<<"  alpha="<<(*uncpars)<<endl;	
 									}else{ // if *uncpars, i.e. rho <0, then it's multiplicative gamma
 										bs*=(ran/v_GammaN[ipar]);
@@ -428,7 +448,7 @@ namespace lands{
 
 								if(added){
 									if(h<=0) { h=10e-9;} // cout<<" *h<0* "<<endl; 
-									bs = h*normalization*(s<nsigproc?par[0]:1);
+									bs = h*normalization*(s<nsigproc?par[0]:1);  //////////////////////////////FIXME also need to fix here for ChargedHiggs 
 									if(std::isnan(bs)) {cout<<" morphing bs=nan "<<bs<<" c "<<c<<" s="<<s<<" h=" << h<<" normalization="<<normalization<<endl; }
 								}
 							}
