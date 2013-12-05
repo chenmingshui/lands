@@ -250,6 +250,11 @@ vector<double>  vdParToBeFixedWhenGenToys;
 TString scanNuisance = "";
 vector<double> vNuis_toEval;
 
+bool bPseudoAsimov = false;
+int nPseudoAsimovEvents = 1000;
+
+TFile *gFileToSave;
+
 int main(int argc, const char*argv[]){
 	processParameters(argc, argv);
 
@@ -472,6 +477,7 @@ int main(int argc, const char*argv[]){
 	cms->SetTmpDataForUnbinned(cms->Get_v_pdfs_roodataset());
 	//bConstructAsimovbFromNominal = true;
 	//if(method == "Asymptotic") bConstructAsimovbFromNominal = false;
+	cms->SetAsimovType(bPseudoAsimov, nPseudoAsimovEvents);
 	if(dataset=="asimov_b" or method=="Asymptotic" or ExpectationHints=="Asymptotic")cms->ConstructAsimovData(0, bConstructAsimovbFromNominal); // b-only asimov 
 	if(dataset=="asimov_sb")cms->ConstructAsimovData(1, !bConstructAsimovsbFromFit, InjectingSignalStrength); // sb asimov
 	if(dataset == "asimov_b")cms->UseAsimovData(0);
@@ -495,6 +501,8 @@ int main(int argc, const char*argv[]){
 			}
 		}
 	}
+
+	gFileToSave = new TFile(jobname+"_save.root","RECREATE");
 
 	if(calcsignificance==0){// calc limits
 		if(method == "Bayesian"){
@@ -1642,9 +1650,11 @@ int main(int argc, const char*argv[]){
 			
 			if(debug) cout<<" YouAreHere debug 1"<<endl;
 			
-			if(cms->GetPhysicsModel()==typeCvCfHiggs)SaveResults(jobname+"_maxllfit", HiggsMass, 0, 0, 0, 0, 0, mu_hat_low, 0, mu_hat, mu_hat_up, 0);
-			else if(cms->GetPhysicsModel()==typeC5Higgs)SaveResults(jobname+"_maxllfit", HiggsMass, 0, 0, 0, 0, 0, mu_hat_low, 0, mu_hat, mu_hat_up, 0);
-			else SaveResults(jobname+"_maxllfit", HiggsMass, y0_2, 0, 0, 0, 0, mu_hat_low, 0, mu_hat, mu_hat_up, 0);
+			if(!DoNotRunGlobalFit){
+				if(cms->GetPhysicsModel()==typeCvCfHiggs)SaveResults(jobname+"_maxllfit", HiggsMass, 0, 0, 0, 0, 0, mu_hat_low, 0, mu_hat, mu_hat_up, 0);
+				else if(cms->GetPhysicsModel()==typeC5Higgs)SaveResults(jobname+"_maxllfit", HiggsMass, 0, 0, 0, 0, 0, mu_hat_low, 0, mu_hat, mu_hat_up, 0);
+				else SaveResults(jobname+"_maxllfit", HiggsMass, y0_2, 0, 0, 0, 0, mu_hat_low, 0, mu_hat, mu_hat_up, 0);
+			}
 
 			if(bDumpFitResults)cms->DumpFitResults(pars, jobname+"_fittedShape_floatMu");
 			
@@ -1784,7 +1794,7 @@ int main(int argc, const char*argv[]){
 							myMinuit->GetParameter(i, tmp, tmpe);
 							bestFitPars[i]=tmp;
 						}
-						//best = true;
+						best = true; // uncomment this one to allow speeding up continuous fits
 					}
 
 					if(debug) cout<<"_countPdfEvaluation="<<_countPdfEvaluation<<endl;
@@ -1812,7 +1822,9 @@ int main(int argc, const char*argv[]){
 					DrawEvolution2D d2d(vr, vc, st1.Data(), st2.Data(), pt);
 					d2d.draw();
 					d2d.save();
+
 				}
+				SaveResults(gFileToSave, "limit", "mh", HiggsMass, mainPOI, vr, "deltaNLL", vc);  // tfile, treename, brname1, values2, brname2, values2
 
 				watch2.Stop();
 				cout<<"Scanning total takes: "<<endl;
@@ -2520,8 +2532,10 @@ vector<double> GetListToEval(TString parname, vector<TString> tmpv){
 	vector<double> vtoEval;vtoEval.clear();
 	for(int i= (tmpv.size()>1?1:0); i<tmpv.size(); i++){
 		if(tmpv[i].IsFloat()) vtoEval.push_back(tmpv[i].Atof());
-		else if(tmpv[i].BeginsWith("[") and tmpv[i].EndsWith("]")){
+		else if( (tmpv[i].BeginsWith("[") and tmpv[i].EndsWith("]"))
+		or (tmpv[i].BeginsWith("V") and tmpv[i].EndsWith("V")) ){
 			tmpv[i].ReplaceAll("[","");tmpv[i].ReplaceAll("]","");	
+			tmpv[i].ReplaceAll("V","");tmpv[i].ReplaceAll("V","");	
 			vector<string> vstr;
 			StringSplit(vstr, tmpv[i].Data(), ",");
 			if(vstr.size()==3 and (TString(vstr[2]).IsFloat() or TString(vstr[2]).BeginsWith("x")) ){
@@ -3182,6 +3196,8 @@ bool runMaxLikelihoodFit(bool printInfo, bool makePlots, TString smakePlots){
 			d2d.draw();
 			d2d.save();
 		}
+
+		SaveResults(gFileToSave, "limit", "mh", HiggsMass, mainPOI, vr, "deltaNLL", vc);  // tfile, treename, brname1, values2, brname2, values2
 
 		watch2.Stop();
 		if(printInfo){
@@ -4444,6 +4460,15 @@ void processParameters(int argc, const char* argv[])
 		dataset = tmpv[0];
 		if(dataset!="data_obs" and dataset!="asimov_sb" and dataset!="asimov_b"){cout<<"ERROR: dataset option must be one of data_obs, asimov_sb and asimov_b"<<endl; exit(0);}
 		if(dataset=="asimov_sb" and tmpv.size()==2) InjectingSignalStrength = tmpv[1].Atof();
+
+		if(dataset=="asimov_sb" or dataset=="asimov_b") {
+			if(isWordInMap("--PseudoAsimov", options)){
+				bPseudoAsimov = true;
+				tmpv = options["--PseudoAsimov"]; 
+				if(tmpv.size()==0) {} 
+				else nPseudoAsimovEvents = tmpv[0].Atoi();
+			}
+		}
 	}
 
 	
@@ -5200,6 +5225,7 @@ void PrintHelpMessage(){
 	printf("--loadToysFromFile string            use with doExpectation,  reading saved toys from file \n");
 	printf("--MinimizingApproach string            currently supports Normal, Cascade\n");
 	printf("--scanNuisance nuisName [min,max,step] scanning Nuisance, now only work in MultiDimFit \n");
+	printf("--PseudoAsimov 1000			pseudo asimov dataset, default 1000 events \n"); 
 
 
 	printf(" \n");

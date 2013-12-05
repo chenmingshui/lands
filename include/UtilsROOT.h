@@ -68,5 +68,6 @@ void AddRWSintoMap(string filename, string rwsname, RooWorkspace* w, map<TString
 
 void CopyTrees(TString infile, TString intree, TString outfile, TString outtree);
 
+void SaveResults(TFile *f, TString treename, TString massname,  double mvalue, TString sb1, vector<double> array1, TString sb2, vector<double> array2 );
 #endif   /* ----- #ifndef UTILSROOT_INC  ----- */
 

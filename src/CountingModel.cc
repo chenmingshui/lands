@@ -35,6 +35,7 @@
 #include "RooHistFunc.h"
 #include "CLsLimit.h"
 #include "TGraphAsymmErrors.h"
+#include "TStopwatch.h"
 //#include "RooStats/RooStatsUtils.h"
 
 using namespace std;
@@ -181,6 +182,8 @@ namespace lands{
 	_printPdfEvlCycle = -1;
 
 	fastScan_ = false;
+	bPseudoAsimov_=false;
+	nPseudoAsimovEvents_=1;
     }
     CountingModel::~CountingModel(){
         v_data.clear();
@@ -2395,11 +2398,27 @@ If we need to change it later, it will be easy to do.
 			    if(rdh_asimovb->numEntries() >=1000 ) {
 				cutBinsWithSmallWeight = true;
 			    }
-			    for(int j=0; j<rdh_asimovb->numEntries(); j++){
-				    RooArgSet rastmp = *rdh_asimovb->get(j);
-				    double wtmp = rdh_asimovb->weight();
-				    rds_asimovb->add(rastmp, wtmp);
+
+			    
+			    RooDataSet *rds_asimovb_ps = _w_varied->pdf(v_pdfs_b[i]) -> generate(*observable,nPseudoAsimovEvents_);
+			    double nexpected = _w_varied->pdf(v_pdfs_b[i])->getNorm(*observable);
+
+			    if(!bPseudoAsimov_){
+				    for(int j=0; j<rdh_asimovb->numEntries(); j++){
+					    RooArgSet rastmp = *rdh_asimovb->get(j);
+					    double wtmp = rdh_asimovb->weight();
+					    rds_asimovb->add(rastmp, wtmp);
+				    }
+			    }else{
+				    for(int j=0; j<rds_asimovb_ps->numEntries(); j++){
+					    RooArgSet rastmp = *rds_asimovb_ps->get(j);
+					    double wtmp = nexpected/nPseudoAsimovEvents_;
+					    rds_asimovb->add(rastmp, wtmp);
+				    }
+
 			    }
+
+
 			    v_pdfs_roodataset_asimovb.push_back(rds_asimovb);
 
 
@@ -2479,13 +2498,32 @@ If we need to change it later, it will be easy to do.
 			    TString swgt = "wgttmp_"; swgt+=v_pdfs_channelname[i];
 			    RooArgSet * rastmp = new RooArgSet(*observable, *(_w->var(swgt)));
 			    RooDataSet *rds_asimovsb = new RooDataSet(TString("rds_asimovsb")+v_pdfs_channelname[i], "rds_asimovsb", *rastmp, swgt);
-			    if(_debug)cout<<" rdh_asimovsb["<<v_pdfs_channelname[i]<<"]->bins = "<<rdh_asimovsb->numEntries()<<endl;
-			    for(int j=0; j<rdh_asimovsb->numEntries(); j++){
-				    RooArgSet rastmp = *rdh_asimovsb->get(j);
-				    double wtmp = rdh_asimovsb->weight();
-				    rds_asimovsb->add(rastmp, wtmp*injectMu);
-				    if(_debug && j==0)cout<<" DELETEME 3 "<<j<<" weight = "<<rdh_asimovsb->weight()<<endl;	
-			    }
+
+
+                            RooDataSet *rds_asimovsb_ps = _w_varied->pdf(v_pdfs_sb[i]) -> generate(*observable,nPseudoAsimovEvents_);
+                            double nexpected = rdh_asimovsb->sumEntries(); // _w_varied->pdf(v_pdfs_sb[i])->getNorm(*observable);
+                                                                   
+                            if(!bPseudoAsimov_){
+				    if(_debug)cout<<" rdh_asimovsb["<<v_pdfs_channelname[i]<<"]->bins = "<<rdh_asimovsb->numEntries()<<endl;
+				    for(int j=0; j<rdh_asimovsb->numEntries(); j++){
+					    RooArgSet rastmp = *rdh_asimovsb->get(j);
+					    double wtmp = rdh_asimovsb->weight();
+					    rds_asimovsb->add(rastmp, wtmp*injectMu);
+					    if(_debug && j==0)cout<<" DELETEME 3 "<<j<<" weight = "<<rdh_asimovsb->weight()<<endl;	
+				    }
+                            }else{
+				    if(_debug)cout<<" rds_asimovsb["<<v_pdfs_channelname[i]<<"] ngenevents = "<<rds_asimovsb_ps->numEntries()<<", norm="<<nexpected<<endl;
+                                    for(int j=0; j<rds_asimovsb_ps->numEntries(); j++){
+                                            RooArgSet rastmp = *rds_asimovsb_ps->get(j);
+                                            double wtmp = nexpected/nPseudoAsimovEvents_;
+                                            rds_asimovsb->add(rastmp, wtmp);
+                                    }                    
+
+                            }
+
+
+
+
 			    if(_debug>=10){
 				    cout<<" *** DELETEME : "<<endl;
 				    rds_asimovsb->Print("v");
@@ -3449,6 +3487,10 @@ If we need to change it later, it will be easy to do.
 			    //TString stemp = "";
 			    //bool bupdated = false;
 			    for(int p=0; p<vv_pdfs[ch].size(); p++) TMP_vvpdfs_chprocINT[ch][p]=-1;
+
+			    ///////////  
+			    double trapnormForAllEventsProcs = 0;			
+
 			    for(int i=0; i<ntot; i++){
 				    //stemp+=" evt "; stemp+=i;
 				    //tmprrv=_w_varied->var(v_pdfs_observables[ch]);
@@ -3531,11 +3573,99 @@ If we need to change it later, it will be easy to do.
 											    //if(tj==vvv_pdfs_nuisancesindex[ch][p].size()-1) vvvv_pdfs_ChProcSetParVals[ch][p][vv_pdfs_curSetIndex[ch][p]][tj]=-9999998.;
 										    }
 									    }
-									    tmp3 =	_w_varied->pdf(vv_pdfs[ch][p].c_str())->getVal(&vars);  //give some warning message when r=0
+
+
+									    // make trapezoid numerical integration for FFT per-event mass error involved  
+									    // need a global switch....   currently it's a very ad-hoc implementation
+									  //  RooAbsPdf * pdftmp = (RooAbsPdf*) _w_varied->pdf(vv_pdfs[ch][p].c_str());
+									  //  bool bfftebe = false;
+									  //  if(pdftmp->InheritsFrom("RooProdPdf")){
+									  //          RooArgSet * ras = pdftmp->getComponents();
+									  //          std::auto_ptr<TIterator> iter(ras->createIterator());
+									  //          for(TObject* obs= (TObject*)iter->Next(); obs!=0; obs=(TObject*)iter->Next()){
+									  //      	    if(obs->InheritsFrom("RooFFTConvPdf")) { 
+									  //      		    if(_w_varied->var("CMS_zz4l_massAbsErr") && _w_varied->var("CMS_zz4l_mass") ) {
+									  //      			    bfftebe=true; break;
+									  //      		    }
+									  //      	    }
+
+									  //          } 
+									  //  }
+									  //  bfftebe = false;
+
+									  //  double trapnorm = 0.;
+
+									  //  if(bfftebe){
+									  //          if(trapnormForAllEventsProcs==0){ 
+									  //      	    if(_w_varied->var("CMS_zz4l_massAbsErr") && _w_varied->var("CMS_zz4l_mass") ) {
+									  //      		    RooRealVar * x = _w_varied->var("CMS_zz4l_mass"); 
+									  //      		    RooRealVar * y = _w_varied->var("CMS_zz4l_massAbsErr"); 
+									  //      		    double oldx = x->getVal();
+									  //      		    double oldy = y->getVal();
+									  //      		    double nbins = x->getBins(); double xmin = x->getMin(); double xmax=x->getMax();
+									  //      		    double nbinsy = y->getBins(); double ymin = y->getMin(); double ymax=y->getMax();
+									  //      		    //if(nbins<100) nbins=100;
+									  //      		    nbins = 200;
+									  //      		    nbinsy=100;
+									  //      		    double binwidth = (xmax-xmin)/nbins;
+									  //      		    double binwidthy = (ymax-ymin)/nbinsy;
+									  //      		    double binarea = binwidth * binwidthy;
+									  //      		    //_w_varied->SetName("_w_varied");
+									  //      		    //_w_varied->writeToFile("fromlands.root");
+									  //      		    //pdftmp->printCompactTree();
+									  //      		    //		cout<<"xmin="<<xmin<<", xmax="<<xmax<<", ymin="<<ymin<<", ymax="<<ymax<<", bx="<<binwidth<<", by="<<binwidthy<<endl;
+									  //      		    //			    cout<<" ** calc norm  takes time : "<<endl;
+									  //      		    //			    _watch->Start();
+									  //      		    for(double m= xmin+binwidth/2.; m<xmax; m+= binwidth){
+									  //      			    for(double me= ymin+binwidthy/2.; me<ymax; me+= binwidthy){
+									  //      				    x->setVal(m);
+									  //      				    y->setVal(me);
+									  //      				    trapnorm +=  pdftmp->getVal() ;
+									  //      			    }
+									  //      		    }
+									  //      		    //			    _watch->Stop();
+									  //      		    //			    _watch->Print();
+									  //      		    trapnorm *= binarea;
+									  //      		    x->setVal(oldx);
+									  //      		    y->setVal(oldy);
+									  //      		    //			    cout<<" 2 norm = "<<trapnorm<<endl;
+									  //      	    }
+									  //      	    trapnormForAllEventsProcs = trapnorm;
+									  //          }
+									  //          /*	
+									  //      	if(_w_varied->var("CMS_zz4l_mass")) {
+									  //      	RooRealVar * x = _w_varied->var("CMS_zz4l_mass"); 
+									  //      	double oldx = x->getVal();
+									  //      	double nbins = x->getBins(); double xmin = x->getMin(); double xmax=x->getMax();
+									  //      	double binwidth = (xmax-xmin)/nbins;
+									  //      	if(nbins<100) nbins=100;
+									  //      	for(double m= xmin+binwidth/2.; m<xmax; m+= binwidth){
+									  //      	x->setVal(m);
+									  //      	trapnorm +=  pdftmp->getVal() * binwidth;
+									  //      	}
+									  //      	x->setVal(oldx);
+									  //      	}
+									  //           */
+									  //          if(trapnormForAllEventsProcs<=0) { bfftebe = false;  cout<<" trapnorm = "<<trapnormForAllEventsProcs<<endl; }
+									  //  }
+
+									  // // _watch->Start();
+
+									  //  //if(bfftebe) tmp3 =	_w_varied->pdf(vv_pdfs[ch][p].c_str())->getVal()/trapnormForAllEventsProcs;  
+									  //  //else
+										 tmp3 =	_w_varied->pdf(vv_pdfs[ch][p].c_str())->getVal(&vars);  //give some warning message when r=0
+
+									    //_watch->Stop();
+									    //_watch->Print();
+
+
+
+									    //	_w_varied->pdf(vv_pdfs[ch][p].c_str())->printCompactTree();
+									    //cout<<"HELL1"<<endl;
 									    //  cout<<" i "<<i<<" val="<<tmp3<<"   *********ch"<<ch<<"p"<<p<<"  before val="<<vvvv_pdfs_ChProcSetEvtVals[ch][p][vv_pdfs_curSetIndex[ch][p]][i]<<endl;
 									    if(maxsets_forcaching>0)vvvv_pdfs_ChProcSetEvtVals[ch][p][vv_pdfs_curSetIndex[ch][p]][i] = tmp3; // update the value of the chosen set 
 									    _countPdfEvaluation ++ ;
-									 //if(i==0)cout<<" REMOVEME  1 "<<_countPdfEvaluation<<endl;
+									    //if(i==0)cout<<" REMOVEME  1 "<<_countPdfEvaluation<<endl;
 									    if(_printPdfEvlCycle > 0 ) { if( long(_countPdfEvaluation)%long(_printPdfEvlCycle) == 0 ) cout<<" This fit has evaluated  "<<_countPdfEvaluation<<" roofit pdf values "<<endl; } 
 									    //   cout<<" i "<<i<<" val="<<tmp3<<"   *********ch"<<ch<<"p"<<p<<"  curSetIndex="<<vv_pdfs_curSetIndex[ch][p]<<"  after val="<<vvvv_pdfs_ChProcSetEvtVals[ch][p][vv_pdfs_curSetIndex[ch][p]][i]<<endl;
 								    }

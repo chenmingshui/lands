@@ -439,6 +439,7 @@ namespace lands{
 
 			bool fastScan(){return fastScan_;};
 			void SetFastScan(bool b) {fastScan_=b;};
+			void SetAsimovType(bool b, int n){bPseudoAsimov_=b; nPseudoAsimovEvents_=n;};
 		private:
 			vector<int> v_sigproc_th;
 			vector<std::string> v_channelname_th; // start from 0 
@@ -662,6 +663,10 @@ namespace lands{
 			vector<double> v_fixedParForGenToy;
 
 			bool fastScan_;
+
+			bool bPseudoAsimov_; 
+			int nPseudoAsimovEvents_;
+			
 	};
 	CountingModel* CombineModels(CountingModel *cms1, CountingModel *cms2);
 }

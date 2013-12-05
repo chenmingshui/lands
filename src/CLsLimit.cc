@@ -268,7 +268,16 @@ namespace lands{
 
 							if(added){
 								if(h<=0) { h=10e-9;} // cout<<" *h<0* "<<endl; 
-								bs = h*normalization*(s<nsigproc?par[0]:1);
+								if(cms_global->GetPhysicsModel()==typeChargedHiggs) {
+									if(s==0)
+										bs = h*normalization*par[0]*par[0];
+									else if(s==1)
+										bs = h*normalization*(1-par[0])*2;
+									else if(s==2||s==3)
+										bs = h*normalization*(1-par[0])*(1-par[0]);
+									else
+										bs = h*normalization;
+								}else bs = h*normalization*(s<nsigproc?par[0]:1);
 								if(std::isnan(bs)) {cout<<" morphing bs=nan "<<bs<<" c "<<c<<" s="<<s<<" h=" << h<<" normalization="<<normalization<<endl; }
 							}
 						}
@@ -617,7 +626,9 @@ namespace lands{
 			watch->Start();
 		}
 
-		RooAbsArg::setDirtyInhibit(1);
+		//  2013.05.21  it seems the line below causes problem of evaluting integration with trapezoid method   in  HZZ4l  width studies 
+		//RooAbsArg::setDirtyInhibit(1);
+
 		if(!(bestFitPars && hasBestFitted)){ 
 			_lastParams.clear();	_currParams.clear();
 			for( int i=0; i<vvv_cachPdfValues.size(); i++){

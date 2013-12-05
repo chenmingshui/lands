@@ -51,5 +51,8 @@ distribution. This is a statistical part of uncertainties. All other errors woul
 
 
 
+2013.05.13 
+Now Lxplus default login OS is SLC6 
+Compling lands with SLC5-cmssw-root doesn't work   -->  now move to my own desktop to compile lands  
 
 

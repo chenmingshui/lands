@@ -2855,3 +2855,25 @@ void CopyTrees(TString infile, TString intree, TString outfile, TString outtree)
 	f->WriteTObject(t->CloneTree());
 	f->Close();
 }
+void SaveResults(TFile *f, TString treename, TString massname,  double mvalue, TString sb1, vector<double> array1, TString sb2, vector<double> array2 ){
+	if(f==NULL) { cout<< "f is closed, ERROR, resutls not saved !  exit" << endl; exit(1);}
+	f->cd();
+	TTree *tree;
+	tree = (TTree*)f->Get(treename);
+	if(tree==NULL) tree = new TTree(treename, treename); 
+	
+	if(array2.size()!=array1.size()) {cout<< " array1.size != array2.size , ERROR ,  exit " <<endl; exit(1); }	
+
+	Double_t brT1, brT2;
+	tree->Branch(sb1, &brT1, sb1+"/D");
+	tree->Branch(sb2, &brT2, sb2+"/D");
+	tree->Branch(massname, &mvalue, massname+"/D");
+	for(int i=0; i<array1.size(); i++){
+		brT1= array1.at(i);
+		brT2= array2.at(i);
+		tree->Fill();
+	}
+
+	f->WriteTObject(tree);
+	f->Close();
+}
