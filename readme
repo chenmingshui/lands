@@ -56,3 +56,13 @@ Now Lxplus default login OS is SLC6
 Compling lands with SLC5-cmssw-root doesn't work   -->  now move to my own desktop to compile lands  
 
 
+2013.12.05
+before moving to github,  check in following changes:
+bug fix regarding ChargedHiggs model with shape uncertainties
+add pseudo asimov dataset  ... still in test
+saveResult runction revised
+tried trapezoid normalization for hzz4l,  commented out
+
+
+
+
