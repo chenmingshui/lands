@@ -272,7 +272,7 @@ namespace lands{
 									if(s==0)
 										bs = h*normalization*par[0]*par[0];
 									else if(s==1)
-										bs = h*normalization*(1-par[0])*2;
+										bs = h*normalization*(1-par[0])*par[0]*2;
 									else if(s==2||s==3)
 										bs = h*normalization*(1-par[0])*(1-par[0]);
 									else
@@ -297,7 +297,7 @@ namespace lands{
 											}else if(bs==0) {
 												if(cms_global->GetPhysicsModel()==typeChargedHiggs){
 													if(s==0)bs = (*(uncpars+3))*h*par[0]*par[0];
-													else if(s==1)bs = (*(uncpars+3))*h*(1-par[0])*2;
+													else if(s==1)bs = (*(uncpars+3))*h*(1-par[0])*par[0]*2;
 													else if(s==2||s==3)bs = (*(uncpars+3))*h*(1-par[0])*(1-par[0]);
 													else bs = (*(uncpars+3))*h;
 												}else bs = (*(uncpars+3))*h*(s<nsigproc?par[0]:1);
@@ -324,7 +324,7 @@ namespace lands{
 											}else if(bs==0) {
 												if(cms_global->GetPhysicsModel()==typeChargedHiggs){
 													if(s==0)bs = (*(uncpars+3))*h*par[0]*par[0];
-													else if(s==1)bs = (*(uncpars+3))*h*(1-par[0])*2;
+													else if(s==1)bs = (*(uncpars+3))*h*(1-par[0])*par[0]*2;
 													else if(s==2||s==3)bs = (*(uncpars+3))*h*(1-par[0])*(1-par[0]);
 													else bs = (*(uncpars+3))*h;
 												}else bs = (*(uncpars+3))*h*(s<nsigproc?par[0]:1);
@@ -352,7 +352,7 @@ namespace lands{
 										if(tmp!=0) { bs/=tmp; }
 										if(cms_global->GetPhysicsModel()==typeChargedHiggs){
 											if(s==0)	   bs *= ((*uncpars)*ran*par[0]*par[0]); 
-											else if(s==1)	   bs *= ((*uncpars)*ran*2*(1-par[0])); 
+											else if(s==1)	   bs *= ((*uncpars)*ran*2*(1-par[0])*par[0]); 
 											else if(s==2||s==3)	   bs *= ((*uncpars)*ran*(1-par[0])*(1-par[0])); 
 											else bs *= ((*uncpars)*ran); 
 										}else bs *= ((*uncpars)*ran*(s<nsigproc?par[0]:1)); 
